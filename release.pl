@@ -83,6 +83,7 @@ my @files;
 	  "dash/include/dash/util/*.h.in",
 	  "dash/include/dash/util/internal/*.h",
 	  "dash/include/dash/view/*.h",
+          "dash/include/dash/std/*.h",
 	  "dash/src/*.cc",
 	  "dash/src/algorithm/*.cc",
 	  "dash/src/exception/*.cc",
