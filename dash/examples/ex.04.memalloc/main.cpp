@@ -19,8 +19,6 @@ int main(int argc, char* argv[])
   auto myid = dash::myid();
   auto size = dash::size();
 
-  //using pointer_t = typename dash::Array<int>::pointer;
-  //using pointer_t = dash::GlobPtr<GlobLocalMemoryPool<uint8_t.
   using pointer_t = decltype(dash::memalloc<int>(size_t{}));
 
   dash::Array< pointer_t > arr(size);

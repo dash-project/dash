@@ -116,7 +116,7 @@ public:
   constexpr GlobPtr() = default;
 
   /**
-   * C, specifies unerlying global address.
+   * Constructor, specifies underlying global address.
    */
   GlobPtr(const GlobMemT &mem_space, dart_gptr_t gptr)
     : _rbegin_gptr(gptr)
