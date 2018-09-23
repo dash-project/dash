@@ -28,10 +28,10 @@ TEST_F(ReduceTest, SimpleStart) {
 
   ASSERT_EQ_U(num_elem_total * value + start, result);
 
-  result = dash::reduce(target.begin(), target.end());
+  result = dash::reduce(target.begin(), target.end(), 0);
   ASSERT_EQ_U(num_elem_total * value, result);
 
-  result = dash::reduce(target.lbegin(), target.lend());
+  result = dash::reduce(target.lbegin(), target.lend(), 0);
   ASSERT_EQ_U(num_elem_total * value, result);
 }
 

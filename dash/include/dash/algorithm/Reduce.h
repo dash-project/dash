@@ -163,7 +163,7 @@ reduce(
   LocalInputIter  in_first,
   LocalInputIter  in_last,
   InitType        init,
-  bool            non_empty = false,
+  bool            non_empty,
   dash::Team    & team = dash::Team::All())
 {
   using value_t = typename std::iterator_traits<LocalInputIter>::value_type;
