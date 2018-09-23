@@ -7,7 +7,7 @@
 #include <dash/Team.h>
 #include <dash/Shared.h>
 #include <dash/algorithm/LocalRange.h>
-#include <dash/coarray/Utils.h>
+#include <dash/Coarray.h>
 
 #include <iterator>
 #include <vector>
