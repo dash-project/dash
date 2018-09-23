@@ -162,7 +162,7 @@ typename std::iterator_traits<LocalInputIter>::value_type
 reduce(
   LocalInputIter  in_first,
   LocalInputIter  in_last,
-  InitType        init = InitType{},
+  InitType        init,
   bool            non_empty = false,
   dash::Team    & team = dash::Team::All())
 {
@@ -212,7 +212,7 @@ typename dash::iterator_traits<GlobInputIt>::value_type
 reduce(
   GlobInputIt     in_first,
   GlobInputIt     in_last,
-  InitType        init = InitType{},
+  InitType        init,
   BinaryOperation binary_op = BinaryOperation())
 {
   auto & team      = in_first.team();
