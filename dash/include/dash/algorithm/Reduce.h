@@ -44,17 +44,15 @@ namespace internal {
 /**
  * Accumulate values in each process' range [\ref in_first, \ref in_last) using
  * the provided binary reduce function \c binary_op, which must be commutative
- * and linear.
+ * and associative.
  *
- * The iteration order is undefined and the reduction follows a two-step
- * process: each unit first reduces its local elements
- * in local iteration using \ref binary_op before combining the results
- * across units.
+ * The iteration order is not specified and the result is non-deterministic if
+ * \c binary_op is not commutative and associative.
+ *
+ * The result type is determined by the type of the elements in the range
+ * and the value of \c init is cast to this type.
  *
  * Collective operation.
- *
- * \note: For equivalent of semantics of \c MPI_Accumulate, see
- * \ref dash::transform.
  *
  * \param in_first  Local iterator describing the beginning of the range to
  *                  reduce.
@@ -135,10 +133,11 @@ reduce(
  * Accumulate values across the local ranges \c[in_first,in_last) of each
  * process as the sum of all values in the range.
  *
- * The iteration order is undefined and the reduction follows a two-step
- * process: each unit first reduces its local elements
- * in local iteration using \ref dash::plus before combining the results
- * across units.
+ * The iteration order is not specified.
+ * The reduction is performed using \ref dash::plus.
+ *
+ * The result type is determined by the type of the elements in the range
+ * and the value of \c init is cast to this type.
  *
  * \note: For equivalent of semantics of \c MPI_Accumulate, see
  * \ref dash::transform.
@@ -182,10 +181,11 @@ reduce(
  * the provided binary reduce function \c binary_op, which must be commutative
  * and linear.
  *
- * The iteration order is defined by the data distribution and the reduction
- * follows a two-step process: each unit first reduces its local elements
- * in local iteration using \ref binary_op order before combining the results
- * across units.
+ * The iteration order is not specified and the result is non-deterministic if
+ * \c binary_op is not commutative and associative.
+ *
+ * The result type is determined by the type of the elements in the range
+ * and the value of \c init is cast to this type.
  *
  * Collective operation.
  *
@@ -193,7 +193,7 @@ reduce(
  *                  reduce.
  * \param in_last   Global iterator describing the end of the range to accumualte
  * \param init      The initial element to use in the accumulation.
- * \param binary_op The associative, commutative binary operation to to apply.
+ * \param binary_op The associative, commutative binary operation to apply.
  *
  * \note: For equivalent of semantics of \c MPI_Accumulate, see
  * \ref dash::transform.
