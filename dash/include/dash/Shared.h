@@ -148,7 +148,7 @@ public:
       auto       lbegin = m_globmem->lbegin();
       auto const lend   = m_globmem->lend();
 
-      DASH_LOG_DEBUG_VAR("Shared.init(value,team,owner) >", val);
+      DASH_LOG_DEBUG("Shared.init(value,team,owner) >");
       std::uninitialized_fill(lbegin, lend, val);
     }
     // Broadcast global pointer of shared value at unit 0 to all units:
@@ -167,7 +167,7 @@ public:
    */
   void set(const value_type & val)
   {
-    DASH_LOG_DEBUG_VAR("Shared.set()", val);
+    DASH_LOG_DEBUG("Shared.set()");
     DASH_LOG_DEBUG_VAR("Shared.set",   m_owner);
     DASH_LOG_DEBUG_VAR("Shared.set",   m_dart_gptr);
     DASH_ASSERT(!DART_GPTR_ISNULL(m_dart_gptr));
