@@ -38,7 +38,7 @@ public:
   typedef typename reference::value_type value_type;
 
 private:
-  using GlobMem_t = dash::GlobLocalMemoryPool<ElementType, dash::HostSpace>;
+  using GlobMem_t = dash::GlobLocalMemoryPool<dash::HostSpace>;
   using pointer_t = dash::GlobPtr<ElementType, GlobMem_t>;
 
   template <typename T_>
@@ -128,6 +128,8 @@ public:
           dash::exception::RuntimeError, "runtime not properly initialized");
     }
 
+    //If our Shared has already a non-null pointer let us return it. The user
+    //has first to deallocate it.
     if (m_glob_pointer) {
       DASH_LOG_ERROR("Shared scalar is already initialized");
       return false;
@@ -141,10 +143,8 @@ public:
           "Shared.init(value,team,owner)",
           "allocating shared value in local memory");
 
-      auto ptr_alloc = m_globmem->allocate(1, alignof(element_t));
-      DASH_ASSERT_MSG(static_cast<bool>(ptr_alloc), "null pointer after allocation");
-
-      bcast = ptr_alloc;
+      auto ptr_alloc = m_globmem->allocate(sizeof(element_t), alignof(element_t));
+      DASH_ASSERT_MSG(ptr_alloc, "null pointer after allocation");
 
       auto* laddr = static_cast<element_t *>(ptr_alloc.local());
 
@@ -156,7 +156,7 @@ public:
 
       //copy construct based on val
       allocator_traits::construct(local_alloc, laddr, val);
-      bcast = ptr_alloc;
+      bcast = ptr_alloc.dart_gptr();
     }
     // Broadcast global pointer of shared value at unit 0 to all units:
     dash::dart_storage<dart_gptr_t> ds(1);

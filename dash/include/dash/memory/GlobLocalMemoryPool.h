@@ -4,7 +4,6 @@
 #include <dash/Exception.h>
 #include <dash/allocator/AllocationPolicy.h>
 #include <dash/memory/MemorySpaceBase.h>
-#include <dash/memory/RawDartPointer.h>
 
 namespace dash {
 
@@ -15,7 +14,10 @@ get_default_memory_space();
 
 class HostSpace;
 
-template <class ElementType, class LMemSpace>
+template <class ElementType, class MemorySpace>
+class GlobPtr;
+
+template <class LMemSpace>
 class GlobLocalMemoryPool : public MemorySpace<
                                 memory_domain_global,
                                 typename dash::memory_space_traits<
@@ -24,6 +26,8 @@ class GlobLocalMemoryPool : public MemorySpace<
       std::is_same<LMemSpace, dash::HostSpace>::value,
       "currently we support only dash::HostSpace for local memory "
       "allocation");
+
+  static constexpr size_t max_align = alignof(dash::max_align_t);
 
   using local_memory_traits = dash::memory_space_traits<LMemSpace>;
 
@@ -37,7 +41,6 @@ public:
   using memory_space_type_category =
       typename base_t::memory_space_type_category;
 
-  using value_type      = typename std::remove_cv<ElementType>::type;
   using size_type       = dash::default_size_t;
   using index_type      = dash::default_index_t;
   using difference_type = index_type;
@@ -48,10 +51,10 @@ public:
 
   // We use a polymorhic allocator to obtain memory from the
   // local memory space
-  using allocator_type = cpp17::pmr::polymorphic_allocator<ElementType>;
+  using allocator_type = cpp17::pmr::polymorphic_allocator<byte>;
 
-  using pointer       = dash::RawDartPointer;
-  using const_pointer = dash::RawDartPointer;
+  using pointer       = dash::GlobPtr<void, GlobLocalMemoryPool>;
+  using const_pointer = dash::GlobPtr<const void, GlobLocalMemoryPool>;
 
 public:
   GlobLocalMemoryPool() = delete;
@@ -100,14 +103,14 @@ public:
     return allocator_type{m_allocator.resource()};
   }
 
-  pointer allocate(size_type nels, size_type alignment = alignof(value_type))
+  pointer allocate(size_type nbytes, size_type alignment = max_align)
   {
-    return do_allocate(nels * sizeof(value_type), alignment);
+    return do_allocate(nbytes, alignment);
   }
   void deallocate(
-      pointer gptr, size_type nels, size_type alignment = alignof(value_type))
+      pointer gptr, size_type nbytes, size_type alignment = max_align)
   {
-    return do_deallocate(gptr, nels * sizeof(value_type), alignment);
+    return do_deallocate(gptr, nbytes, alignment);
   }
   void release();
 
@@ -162,19 +165,21 @@ private:
 private:
   pointer do_allocate(size_type nbytes, size_type alignment);
   void    do_deallocate(pointer gptr, size_type nbytes, size_type alignment);
+  void    do_segment_free(
+         typename std::vector<std::pair<pointer, size_t>>::iterator it_erase);
 };
 
 ///////////// Implementation ///////////////////
 //
-template <class ElementType, class LMemSpace>
-inline GlobLocalMemoryPool<ElementType, LMemSpace>::GlobLocalMemoryPool(
+template <class LMemSpace>
+inline GlobLocalMemoryPool<LMemSpace>::GlobLocalMemoryPool(
     size_type local_capacity, dash::Team const& team)
   : GlobLocalMemoryPool(nullptr, local_capacity, team)
 {
 }
 
-template <class ElementType, class LMemSpace>
-inline GlobLocalMemoryPool<ElementType, LMemSpace>::GlobLocalMemoryPool(
+template <class LMemSpace>
+inline GlobLocalMemoryPool<LMemSpace>::GlobLocalMemoryPool(
     LMemSpace* r, size_type local_capacity, dash::Team const& team)
   : m_team(&team)
   , m_size(0)
@@ -190,10 +195,9 @@ inline GlobLocalMemoryPool<ElementType, LMemSpace>::GlobLocalMemoryPool(
   DASH_LOG_DEBUG("MemorySpace.MemorySpace >");
 }
 
-template <class ElementType, class LMemSpace>
-inline GlobLocalMemoryPool<ElementType, LMemSpace>&
-GlobLocalMemoryPool<ElementType, LMemSpace>::operator=(
-    GlobLocalMemoryPool&& other)
+template <class LMemSpace>
+inline GlobLocalMemoryPool<LMemSpace>& GlobLocalMemoryPool<LMemSpace>::
+                                       operator=(GlobLocalMemoryPool&& other)
 {
   // deallocate own memory
   release();
@@ -202,14 +206,14 @@ GlobLocalMemoryPool<ElementType, LMemSpace>::operator=(
   std::swap(m_size, other.m_size);
   std::swap(m_capacity, other.m_capacity);
   std::swap(m_allocator, other.m_allocator);
-  // std::swap(m_allocation_policy, other.m_allocation_policy);
+  std::swap(m_segments, other.m_segments);
 
   return *this;
 }
 
-template <class ElementType, class LMemSpace>
-inline typename GlobLocalMemoryPool<ElementType, LMemSpace>::pointer
-GlobLocalMemoryPool<ElementType, LMemSpace>::do_allocate(
+template <class LMemSpace>
+inline typename GlobLocalMemoryPool<LMemSpace>::pointer
+GlobLocalMemoryPool<LMemSpace>::do_allocate(
     size_type nbytes, size_type alignment)
 {
   DASH_LOG_TRACE(
@@ -240,15 +244,17 @@ GlobLocalMemoryPool<ElementType, LMemSpace>::do_allocate(
     }
     DASH_LOG_DEBUG_VAR("LocalAllocator.allocate >", gptr);
 
-    m_segments.emplace_back(std::make_pair(pointer{gptr}, nbytes));
+    m_segments.emplace_back(std::make_pair(pointer{*this, gptr}, nbytes));
+    auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
+    reg.add(std::make_pair(gptr.teamid, gptr.segid), this);
     return m_segments.back().first;
   }
 
-  return pointer{DART_GPTR_NULL};
+  return pointer{*this, DART_GPTR_NULL};
 }
 
-template <class ElementType, class LMemSpace>
-GlobLocalMemoryPool<ElementType, LMemSpace>::~GlobLocalMemoryPool()
+template <class LMemSpace>
+GlobLocalMemoryPool<LMemSpace>::~GlobLocalMemoryPool()
 {
   DASH_LOG_DEBUG("< MemorySpace.~MemorySpace");
 
@@ -257,30 +263,67 @@ GlobLocalMemoryPool<ElementType, LMemSpace>::~GlobLocalMemoryPool()
   DASH_LOG_DEBUG("MemorySpace.~MemorySpace >");
 }
 
-template <class ElementType, class LMemSpace>
-inline void GlobLocalMemoryPool<ElementType, LMemSpace>::do_deallocate(
+template <class LMemSpace>
+inline void GlobLocalMemoryPool<LMemSpace>::do_deallocate(
     pointer gptr, size_type nbytes, size_type alignment)
 {
   DASH_LOG_DEBUG("< MemorySpace.do_deallocate");
 
-  if (!dart_initialized()) {
-    return;
-  }
+  auto it_seg = std::find_if(
+      std::begin(m_segments),
+      std::end(m_segments),
+      [gptr](const std::pair<pointer, size_t>& item) {
+        return item.first == gptr;
+      });
 
-  if (*m_team != dash::Team::Null() && gptr) {
-    DASH_ASSERT_RETURNS(dart_memfree(gptr), DART_OK);
+  if (it_seg != std::end(m_segments)) {
+    do_segment_free(it_seg);
+
+    m_segments.erase(it_seg);
+
+    if (m_segments.size() == 0) {
+      // remove ourselves from the global registry list since we do not have
+      // any segments anymore
+      auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
+      auto const dart_gptr = gptr.dart_gptr();
+      reg.erase(std::make_pair(dart_gptr.teamid, dart_gptr.segid));
+    }
   }
 
   DASH_LOG_DEBUG("MemorySpace.do_deallocate >");
 }
-template <class ElementType, class LMemSpace>
-inline void GlobLocalMemoryPool<ElementType, LMemSpace>::release()
+template <class LMemSpace>
+inline void GlobLocalMemoryPool<LMemSpace>::release()
 {
-  for (auto& rec : m_segments) {
-    do_deallocate(rec.first, rec.second, alignof(dash::max_align_t));
+  dart_gptr_t dart_gptr = DART_GPTR_NULL;
+
+  if (m_segments.size() != 0) {
+    dart_gptr = m_segments.back().first.dart_gptr();
+  }
+
+  for (auto it = std::begin(m_segments); it != std::end(m_segments); ++it) {
+    do_segment_free(it);
   }
 
   m_segments.clear();
+
+  // remove ourselves from the global registry list since we do not have
+  // any segments anymore
+  auto&      reg       = dash::internal::MemorySpaceRegistry::GetInstance();
+  reg.erase(std::make_pair(dart_gptr.teamid, dart_gptr.segid));
+}
+
+template <class LMemSpace>
+inline void GlobLocalMemoryPool<LMemSpace>::do_segment_free(
+    typename std::vector<std::pair<pointer, size_t>>::iterator it_erase)
+{
+  if (!dart_initialized() || *m_team == dash::Team::Null() ||
+      !(it_erase->first)) {
+    return;
+  }
+
+  auto const dart_gptr = it_erase->first.dart_gptr();
+  DASH_ASSERT_RETURNS(dart_memfree(dart_gptr), DART_OK);
 }
 
 }  // namespace dash

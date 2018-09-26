@@ -22,7 +22,7 @@ template <>
 MemorySpace<memory_domain_global, memory_space_host_tag> *
 get_default_memory_space<memory_domain_global, memory_space_host_tag>()
 {
-  using memory_t = dash::GlobLocalMemoryPool<uint8_t, dash::HostSpace>;
+  using memory_t = dash::GlobLocalMemoryPool<dash::HostSpace>;
 
   static memory_t globmem{0, dash::Team::All()};
 

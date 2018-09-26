@@ -4,6 +4,7 @@
 #include <dash/dart/if/dart.h>
 
 #include <dash/Types.h>
+#include <dash/Team.h>
 
 #include <dash/allocator/internal/Types.h>
 #include <dash/internal/Logging.h>

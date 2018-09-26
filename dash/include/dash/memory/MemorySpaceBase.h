@@ -8,11 +8,12 @@
 
 #include <cpp17/polymorphic_allocator.h>
 
-#include <dash/dart/if/dart_globmem.h>
 
 #include <dash/Meta.h>
-#include <dash/Team.h>
 #include <dash/Types.h>
+
+#include <dash/dart/if/dart_globmem.h>
+#include <dash/memory/internal/MemorySpaceRegistry.h>
 
 namespace dash {
 

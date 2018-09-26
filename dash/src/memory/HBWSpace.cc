@@ -2,6 +2,7 @@
 #include <dash/internal/Logging.h>
 #include <dash/internal/Math.h>
 #include <dash/memory/HBWSpace.h>
+#include <dash/util/StaticConfig.h>
 #include <stdexcept>
 
 void* dash::HBWSpace::do_allocate(size_t bytes, size_t alignment)

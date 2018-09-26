@@ -49,10 +49,10 @@ MemorySpace<memory_domain_global, memory_space_host_tag>*
 get_default_memory_space<memory_domain_global, memory_space_host_tag>();
 
 template <typename T>
-GlobPtr<T, GlobLocalMemoryPool<uint8_t, dash::HostSpace>> memalloc(
+GlobPtr<T, GlobLocalMemoryPool<dash::HostSpace>> memalloc(
     size_t nelem)
 {
-  using memory_t = GlobLocalMemoryPool<uint8_t, dash::HostSpace>;
+  using memory_t = GlobLocalMemoryPool<dash::HostSpace>;
 
   auto* mspace = dynamic_cast<memory_t*>(get_default_memory_space<
                                          memory_domain_global,
@@ -62,15 +62,15 @@ GlobPtr<T, GlobLocalMemoryPool<uint8_t, dash::HostSpace>> memalloc(
 
   auto ptr = mspace->allocate(nelem * sizeof(T), alignof(T));
 
-  return dash::GlobPtr<T, memory_t>(*mspace, ptr);
+  return dash::GlobPtr<T, memory_t>(*mspace, ptr.dart_gptr());
 }
 
 template <class T>
 void memfree(
-    GlobPtr<T, GlobLocalMemoryPool<uint8_t, dash::HostSpace>> gptr,
+    GlobPtr<T, GlobLocalMemoryPool<dash::HostSpace>> gptr,
     size_t                                                    nels)
 {
-  using memory_t = GlobLocalMemoryPool<uint8_t, dash::HostSpace>;
+  using memory_t = GlobLocalMemoryPool<dash::HostSpace>;
 
   auto* mspace = dynamic_cast<memory_t*>(get_default_memory_space<
                                          memory_domain_global,
@@ -78,7 +78,7 @@ void memfree(
 
   DASH_ASSERT_MSG(mspace, "invalid default memory space");
 
-  mspace->deallocate(gptr.raw(), nels * sizeof(T), alignof(T));
+  mspace->deallocate(gptr, nels * sizeof(T), alignof(T));
 }
 
 }  // namespace dash
