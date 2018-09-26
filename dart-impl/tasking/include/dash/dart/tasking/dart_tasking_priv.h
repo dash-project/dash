@@ -246,13 +246,9 @@ task_lock(dart_task_t *task)
   dart__base__mutex_lock(&task->mutex);
 #else
   int32_t cnt = 0;
-  bool acquired = false;
   // fast path: try to lock for a while before yielding
-  while (!(acquired = (0 == DART_COMPARE_AND_SWAP32(&task->lock, 0, 1))) &&
-         cnt++ < 1024)
+  while (0 != DART_COMPARE_AND_SWAP32(&task->lock, 0, 1) && cnt < 1024)
   { }
-
-  if (acquired) return;
 
   // slow path: yield the thread while trying
   while (0 != DART_COMPARE_AND_SWAP32(&task->lock, 0, 1)) {

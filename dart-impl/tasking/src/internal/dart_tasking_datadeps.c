@@ -466,6 +466,7 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
             // we've found what we were looking for, keep the local_task locked
             break;
           } else if (local->taskdep.phase >= rdep->taskdep.phase) {
+            task_unlock(local_task);
             // make this task a candidate for a direct successor to handle WAR
             // dependencies if it is in an earlier phase
             if (direct_dep_candidate == NULL ||
@@ -484,7 +485,9 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
               }
             }
           }
-          task_unlock(local_task);
+          else {
+              task_unlock(local_task);
+          }
         }
       }
     }
