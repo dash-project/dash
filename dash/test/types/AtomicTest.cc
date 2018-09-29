@@ -329,10 +329,32 @@ TEST_F(AtomicTest, AlgorithmVariant){
   }
 
   dash::barrier();
-
   for(int i=0; i<dash::size(); ++i){
     value_t elem_arr_local = dash::atomic::load(array[i]);
     ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i+1))));
+  }
+
+  dash::barrier();
+  for(int i=0; i<dash::size(); ++i){
+    dash::atomic::sub(array[i], 1);
+  }
+  dash::barrier();
+  for(int i=0; i<dash::size(); ++i){
+    value_t elem_arr_local = dash::atomic::load(array[i]);
+    ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i))));
+  }
+
+  dash::barrier();
+  for(int i=0; i<dash::size(); ++i){
+    dash::atomic::multiply(array[i], -1);
+  }
+  dash::barrier();
+  for(int i=0; i<dash::size(); ++i){
+    value_t elem_arr_local = dash::atomic::load(array[i]);
+    ASSERT_EQ_U(
+      elem_arr_local,
+      static_cast<value_t>((dash::size()*i*(std::pow(-1, dash::size()))))
+    );
   }
 }
 
@@ -376,8 +398,9 @@ TEST_F(AtomicTest, AtomicInterface){
   using value_t = int;
   using atom_t  = dash::Atomic<value_t>;
   using array_t = dash::Array<atom_t>;
+  size_t num_elem = std::max(static_cast<size_t>(10), dash::size());
 
-  array_t array(10);
+  array_t array(num_elem);
 
   dash::fill(array.begin(), array.end(), 0);
   dash::barrier();
@@ -389,8 +412,6 @@ TEST_F(AtomicTest, AtomicInterface){
 
   dash::barrier();
   ASSERT_EQ_U(array[0].load(), dash::size());
-  ASSERT_EQ_U(array[1].load(), dash::size());
-  ASSERT_EQ_U(array[2].load(), -dash::size());
   ASSERT_EQ_U(array[3].load(), -dash::size());
 
   dash::barrier();
@@ -415,9 +436,13 @@ TEST_F(AtomicTest, AtomicInterface){
   ASSERT_EQ_U(id_right+2, array[id_right].fetch_op(dash::plus<value_t>(), 1));
   array.barrier();
   array[myid].exchange(-myid);
+  array[1].exchange(-1);
   array.barrier();
   ASSERT_EQ_U(-myid, array[myid].load());
   array.barrier();
+  array[1].multiply(-1);
+  array.barrier();
+  ASSERT_EQ_U(std::pow(-1, dash::size()+1), array[1].get());
   bool ret = array[myid].compare_exchange(0,10);
   if(myid == 0){
     ASSERT_EQ_U(true, ret);
@@ -426,6 +451,10 @@ TEST_F(AtomicTest, AtomicInterface){
     ASSERT_EQ_U(false, ret);
   }
   array.barrier();
+  array[0] += 1;
+  array[0] -= 1;
+  array.barrier();
+  ASSERT_EQ_U(10, array[0].get());
 }
 
 TEST_F(AtomicTest, MutexInterface){
@@ -478,6 +507,15 @@ TEST_F(AtomicTest, MutexInterface){
   }
 }
 
+dash::Mutex mx_delayed;
+
+TEST_F(AtomicTest, MutexInterfaceDelayed){
+  ASSERT_TRUE_U(mx_delayed.init());
+  {
+    std::lock_guard<dash::Mutex> lg(mx_delayed);
+    LOG_MESSAGE("thread %d acquired lock", dash::Team::All().myid().id);
+  }
+}
 
 TEST_F(AtomicTest, AtomicSignal){
   using value_t = int;
@@ -490,6 +528,7 @@ TEST_F(AtomicTest, AtomicSignal){
 
   array_t array(dash::size());
   dash::fill(array.begin(), array.end(), 0);
+  array.barrier();
 
   if (dash::myid() != 0) {
     // send the signal
@@ -506,16 +545,141 @@ TEST_F(AtomicTest, AtomicSignal){
   }
 }
 
+
 TEST_F(AtomicTest, ElementCompare){
   using value_t = int;
   using atom_t  = dash::Atomic<value_t>;
   using array_t = dash::Array<atom_t>;
 
+  array_t array(dash::size());
+
   if (dash::size() < 2) {
     SKIP_TEST_MSG("At least 2 units required");
   }
 
+  // asynchronous atomic set
+  if (dash::myid() == 0) {
+    for (size_t i = 0; i < dash::size(); ++i) {
+      array.async[i].set(i);
+    }
+  }
+  array.barrier();
+
+  ASSERT_EQ_U(array[dash::myid()].get(), dash::myid());
+
+  int val = -1;
+  // kick off an asynchronous transfer
+  array.async[dash::myid()].get(&val);
+
+  // wait for the above asynchronous transfer to complete
+  array.flush();
+  ASSERT_EQ_U(dash::myid(), val);
+
+  dash::barrier();
+
+  // test fetch_op
+
+  if (dash::myid() == 0) {
+    std::vector<value_t> vec(dash::size());
+    for (size_t i = 0; i < dash::size(); ++i) {
+      array.async[i].exchange(0, &vec[i]);
+    }
+    array.flush();
+    for (size_t i = 0; i < dash::size(); ++i) {
+      ASSERT_EQ_U(i, vec[i]);
+    }
+  }
+
+  dash::barrier();
+
+  // atomic increment on unit zero
+  array.async[0].add(1);
+
+  // flush on AtomicAsyncRef
+  array.async[0].flush();
+  dash::barrier();
+  if (dash::myid() == 0) ASSERT_EQ_U(array.async[0].get(), dash::size());
+
+  dash::fill(array.begin(), array.end(), 0);
+
+  array.async[dash::myid()].fetch_add(dash::myid(), &val);
+  array.barrier();
+  ASSERT_EQ_U(0, val);
+
+  if (dash::myid() == 1) {
+    std::vector<value_t> vec(dash::size());
+    for (size_t i = 0; i < dash::size(); ++i) {
+      array.async[i].compare_exchange(i, 2*i, &vec[i]);
+    }
+    array.flush();
+    for (size_t i = 0; i < dash::size(); ++i) {
+      ASSERT_EQ_U(i, vec[i]);
+      ASSERT_EQ_U(2*i, array[i].get());
+    }
+  }
+
+  dash::barrier();
+  dash::fill(array.begin(), array.end(), 1);
+  dash::barrier();
+
+  if (dash::myid() == 0) {
+    for (size_t i = 0; i < dash::size(); ++i) {
+      array.async[i].multiply(2);
+    }
+  }
+  array.barrier();
+  ASSERT_EQ_U(2, array[dash::myid()].get());
+  array.barrier();
+
+}
+
+TEST_F(AtomicTest, ConstTest) {
+
+  dash::Array<dash::Atomic<int>> array(dash::size());
+  const dash::Array<dash::Atomic<int>>& carr = array;
+  array[dash::myid()].set(0);
+  dash::barrier();
+
+  // conversion non-const -> const
+  dash::GlobRef<dash::Atomic<const int>> gref1 = array[0];
+  // assignment const -> const
+  dash::GlobRef<dash::Atomic<const int>> gref2 = carr[0];
+  // explicit conversion const->non-const
+  dash::GlobRef<dash::Atomic<int>> gref3 =
+                        static_cast<dash::GlobRef<dash::Atomic<int>>>(carr[0]);
+
+  // should fail!
+  //gref1.add(1);
+
+  // works
+  ASSERT_EQ_U(0, gref1.get());
+
+  /**
+   * GlobAsyncRef
+   */
+
+  // conversion non-const -> const
+  dash::GlobAsyncRef<dash::Atomic<const int>> agref1 = array.async[0];
+  // assignment const -> const
+  dash::GlobAsyncRef<dash::Atomic<const int>> agref2 = carr.async[0];
+  // explicit conversion const->non-const
+  dash::GlobAsyncRef<dash::Atomic<int>> agref3 =
+                        static_cast<dash::GlobAsyncRef<dash::Atomic<int>>>(carr.async[0]);
+
+  // should fail!
+  //agref1.add(1);
+
+  // works
+  ASSERT_EQ_U(0, agref1.get());
+}
+
+TEST_F(AtomicTest, AsyncAtomic){
+  using value_t = int;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
   array_t array(dash::size());
+
   dash::fill(array.begin(), array.end(), 0);
   dash::barrier();
 
@@ -528,4 +692,41 @@ TEST_F(AtomicTest, ElementCompare){
 
   // OK
   ASSERT_EQ_U(array[0].get(), array[dash::myid()]);
+}
+
+TEST_F(AtomicTest, LongDouble){
+  using value_t = long double;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  array_t array(dash::size());
+  array[dash::myid()] = 0.0;
+  dash::barrier();
+
+  array[0].fetch_add(1.0);
+  dash::barrier();
+  if (dash::myid() == 0) {
+    ASSERT_EQ_U(static_cast<size_t>(array[0]), dash::size());
+  }
+
+  dash::barrier();
+  array[0].exchange(dash::myid()*1.0);
+  dash::barrier();
+
+  if (dash::myid() == 0) {
+    ASSERT_LT_U(static_cast<size_t>(array[0]), dash::size());
+    ASSERT_GE_U(static_cast<size_t>(array[0]), 0);
+    array[0].set(0.0);
+  }
+
+  dash::barrier();
+  array[0].add(1.0);
+  dash::barrier();
+  if (dash::myid() == 0) {
+    ASSERT_EQ_U(static_cast<size_t>(array[0]), dash::size());
+  }
+
+  // atomic compare_exchange not allowed for floats
+  // array[0].compare_exchange(dash::size()*1.0, dash::myid()*1.0);
+
 }

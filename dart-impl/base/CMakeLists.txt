@@ -118,15 +118,14 @@ target_link_libraries(
 set_target_properties(
   ${DASH_DART_BASE_LIBRARY} PROPERTIES
   COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
+  C_STANDARD ${DART_C_STD_PREFERED}
+  C_STANDARD_REQUIRED ON
+  POSITION_INDEPENDENT_CODE TRUE
 )
 
 ## Installation
 
 DeployLibrary(${DASH_DART_BASE_LIBRARY})
-
-# Install headers
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
-        DESTINATION include FILES_MATCHING PATTERN "*.h")
 
 # Install library
 install(TARGETS ${DASH_DART_BASE_LIBRARY}
@@ -135,5 +134,5 @@ install(TARGETS ${DASH_DART_BASE_LIBRARY}
 
 # Export dependencies
 install(EXPORT "${DASH_DART_BASE_LIBRARY}-config"
-        DESTINATION cmake)
+        DESTINATION share/cmake)
 

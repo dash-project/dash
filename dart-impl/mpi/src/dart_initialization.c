@@ -20,7 +20,7 @@
 #include <dash/dart/mpi/dart_locality_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
-#define DART_LOCAL_ALLOC_SIZE (1024*1024*16)
+#define DART_LOCAL_ALLOC_SIZE (1024UL*1024*16)
 
 /* Point to the base address of memory region for local allocation. */
 static int _init_by_dart = 0;
@@ -153,6 +153,10 @@ dart_ret_t do_init()
   }
 
   if (dart__mpi__datatype_init() != DART_OK) {
+    return DART_ERR_OTHER;
+  }
+
+  if (dart__mpi__op_init() != DART_OK) {
     return DART_ERR_OTHER;
   }
 
@@ -327,6 +331,8 @@ dart_ret_t dart_exit()
   MPI_Comm_free(&dart_comm_world);
 
   dart__mpi__datatype_fini();
+
+  dart__mpi__op_fini();
 
   if (_init_by_dart) {
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid.id);

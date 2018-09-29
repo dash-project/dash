@@ -11,8 +11,8 @@
 #include <dash/util/Trace.h>
 #include <dash/util/UnitLocality.h>
 
-#include <dash/iterator/GlobIter.h>
 #include <dash/internal/Logging.h>
+#include <dash/iterator/GlobIter.h>
 
 #include <algorithm>
 #include <memory>
@@ -73,14 +73,10 @@ const ElementType * min_element(
     size_t    min_vals_t_size  = n_threads + 1 +
                                  (align_bytes / sizeof(min_pos));
     size_t    min_vals_t_bytes = min_vals_t_size * sizeof(min_pos);
-    min_pos * min_vals_t_raw   = new min_pos[min_vals_t_size];
+    auto *    min_vals_t_raw   = new min_pos[min_vals_t_size];
     void    * min_vals_t_alg   = min_vals_t_raw;
-    min_pos * min_vals_t       = static_cast<min_pos *>(
-                                   dash::align(
-                                     align_bytes,
-                                     sizeof(min_pos),
-                                     min_vals_t_alg,
-                                     min_vals_t_bytes));
+    auto *    min_vals_t       = static_cast<min_pos *>(dash::align(
+        align_bytes, sizeof(min_pos), min_vals_t_alg, min_vals_t_bytes));
     DASH_LOG_TRACE("dash::min_element", "min * alloc:",   min_vals_t_raw);
     DASH_LOG_TRACE("dash::min_element", "min * aligned:", min_vals_t);
     DASH_LOG_TRACE("dash::min_element", "min * size:",    min_vals_t_bytes);
@@ -148,22 +144,23 @@ const ElementType * min_element(
  * \ingroup     DashAlgorithms
  */
 template <
-  class ElementType,
-  class PatternType,
-  class Compare = std::less<const ElementType &> >
-GlobIter<ElementType, PatternType> min_element(
-  /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType, PatternType> & first,
-  /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & last,
-  /// Element comparison function, defaults to std::less
-  Compare                                    compare
-    = std::less<const ElementType &>())
+    typename GlobInputIt,
+    class Compare = std::less<
+        const typename dash::iterator_traits<GlobInputIt>::value_type &> >
+GlobInputIt min_element(
+    /// Iterator to the initial position in the sequence
+    const typename std::enable_if<
+        dash::iterator_traits<GlobInputIt>::is_global_iterator::value,
+        GlobInputIt>::type &first,
+    /// Iterator to the final position in the sequence
+    const GlobInputIt &last,
+    /// Element comparison function, defaults to std::less
+    Compare compare = Compare())
 {
-  typedef dash::GlobIter<ElementType, PatternType> globiter_t;
-  typedef PatternType                               pattern_t;
-  typedef typename pattern_t::index_type              index_t;
-  typedef typename std::decay<ElementType>::type      value_t;
+  typedef typename GlobInputIt::pattern_type     pattern_t;
+  typedef typename pattern_t::index_type         index_t;
+  typedef typename std::decay<
+      typename dash::iterator_traits<GlobInputIt>::value_type>::type value_t;
 
   // return last for empty array
   if (first == last) {
@@ -184,7 +181,7 @@ GlobIter<ElementType, PatternType> min_element(
   // Get local address range between global iterators:
   auto    local_idx_range    = dash::local_index_range(first, last);
   // Pointer to local minimum element:
-  const   ElementType * lmin = nullptr;
+  const   value_t * lmin = nullptr;
   // Local offset of local minimum element, or -1 if no element found:
   index_t l_idx_lmin         = -1;
   if (local_idx_range.begin == local_idx_range.end) {
@@ -194,10 +191,10 @@ GlobIter<ElementType, PatternType> min_element(
     trace.enter_state("local");
 
     // Pointer to first element in local memory:
-    const ElementType * lbegin        = first.globmem().lbegin();
+    const value_t * lbegin        = first.globmem().lbegin();
     // Pointers to first / final element in local range:
-    const ElementType * l_range_begin = lbegin + local_idx_range.begin;
-    const ElementType * l_range_end   = lbegin + local_idx_range.end;
+    const value_t * l_range_begin = lbegin + local_idx_range.begin;
+    const value_t * l_range_end   = lbegin + local_idx_range.end;
 
     lmin = dash::min_element(l_range_begin, l_range_end, compare);
 
@@ -229,7 +226,7 @@ GlobIter<ElementType, PatternType> min_element(
   // found:
   local_min_t local_min;
   local_min.value   = l_idx_lmin < 0
-                      ? ElementType()
+                      ? value_t()
                       : *lmin;
   local_min.g_index = l_idx_lmin < 0
                       ? -1
@@ -293,9 +290,9 @@ GlobIter<ElementType, PatternType> min_element(
   // iterator 'first' is relative to start of input range, convert to start
   // of its referenced container (= container.begin()), then apply global
   // offset of minimum element:
-  globiter_t minimum = (first - first.gpos()) + gi_minimum;
+  auto minimum = (first - first.gpos()) + gi_minimum;
   DASH_LOG_DEBUG("dash::min_element >", minimum,
-                 "=", static_cast<ElementType>(*minimum));
+                 "=", static_cast<value_t>(*minimum));
 
   return minimum;
 }

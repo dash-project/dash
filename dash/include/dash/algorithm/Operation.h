@@ -1,8 +1,8 @@
 #ifndef DASH__ALGORITHM__OPERATION_H__
 #define DASH__ALGORITHM__OPERATION_H__
 
-#include <dash/Types.h>
 #include <dash/Meta.h>
+#include <dash/Types.h>
 
 #include <dash/dart/if/dart_types.h>
 
@@ -20,6 +20,13 @@ namespace dash {
 
 namespace internal {
 
+
+enum class OpKind {
+  ARITHMETIC,
+  BITWISE,
+  NOOP
+};
+
 /**
  * Base type of all reduce operations, primarily acts as a container of a
  * \c dart_operation_t.
@@ -29,20 +36,83 @@ namespace internal {
 template <
   typename         ValueType,
   dart_operation_t OP,
+  OpKind           KIND,
   bool             enabled = true >
 class ReduceOperation {
-  static constexpr const dart_operation_t _op = OP;
+  static constexpr const dart_operation_t _op   = OP;
+  static constexpr const OpKind           _kind = KIND;
 public:
   typedef ValueType value_type;
 
 public:
-  constexpr typename std::enable_if< enabled, dart_operation_t >::type
-  dart_operation() const {
+  static constexpr dart_operation_t
+  dart_operation() {
     return _op;
+  }
+
+  static constexpr OpKind
+  op_kind() {
+    return _kind;
   }
 };
 
+/**
+ * Query the DART operation for an arbitrary binary operations.
+ * Overload for operations that cannot be used in DART collectives, e.g.,
+ * arbitrary functions and \c OpKind::NOOP (such as \c dash::first,
+ * \c dash::second)
+ */
+template<typename BinaryOperation, typename = void>
+struct dart_reduce_operation
+  : public std::integral_constant<dart_operation_t, DART_OP_UNDEFINED>
+{ };
+
+/**
+ * Query the DART operation for an arbitrary binary operation.
+ * Overload for operations that can be used in DART collective operations.
+ */
+template<typename BinaryOperation>
+struct dart_reduce_operation<BinaryOperation,
+        typename std::enable_if<
+          // no-ops cannot be used in DART collectives
+          BinaryOperation::op_kind() != dash::internal::OpKind::NOOP &&
+          // only pre-defined operations can be used in DART collectives,
+          // they are derived from dash::internal::ReduceOperation
+          std::is_base_of<
+            dash::internal::ReduceOperation<
+              typename BinaryOperation::value_type,
+              BinaryOperation::dart_operation(),
+              BinaryOperation::op_kind(), true>,
+            BinaryOperation>::value>::type>
+  : public std::integral_constant<dart_operation_t,
+                                  BinaryOperation::dart_operation()>
+{ };
+
 } // namespace internal
+
+#ifdef DOXYGEN
+/**
+ * Query the underlying \ref dart_operation_t for arbitrary binary operations.
+ * Yields \c DART_OP_UNDEFINED for non-DART operations.
+ *
+ * \see      dash::min
+ * \see      dash::max
+ * \see      dash::plus
+ * \see      dash::multiply
+ * \see      dash::first
+ * \see      dash::second
+ * \see      dash::bit_and
+ * \see      dash::bit_or
+ * \see      dash::bit_xor
+ *
+ * \ingroup  DashReduceOperations
+ */
+template<typename BinaryOperation>
+struct dart_operation
+{
+  dart_operation_t value;
+}
+#endif // DOXYGEN
 
 /**
  * Reduce operands to their minimum value.
@@ -54,6 +124,7 @@ public:
 template< typename ValueType >
 struct min
 : public internal::ReduceOperation< ValueType, DART_OP_MIN,
+                                    dash::internal::OpKind::ARITHMETIC,
                                     dash::is_arithmetic<ValueType>::value > {
   ValueType operator()(
     const ValueType & lhs,
@@ -72,6 +143,7 @@ struct min
 template< typename ValueType >
 struct max
 : public internal::ReduceOperation< ValueType, DART_OP_MAX,
+                                    dash::internal::OpKind::ARITHMETIC,
                                     dash::is_arithmetic<ValueType>::value > {
   ValueType operator()(
     const ValueType & lhs,
@@ -90,6 +162,7 @@ struct max
 template< typename ValueType >
 struct plus
 : public internal::ReduceOperation< ValueType, DART_OP_SUM,
+                                    dash::internal::OpKind::ARITHMETIC,
                                     dash::is_arithmetic<ValueType>::value > {
   ValueType operator()(
     const ValueType & lhs,
@@ -108,6 +181,7 @@ struct plus
 template< typename ValueType >
 struct multiply
 : public internal::ReduceOperation< ValueType, DART_OP_PROD,
+                                    dash::internal::OpKind::ARITHMETIC,
                                     dash::is_arithmetic<ValueType>::value > {
   ValueType operator()(
     const ValueType & lhs,
@@ -124,11 +198,28 @@ struct multiply
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
+struct first
+: public internal::ReduceOperation< ValueType, DART_OP_NO_OP,
+                                    dash::internal::OpKind::NOOP, true > {
+  ValueType operator()(const ValueType& lhs, const ValueType& /*rhs*/) const
+  {
+    return lhs;
+  }
+};
+
+/**
+ * Returns second operand. Used as replace reduce operation
+ *
+ * \see      dart_operation_t::DART_OP_REPLACE
+ *
+ * \ingroup  DashReduceOperations
+ */
+template< typename ValueType >
 struct second
-: public internal::ReduceOperation< ValueType, DART_OP_REPLACE, true > {
-  ValueType operator()(
-    const ValueType & lhs,
-    const ValueType & rhs) const {
+: public internal::ReduceOperation< ValueType, DART_OP_REPLACE,
+                                    dash::internal::OpKind::NOOP, true > {
+  ValueType operator()(const ValueType& /*lhs*/, const ValueType& rhs) const
+  {
     return rhs;
   }
 };
@@ -142,7 +233,8 @@ struct second
  */
 template< typename ValueType >
 struct bit_and
-: public internal::ReduceOperation< ValueType, DART_OP_BAND, true > {
+: public internal::ReduceOperation< ValueType, DART_OP_BAND,
+                                    dash::internal::OpKind::BITWISE, true > {
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
@@ -159,7 +251,8 @@ struct bit_and
  */
 template< typename ValueType >
 struct bit_or
-: public internal::ReduceOperation< ValueType, DART_OP_BOR, true > {
+: public internal::ReduceOperation< ValueType, DART_OP_BOR,
+                                    dash::internal::OpKind::BITWISE, true > {
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
@@ -176,7 +269,8 @@ struct bit_or
  */
 template< typename ValueType >
 struct bit_xor
-: public internal::ReduceOperation< ValueType, DART_OP_BXOR, true > {
+: public internal::ReduceOperation< ValueType, DART_OP_BXOR,
+                                    dash::internal::OpKind::BITWISE, true > {
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {

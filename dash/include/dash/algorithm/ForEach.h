@@ -1,8 +1,8 @@
 #ifndef DASH__ALGORITHM__FOR_EACH_H__
 #define DASH__ALGORITHM__FOR_EACH_H__
 
-#include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
+#include <dash/iterator/GlobIter.h>
 
 #include <algorithm>
 
@@ -28,18 +28,19 @@ namespace dash {
  *
  * \ingroup     DashAlgorithms
  */
-template <
-  typename ElementType,
-  class    PatternType,
-  class    UnaryFunction >
+template <typename GlobInputIt, class UnaryFunction>
 void for_each(
-  /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType, PatternType> & first,
-  /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & last,
-  /// Function to invoke on every index in the range
-  UnaryFunction                              func)
+    /// Iterator to the initial position in the sequence
+    const GlobInputIt& first,
+    /// Iterator to the final position in the sequence
+    const GlobInputIt& last,
+    /// Function to invoke on every index in the range
+    UnaryFunction func)
 {
+  using iterator_traits = dash::iterator_traits<GlobInputIt>;
+  static_assert(
+      iterator_traits::is_global_iterator::value,
+      "must be a global iterator");
   /// Global iterators to local index range:
   auto index_range  = dash::local_index_range(first, last);
   auto lbegin_index = index_range.begin;
@@ -75,18 +76,20 @@ void for_each(
  *
  * \ingroup     DashAlgorithms
  */
-template <
-  typename ElementType,
-  class    PatternType,
-  class    UnaryFunctionWithIndex >
+template <typename GlobInputIt, class UnaryFunctionWithIndex>
 void for_each_with_index(
-  /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType, PatternType> & first,
-  /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & last,
-  /// Function to invoke on every index in the range
-  UnaryFunctionWithIndex                     func)
+    /// Iterator to the initial position in the sequence
+    const GlobInputIt& first,
+    /// Iterator to the final position in the sequence
+    const GlobInputIt& last,
+    /// Function to invoke on every index in the range
+    UnaryFunctionWithIndex func)
 {
+  using iterator_traits = dash::iterator_traits<GlobInputIt>;
+  static_assert(
+      iterator_traits::is_global_iterator::value,
+      "must be a global iterator");
+
   /// Global iterators to local index range:
   auto index_range  = dash::local_index_range(first, last);
   auto lbegin_index = index_range.begin;

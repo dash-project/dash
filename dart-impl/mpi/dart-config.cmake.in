@@ -9,6 +9,7 @@
 
 set(DART_INSTALL_PREFIX "${PACKAGE_PREFIX_DIR}")
 
-find_package(DART-BASE REQUIRED HINTS "${DART_INSTALL_PREFIX}/cmake")
+find_package(DART-BASE REQUIRED HINTS "${DASH_INSTALL_PREFIX}/share/cmake")
 
-include("${DART_INSTALL_PREFIX}/cmake/@DASH_DART_IMPL_MPI_LIBRARY@-targets.cmake")
+include("${DASH_INSTALL_PREFIX}/share/cmake/@DASH_DART_IMPL_MPI_LIBRARY@-targets.cmake")
+

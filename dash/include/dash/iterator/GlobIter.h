@@ -4,6 +4,7 @@
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
+#include <dash/memory/GlobStaticMem.h>
 
 #include <functional>
 #include <sstream>
@@ -44,22 +45,18 @@ class GlobViewIter;
  *
  * \concept{DashGlobalIteratorConcept}
  */
-template<
-  typename ElementType,
-  class    PatternType,
-  class    GlobMemType   = GlobStaticMem<
-                             typename std::decay<ElementType>::type
-                           >,
-  class    PointerType   = typename GlobMemType::pointer,
-  class    ReferenceType = GlobRef<ElementType> >
-class GlobIter
-: public std::iterator<
-           std::random_access_iterator_tag,
-           ElementType,
-           typename PatternType::index_type,
-           PointerType,
-           ReferenceType >
-{
+template <
+    typename ElementType,
+    class PatternType,
+    class GlobMemType = GlobStaticMem<typename std::decay<ElementType>::type>,
+    class PointerType = typename GlobMemType::pointer,
+    class ReferenceType = GlobRef<ElementType> >
+class GlobIter : public std::iterator<
+                     std::random_access_iterator_tag,
+                     ElementType,
+                     typename PatternType::index_type,
+                     PointerType,
+                     ReferenceType> {
 private:
   typedef GlobIter<
             ElementType,
@@ -134,30 +131,19 @@ private:
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobMemType          * _globmem;
+  GlobMemType          * _globmem         = nullptr;
   /// Pattern that specifies the iteration order (access pattern).
-  const PatternType    * _pattern;
+  const PatternType    * _pattern         = nullptr;
   /// Current position of the iterator in global canonical index space.
   index_type             _idx             = 0;
   /// Maximum position allowed for this iterator.
   index_type             _max_idx         = 0;
-  /// Unit id of the active unit
-  team_unit_t            _myid;
   /// Pointer to first element in local memory
   local_pointer          _lbegin          = nullptr;
 
 public:
-  /**
-   * Default constructor.
-   */
-  constexpr GlobIter()
-  : _globmem(nullptr),
-    _pattern(nullptr),
-    _idx(0),
-    _max_idx(0),
-    _myid(dash::Team::All().myid()),
-    _lbegin(nullptr)
-  { }
+
+  constexpr GlobIter() = default;
 
   /**
    * Constructor, creates a global iterator on global memory following
@@ -165,13 +151,12 @@ public:
    */
   constexpr GlobIter(
     GlobMemType       * gmem,
-	  const PatternType & pat,
-	  index_type          position = 0)
+    const PatternType & pat,
+    index_type          position = 0)
   : _globmem(gmem),
     _pattern(&pat),
     _idx(position),
     _max_idx(pat.size() - 1),
-    _myid(pat.team().myid()),
     _lbegin(_globmem->lbegin())
   { }
 
@@ -179,17 +164,14 @@ public:
    * Copy constructor.
    */
   template <
-    class    P_,
-    class    GM_,
     class    Ptr_,
     class    Ref_ >
   constexpr GlobIter(
-    const GlobIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> & other)
+    const GlobIter<nonconst_value_type, PatternType, GlobMemType, Ptr_, Ref_> & other)
   : _globmem(other._globmem)
   , _pattern(other._pattern)
   , _idx    (other._idx)
   , _max_idx(other._max_idx)
-  , _myid   (other._myid)
   , _lbegin (other._lbegin)
   { }
 
@@ -197,17 +179,14 @@ public:
    * Move constructor.
    */
   template <
-    class    P_,
-    class    GM_,
     class    Ptr_,
     class    Ref_ >
   constexpr GlobIter(
-    GlobIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> && other)
+    GlobIter<nonconst_value_type, PatternType, GlobMemType, Ptr_, Ref_> && other)
   : _globmem(other._globmem)
   , _pattern(other._pattern)
   , _idx    (other._idx)
   , _max_idx(other._max_idx)
-  , _myid   (other._myid)
   , _lbegin (other._lbegin)
   { }
 
@@ -216,18 +195,15 @@ public:
    */
   template <
     typename T_,
-    class    P_,
-    class    GM_,
     class    Ptr_,
     class    Ref_ >
   self_t & operator=(
-    const GlobIter<T_, P_, GM_, Ptr_, Ref_ > & other)
+    const GlobIter<T_, PatternType, GlobMemType, Ptr_, Ref_ > & other)
   {
     _globmem = other._globmem;
     _pattern = other._pattern;
     _idx     = other._idx;
     _max_idx = other._max_idx;
-    _myid    = other._myid;
     _lbegin  = other._lbegin;
     return *this;
   }
@@ -237,18 +213,15 @@ public:
    */
   template <
     typename T_,
-    class    P_,
-    class    GM_,
     class    Ptr_,
     class    Ref_ >
   self_t & operator=(
-    GlobIter<T_, P_, GM_, Ptr_, Ref_ > && other)
+    GlobIter<T_, PatternType, GlobMemType, Ptr_, Ref_ > && other)
   {
     _globmem = other._globmem;
     _pattern = other._pattern;
     _idx     = other._idx;
     _max_idx = other._max_idx;
-    _myid    = other._myid;
     _lbegin  = other._lbegin;
     // no ownership to transfer
     return *this;
@@ -430,7 +403,7 @@ public:
    */
   constexpr bool is_local() const
   {
-    return (_myid == lpos().unit);
+    return (_globmem->team().myid() == lpos().unit);
   }
 
   /**
@@ -466,7 +439,7 @@ public:
     local_pos_t local_pos = _pattern->local(idx);
     DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.index);
-    if (_myid != local_pos.unit) {
+    if (_globmem->team().myid() != local_pos.unit) {
       // Iterator position does not point to local element
       return nullptr;
     }

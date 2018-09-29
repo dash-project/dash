@@ -14,7 +14,8 @@ protected:
     LOG_MESSAGE(">>> Test suite: STLAlgorithmTest");
   }
 
-  virtual ~STLAlgorithmTest() {
+  ~STLAlgorithmTest() override
+  {
     LOG_MESSAGE("<<< Closing test suite: STLAlgorithmTest");
   }
 };

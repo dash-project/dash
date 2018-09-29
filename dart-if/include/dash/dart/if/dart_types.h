@@ -11,6 +11,8 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <limits.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,6 +39,8 @@ typedef enum
   DART_ERR_NOTFOUND =   3,
   /** DART has not been initialized */
   DART_ERR_NOTINIT  =   4,
+  /** DART has not been initialized */
+  DART_ERR_NOMEM    =   5,
   /** Unspecified error */
   DART_ERR_OTHER    = 999
 } dart_ret_t;
@@ -61,7 +65,7 @@ enum {
  * Operations to be used for certain RMA and collective operations.
  * \ingroup DartTypes
  */
-typedef enum
+enum
 {
   /** Undefined, do not use */
   DART_OP_UNDEFINED = 0,
@@ -69,6 +73,8 @@ typedef enum
   DART_OP_MIN,
   /** Maximum */
   DART_OP_MAX,
+  /** Minimum and Maximum */
+  DART_OP_MINMAX,
   /** Summation */
   DART_OP_SUM,
   /** Product */
@@ -88,67 +94,55 @@ typedef enum
   /** Replace Value */
   DART_OP_REPLACE,
   /** No operation */
-  DART_OP_NO_OP
-} dart_operation_t;
+  DART_OP_NO_OP,
+  /** Number of operations defined, not an actual operation! */
+  DART_OP_LAST
+};
+
+typedef uintptr_t dart_operation_t ;
+
+/**
+ * Position of the minimum element in MINMAX tuple
+ * \ingroup DartTypes
+ */
+#define DART_OP_MINMAX_MIN 0
+
+/**
+ * Position of the maximum element in MINMAX tuple
+ * \ingroup DartTypes
+ */
+#define DART_OP_MINMAX_MAX 1
 
 /**
  * Raw data types supported by the DART interface.
  *
  * \ingroup DartTypes
  */
-/**
-typedef enum
-{
-    DART_TYPE_UNDEFINED = 0,
-    /// integral data types
-    DART_TYPE_BYTE,
-    DART_TYPE_SHORT,
-    DART_TYPE_INT,
-    DART_TYPE_UINT,
-    DART_TYPE_LONG,
-    DART_TYPE_ULONG,
-    DART_TYPE_LONGLONG,
-    /// floating point data types
-    DART_TYPE_FLOAT,
-    DART_TYPE_DOUBLE,
-    /// Reserved, do not use!
-    DART_TYPE_COUNT
-} dart_datatype_t;
-**/
-
 typedef intptr_t dart_datatype_t;
-#if 0
-extern struct dart_datatype_struct __dart_type_undefined_t;
-extern struct dart_datatype_struct __dart_type_byte_t;
-extern struct dart_datatype_struct __dart_type_short_t;
-extern struct dart_datatype_struct __dart_type_int_t;
-extern struct dart_datatype_struct __dart_type_uint_t;
-extern struct dart_datatype_struct __dart_type_long_t;
-extern struct dart_datatype_struct __dart_type_ulong_t;
-extern struct dart_datatype_struct __dart_type_longlong_t;
-extern struct dart_datatype_struct __dart_type_float_t;
-extern struct dart_datatype_struct __dart_type_double_t;
-#endif
 
-
-#define DART_TYPE_UNDEFINED (dart_datatype_t)(0)
-#define DART_TYPE_BYTE      (dart_datatype_t)(1)
-#define DART_TYPE_SHORT     (dart_datatype_t)(2)
-#define DART_TYPE_INT       (dart_datatype_t)(3)
-#define DART_TYPE_UINT      (dart_datatype_t)(4)
-#define DART_TYPE_LONG      (dart_datatype_t)(5)
-#define DART_TYPE_ULONG     (dart_datatype_t)(6)
-#define DART_TYPE_LONGLONG  (dart_datatype_t)(7)
-#define DART_TYPE_FLOAT     (dart_datatype_t)(8)
-#define DART_TYPE_DOUBLE    (dart_datatype_t)(9)
-#define DART_TYPE_LAST      (dart_datatype_t)(10)
+#define DART_TYPE_UNDEFINED    (dart_datatype_t)(0)
+/// integral data types
+#define DART_TYPE_BYTE         (dart_datatype_t)(1)
+#define DART_TYPE_SHORT        (dart_datatype_t)(2)
+#define DART_TYPE_INT          (dart_datatype_t)(3)
+#define DART_TYPE_UINT         (dart_datatype_t)(4)
+#define DART_TYPE_LONG         (dart_datatype_t)(5)
+#define DART_TYPE_ULONG        (dart_datatype_t)(6)
+#define DART_TYPE_LONGLONG     (dart_datatype_t)(7)
+#define DART_TYPE_ULONGLONG    (dart_datatype_t)(8)
+/// floating point data types
+#define DART_TYPE_FLOAT        (dart_datatype_t)(9)
+#define DART_TYPE_DOUBLE       (dart_datatype_t)(10)
+#define DART_TYPE_LONG_DOUBLE  (dart_datatype_t)(11)
+/// Reserved, do not use!
+#define DART_TYPE_LAST         (dart_datatype_t)(12)
 
 
 /** size for integral \c size_t */
 #if (UINT32_MAX == SIZE_MAX)
-#  define DART_TYPE_SIZET DART_TYPE_UINT
+#  define DART_TYPE_SIZET DART_TYPE_ULONG
 #elif (UINT64_MAX == SIZE_MAX)
-#  define DART_TYPE_SIZET DART_TYPE_LONGLONG
+#  define DART_TYPE_SIZET DART_TYPE_ULONGLONG
 #else
 #  error "Cannot determine DART type for size_t!"
 #endif
@@ -334,7 +328,7 @@ typedef enum
 dart_locality_scope_t;
 
 /** Maximum size of a host name string in \ref dart_hwinfo_t */
-#define DART_LOCALITY_HOST_MAX_SIZE       ((int)(30))
+#define DART_LOCALITY_HOST_MAX_SIZE        (HOST_NAME_MAX)
 /** Maximum size of a domain tag string in \ref dart_hwinfo_t */
 #define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(32))
 /** Maximum number of domain scopes in \ref dart_hwinfo_t */
@@ -736,6 +730,22 @@ dart_type_create_indexed(
   const size_t      offset[],
   dart_datatype_t * newtype);
 
+
+/**
+ * Create a custom data type of size \c num_bytes bytes.
+ *
+ * \param      num_bytes The size of the custom type in bytes.
+ * \param[out] newtype   The newly created data type.
+ *
+ * \return \ref DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \ingroup DartTypes
+ */
+dart_ret_t
+dart_type_create_custom(
+  size_t            num_bytes,
+  dart_datatype_t * newtype);
+
 /**
  * Destroy a data type that was previously created using
  * \ref dart_type_create_strided or \ref dart_type_create_indexed.
@@ -752,6 +762,54 @@ dart_type_create_indexed(
  */
 dart_ret_t
 dart_type_destroy(dart_datatype_t *dart_type);
+
+/**
+ * The operator called from a reduction operation.
+ * The operator should apply the intended operation to each of the \c len
+ * elements in \c invec and \c inoutvec and store the result in \c inoutvec, i.e.,
+ * inoutvec[i] = invec[i] o inoutvec[i], i = 0,...,len-1
+ * The parameter \c userdata is the pointer passed to \ref dart_op_create.
+ * The memory pointed to by \userdata is managed by the caller.
+ */
+typedef void (*dart_operator_t)(
+  const void   * invec,
+        void   * inoutvec,
+        size_t   len,
+        void   * user_data);
+
+/**
+ * Create a new operation \c new_op that can be used in collective reduction
+ * operations, i.e., \ref dart_reduce, \ref dart_allreduce.
+ *
+ * \param op       The operator to invoke.
+ * \param userdata A pointer to user-defined data that is passed to each
+ *                 invocation of \ref op.
+ * \param commute  Whether or not the operation is commutative.
+ * \param dtype    The datatype \ref op operates on. Only contiguous data types
+ *                 can be used (basic, custom).
+ * \param dtype_is_tmp Signal that the \c dtype is a temporary DART type that
+ *                     is only used in the context of the newly created
+ *                     operation. This may allow for additional optimizations.
+ * \param[out] new_op Pointer to the new operation.
+ *
+ * \sa dart_op_destroy
+ * \sa dart_operator_t
+ */
+dart_ret_t
+dart_op_create(
+  dart_operator_t    op,
+  void             * userdata,
+  bool               commute,
+  dart_datatype_t    dtype,
+  bool               dtype_is_tmp,
+  dart_operation_t * new_op);
+
+/**
+ * Destroy a operation object created through \ref dart_op_create and set
+ * \c op to \ref DART_OP_UNDEFINED.
+ */
+dart_ret_t
+dart_op_destroy(dart_operation_t *op);
 
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF

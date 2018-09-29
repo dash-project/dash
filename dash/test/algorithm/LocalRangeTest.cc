@@ -5,9 +5,9 @@
 #include <dash/util/LocalityJSONPrinter.h>
 
 #include <dash/Array.h>
-#include <dash/Matrix.h>
 #include <dash/Cartesian.h>
 #include <dash/Distribution.h>
+#include <dash/Matrix.h>
 #include <dash/View.h>
 
 #include <iostream>

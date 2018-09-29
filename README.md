@@ -1,5 +1,6 @@
 [![CI Status](https://circleci.com/gh/dash-project/dash.svg?style=shield&circle-token=cd221e93159f5c97477c9699f3b7adc54d344ae6)](https://circleci.com/gh/dash-project/dash)
 [![Build Status](https://travis-ci.org/dash-project/dash.svg?branch=development)](https://travis-ci.org/dash-project/dash) [![Documentation Status](https://readthedocs.org/projects/dash/badge/?version=latest)](http://dash.readthedocs.io/en/latest/?badge=latest) [![Documentation](https://codedocs.xyz/dash-project/dash.svg)](https://codedocs.xyz/dash-project/dash/)
+[![codecov](https://codecov.io/gh/dash-project/dash/branch/development/graph/badge.svg)](https://codecov.io/gh/dash-project/dash)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/491/badge)](https://bestpractices.coreinfrastructure.org/projects/491)
 
 
@@ -100,7 +101,7 @@ For pre-build Docker container images, see the
 Building from Source
 --------------------
 
-DASH is build using CMake.
+DASH is built using CMake.
 
 Build scripts are provided for typical DASH configurations and can serve
 as starting points for custom builds:
@@ -128,6 +129,18 @@ Optional third-party libraries directly supported by DASH:
 - LIKWID
 - HDF5
 
+### Getting the sources 
+
+DASH is hosted on Github at https://github.com/dash-project/dash and makes
+use of git submodules to include third-party software (mainly the GoogleTest 
+framework required for building the tests). The build environment will take 
+care of cloning the submodules upon  first invocation. However, there might 
+be cases where recursive cloning is  required, e.g., if there is no internet 
+access available during the configuration step.
+
+In that case, please use a recursive clone: 
+
+    (dash/)$ git clone --recursive https://github.com/dash-project/dash.git
 
 ### Building DASH from Source
 

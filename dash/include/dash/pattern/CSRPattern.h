@@ -998,10 +998,15 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_size(
-    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const noexcept
+
+  constexpr SizeType local_size() const noexcept
   {
     return _local_size;
+  }
+
+  constexpr SizeType local_size(team_unit_t unit) const noexcept
+  {
+    return _local_sizes[unit.id];
   }
 
   /**

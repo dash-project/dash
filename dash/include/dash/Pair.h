@@ -195,17 +195,38 @@ namespace dash {
     x.swap(y);
   }
 
+  namespace internal {
+    /**
+     * Duplicated here to not rely on an STL implementation
+     */
+    template <class T>
+    struct strip
+    {
+      typedef T type;
+    };
+    template <class T>
+    struct strip<std::reference_wrapper<T>>
+    {
+        typedef T& type;
+    };
+    template <class T>
+    struct decay_and_strip
+    {
+        typedef typename strip<typename std::decay<T>::type>::type type;
+    };
+  } // namespace internal
+
   /**
    * Convennience wrapper to create a Pair object.
    */
   template<class T1, class T2>
-  constexpr Pair<typename std::__decay_and_strip<T1>::__type,
-                 typename std::__decay_and_strip<T2>::__type>
+  constexpr Pair<typename internal::decay_and_strip<T1>::type,
+                 typename internal::decay_and_strip<T2>::type>
   make_pair(T1&& x, T2&& y)
   {
-    typedef typename std::__decay_and_strip<T1>::__type ds_type1;
-    typedef typename std::__decay_and_strip<T2>::__type ds_type2;
-    typedef Pair<ds_type1, ds_type2>                    pair_type;
+    typedef typename internal::decay_and_strip<T1>::type ds_type1;
+    typedef typename internal::decay_and_strip<T2>::type ds_type2;
+    typedef Pair<ds_type1, ds_type2>                     pair_type;
     return pair_type(std::forward<T1>(x), std::forward<T2>(y));
   }
 
