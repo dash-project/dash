@@ -202,10 +202,12 @@ GlobInputIt min_element(
     trace.enter_state("local");
 
     // Pointer to first element in local memory:
-    const value_t * lbegin        = first.globmem().lbegin();
+    const auto *lbegin =
+        static_cast<typename GlobInputIt::const_local_type>(
+            first.globmem().lbegin());
     // Pointers to first / final element in local range:
-    const value_t * l_range_begin = lbegin + local_idx_range.begin;
-    const value_t * l_range_end   = lbegin + local_idx_range.end;
+    const auto * l_range_begin = lbegin + local_idx_range.begin;
+    const auto * l_range_end   = lbegin + local_idx_range.end;
 
     lmin = dash::min_element(l_range_begin, l_range_end, compare);
 

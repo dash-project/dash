@@ -50,7 +50,8 @@ GlobIter find(
    auto g_begin_index = pattern.global(l_begin_index);
 
     // Pointer to first element in local memory:
-   const auto lbegin = first.globmem().lbegin();
+   const auto* lbegin = static_cast<typename GlobIter::const_local_type>(
+       first.globmem().lbegin());
    // Pointers to first / final element in local range:
    const auto l_range_begin = lbegin + l_begin_index;
    const auto l_range_end   = lbegin + l_end_index;

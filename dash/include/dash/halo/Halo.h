@@ -743,9 +743,13 @@ std::ostream& operator<<(std::ostream& os, const HaloSpec<NumDimensions>& hs) {
 /**
  * Iterator to iterate over all region elements defined by \ref Region
  */
-template <typename ElementT, typename PatternT, typename GlobMemT,
-          typename PointerT   = typename GlobMemT::pointer,
-          typename ReferenceT = GlobRef<ElementT>>
+template <
+    typename ElementT,
+    typename PatternT,
+    typename GlobMemT,
+    typename PointerT =
+        typename GlobMemT::void_pointer::template rebind<ElementT>,
+    typename ReferenceT = GlobRef<ElementT>>
 class RegionIter {
 private:
   using Self_t = RegionIter<ElementT, PatternT, GlobMemT, PointerT, ReferenceT>;
@@ -758,6 +762,7 @@ public:
   using value_type        = ElementT;
   using difference_type   = typename PatternT::index_type;
   using pointer           = PointerT;
+  using local_pointer     = typename pointer::local_type;
   using reference         = ReferenceT;
 
   using const_reference = const reference;
@@ -778,7 +783,7 @@ public:
              pattern_size_t size)
   : _globmem(globmem), _pattern(pattern), _region_view(_region_view), _idx(pos),
     _max_idx(size - 1), _myid(pattern->team().myid()),
-    _lbegin(globmem->lbegin()) {}
+    _lbegin(static_cast<local_pointer>(globmem->lbegin())) {}
 
   /**
    * Copy constructor.
@@ -1020,7 +1025,7 @@ private:
   /// Unit id of the active unit
   team_unit_t _myid;
 
-  ElementT* _lbegin;
+  local_pointer _lbegin;
 
 };  // class HaloBlockIter
 

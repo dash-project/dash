@@ -35,6 +35,9 @@ class GlobLocalMemoryPool : public MemorySpace<
       memory_domain_global,
       typename local_memory_traits::memory_space_type_category>;
 
+  using pointer       = dash::GlobPtr<void, GlobLocalMemoryPool>;
+  using const_pointer = dash::GlobPtr<const void, GlobLocalMemoryPool>;
+
 public:
   // inherit parent typedefs
   using memory_space_domain_category = memory_domain_global;
@@ -53,8 +56,10 @@ public:
   // local memory space
   using allocator_type = cpp17::pmr::polymorphic_allocator<byte>;
 
-  using pointer       = dash::GlobPtr<void, GlobLocalMemoryPool>;
-  using const_pointer = dash::GlobPtr<const void, GlobLocalMemoryPool>;
+  using void_pointer = pointer;
+  using const_void_pointer = const_pointer;
+  using local_void_pointer = void *;
+  using const_local_void_pointer = void *;
 
 public:
   GlobLocalMemoryPool() = delete;
@@ -163,8 +168,9 @@ private:
   std::vector<std::pair<pointer, size_t>> m_segments;
 
 private:
-  pointer do_allocate(size_type nbytes, size_type alignment);
-  void    do_deallocate(pointer gptr, size_type nbytes, size_type alignment);
+  //alignment not used: Pools always allocate with alignof(max_align_t)
+  pointer do_allocate(size_type nbytes, size_type /*alignment*/);
+  void    do_deallocate(pointer gptr, size_type nbytes, size_type /*alignment*/);
   void    do_segment_free(
          typename std::vector<std::pair<pointer, size_t>>::iterator it_erase);
 };
@@ -214,7 +220,7 @@ inline GlobLocalMemoryPool<LMemSpace>& GlobLocalMemoryPool<LMemSpace>::
 template <class LMemSpace>
 inline typename GlobLocalMemoryPool<LMemSpace>::pointer
 GlobLocalMemoryPool<LMemSpace>::do_allocate(
-    size_type nbytes, size_type alignment)
+    size_type nbytes, size_type /*alignment*/)
 {
   DASH_LOG_TRACE(
       "MemorySpace.do_allocate",
@@ -265,7 +271,7 @@ GlobLocalMemoryPool<LMemSpace>::~GlobLocalMemoryPool()
 
 template <class LMemSpace>
 inline void GlobLocalMemoryPool<LMemSpace>::do_deallocate(
-    pointer gptr, size_type nbytes, size_type alignment)
+    pointer gptr, size_type nbytes, size_type /*alignment*/)
 {
   DASH_LOG_DEBUG("< MemorySpace.do_deallocate");
 

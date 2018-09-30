@@ -17,7 +17,7 @@ private:
   //TODO rko: fix this hard coded information it is related to Coevent
   //which uses dash::Array internally
   using globmem_t =
-      dash::GlobStaticMem<event_ctr_t, HostSpace>;
+      dash::GlobStaticMem<HostSpace>;
 
   using gptr_t      = GlobPtr<event_ctr_t, globmem_t>;
 

@@ -59,12 +59,20 @@ class GlobPtr {
 private:
   typedef GlobPtr<ElementType, GlobMemT> self_t;
 
+  using local_pointer_traits =
+      std::pointer_traits<typename GlobMemT::local_void_pointer>;
 public:
   typedef ElementType                          value_type;
   typedef GlobPtr<const ElementType, GlobMemT> const_type;
   typedef typename GlobMemT::index_type        index_type;
   typedef typename GlobMemT::size_type         size_type;
   typedef index_type                           gptrdiff_t;
+
+  typedef typename local_pointer_traits::template rebind<value_type>
+      local_type;
+
+  typedef typename local_pointer_traits::template rebind<value_type const>
+      const_local_type;
 
   /**
    * Rebind to a different type of pointer
@@ -476,7 +484,7 @@ private:
     auto current_uid = _rbegin_gptr.unitid();
 
     // current local size
-    auto lsize = _mem_space->local_size(dart_team_unit_t{current_uid});
+    auto lsize = _mem_space->capacity(dart_team_unit_t{current_uid});
 
     // current local offset
     auto ptr_offset = _rbegin_gptr.offset() / sizeof(value_type);
@@ -500,13 +508,13 @@ private:
       offs -= (lsize - ptr_offset);
 
       // first iter
-      lsize = _mem_space->local_size(current_uid);
+      lsize = _mem_space->capacity(current_uid);
 
       // Skip units until we have ther the correct one or the last valid unit.
       while (offs >= lsize && current_uid < (unit_end - 1)) {
         offs -= lsize;
         ++current_uid;
-        lsize = _mem_space->local_size(current_uid);
+        lsize = _mem_space->capacity(current_uid);
       }
 
       if (offs >= lsize && current_uid == unit_end - 1) {
@@ -567,12 +575,12 @@ private:
       offs -= ptr_offset;
 
       // first iter
-      auto lsize = _mem_space->local_size(dart_team_unit_t{current_uid});
+      auto lsize = _mem_space->capacity(dart_team_unit_t{current_uid});
 
       while (offs >= lsize && current_uid > unit_begin) {
         offs -= lsize;
         --current_uid;
-        lsize = _mem_space->local_size(dart_team_unit_t{current_uid});
+        lsize = _mem_space->capacity(dart_team_unit_t{current_uid});
       }
 
       if (offs > lsize) {
@@ -898,7 +906,7 @@ dash::gptrdiff_t distance(
   // Pointers span multiple unit spaces, accumulate sizes of
   // local unit memory ranges in the pointer range:
   index_type dist =
-      gbegin._mem_space->local_size(gbegin._rbegin_gptr.unitid()) -
+      gbegin._mem_space->capacity(gbegin._rbegin_gptr.unitid()) -
       (gbegin._rbegin_gptr.offset() / sizeof(value_type)) +
       (gend._rbegin_gptr.offset() / sizeof(value_type));
 
@@ -908,7 +916,7 @@ dash::gptrdiff_t distance(
     static_assert(
         std::is_same<dash::team_unit_t, decltype(u)>::value, "wrong type");
 
-    dist += gend._mem_space->local_size(u);
+    dist += gend._mem_space->capacity(u);
   }
   return dist;
 }

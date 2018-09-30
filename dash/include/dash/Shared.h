@@ -89,7 +89,12 @@ public:
   /**
    * Destructor, frees shared memory.
    */
-  ~Shared() = default;
+  ~Shared() {
+    if (m_owner == m_team->myid()) {
+      m_globmem->deallocate(m_glob_pointer, sizeof(element_t), alignof(element_t));
+      m_glob_pointer = pointer_t{};
+    }
+  }
 
   /**
    * Copy-constructor: DELETED

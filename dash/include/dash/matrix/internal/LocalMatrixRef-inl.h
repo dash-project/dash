@@ -207,7 +207,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT, GlobMemT>
 ::begin() noexcept
 {
   return iterator(
-    _refview._mat->_glob_mem,
+    _refview._mat->_glob_mem.get(),
     _refview._mat->_pattern,
     _refview._viewspec,
     // iterator position in view index space
@@ -225,7 +225,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT, GlobMemT>
 ::begin() const noexcept
 {
   return const_iterator(
-    _refview._mat->_glob_mem,
+    _refview._mat->_glob_mem.get(),
     _refview._mat->_pattern,
     _refview._viewspec,
     // iterator position in view index space

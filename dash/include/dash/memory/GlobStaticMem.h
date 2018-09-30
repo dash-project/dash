@@ -1,11 +1,12 @@
 #ifndef DASH__MEMORY__GLOB_STATIC_MEMORY_H__INCLUDED
 #define DASH__MEMORY__GLOB_STATIC_MEMORY_H__INCLUDED
 
+#include <algorithm>
+#include <numeric>
+
 #include <dash/Exception.h>
 #include <dash/allocator/AllocationPolicy.h>
 #include <dash/memory/MemorySpaceBase.h>
-
-#include <numeric>
 
 // clang-format off
 
@@ -80,7 +81,7 @@ get_default_memory_space();
  * \concept{DashMemorySpaceConcept}
  */
 
-template <class ElementType, class LMemSpace>
+template <class LMemSpace>
 class GlobStaticMem : public MemorySpace<
                           /// global memory space
                           memory_domain_global,
@@ -102,14 +103,16 @@ class GlobStaticMem : public MemorySpace<
       synchronization_collective,
       typename memory_traits::memory_space_type_category>;
 
+  using pointer             = dash::GlobPtr<void, GlobStaticMem>;
+  using const_pointer       = dash::GlobPtr<const void, GlobStaticMem>;
+  using local_pointer       = void*;
+  using const_local_pointer = const void *;
+
 public:
   using memory_space_domain_category =
       typename base_t::memory_space_domain_category;
   using memory_space_type_category =
       typename base_t::memory_space_type_category;
-
-  using value_type = typename std::remove_cv<
-      typename std::remove_reference<ElementType>::type>::type;
 
   using size_type       = dash::default_size_t;
   using index_type      = dash::default_index_t;
@@ -119,19 +122,18 @@ public:
   using memory_space_synchronization_policy = synchronization_collective;
   using memory_space_layout_tag             = memory_space_contiguous;
 
-  using allocator_type = cpp17::pmr::polymorphic_allocator<ElementType>;
+  using allocator_type = cpp17::pmr::polymorphic_allocator<byte>;
 
-  using pointer             = dash::GlobPtr<value_type, GlobStaticMem>;
-  using const_pointer       = dash::GlobPtr<const value_type, GlobStaticMem>;
-  using local_pointer       = value_type*;
-  using const_local_pointer = value_type const*;
+  using void_pointer             = pointer;
+  using const_void_pointer       = const_pointer;
+  using local_void_pointer       = local_pointer;
+  using const_local_void_pointer = const_local_pointer;
 
 public:
-  GlobStaticMem() = delete;
+  //GlobStaticMem() = delete;
 
-  explicit GlobStaticMem(
-      size_type nels, dash::Team const& team = dash::Team::All());
-  GlobStaticMem(size_type nels, LMemSpace* r, dash::Team const& team);
+  explicit GlobStaticMem(dash::Team const& team = dash::Team::All());
+  GlobStaticMem(LMemSpace* r, dash::Team const& team);
   ~GlobStaticMem() override;
 
   GlobStaticMem(const GlobStaticMem&) = delete;
@@ -140,9 +142,9 @@ public:
   GlobStaticMem& operator=(const GlobStaticMem&) = delete;
   GlobStaticMem& operator                        =(GlobStaticMem&&);
 
-  size_type size() const noexcept;
+  size_type capacity() const noexcept;
 
-  size_type local_size(dash::team_unit_t uid) const noexcept
+  size_type capacity(dash::team_unit_t uid) const noexcept
   {
     return m_local_sizes.at(uid);
   }
@@ -196,22 +198,40 @@ public:
     return const_pointer(*this, soon_to_be_end);
   }
 
-  pointer allocate(size_type nels, size_type alignment = alignof(value_type))
+  pointer allocate(size_type nbytes, size_type alignment = max_align)
   {
-    return do_allocate(nels * sizeof(value_type), alignment);
+    if (DART_GPTR_ISNULL(m_begin)) {
+      return do_allocate(nbytes, alignment);
+    }
+    else {
+      DASH_ASSERT_EQ(
+          nbytes,
+          m_local_sizes.at(m_team->myid()),
+          "nbytes does not match the originally requested number of bytes");
+
+      DASH_ASSERT_EQ(
+          alignment,
+          m_alignment,
+          "alignment does not match the originally requested alignment");
+    }
+    return pointer(*this, m_begin);
   }
+
   void deallocate(
-      pointer gptr,
-      size_type /*nels*/,
-      size_type alignment = alignof(value_type))
+      pointer gptr, size_type /*nbytes*/, size_type alignment = max_align)
   {
     DASH_ASSERT_MSG(
         DART_GPTR_EQUAL(gptr.dart_gptr(), m_begin),
         "invalid pointer to deallocate");
 
+    DASH_ASSERT_EQ(
+        alignment,
+        m_alignment,
+        "alignment does not match the originally requested alignment");
+
     do_deallocate(
         gptr,
-        m_local_sizes.at(m_team->myid()) * sizeof(value_type),
+        m_local_sizes.at(m_team->myid()),
         alignment);
   }
 
@@ -269,6 +289,8 @@ public:
     dart_flush_local(gptr);
   }
 
+#if 0
+
   /**
    * Resolve the global pointer from an element position in a unit's
    * local memory.
@@ -310,16 +332,20 @@ public:
     return res_gptr;
   }
 
+#endif
+
 private:
   dash::Team const*          m_team{};
   allocator_type             m_allocator{};
   global_allocation_strategy m_allocation_policy{};
   std::vector<size_type>     m_local_sizes{};
+  size_type                  m_alignment{};
   // Uniform Initialization does not work in G++ 4.9.x
   // This is why we have to use C-Style Initializer Initialization
-  dart_gptr_t       m_begin = DART_GPTR_NULL;
-  local_pointer     m_lbegin{nullptr};
-  local_pointer     m_lend{nullptr};
+  dart_gptr_t   m_begin = DART_GPTR_NULL;
+  local_pointer m_lbegin{nullptr};
+  local_pointer m_lend{nullptr};
+  // global size across all units in bytes
   mutable size_type m_size{std::numeric_limits<size_type>::max()};
 
 private:
@@ -329,52 +355,37 @@ private:
 
 ///////////// Implementation ///////////////////
 //
-template <class ElementType, class LMemSpace>
-inline GlobStaticMem<ElementType, LMemSpace>::GlobStaticMem(
-    size_type nels, dash::Team const& team)
-  : m_team(&team)
-  , m_allocator(get_default_memory_space<
-                memory_domain_local,
-                typename memory_traits::memory_space_type_category>())
-  , m_local_sizes(team.size())
+template <class LMemSpace>
+inline GlobStaticMem<LMemSpace>::GlobStaticMem(dash::Team const& team)
+  : GlobStaticMem(nullptr, team)
 {
-  DASH_LOG_DEBUG("< MemorySpace.MemorySpace");
-  DASH_LOG_DEBUG_VAR("MemorySpace.MemorySpace", team);
-  DASH_LOG_DEBUG_VAR("MemorySpace.MemorySpace", nels);
-
-  do_allocate(nels * sizeof(value_type), alignof(value_type));
-
-  DASH_LOG_DEBUG("MemorySpace.MemorySpace >");
 }
 
-template <class ElementType, class LMemSpace>
-inline GlobStaticMem<ElementType, LMemSpace>::GlobStaticMem(
-    size_type nels, LMemSpace* r, dash::Team const& team)
+template <class LMemSpace>
+inline GlobStaticMem<LMemSpace>::GlobStaticMem(
+    LMemSpace* r, dash::Team const& team)
   : m_team(&team)
   , m_allocator(
         r ? r
           : get_default_memory_space<
                 memory_domain_local,
                 typename memory_traits::memory_space_type_category>())
-  , m_local_sizes(team.size())
+  , m_local_sizes(std::max(team.size(), std::size_t(1)))
 {
   DASH_LOG_DEBUG("< MemorySpace.MemorySpace");
 
-  DASH_LOG_DEBUG_VAR("MemorySpace.MemorySpace", nels);
   DASH_LOG_DEBUG_VAR("MemorySpace.MemorySpace", team);
-
-  do_allocate(nels * sizeof(value_type), alignof(value_type));
 
   DASH_LOG_DEBUG("MemorySpace.MemorySpace >");
 }
 
-template <class ElementType, class LMemSpace>
-inline GlobStaticMem<ElementType, LMemSpace>::GlobStaticMem(
-    GlobStaticMem&& other)
+template <class LMemSpace>
+inline GlobStaticMem<LMemSpace>::GlobStaticMem(GlobStaticMem&& other)
   : m_team(std::move(other.m_team))
   , m_allocator(std::move(other.m_allocator))
   , m_allocation_policy(std::move(other.m_allocation_policy))
   , m_local_sizes(std::move(other.m_local_sizes))
+  , m_alignment(std::move(other.m_alignment))
   , m_begin(std::move(other.m_begin))
   , m_lbegin(std::move(other.m_lbegin))
   , m_lend(std::move(other.m_lend))
@@ -385,22 +396,23 @@ inline GlobStaticMem<ElementType, LMemSpace>::GlobStaticMem(
   other.m_lend   = nullptr;
 }
 
-template <class ElementType, class LMemSpace>
-inline GlobStaticMem<ElementType, LMemSpace>&
-GlobStaticMem<ElementType, LMemSpace>::operator=(GlobStaticMem&& other)
+template <class LMemSpace>
+inline GlobStaticMem<LMemSpace>& GlobStaticMem<LMemSpace>::operator=(
+    GlobStaticMem&& other)
 {
   // deallocate own memory
   if (!DART_GPTR_ISNULL(m_begin)) {
     do_deallocate(
         begin(),
-        m_local_sizes.at(m_team->myid()) * sizeof(value_type),
-        alignof(value_type));
+        m_local_sizes.at(m_team->myid()),
+        m_alignment);
   }
   // and swap..
   std::swap(m_team, other.m_team);
   std::swap(m_allocator, other.m_allocator);
   std::swap(m_allocation_policy, other.m_allocation_policy);
   std::swap(m_local_sizes, other.m_local_sizes);
+  std::swap(m_alignment, other.m_alignment);
   std::swap(m_begin, other.m_begin);
   std::swap(m_lbegin, other.m_lbegin);
   std::swap(m_lend, other.m_lend);
@@ -408,16 +420,17 @@ GlobStaticMem<ElementType, LMemSpace>::operator=(GlobStaticMem&& other)
   return *this;
 }
 
-template <class ElementType, class LMemSpace>
-inline typename GlobStaticMem<ElementType, LMemSpace>::pointer
-GlobStaticMem<ElementType, LMemSpace>::do_allocate(
-    size_type nbytes, size_type alignment)
+template <class LMemSpace>
+inline typename GlobStaticMem<LMemSpace>::pointer
+GlobStaticMem<LMemSpace>::do_allocate(size_type nbytes, size_type alignment)
 {
   if (!DART_GPTR_ISNULL(m_begin)) {
     DASH_THROW(
         dash::exception::RuntimeError,
         "only one allocated segment is allowed");
   }
+
+  m_alignment = alignment;
 
   auto alloc_rec = m_allocation_policy.allocate_segment(
       m_team->dart_id(),
@@ -427,17 +440,17 @@ GlobStaticMem<ElementType, LMemSpace>::do_allocate(
       nbytes,
       alignment);
 
+
   m_begin = alloc_rec.second;
 
   DASH_ASSERT_MSG(
       !DART_GPTR_ISNULL(m_begin), "global memory allocation failed");
 
-  auto const nels = nbytes / sizeof(value_type);
 
   DASH_ASSERT_RETURNS(
       dart_allgather(
           // source buffer
-          &nels,
+          &nbytes,
           // target buffer
           m_local_sizes.data(),
           // nels
@@ -449,28 +462,28 @@ GlobStaticMem<ElementType, LMemSpace>::do_allocate(
       DART_OK);
 
   m_lbegin = static_cast<local_pointer>(alloc_rec.first);
-  m_lend   = std::next(m_lbegin, nels);
+  m_lend   = static_cast<uint8_t *>(m_lbegin) + nbytes;
 
   return pointer(*this, m_begin);
 }
 
-template <class ElementType, class LMemSpace>
-inline GlobStaticMem<ElementType, LMemSpace>::~GlobStaticMem()
+template <class LMemSpace>
+inline GlobStaticMem<LMemSpace>::~GlobStaticMem()
 {
   DASH_LOG_DEBUG("< MemorySpace.~MemorySpace");
 
   if (!DART_GPTR_ISNULL(m_begin)) {
     do_deallocate(
         begin(),
-        m_local_sizes.at(m_team->myid()) * sizeof(value_type),
-        alignof(value_type));
+        m_local_sizes.at(m_team->myid()),
+        m_alignment);
   }
 
   DASH_LOG_DEBUG("MemorySpace.~MemorySpace >");
 }
 
-template <class ElementType, class LMemSpace>
-inline void GlobStaticMem<ElementType, LMemSpace>::do_deallocate(
+template <class LMemSpace>
+inline void GlobStaticMem<LMemSpace>::do_deallocate(
     pointer gptr, size_type nbytes, size_type alignment)
 {
   DASH_LOG_DEBUG("< MemorySpace.do_deallocate");
@@ -505,9 +518,9 @@ inline void GlobStaticMem<ElementType, LMemSpace>::do_deallocate(
   DASH_LOG_DEBUG("MemorySpace.do_deallocate >");
 }
 
-template <class ElementType, class LMemSpace>
-inline typename GlobStaticMem<ElementType, LMemSpace>::size_type
-GlobStaticMem<ElementType, LMemSpace>::size() const noexcept
+template <class LMemSpace>
+inline typename GlobStaticMem<LMemSpace>::size_type
+GlobStaticMem<LMemSpace>::capacity() const noexcept
 {
   if (m_size == std::numeric_limits<size_type>::max()) {
     m_size = std::accumulate(

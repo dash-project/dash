@@ -44,7 +44,8 @@ private:
   using event_cnt_t = dash::Atomic<int>;
   using array_t     = dash::Array<event_cnt_t>;
   using globmem_t   = typename array_t::glob_mem_type;
-  using gptr_t      = dash::GlobPtr<event_cnt_t, globmem_t>;
+  using pointer_t   = dash::GlobPtr<event_cnt_t, globmem_t>;
+  using const_pointer_t = typename pointer_t::const_type;
 
 public:
   // Types
@@ -69,21 +70,21 @@ public:
     }
 
   iterator begin() noexcept {
-    return iterator(static_cast<gptr_t>(_event_counts.begin()));
+    return iterator(static_cast<pointer_t>(_event_counts.begin()));
   }
 
   const_iterator begin() const noexcept {
-    return const_iterator(static_cast<gptr_t>(_event_counts.begin()));
+    return const_iterator(static_cast<const_pointer_t>(_event_counts.begin()));
   }
 
   iterator end() {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
-    return iterator(static_cast<gptr_t>(_event_counts.end()));
+    return iterator(static_cast<pointer_t>(_event_counts.end()));
   }
 
   const_iterator end() const {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
-    return const_iterator(static_cast<gptr_t>(_event_counts.end()));
+    return const_iterator(static_cast<const_pointer_t>(_event_counts.end()));
   }
 
   size_type size() const {
@@ -102,7 +103,7 @@ public:
 #ifdef DASH_DEBUG
       // avoid spamming the logs while busy waiting
       DASH_LOG_DEBUG("waiting for event at gptr",
-                     static_cast<gptr_t>(_event_counts.begin()
+                     static_cast<pointer_t>(_event_counts.begin()
                                          +_team->myid().id));
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
 #endif
@@ -140,7 +141,7 @@ public:
    */
   inline reference operator()(const int & unit) DASH_ASSERT_NOEXCEPT {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
-    auto ptr = static_cast<gptr_t>(_event_counts.begin() + unit);
+    auto ptr = static_cast<pointer_t>(_event_counts.begin() + unit);
     return reference(ptr);
   }
 

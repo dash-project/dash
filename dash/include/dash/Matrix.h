@@ -165,7 +165,7 @@ private:
     LocalRef_const_t;
   typedef PatternT
     Pattern_t;
-  typedef GlobStaticMem<ElementT, LocalMemSpaceT>
+  typedef GlobStaticMem<LocalMemSpaceT>
     GlobMem_t;
 
   template<class MatrixT_>
@@ -202,8 +202,10 @@ public:
   typedef          GlobRef<value_type>                           reference;
   typedef typename GlobRef<value_type>::const_type         const_reference;
 
-  typedef typename GlobMem_t::pointer         pointer;
-  typedef typename GlobMem_t::const_pointer   const_pointer;
+  // TODO rko: use pointer traits
+  typedef typename GlobMem_t::void_pointer::template rebind<value_type>
+      pointer;
+  typedef typename pointer::const_type const_pointer;
 
   typedef       ElementT *                                   local_pointer;
   typedef const ElementT *                             const_local_pointer;
@@ -265,25 +267,25 @@ public:
 private:
   /// Team containing all units that collectively instantiated the
   /// Matrix instance
-  dash::Team                 * _team = nullptr;
+  dash::Team *_team = nullptr;
   /// Capacity (total number of elements) of the matrix
-  size_type                    _size;
+  size_type _size;
   /// Number of local elements in the array
-  size_type                    _lsize;
+  size_type _lsize;
   /// Number allocated local elements in the array
-  size_type                    _lcapacity;
+  size_type _lcapacity;
   /// Global pointer to initial element in the array
-  iterator                      _begin;
+  iterator _begin;
   /// The matrix elements' distribution pattern
-  Pattern_t                    _pattern;
+  Pattern_t _pattern;
   /// Global memory allocation and -access
-  GlobMem_t                  * _glob_mem;
+  std::unique_ptr<GlobMem_t> _glob_mem{};
   /// Native pointer to first local element in the array
-  ElementT                   * _lbegin;
+  ElementT *_lbegin{};
   /// Native pointer past last local element in the array
-  ElementT                   * _lend;
+  ElementT *_lend{};
   /// Proxy instance for applying a view, e.g. in subscript operator
-  view_type<NumDimensions>     _ref;
+  view_type<NumDimensions> _ref;
 
 public:
   /**
@@ -779,4 +781,3 @@ using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT, LocalMemSpaceT>;
 #include <dash/matrix/internal/Matrix-inl.h>
 
 #endif  // DASH__MATRIX_H_INCLUDED
-

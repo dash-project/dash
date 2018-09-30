@@ -35,7 +35,7 @@ template<
   typename ElementType,
   class    PatternType,
   class    GlobMemType,
-  class    PointerType   = typename GlobMemType::pointer,
+  class    PointerType   = typename GlobMemType::void_pointer::template rebind<ElementType>,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobViewIter
 : public std::iterator<
@@ -86,8 +86,9 @@ public:
   typedef          PointerType                            pointer;
   typedef typename PointerType::const_type          const_pointer;
 
-  typedef typename GlobMemType::local_pointer       local_pointer;
-  typedef typename GlobMemType::local_pointer          local_type;
+  typedef typename pointer::local_type local_type;
+
+  typedef typename pointer::const_local_type const_local_type;
 
   typedef          PatternType                       pattern_type;
   typedef typename PatternType::index_type             index_type;
@@ -152,8 +153,6 @@ protected:
   IndexType                    _max_idx         = 0;
   /// Unit id of the active unit
   team_unit_t                  _myid;
-  /// Pointer to first element in local memory
-  local_pointer                _lbegin          = nullptr;
 
 public:
   /**
@@ -167,7 +166,6 @@ public:
   , _view_idx_offset(0)
   , _max_idx(0)
   , _myid(dash::Team::All().myid())
-  , _lbegin(nullptr)
   { }
 
   /**
@@ -188,7 +186,6 @@ public:
   , _view_idx_offset(view_index_offset)
   , _max_idx(viewspec.size() - 1)
   , _myid(pat.team().myid())
-  , _lbegin(_globmem->lbegin())
   { }
 
   /**
@@ -208,7 +205,6 @@ public:
   , _view_idx_offset(view_index_offset)
   , _max_idx(pat.size() - 1)
   , _myid(dash::Team::GlobalUnitID())
-  , _lbegin(_globmem->lbegin())
   { }
 
   /**
@@ -230,7 +226,6 @@ public:
   , _view_idx_offset(view_offs)
   , _max_idx(other._max_idx)
   , _myid(other._myid)
-  , _lbegin(other._lbegin)
   { }
 
   /**
@@ -252,7 +247,6 @@ public:
   , _view_idx_offset(other._view_idx_offset)
   , _max_idx        (other._max_idx)
   , _myid           (other._myid)
-  , _lbegin         (other._lbegin)
   { }
 
   /**
@@ -274,7 +268,6 @@ public:
   , _view_idx_offset(other._view_idx_offset)
   , _max_idx        (other._max_idx)
   , _myid           (other._myid)
-  , _lbegin         (other._lbegin)
   { }
 
   /**
@@ -296,7 +289,6 @@ public:
     _view_idx_offset = other._view_idx_offset;
     _max_idx         = other._max_idx;
     _myid            = other._myid;
-    _lbegin          = other._lbegin;
   }
 
   /**
@@ -318,7 +310,6 @@ public:
     _view_idx_offset = other._view_idx_offset;
     _max_idx         = other._max_idx;
     _myid            = other._myid;
-    _lbegin          = other._lbegin;
     // no ownership to transfer
     return *this;
   }
@@ -368,9 +359,8 @@ public:
     DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer >",
                        local_pos.index + offset);
     // Create global pointer from unit and local offset:
-    const_pointer gptr(
-      _globmem->at(local_pos.unit, local_pos.index)
-    );
+    auto const    dart_pointer = _get_pointer_at(local_pos);
+    const_pointer gptr(*_globmem, dart_pointer);
     gptr += offset;
     return gptr;
   }
@@ -410,9 +400,9 @@ public:
     DASH_LOG_TRACE_VAR("GlobViewIter.pointer >", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobViewIter.pointer >", local_pos.index + offset);
     // Create global pointer from unit and local offset:
-    pointer gptr(
-      _globmem->at(local_pos.unit, local_pos.index)
-    );
+
+    auto const    dart_pointer = _get_pointer_at(local_pos);
+    pointer gptr(*_globmem, dart_pointer);
     gptr += offset;
     return gptr;
   }
@@ -455,11 +445,8 @@ public:
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);
     // Global pointer to element at given position:
-    const_pointer gptr(
-      _globmem->at(
-        local_pos.unit,
-        local_pos.index)
-    );
+    auto const    dart_pointer = _get_pointer_at(local_pos);
+    const_pointer gptr(*_globmem, dart_pointer);
     DASH_LOG_TRACE_VAR("GlobIter.dart_gptr >", gptr);
     return (gptr + offset).dart_gptr();
   }
@@ -508,9 +495,9 @@ public:
                    "(index:", g_index, " voffset:", _view_idx_offset, ") ->",
                    "(unit:", local_pos.unit, " index:", local_pos.index, ")");
     // Global reference to element at given position:
-    return reference(
-             _globmem->at(local_pos.unit,
-                          local_pos.index));
+
+    auto const    dart_pointer = _get_pointer_at(local_pos);
+    return reference(dart_pointer);
   }
 
   /**
@@ -537,9 +524,9 @@ public:
                    "(index:", g_index, " voffset:", _view_idx_offset, ") ->",
                    "(unit:", local_pos.unit, " index:", local_pos.index, ")");
     // Global reference to element at given position:
-    return const_reference(
-             _globmem->at(local_pos.unit,
-                          local_pos.index));
+
+    auto const dart_pointer = _get_pointer_at(local_pos);
+    return const_reference(dart_pointer);
   }
 
   /**
@@ -554,7 +541,7 @@ public:
   /**
    * Convert global iterator to native pointer.
    */
-  local_pointer local() const
+  local_type local() const
   {
     DASH_LOG_TRACE_VAR("GlobViewIter.local=()", _idx);
     typedef typename pattern_type::local_index_t
@@ -589,7 +576,9 @@ public:
       // Iterator position does not point to local element
       return nullptr;
     }
-    return (_lbegin + local_pos.index + offset);
+    return std::next(
+        static_cast<local_type>(_globmem->lbegin()),
+        local_pos.index + offset);
   }
 
   /**
@@ -932,6 +921,7 @@ public:
     return _pattern->team();
   }
 
+
 private:
   /**
    * Compare position of this global iterator to the position of another
@@ -1015,6 +1005,22 @@ private:
     DASH_LOG_TRACE_VAR("GlobViewIter.coords >", glob_coords);
     return glob_coords;
   }
+
+  dart_gptr_t _get_pointer_at(typename pattern_type::local_index_t pos) const {
+    //dart pointer to global begin
+    auto dart_pointer = static_cast<dart_gptr_t>(_globmem->begin());
+
+    //set unit
+    DASH_ASSERT_RETURNS(
+        dart_gptr_setunit(&dart_pointer, pos.unit), DART_OK);
+
+    //set offset
+    DASH_ASSERT_RETURNS(
+        dart_gptr_incaddr(&dart_pointer, pos.index * sizeof(value_type)), DART_OK);
+
+    return dart_pointer;
+  }
+
 
 }; // class GlobViewIter
 
