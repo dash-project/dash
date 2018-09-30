@@ -484,7 +484,8 @@ private:
     auto current_uid = _rbegin_gptr.unitid();
 
     // current local size
-    auto lsize = _mem_space->capacity(dart_team_unit_t{current_uid});
+    auto lsize = _mem_space->capacity(dart_team_unit_t{current_uid}) /
+                 sizeof(value_type);
 
     // current local offset
     auto ptr_offset = _rbegin_gptr.offset() / sizeof(value_type);
@@ -508,13 +509,13 @@ private:
       offs -= (lsize - ptr_offset);
 
       // first iter
-      lsize = _mem_space->capacity(current_uid);
+      lsize = _mem_space->capacity(current_uid) / sizeof(value_type);
 
       // Skip units until we have ther the correct one or the last valid unit.
       while (offs >= lsize && current_uid < (unit_end - 1)) {
         offs -= lsize;
         ++current_uid;
-        lsize = _mem_space->capacity(current_uid);
+        lsize = _mem_space->capacity(current_uid) / sizeof(value_type);
       }
 
       if (offs >= lsize && current_uid == unit_end - 1) {
@@ -575,12 +576,13 @@ private:
       offs -= ptr_offset;
 
       // first iter
-      auto lsize = _mem_space->capacity(dart_team_unit_t{current_uid});
+      auto lsize = _mem_space->capacity(dart_team_unit_t{current_uid}) /
+                   sizeof(value_type);
 
       while (offs >= lsize && current_uid > unit_begin) {
         offs -= lsize;
         --current_uid;
-        lsize = _mem_space->capacity(dart_team_unit_t{current_uid});
+        lsize = _mem_space->capacity(dart_team_unit_t{current_uid}) / sizeof(value_type);
       }
 
       if (offs > lsize) {
@@ -896,7 +898,7 @@ dash::gptrdiff_t distance(
     auto offset_begin =
         static_cast<dash::gptrdiff_t>(gbegin._rbegin_gptr.offset());
 
-    return (offset_end - offset_begin) / sizeof(value_type);
+    return (offset_end - offset_begin) / dash::gptrdiff_t{sizeof(value_type)};
   }
   // If unit of begin pointer is after unit of end pointer,
   // return negative distance with swapped argument order:
@@ -905,18 +907,24 @@ dash::gptrdiff_t distance(
   }
   // Pointers span multiple unit spaces, accumulate sizes of
   // local unit memory ranges in the pointer range:
-  index_type dist =
-      gbegin._mem_space->capacity(gbegin._rbegin_gptr.unitid()) -
-      (gbegin._rbegin_gptr.offset() / sizeof(value_type)) +
+  index_type const remaining_dist_begin_unit =
+    //remaining capacity of this unit in bytes
+      (gbegin._mem_space->capacity(gbegin._rbegin_gptr.unitid()) -
+      gbegin._rbegin_gptr.offset())
+      // get number of elements
+      / sizeof(value_type);
+
+  index_type const remaining_dist_end_unit =
       (gend._rbegin_gptr.offset() / sizeof(value_type));
 
+  //sum remainders of begin and end unit
+  index_type dist = remaining_dist_begin_unit + remaining_dist_end_unit;
+
+  //accumulate units in between
   for (auto u = ++gbegin._rbegin_gptr.unitid();
        u < gend._rbegin_gptr.unitid();
        ++u) {
-    static_assert(
-        std::is_same<dash::team_unit_t, decltype(u)>::value, "wrong type");
-
-    dist += gend._mem_space->capacity(u);
+    dist += gend._mem_space->capacity(u) / sizeof(value_type);
   }
   return dist;
 }

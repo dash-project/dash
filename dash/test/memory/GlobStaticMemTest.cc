@@ -21,7 +21,7 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
 
   globmem.allocate(globmem_local_elements.size() * sizeof(value_t), alignof(value_t));
 
-  auto *lbegin = static_cast<value_t *>(globmem.lbegin());
+  auto *lbegin = static_cast<lptr_t>(globmem.lbegin());
 
   std::uninitialized_copy(
       std::begin(globmem_local_elements),
@@ -32,6 +32,7 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
 
   DASH_LOG_DEBUG_VAR("GlobStaticMemTest", globmem.capacity());
   EXPECT_EQ_U(globmem.capacity(), 3 * dash::size() * sizeof(value_t));
+
 
   if (dash::myid() == 0) {
     auto gbegin = static_cast<gptr_t>(globmem.begin());
@@ -57,8 +58,8 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
       }
       EXPECT_EQ(gbegin, static_cast<gptr_t>(globmem.begin()) + g);
 
-      EXPECT_EQ((ngelem - g), dash::distance(gbegin, gend));
-      EXPECT_EQ(-(ngelem - g), dash::distance(gend, gbegin));
+      EXPECT_EQ((static_cast<dash::gptrdiff_t>(ngelem) - g), dash::distance(gbegin, gend));
+      EXPECT_EQ(-(static_cast<dash::gptrdiff_t>(ngelem) - g), dash::distance(gend, gbegin));
       EXPECT_EQ(gend - gbegin, dash::distance(gbegin, gend));
       EXPECT_EQ(gbegin - gend, dash::distance(gend, gbegin));
 
@@ -71,7 +72,7 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
     }
   }
 
-  dash::barrier();
+  globmem.barrier();
 
   if (dash::myid() == dash::size() - 1) {
     auto gbegin = static_cast<gptr_t>(globmem.begin());
@@ -200,6 +201,7 @@ TEST_F(GlobStaticMemTest, HBWSpaceTest)
 {
   using value_t = int;
   using memory_t = dash::GlobStaticMem<dash::HBWSpace>;
+
   //global pointer type
   using gptr_t   = typename std::pointer_traits<
       typename memory_t::void_pointer>::template rebind<value_t>;

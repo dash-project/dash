@@ -95,9 +95,9 @@ inline Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
   _ref(other._ref)
 {
   // do not free other globmem
-  //other._glob_mem = nullptr;
-  other._lbegin   = nullptr;
-  other._lend     = nullptr;
+  other._lbegin = nullptr;
+  other._lend   = nullptr;
+  other._begin  = iterator{};
 
   // Register team deallocator:
   _team->register_deallocator(
@@ -139,7 +139,7 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
   }
 
   // do not free other globmem
-  other._glob_mem = nullptr;
+  other._begin = iterator{};
   other._lbegin   = nullptr;
   other._lend     = nullptr;
   DASH_LOG_TRACE("Matrix.operator=(&&)", "Move-Assigned");
@@ -203,11 +203,14 @@ bool Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
     DASH_LOG_TRACE("Matrix.allocate()", "using specified pattern");
     _pattern = pattern;
   }
+
+
   // Copy sizes from pattern:
-  _size            = _pattern.size();
-  _team            = &(_pattern.team());
-  _lsize           = _pattern.local_size();
-  _lcapacity       = _pattern.local_capacity();
+  _size      = _pattern.size();
+  _team      = &(_pattern.team());
+  _lsize     = _pattern.local_size();
+  _lcapacity = _pattern.local_capacity();
+  _glob_mem  = std::move(std::make_unique<GlobMem_t>(pattern.team()));
   DASH_LOG_TRACE_VAR("Matrix.allocate", _size);
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lsize);
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
@@ -220,9 +223,13 @@ bool Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 
   DASH_ASSERT(allocated_ptr);
 
-  _begin           = iterator(_glob_mem.get(), _pattern);
-  _lbegin          = _begin.local();
-  _lend            = _lbegin + _lsize;
+  _begin  = iterator(_glob_mem.get(), _pattern);
+  _lbegin = static_cast<typename iterator::local_type>(_glob_mem->lbegin());
+  _lend   = std::next(_lbegin + _lsize);
+
+  if (_lsize) {
+    DASH_ASSERT(_lbegin);
+  }
   // Register team deallocator:
   _team->register_deallocator(
     this, std::bind(&Matrix::deallocate, this));
@@ -249,15 +256,18 @@ bool Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
       "Tried to allocate dash::Matrix with size 0");
   }
   if (_team == nullptr || *_team == dash::Team::Null()) {
-    DASH_LOG_TRACE("Matrix.allocate",
-                   "initializing pattern with Team::All()");
-    _team    = &team;
-    _pattern = PatternT(sizespec, distribution, teamspec, team);
-  } else {
-    DASH_LOG_TRACE("Matrix.allocate",
-                   "initializing pattern with initial team");
+    DASH_LOG_TRACE(
+        "Matrix.allocate", "initializing pattern with Team::All()");
+    _team = &team;
+    DASH_ASSERT(!_glob_mem);
+    _pattern  = PatternT(sizespec, distribution, teamspec, team);
+  }
+  else {
+    DASH_LOG_TRACE(
+        "Matrix.allocate", "initializing pattern with initial team");
     _pattern = PatternT(sizespec, distribution, teamspec, *_team);
   }
+
   return allocate(_pattern);
 }
 
@@ -277,20 +287,20 @@ void Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
     this, std::bind(&Matrix::deallocate, this));
   // Actual destruction of the array instance:
 
-  //TODO: this is not thread safe and bad style
-  //use std shared_ptr instead
-  //delete _glob_mem;
-  //avoid double free
-  //_glob_mem = nullptr;
-    //Reset global memory
-  if (_glob_mem) {
-  _glob_mem->deallocate(
-      // iterator -> pointer conversion
-      static_cast<typename iterator::pointer>(_begin),
-      // local capacity
-      _lcapacity * sizeof(value_type),
-      // alignment
-      alignof(value_type));
+  // iterator -> pointer conversion
+  auto ptr = static_cast<pointer>(_begin);
+  if (_glob_mem && ptr) {
+    _glob_mem->deallocate(
+        ptr,
+        // local capacity
+        _lcapacity * sizeof(value_type),
+        // alignment
+        alignof(value_type));
+
+    // reset the pointer
+    _begin = iterator{};
+    _lbegin = nullptr;
+    _lend = nullptr;
   }
 
   _size = 0;

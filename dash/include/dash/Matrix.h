@@ -202,9 +202,8 @@ public:
   typedef          GlobRef<value_type>                           reference;
   typedef typename GlobRef<value_type>::const_type         const_reference;
 
-  // TODO rko: use pointer traits
-  typedef typename GlobMem_t::void_pointer::template rebind<value_type>
-      pointer;
+  // TODO rko: use iterator traits
+  typedef typename iterator::pointer   pointer;
   typedef typename pointer::const_type const_pointer;
 
   typedef       ElementT *                                   local_pointer;

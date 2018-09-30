@@ -270,6 +270,10 @@ public:
    * \return  A global reference to the element at the iterator's position
    */
   explicit operator pointer() {
+    if (_globmem == nullptr) {
+      return pointer{nullptr};
+    }
+
     DASH_LOG_TRACE_VAR("GlobIter.pointer()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
@@ -300,6 +304,10 @@ public:
    */
   dart_gptr_t dart_gptr() const
   {
+    if (_globmem == nullptr) {
+      return DART_GPTR_NULL;
+    }
+
     DASH_LOG_TRACE_VAR("GlobIter.dart_gptr()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;

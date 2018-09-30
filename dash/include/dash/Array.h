@@ -675,9 +675,7 @@ public:
   typedef          GlobRef<value_type>                                 reference;
   typedef typename GlobRef<value_type>::const_type               const_reference;
 
-  //TODO: add pointer and memory traits
-  typedef typename glob_mem_type::void_pointer::template rebind<value_type>
-                                       pointer;
+  typedef typename iterator::pointer   pointer;
   typedef typename pointer::const_type const_pointer;
 
   typedef ElementType *                                            local_pointer;
@@ -929,6 +927,8 @@ public:
 
     other.m_globmem.reset();
 
+    other.m_begin = iterator{};
+    other.m_end = iterator{};
     other.m_lbegin = nullptr;
     other.m_lend   = nullptr;
 
@@ -983,7 +983,10 @@ public:
     this->m_size      = other.m_size;
     this->m_team      = other.m_team;
 
-    other.m_globmem = nullptr;
+    other.m_globmem.reset();
+    other.m_begin = iterator{};
+    other.m_end   = iterator{};
+
     other.m_lbegin  = nullptr;
     other.m_lend    = nullptr;
     other.m_lsize   = 0;
@@ -1323,6 +1326,8 @@ public:
                      "team size:", team.size());
       m_team    = &team;
       m_pattern = PatternType(nelem, distribution, team);
+      DASH_ASSERT(!m_globmem);
+      m_globmem = std::move(std::make_unique<glob_mem_type>(team));
       DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
       DASH_LOG_TRACE_VAR("Array.allocate", m_pattern.team().dart_id());
     } else {
@@ -1330,6 +1335,7 @@ public:
                      "initializing pattern with initial team");
       m_pattern = PatternType(nelem, distribution, *m_team);
     }
+    DASH_ASSERT(m_globmem);
     bool ret = allocate(m_pattern);
     DASH_LOG_TRACE("Array.allocate(nlocal,ds,team) >");
     return ret;
@@ -1401,21 +1407,27 @@ public:
     // Actual destruction of the array instance:
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem.get());
 
-    //Destroy all elements
-    if (m_globmem) {
-      destruct_at_end(m_lbegin);
-    }
-    //Reset global memory
-    m_globmem->deallocate(
-        //iterator -> pointer conversion
-        static_cast<typename iterator::pointer>(m_begin),
-        //local capacity
-        m_lcapacity * sizeof(value_type),
-        //alignment
-        alignment);
+    //iterator -> pointer conversion
+    auto ptr = static_cast<pointer>(m_begin);
 
+    if (m_globmem && ptr) {
+      //Destroy all elements
+      destruct_at_end(m_lbegin);
+      //Reset global memory
+      m_globmem->deallocate(
+          ptr,
+          //local capacity
+          m_lcapacity * sizeof(value_type),
+          //alignment
+          alignment);
+
+    }
     m_lsize = 0;
     m_size = 0;
+    m_begin = iterator{};
+    m_end = iterator{};
+    m_lbegin = nullptr;
+    m_lend = nullptr;
     DASH_LOG_TRACE_VAR("Array.deallocate >", this);
   }
 
@@ -1501,9 +1513,10 @@ private:
     auto allocated_pointer = do_allocate(pattern);
 
     // Local iterators:
-    m_lbegin    = allocated_pointer.local();
-    // More efficient than using m_globmem->lend as this a second mapping
-    // of the local memory segment:
+    m_lbegin = static_cast<typename decltype(allocated_pointer)::local_type>(
+        m_globmem->lbegin());
+
+    //m_lend will be properly set in construct_at_end...
     m_lend      = m_lbegin;
 
     //construct all elements and properly set m_lend
@@ -1536,10 +1549,12 @@ public:
     if (&m_pattern != &pattern) {
       DASH_LOG_TRACE("Array.allocate()", "using specified pattern");
       m_pattern = pattern;
+      m_globmem = std::move(std::make_unique<glob_mem_type>(pattern.team()));
     }
     auto allocated_pointer = do_allocate(pattern);
     // Local iterators:
-    m_lbegin = allocated_pointer.local();
+    m_lbegin = static_cast<typename decltype(allocated_pointer)::local_type>(
+        m_globmem->lbegin());
     // More efficient than using m_globmem->lend as this a second mapping
     // of the local memory segment:
     m_lend = std::next(m_lbegin, m_lsize);
