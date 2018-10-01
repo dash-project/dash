@@ -562,8 +562,8 @@ ValueType * copy(
                   num_local_elem * sizeof(ValueType));
       out_last = out_first + num_local_elem;
     } else {
-      ValueType * l_in_first = in_first.local();
-      ValueType * l_in_last  = l_in_first + num_local_elem;
+      auto * l_in_first = in_first.local();
+      auto * l_in_last  = l_in_first + num_local_elem;
       out_last = std::copy(l_in_first,
                            l_in_last,
                            out_first);
@@ -642,8 +642,8 @@ ValueType * copy(
     //     ^          ^           ^          ^
     //     in_first   l_in_first  l_in_last  in_last
     //
-    ValueType * l_in_first = g_l_in_first.local();
-    ValueType * l_in_last  = l_in_first + num_local_elem;
+    auto * l_in_first = g_l_in_first.local();
+    auto * l_in_last  = l_in_first + num_local_elem;
     DASH_LOG_TRACE_VAR("dash::copy", l_in_first);
     DASH_LOG_TRACE_VAR("dash::copy", l_in_last);
     // Verify conversion of global input iterators to local pointers:

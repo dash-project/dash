@@ -220,6 +220,12 @@ public:
   void deallocate(
       pointer gptr, size_type /*nbytes*/, size_type alignment = max_align)
   {
+
+    //In case of nullpointer early return
+    if (!gptr) {
+      return;
+    }
+
     DASH_ASSERT_MSG(
         DART_GPTR_EQUAL(gptr.dart_gptr(), m_begin),
         "invalid pointer to deallocate");

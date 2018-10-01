@@ -90,7 +90,7 @@ public:
    * Destructor, frees shared memory.
    */
   ~Shared() {
-    if (m_owner == m_team->myid()) {
+    if (m_globmem && m_owner == m_team->myid()) {
       m_globmem->deallocate(m_glob_pointer, sizeof(element_t), alignof(element_t));
       m_glob_pointer = pointer_t{};
     }

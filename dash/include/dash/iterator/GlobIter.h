@@ -158,7 +158,7 @@ public:
   : _globmem(gmem),
     _pattern(&pat),
     _idx(position),
-    _max_idx(pat.size() - 1)
+    _max_idx(std::max(index_type(pat.size()) - 1, index_type(0)))
   { }
 
   /**

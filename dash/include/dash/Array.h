@@ -1407,10 +1407,10 @@ public:
     // Actual destruction of the array instance:
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem.get());
 
-    //iterator -> pointer conversion
-    auto ptr = static_cast<pointer>(m_begin);
+    if (m_globmem && (m_begin != m_end)) {
+      //iterator -> pointer conversion
+      auto ptr = static_cast<pointer>(m_begin);
 
-    if (m_globmem && ptr) {
       //Destroy all elements
       destruct_at_end(m_lbegin);
       //Reset global memory

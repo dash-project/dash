@@ -286,9 +286,10 @@ void Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
     this, std::bind(&Matrix::deallocate, this));
   // Actual destruction of the array instance:
 
-  // iterator -> pointer conversion
-  auto ptr = static_cast<pointer>(_begin);
-  if (_glob_mem && ptr) {
+  if (_glob_mem && _size > 0) {
+    // iterator -> pointer conversion
+    auto ptr = static_cast<pointer>(_begin);
+
     _glob_mem->deallocate(
         ptr,
         // local capacity
