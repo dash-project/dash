@@ -225,7 +225,7 @@ bool Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 
   _begin  = iterator(_glob_mem.get(), _pattern);
   _lbegin = static_cast<typename iterator::local_type>(_glob_mem->lbegin());
-  _lend   = std::next(_lbegin + _lsize);
+  _lend   = std::next(_lbegin, _lsize);
 
   if (_lsize) {
     DASH_ASSERT(_lbegin);
@@ -259,7 +259,6 @@ bool Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
     DASH_LOG_TRACE(
         "Matrix.allocate", "initializing pattern with Team::All()");
     _team = &team;
-    DASH_ASSERT(!_glob_mem);
     _pattern  = PatternT(sizespec, distribution, teamspec, team);
   }
   else {
