@@ -191,7 +191,7 @@ struct multiply
 };
 
 /**
- * Returns second operand. Used as replace reduce operation
+ * Returns first operand. Used as no-op reduce operation
  *
  * \see      dart_operation_t::DART_OP_REPLACE
  *
