@@ -845,7 +845,7 @@ public:
     DASH_LOG_TRACE("Array(nglobal,lvals,dist,team)()",
                    "size:",   nelem,
                    "nlocal:", local_elements.size());
-    allocate(m_pattern, local_elements);
+    allocate(local_elements);
     DASH_LOG_TRACE("Array(nglobal,lvals,dist,team) >");
   }
 
@@ -1386,7 +1386,7 @@ public:
                      "initializing pattern with initial team");
       m_pattern = PatternType(nelem, distribution, *m_team);
     }
-    bool ret = allocate(m_pattern, local_elements);
+    bool ret = allocate(local_elements);
     DASH_LOG_TRACE("Array.allocate(lvals,ds,team) >");
     return ret;
   }
@@ -1474,43 +1474,42 @@ private:
     m_lend = new_last;
   }
 
-  pointer do_allocate(const PatternType & pattern) {
+  pointer do_allocate() {
     // Check requested capacity:
-    m_size = pattern.capacity();
-    m_team = &pattern.team();
+    m_size = m_pattern.capacity();
+    m_team = &m_pattern.team();
     if (m_size == 0) {
       DASH_LOG_WARN("Array.allocate", "allocating dash::Array with size 0");
     }
     // Initialize members:
-    m_lsize     = pattern.local_size();
-    m_lcapacity = pattern.local_capacity();
-    m_myid      = pattern.team().myid();
+    m_lsize     = m_pattern.local_size();
+    m_lcapacity = m_pattern.local_capacity();
+    m_myid      = m_pattern.team().myid();
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_myid);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
 
     auto allocated_ptr = static_cast<pointer>(m_globmem->allocate(
-        pattern.local_size() * sizeof(value_type), alignment));
+        m_pattern.local_size() * sizeof(value_type), alignment));
 
     DASH_ASSERT(allocated_ptr);
 
     // Global iterators:
-    m_begin = iterator(m_globmem.get(), pattern);
+    m_begin = iterator(m_globmem.get(), m_pattern);
     m_end   = iterator(m_begin) + m_size;
     return allocated_ptr;
   }
 
   bool allocate(
-    const PatternType                 & pattern,
     std::initializer_list<value_type>   local_elements)
   {
     DASH_LOG_TRACE("< Array.allocate", "finished");
 
     DASH_ASSERT_EQ(
-        pattern.local_size(), local_elements.size(), "invalid arguments");
+        m_pattern.local_size(), local_elements.size(), "invalid arguments");
 
-    auto allocated_pointer = do_allocate(pattern);
+    auto allocated_pointer = do_allocate();
 
     // Local iterators:
     m_lbegin = static_cast<typename decltype(allocated_pointer)::local_type>(
@@ -1551,7 +1550,7 @@ public:
       m_pattern = pattern;
       m_globmem = std::move(std::make_unique<glob_mem_type>(pattern.team()));
     }
-    auto allocated_pointer = do_allocate(pattern);
+    auto allocated_pointer = do_allocate();
     // Local iterators:
     m_lbegin = static_cast<typename decltype(allocated_pointer)::local_type>(
         m_globmem->lbegin());
