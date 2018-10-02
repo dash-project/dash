@@ -210,16 +210,14 @@ bool Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
   _team      = &(_pattern.team());
   _lsize     = _pattern.local_size();
   _lcapacity = _pattern.local_capacity();
-  _glob_mem  = std::move(std::make_unique<GlobMem_t>(pattern.team()));
+  _glob_mem  = std::move(std::make_unique<GlobMem_t>(_pattern.team()));
   DASH_LOG_TRACE_VAR("Matrix.allocate", _size);
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lsize);
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
   // Allocate and initialize memory
   // use _lcapacity as the collective allocator requires symmetric allocations
-  DASH_ASSERT(_glob_mem);
-
   auto allocated_ptr = static_cast<pointer>(_glob_mem->allocate(
-      pattern.local_size() * sizeof(value_type), alignof(T)));
+      _pattern.local_size() * sizeof(value_type), alignof(T)));
 
   DASH_ASSERT(allocated_ptr);
 
