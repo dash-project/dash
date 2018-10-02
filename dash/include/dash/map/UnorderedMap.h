@@ -16,9 +16,9 @@
 #include <dash/map/UnorderedMapLocalRef.h>
 #include <dash/map/UnorderedMapLocalIter.h>
 #include <dash/map/UnorderedMapGlobIter.h>
+#include <dash/Pair.h>
 
 #include <iterator>
-#include <utility>
 #include <limits>
 #include <vector>
 #include <functional>
@@ -78,7 +78,7 @@ template<
   typename Hash    = dash::HashLocal<Key>,
   typename Pred    = std::equal_to<Key>,
   typename Alloc   = dash::allocator::EpochSynchronizedAllocator<
-                       std::pair<const Key, Mapped> > >
+                       dash::Pair<const Key, Mapped> > >
 class UnorderedMap
 {
   static_assert(
@@ -109,7 +109,7 @@ public:
   typedef dash::default_index_t                                   index_type;
   typedef dash::default_index_t                              difference_type;
   typedef dash::default_size_t                                     size_type;
-  typedef std::pair<const key_type, mapped_type>                  value_type;
+  typedef dash::Pair<const key_type, mapped_type>                 value_type;
 
   typedef UnorderedMapLocalRef<Key, Mapped, Hash, Pred, Alloc>    local_type;
 
@@ -511,7 +511,7 @@ public:
   {
     DASH_LOG_TRACE("UnorderedMap.[]()", "key:", key);
     iterator      git_value   = insert(
-                                   std::make_pair(key, mapped_type()))
+                                   dash::make_pair(key, mapped_type()))
                                 .first;
     DASH_LOG_TRACE_VAR("UnorderedMap.[]", git_value);
     dart_gptr_t   gptr_mapped = git_value.dart_gptr();
@@ -610,14 +610,14 @@ public:
   // Modifiers
   //////////////////////////////////////////////////////////////////////////
 
-  std::pair<iterator, bool> insert(
+  dash::Pair<iterator, bool> insert(
     /// The element to insert.
     const value_type & value)
   {
     auto && key = value.first;
     DASH_LOG_TRACE("UnorderedMap.insert()", "key:", key);
 
-    auto result = std::make_pair(_end, false);
+    auto result = dash::make_pair(_end, false);
 
     DASH_ASSERT(_globmem != nullptr);
     // Look up existing element at given key:
@@ -730,7 +730,7 @@ private:
    * Using `std::declval()` instead (to generate a compile-time
    * pseudo-instance for member resolution) only works if Key and Mapped
    * are default-constructible.
-   * 
+   *
    * Finally, the distance obtained from
    *
    *   &(lptr_value->second) - lptr_value
@@ -784,7 +784,7 @@ private:
   /**
    * Insert value at specified unit.
    */
-  std::pair<iterator, bool> _insert_at(
+  dash::Pair<iterator, bool> _insert_at(
     team_unit_t        unit,
     /// The element to insert.
     const value_type & value)
@@ -792,7 +792,7 @@ private:
     DASH_LOG_TRACE("UnorderedMap._insert_at()",
                    "unit:",   unit,
                    "key:",    value.first);
-    auto result = std::make_pair(_end, false);
+    auto result = dash::make_pair(_end, false);
     // Increase local size first to reserve storage for the new element.
     // Use atomic increment to prevent hazard when other units perform
     // remote insertion at the local unit:

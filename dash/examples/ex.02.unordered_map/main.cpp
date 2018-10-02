@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
   for (auto i = 0; i < num_add_elem; i++) {
     key_t    key    = 100 * (myid+1) + i;
     mapped_t mapped = 1.000 * (myid+1) + ((i+1) * 0.001);
-    value_t  value  = std::make_pair(key, mapped);
+    value_t  value  = dash::make_pair(key, mapped);
 
     // Satisfies map concept as specified in STL
     auto insertion   = map.insert(value);
