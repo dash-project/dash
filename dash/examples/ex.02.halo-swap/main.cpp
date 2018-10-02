@@ -86,7 +86,6 @@ int main(int argc, char * argv[])
   dash::init(&argc, &argv);
 
   auto myid = dash::myid();
-  auto size = dash::size();
 
   size_t tilex = 6;
   size_t tiley = 4;

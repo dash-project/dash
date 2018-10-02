@@ -46,10 +46,10 @@ void write_pgm(const std::string & filename, const Array_t & data){
 //    std::vector<element_t> buffer(ext_x);
 
     for(long y=0; y<ext_y; ++y){
-      auto first = data.begin()+ext_x*y; 
-      auto last  = data.begin()+(ext_x*(y+1));
 
 //      BUG!!!!
+//      auto first = data.begin()+ext_x*y; 
+//      auto last  = data.begin()+(ext_x*(y+1));
 //      dash::copy(first, last, buffer.data());
 
       for(long x=0; x<ext_x; ++x){

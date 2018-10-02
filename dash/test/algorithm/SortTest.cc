@@ -222,7 +222,6 @@ TEST_F(SortTest, MatrixBlockedRow)
   using narray_t =
       dash::NArray<value_t, 2, dash::default_index_t, block_pat_t>;
 
-  size_t team_size = dash::Team::All().size();
   size_t extent_x  = std::sqrt(num_local_elem) * dash::size();
   size_t extent_y  = extent_x;
 
@@ -288,8 +287,6 @@ static void perform_test(GlobIter begin, GlobIter end)
   auto const l_range = dash::local_index_range(begin, end);
 
   auto l_mem_begin = begin.globmem().lbegin();
-
-  auto const n_l_elem = l_range.end - l_range.begin;
 
   auto const lbegin = l_mem_begin + l_range.begin;
   auto const lend   = l_mem_begin + l_range.end;

@@ -260,7 +260,6 @@ double test_raw_gups(
 
   auto a_size   = a.size();
   auto ts_start = Timer::Now();
-  auto myid     = dash::myid();
   for (auto i = 0; i < REPEAT; ++i) {
     int l_idx = 0;
     for (auto g_idx = 0; g_idx < a_size; ++g_idx) {

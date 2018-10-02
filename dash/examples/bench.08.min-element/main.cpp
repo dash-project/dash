@@ -199,8 +199,6 @@ measurement perform_test(
 
   dash::Shared<IndexType> min_lidx_exp;
 
-  double duration_us;
-
 #ifdef LOAD_BALANCE
   dash::util::TeamLocality tloc(dash::Team::All());
   PatternType pattern(

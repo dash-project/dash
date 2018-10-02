@@ -308,9 +308,6 @@ dash::Future<ValueType *> copy_async(
   if (num_local_elem == total_copy_elem) {
     // Entire input range is local:
     DASH_LOG_TRACE("dash::copy_async", "entire input range is local");
-    ValueType * l_out_last = out_first + total_copy_elem;
-    ValueType * l_in_first = in_first.local();
-    ValueType * l_in_last  = l_in_first + total_copy_elem;
 
     // Use memcpy for data ranges below 64 KB
     if (use_memcpy) {

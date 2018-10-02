@@ -73,7 +73,6 @@ TEST_F(CSRPatternTest, CopyGlobalToLocal) {
 
   typedef int value_t;
 
-  auto   myid   = dash::myid();
   auto & team   = dash::Team::All();
   auto   nunits = team.size();
 
@@ -87,7 +86,6 @@ TEST_F(CSRPatternTest, CopyGlobalToLocal) {
     local_sizes.push_back(tmp);
     sum += tmp;
   }
-  auto max_local_size = local_sizes.back();
 
   DASH_LOG_DEBUG_VAR("CSRPatternTest.InitArray", local_sizes);
 

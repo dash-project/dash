@@ -760,8 +760,6 @@ public:
     std::array<IndexType, NumDimensions> phase_coords;
     // Coordinates of the block containing the element:
     std::array<IndexType, NumDimensions> block_coords;
-    // Local coordinates of the block containing the element:
-    std::array<IndexType, NumDimensions> l_block_coords;
     for (auto d = 0; d < NumDimensions; ++d) {
       auto vs_coord     = global_coords[d];
       phase_coords[d]   = vs_coord % _blocksize_spec.extent(d);
@@ -1036,8 +1034,6 @@ public:
     std::array<IndexType, NumDimensions> phase_coords;
     // Coordinates of the block containing the element:
     std::array<IndexType, NumDimensions> block_coords;
-    // Local coordinates of the block containing the element:
-    std::array<IndexType, NumDimensions> l_block_coords;
     for (auto d = 0; d < NumDimensions; ++d) {
       auto vs_coord     = global_coords[d];
       phase_coords[d]   = vs_coord % _blocksize_spec.extent(d);

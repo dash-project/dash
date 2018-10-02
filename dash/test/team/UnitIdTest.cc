@@ -16,6 +16,7 @@ TEST_F(UnitIdTest, TypeCompatibility)
 
   dash::team_unit_t   l_uid { 12 };
   dash::global_unit_t g_uid { 12 };
+  ASSERT_EQ_U(l_uid.id, g_uid.id);
 
   // this must fail to compile
   //   l_uid = g_uid;

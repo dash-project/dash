@@ -56,7 +56,6 @@ make_team_spec(
     return teamspec;
   }
 
-  auto n_elem_total = sizespec.size();
   // Configure preferable blocking factors:
   std::set<extent_t> blocking;
   if (n_nodes == 1) {

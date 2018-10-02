@@ -86,7 +86,6 @@ reduce(
 {
   using value_t    = typename std::iterator_traits<LocalInputIter>::value_type;
   using local_result_t = struct dash::internal::local_result<value_t>;
-  auto myid        = team.myid();
   auto l_first     = in_first;
   auto l_last      = in_last;
 

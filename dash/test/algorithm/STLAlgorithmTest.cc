@@ -90,7 +90,7 @@ TEST_F(STLAlgorithmTest, StdCopyGlobalToGlobal) {
     auto a_first = array_a.begin();
     auto b_first = array_b.begin();
     while (a_first != array_a.end()) {
-      *b_first++ == *a_first++;
+      ASSERT_EQ_U(*b_first++ == *a_first++, true);
     }
     DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal", array_b);
 

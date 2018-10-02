@@ -275,8 +275,6 @@ GlobOutputIt transform(
 {
   using iterator_traits = dash::iterator_traits<InputIt>;
   DASH_LOG_DEBUG("dash::transform(gaf, gal, gbf, goutf, binop)");
-  auto in_first = in_a_first;
-  auto in_last  = in_a_last;
 
   if (in_b_first == out_first) {
     // Output range is rhs input range: C += A

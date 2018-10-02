@@ -93,7 +93,6 @@ int main(int argc, char** argv)
   print_params(bench_params, params);
   print_measurement_header();
 
-  int     multiplier = 1;
   int          round = 0;
   std::array<std::string, 5> testcases {{
                             "dart_allreduce.minmax",
@@ -171,9 +170,6 @@ measurement evaluate(int reps, std::string testcase, benchmark_params params)
       auto&    team = dash::Team::All();
       shared_t g_min(std::numeric_limits<value_t>::max(), dash::team_unit_t{0}, team);
       shared_t g_max(std::numeric_limits<value_t>::min(), dash::team_unit_t{0}, team);
-
-      auto const start_min = static_cast<value_t>(g_min.get());
-      auto const start_max = static_cast<value_t>(g_max.get());
 
       team.barrier();
 

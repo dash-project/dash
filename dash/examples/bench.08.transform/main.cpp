@@ -200,8 +200,6 @@ measurement perform_test(
 
   dash::Shared<IndexType> min_lidx_exp;
 
-  double duration_us;
-
 #ifdef LOAD_BALANCE
   dash::util::TeamLocality tloc(dash::Team::All());
   PatternType pattern(
@@ -238,6 +236,7 @@ measurement perform_test(
                                     arr_b.begin(),
                                     arr_c.begin(),
                                     dash::plus<ElementType>());
+    dash__unused(min_git);
     auto time_us  = Timer::ElapsedSince(ts_start);
 
     if (REPEAT == 1 || i == 1) {

@@ -111,8 +111,6 @@ int main(int argc, char *argv[])
 
   const auto &lview = halomat.view_local();
   auto offset = lview.extent(1);
-  long inner_start = offset + 1;
-  long inner_end = lview.extent(0) * (offset - 1) - 1;
 
   current_halo->matrix().barrier();
 
@@ -125,7 +123,6 @@ int main(int argc, char *argv[])
     current_halo->update_async();
 
     // optimized calculation of inner matrix elements
-    auto* current_begin = current_matrix.lbegin();
     auto* new_begin = new_matrix.lbegin();
 #if 0
     for (auto i = inner_start; i < inner_end; i += offset) {

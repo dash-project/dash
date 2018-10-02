@@ -49,7 +49,6 @@ void print_matrix_2(const MatrixT & matrix) {
 template<class MatrixT>
 void print_matrix_3(const MatrixT & matrix) {
   typedef typename MatrixT::value_type value_t;
-  auto rows = matrix.extent(0);
   auto cols = matrix.extent(1);
 
   cout << "print with global iterator:" << endl;
@@ -66,7 +65,6 @@ void print_matrix_3(const MatrixT & matrix) {
 
 template<class MatrixT>
 void print_matrix_4(const MatrixT & matrix) {
-  auto rows = matrix.extent(0);
   auto cols = matrix.extent(1);
 
   cout << "print _L_ocal/_R_emote with global iterator:" << endl;

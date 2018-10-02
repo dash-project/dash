@@ -37,7 +37,6 @@ TEST_F(ReduceTest, SimpleStart) {
 
 
 TEST_F(ReduceTest, OpMult) {
-  const size_t num_elem_local = 1;
   using value_t = uint64_t;
   size_t num_elem_total       = std::max(static_cast<size_t>(32), dash::size());
   value_t value = 2, start = 10;
@@ -106,10 +105,6 @@ TEST_F(ReduceTest, SimpleStruct) {
 
 
 TEST_F(ReduceTest, StringConcatOperaton) {
-  const size_t num_elem_local = 100;
-  size_t num_elem_total       = _dash_size * num_elem_local;
-  auto value = 2;
-
   // Create a vector
   dash::Array<int> target(4);
   target[0] = 1;

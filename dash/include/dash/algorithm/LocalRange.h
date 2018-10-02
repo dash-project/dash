@@ -315,7 +315,6 @@ local_range(
     return LocalRange<const value_t> { nullptr, nullptr };
   }
   // Local start address from global memory:
-  const auto& pattern = first.pattern();
   auto lbegin  = first.globmem().lbegin();
   // Add local offsets to local start address:
   if (lbegin == nullptr) {

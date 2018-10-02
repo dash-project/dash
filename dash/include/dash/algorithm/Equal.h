@@ -60,7 +60,6 @@ namespace internal {
         "invalid iterator: Need to be a global iterator");
 
     auto& team = first_1.team();
-    auto  myid = team.myid();
     // Global iterators to local range:
     auto index_range_in  = dash::local_range(first_1, last_1);
     auto l_first_1       = index_range_in.begin;
@@ -76,17 +75,17 @@ namespace internal {
       l_result = ::dash::internal::equal_loc_impl(
           l_first_1, l_last_1, first_2.local());
     } else if(common_dist > 0) {
-    l_result = ::dash::internal::equal_overlapping_impl(
-        first_1, last_1, first_2);
-  }
+      l_result = ::dash::internal::equal_overlapping_impl(
+          first_1, last_1, first_2);
+    }
 
-  char r_result         = 0;
+    char r_result         = 0;
 
-  DASH_ASSERT_RETURNS(
-    dart_allreduce(&l_result, &r_result, 1,
-      DART_TYPE_BYTE, DART_OP_BAND, team.dart_id()),
-    DART_OK);
-  return r_result;
+    DASH_ASSERT_RETURNS(
+       dart_allreduce(&l_result, &r_result, 1,
+        DART_TYPE_BYTE, DART_OP_BAND, team.dart_id()),
+      DART_OK);
+    return r_result;
 }
 
 /**

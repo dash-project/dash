@@ -1076,7 +1076,6 @@ TEST_F(MatrixTest, UnderfilledBlockedPatternExtents)
   typedef dash::default_extent_t   extent_t;
   typedef dash::default_index_t     index_t;
 
-  dart_unit_t myid= dash::myid();
   auto numunits = dash::Team::All().size();
 
   dash::TeamSpec<2> teamspec( numunits, 1 );
@@ -1098,10 +1097,11 @@ TEST_F(MatrixTest, UnderfilledBlockedPatternExtents)
   auto lw = (corner[1] + matrix.local.extent(1) < w )
                ? matrix.local.extent(1)
                : w - corner[1];
+  dash__unused(lw);
   auto lh = (corner[0] + matrix.local.extent(0) < h )
                ? matrix.local.extent(0)
                : h - corner[0];
-
+  dash__unused(lh);
   EXPECT_LE_U( corner[1] + matrix.local.extent(1), w );
   EXPECT_LE_U( corner[0] + matrix.local.extent(0), h );
 }
@@ -1178,8 +1178,6 @@ TEST_F(MatrixTest, MatrixLBegin)
 
   dash::fill(matrix.begin(), matrix.end(), myid);
   matrix.barrier();
-
-  int * l_first = matrix.lbegin();
 
   EXPECT_EQ_U(myid, static_cast<int>(*(matrix.lbegin())));
   EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.block(0).begin())));
@@ -1466,8 +1464,6 @@ TEST_F(MatrixTest, LocalMatrixRefs)
   using value_t = unsigned int;
   using uint    = unsigned int;
 
-  uint myid = static_cast<uint>(dash::Team::GlobalUnitID().id);
-
   const uint nelts = 40;
 
   dash::NArray<value_t, 2> mat(nelts, nelts);
@@ -1566,10 +1562,11 @@ TEST_F(MatrixTest, SubViewMatrix3Dim)
                                         matrix[0].end()));
   
   if (dash::myid().id == 0) {
-  int visited = 0;
+    int visited = 0;
     for (auto it = matrix[0].begin(); it != matrix[0].end();
          ++it, ++visited) {
       double val = *it;
+      dash__unused(val);
     }
     EXPECT_EQ_U(visited, sub_0_size);
   }

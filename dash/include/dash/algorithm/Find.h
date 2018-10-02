@@ -43,12 +43,9 @@ GlobIter find(
   auto index_range   = dash::local_index_range(first, last);
   auto l_begin_index = index_range.begin;
   auto l_end_index   = index_range.end;
-  auto first_offset  = first.pos();
   if(l_begin_index == l_end_index){
     g_index = std::numeric_limits<p_index_t>::max();
   } else {
-   auto g_begin_index = pattern.global(l_begin_index);
-
     // Pointer to first element in local memory:
     const ElementType * lbegin        = first.globmem().lbegin();
     // Pointers to first / final element in local range:

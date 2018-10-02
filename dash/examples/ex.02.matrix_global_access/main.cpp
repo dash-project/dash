@@ -51,7 +51,6 @@ int main(int argc, char * argv[])
     dash::Team::All(), teamspec_2d );
 
   if (0 == myid) {
-    auto it = matrix.begin();
     for (size_t i = 0; i < w; ++i) {
       for (size_t k = 0; k < h; ++k) {
         matrix[i][k] = 100;

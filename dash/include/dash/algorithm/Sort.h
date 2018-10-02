@@ -155,8 +155,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   using array_t = dash::Array<std::size_t>;
 
-  std::size_t gsize = nunits * NLT_NLE_BLOCK * 2;
-
   // implicit barrier...
   array_t g_partition_data(nunits * nunits * 3, dash::BLOCKED, team);
   std::uninitialized_fill(

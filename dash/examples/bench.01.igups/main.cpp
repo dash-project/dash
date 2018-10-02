@@ -418,7 +418,6 @@ double test_dash_local_pointer(
 
   Timer timer;
   auto lbegin = a.lbegin();
-  auto lend   = a.lend();
 
   for (unsigned i = 0; i < REPEAT; ++i) {
     for (unsigned j = 0; j < ELEM_PER_UNIT; ++j) {

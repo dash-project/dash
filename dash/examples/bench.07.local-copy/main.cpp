@@ -121,10 +121,6 @@ int main(int argc, char** argv)
   size_t num_local_cores = uloc.node_domain().num_cores();
   // Number of physical cores in a single NUMA domain (7 on SuperMUC):
   size_t numa_node_cores = num_local_cores / num_numa_nodes;
-  // Number of physical cores on a single socket (14 on SuperMUC):
-  size_t socket_cores    = numa_node_cores * 2;
-  // Number of processing nodes:
-  size_t num_nodes       = dash::util::Locality::NumNodes();
 
   dash::util::BenchmarkParams bench_params("bench.07.local-copy");
   bench_params.print_header();
@@ -513,7 +509,6 @@ void print_measurement_record(
   if (dash::myid() == 0) {
     std::string mpi_impl = dash__toxstr(DASH_MPI_IMPL_ID);
     size_t block_n     = size / dash::size();
-    size_t g_size_kb   = (size * sizeof(ElementType)) / 1024;
     size_t block_kb    = (block_n * sizeof(ElementType)) / 1024;
     double mbps        = measurement.mb_per_s;
     double init_s      = measurement.time_init_s;

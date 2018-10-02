@@ -118,7 +118,6 @@ inline const std::vector<std::size_t> psort__local_histogram(
 {
   DASH_LOG_TRACE("< psort__local_histogram");
 
-  auto const nborders = splitters.size();
   // The first element is 0 and the last element is the total number of local
   // elements in this unit
   auto const sz = splitters.size() + 1;

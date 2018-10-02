@@ -196,9 +196,7 @@ double test_view_gups(
 
   auto lbegin_gidx = a.pattern().global(0);
 
-  auto a_size   = a.size();
   auto ts_start = Timer::Now();
-  auto myid     = pattern.team().myid();
 
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto lidx = 0; lidx < a.lsize(); ++lidx) {
@@ -242,9 +240,7 @@ double test_algo_gups(
 
   auto lbegin_gidx = a.pattern().global(0);
 
-  auto a_size   = a.size();
   auto ts_start = Timer::Now();
-  auto myid     = pattern.team().myid();
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto lidx = 1; lidx < a.lsize(); ++lidx) {
       auto lrange       = dash::local_index_range(

@@ -417,7 +417,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
         set_target_properties(
           ${exampletarget} PROPERTIES
           COMPILE_FLAGS
-          "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused"
+          "${VARIANT_ADDITIONAL_COMPILE_FLAGS}"
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
@@ -471,7 +471,7 @@ if (BUILD_TESTS)
       set_target_properties(
         ${DASH_TEST} PROPERTIES
         COMPILE_FLAGS
-        "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused -Wno-sign-compare"
+        "${VARIANT_ADDITIONAL_COMPILE_FLAGS}"
       )
       set_target_properties(
         ${DASH_TEST} PROPERTIES

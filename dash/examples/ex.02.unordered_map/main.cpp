@@ -100,7 +100,6 @@ int main(int argc, char* argv[])
   dash::init(&argc, &argv);
 
   dart_unit_t myid = dash::myid();
-  size_t num_units = dash::Team::All().size();
 
   // Number of preallocated elements:
   size_type init_global_size  = 0;

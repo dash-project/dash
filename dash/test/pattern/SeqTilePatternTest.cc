@@ -28,7 +28,6 @@ TEST_F(SeqTilePatternTest, Distribute2DimTile)
   // Choose 'inconvenient' extents:
   size_t block_rows   = 3;
   size_t block_cols   = 2;
-  size_t block_size   = block_rows * block_cols;
   size_t size_rows    = (team_size+1) * 3 * block_rows;
   size_t size_cols    = (team_size-1) * 2 * block_cols;
   size_t size         = size_rows * size_cols;
