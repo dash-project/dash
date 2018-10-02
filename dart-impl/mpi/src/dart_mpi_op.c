@@ -106,7 +106,7 @@ dart_ret_t dart__mpi__op_init()
 
 const char* dart__mpi__op_name(dart_operation_t op)
 {
-  DART_ASSERT(op >= DART_OP_UNDEFINED && op < DART_OP_LAST);
+  DART_ASSERT(op < DART_OP_LAST);
   return dart_op_names[op];
 }
 
@@ -239,7 +239,7 @@ static struct dart_operation_struct * get_op(MPI_Datatype mpi_type)
 
   if (elem == NULL) {
     DART_LOG_ERROR("Unknown MPI datatype %p for custom operation detected!",
-                   mpi_type);
+                   (void*)mpi_type);
   }
   dart__base__mutex_unlock(&hash_mtx);
 
