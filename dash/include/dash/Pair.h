@@ -1,7 +1,7 @@
 #ifndef DASH_DASH_INCLUDE_DASH_PAIR_H_
 #define DASH_DASH_INCLUDE_DASH_PAIR_H_
 
-#include <dash/Meta.h>
+#include <dash/meta/TypeInfo.h>
 
 #include <type_traits>
 #include <iostream>
@@ -24,8 +24,8 @@ namespace dash {
     typedef T1 first_type;    /// @c first_type is the first bound type
     typedef T2 second_type;   /// @c second_type is the second bound type
 
-    T1 first;                 /// @c first is a copy of the first object
-    T2 second;                /// @c second is a copy of the second object
+    first_type  first;                 /// @c first is a copy of the first object
+    second_type second;                /// @c second is a copy of the second object
 
     /**
      * The default constructor.
@@ -87,10 +87,7 @@ namespace dash {
     operator=(const Pair& p) = default;
 
     Pair&
-    operator=(Pair&& p)
-    noexcept(
-        std::is_nothrow_move_assignable<T1>::value &&
-        std::is_nothrow_move_assignable<T2>::value) = default;
+    operator=(Pair&& p) = default;
 
     template<class U1, class U2>
     Pair&
@@ -139,8 +136,8 @@ namespace dash {
   inline constexpr bool
   operator<(const Pair<T1, T2>& x, const Pair<T1, T2>& y)
   {
-    return  x.first < y.first
-      || (!(y.first < x.first) && !(x.second >= y.second));
+    return  (((x.first) < (y.first))
+      || (!((y.first) < (x.first)) && !(x.second >= y.second)));
   }
 
   /**
