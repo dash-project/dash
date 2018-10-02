@@ -244,6 +244,8 @@ public:
   using rebind =
       GlobHeapMem<U, LocalMemorySpace, AllocationPolicy, LocalAlloc>;
 
+  using local_void_pointer = void *;
+
 private:
   typedef typename std::list<bucket_type>                       bucket_list;
   typedef typename bucket_list::iterator                    bucket_iterator;
