@@ -240,7 +240,8 @@ dart__mpi__datatype_convert_mpi(
       break;
     default:
       // should not happen!
-      DART_ASSERT_MSG(NULL, "Unknown DART type detected!");
+      DART_ASSERT_MSG(!(dts->kind > DART_KIND_CUSTOM),
+                      "Unknown DART type detected!");
   }
 }
 
