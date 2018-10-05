@@ -54,17 +54,6 @@ private:
   : GlobRef(gptr.dart_gptr())
   { }
 
-  /**
-   * PRIVATE: Constructor, creates an GlobRef object referencing an element in global
-   * memory.
-   */
-  template<class ElementT, class MemSpaceT>
-  explicit constexpr GlobRef(
-    /// Pointer to referenced object in global memory
-    const GlobConstPtr<ElementT, MemSpaceT> & gptr)
-  : GlobRef(gptr.dart_gptr())
-  { }
-
 public:
   /**
    * Reference semantics forbid declaration without definition.

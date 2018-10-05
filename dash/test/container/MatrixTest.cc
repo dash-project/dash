@@ -662,12 +662,14 @@ TEST_F(MatrixTest, ViewIteration)
 
       using glob_it_t   = decltype(matrix.begin());
       using glob_ptr_t  = typename glob_it_t::pointer;
-      using glob_cptr_t = typename glob_it_t::glob_const_ptr;
 
       // Apply view projection by converting to GlobPtr:
       glob_ptr_t  block_elem_gptr = static_cast<glob_ptr_t>(b_it);
+
       // Compare with GlobPtr from global iterator without view projection:
-      glob_cptr_t glob_elem_gptr(matrix[gcoord_y][gcoord_x].dart_gptr());
+      glob_ptr_t glob_elem_gptr(
+          matrix.begin().globmem(), matrix[gcoord_y][gcoord_x].dart_gptr());
+
       int block_value = *block_elem_gptr;
       int glob_value  = *glob_elem_gptr;
 
@@ -1669,4 +1671,3 @@ TEST_F(MatrixTest, LocalDiagonal){
     ASSERT_EQ_U(value_sub, unit);
   }
 }
-
