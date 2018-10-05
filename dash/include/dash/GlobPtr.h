@@ -1,6 +1,11 @@
 #ifndef DASH__GLOB_PTR_H_
 #define DASH__GLOB_PTR_H_
 
+#include <cstddef>
+#include <iostream>
+#include <numeric>
+#include <sstream>
+
 #include <dash/dart/if/dart.h>
 
 #include <dash/Exception.h>
@@ -13,9 +18,6 @@
 
 #include <dash/memory/MemorySpaceBase.h>
 
-#include <cstddef>
-#include <iostream>
-#include <sstream>
 
 std::ostream &operator<<(std::ostream &os, const dart_gptr_t &dartptr);
 
@@ -34,7 +36,7 @@ class GlobPtr;
 
 template <class T, class MemSpaceT>
 dash::gptrdiff_t distance(
-    const GlobPtr<T, MemSpaceT> &gbegin, const GlobPtr<T, MemSpaceT> &gend);
+    GlobPtr<T, MemSpaceT> gbegin, GlobPtr<T, MemSpaceT> gend);
 
 namespace internal {
 static bool is_local(dart_gptr_t gptr)
@@ -89,7 +91,7 @@ public:
 
   template <class T, class MemSpaceT>
   friend dash::gptrdiff_t distance(
-      const GlobPtr<T, MemSpaceT> &gbegin, const GlobPtr<T, MemSpaceT> &gend);
+      GlobPtr<T, MemSpaceT> gbegin, GlobPtr<T, MemSpaceT> gend);
 
 private:
   // Raw global pointer used to initialize this pointer instance
@@ -665,10 +667,7 @@ std::ostream &operator<<(std::ostream &os, const GlobPtr<T, MemSpaceT> &gptr)
  * of distance between \c GlobPtr<T> and \c GlobPtr<const T>.
  * The pointer value types must have identical size.
  *
- * \todo
- * Validate compatibility of memory space types using memory space traits
- * once they are available.
- *
+*
  * \return  Number of elements in the range between the first and second
  *          global pointer
  *
@@ -677,56 +676,79 @@ std::ostream &operator<<(std::ostream &os, const GlobPtr<T, MemSpaceT> &gptr)
 template <class T, class MemSpaceT>
 dash::gptrdiff_t distance(
     // First global pointer in range
-    const GlobPtr<T, MemSpaceT> &gbegin,
+    GlobPtr<T, MemSpaceT> gbegin,
     // Final global pointer in range
-    const GlobPtr<T, MemSpaceT> &gend)
+    GlobPtr<T, MemSpaceT> gend)
 {
-  using index_type = dash::gptrdiff_t;
-  using val_type_b = typename std::decay<decltype(gbegin)>::type::value_type;
-  using val_type_e = typename std::decay<decltype(gend)>::type::value_type;
-  using value_type = val_type_b;
+  using index_type = typename GlobPtr<T, MemSpaceT>::index_type;
+  using value_type = T;
 
-  static_assert(
-      sizeof(val_type_b) == sizeof(val_type_e),
-      "value types of global pointers are not compatible for dash::distance");
+  DASH_ASSERT_EQ(
+      gbegin.m_dart_pointer.teamid,
+      gend.m_dart_pointer.teamid,
+      "cannot calculate difference between two pointers which do not belong "
+      "to the same DART segment");
 
-  // Both pointers in same unit space:
-  if (gbegin.m_dart_pointer.unitid == gend.m_dart_pointer.unitid ||
-      gbegin.m_mem_space == nullptr) {
-    auto offset_end =
-        static_cast<dash::gptrdiff_t>(gend.m_dart_pointer.addr_or_offs.offset);
-    auto offset_begin =
-        static_cast<dash::gptrdiff_t>(gbegin.m_dart_pointer.addr_or_offs.offset);
+  DASH_ASSERT_EQ(
+      gbegin.m_dart_pointer.segid,
+      gend.m_dart_pointer.segid,
+      "cannot calculate difference between two pointers which do not belong "
+      "to the same DART segment");
 
-    return (offset_end - offset_begin) / dash::gptrdiff_t{sizeof(value_type)};
-  }
+  bool is_reverse = false;
   // If unit of begin pointer is after unit of end pointer,
   // return negative distance with swapped argument order:
   if (gbegin.m_dart_pointer.unitid > gend.m_dart_pointer.unitid) {
-    return -(dash::distance(gend, gbegin));
+    std::swap(gbegin, gend);
+    is_reverse=true;
+  } else if (gbegin.m_dart_pointer.unitid == gend.m_dart_pointer.unitid ||
+      gbegin.m_mem_space == nullptr) {
+    // Both pointers in same unit space:
+    auto offset_end =
+        static_cast<index_type>(gend.m_dart_pointer.addr_or_offs.offset);
+    auto offset_begin =
+        static_cast<index_type>(gbegin.m_dart_pointer.addr_or_offs.offset);
+
+    return (offset_end - offset_begin) / static_cast<index_type>(sizeof(value_type));
   }
+
+  auto const & mem_space = *(gbegin.m_mem_space);
+
   // Pointers span multiple unit spaces, accumulate sizes of
   // local unit memory ranges in the pointer range:
-  index_type const remaining_dist_begin_unit =
-    //remaining capacity of this unit in bytes
-      (gbegin.m_mem_space->capacity(dash::team_unit_t{gbegin.m_dart_pointer.unitid}) -
-      gbegin.m_dart_pointer.addr_or_offs.offset)
+  index_type const capacity_unit_begin = mem_space.capacity(
+      dash::team_unit_t{gbegin.m_dart_pointer.unitid});
+
+  index_type const remainder_unit_begin =
+      // remaining capacity of this unit in bytes
+      (capacity_unit_begin - gbegin.m_dart_pointer.addr_or_offs.offset)
       // get number of elements
       / sizeof(value_type);
 
-  index_type const remaining_dist_end_unit =
+  index_type const remainder_unit_end =
       (gend.m_dart_pointer.addr_or_offs.offset / sizeof(value_type));
 
   //sum remainders of begin and end unit
-  index_type dist = remaining_dist_begin_unit + remaining_dist_end_unit;
+  index_type dist = remainder_unit_begin + remainder_unit_end;
 
-  //accumulate units in between
-  for (auto u = static_cast<dash::team_unit_t>(gbegin.m_dart_pointer.unitid + 1);
-       u < gend.m_dart_pointer.unitid;
-       ++u) {
-    dist += gend.m_mem_space->capacity(u) / sizeof(value_type);
+  if (gend.m_dart_pointer.unitid - gbegin.m_dart_pointer.unitid > 1) {
+    // accumulate units in between
+    std::vector<dash::team_unit_t> units_in_between(
+        gend.m_dart_pointer.unitid - gbegin.m_dart_pointer.unitid - 1);
+    std::iota(
+        std::begin(units_in_between),
+        std::end(units_in_between),
+        dash::team_unit_t{gbegin.m_dart_pointer.unitid + 1});
+
+    dist = std::accumulate(
+        std::begin(units_in_between),
+        std::end(units_in_between),
+        dist,
+        [&mem_space](const index_type &total, const dash::team_unit_t &unit) {
+          return total + mem_space.capacity(unit) / sizeof(value_type);
+        });
   }
-  return dist;
+  return is_reverse ? -dist : dist;
 }
 
 }  // namespace dash
