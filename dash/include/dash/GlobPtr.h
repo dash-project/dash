@@ -93,9 +93,9 @@ public:
 
 private:
   // Raw global pointer used to initialize this pointer instance
-  dart_gptr_t _rbegin_gptr = DART_GPTR_NULL;
+  dart_gptr_t m_dart_pointer = DART_GPTR_NULL;
   // Memory space refernced by this global pointer
-  const GlobMemT *_mem_space{nullptr};
+  const GlobMemT *m_mem_space{nullptr};
 
 protected:
   /**
@@ -105,8 +105,8 @@ protected:
    * space reference.
    */
   GlobPtr(const GlobMemT *mem_space, dart_gptr_t gptr, index_type rindex = 0)
-    : _rbegin_gptr(gptr)
-    , _mem_space(mem_space)
+    : m_dart_pointer(gptr)
+    , m_mem_space(mem_space)
   {
     if (rindex < 0) {
       decrement(-rindex);
@@ -126,8 +126,8 @@ public:
    * Constructor, specifies underlying global address.
    */
   GlobPtr(const GlobMemT &mem_space, dart_gptr_t gptr)
-    : _rbegin_gptr(gptr)
-    , _mem_space(&mem_space)
+    : m_dart_pointer(gptr)
+    , m_mem_space(&mem_space)
   {
   }
 
@@ -135,8 +135,8 @@ public:
    * Constructor for conversion of std::nullptr_t.
    */
   explicit constexpr GlobPtr(std::nullptr_t)
-    : _rbegin_gptr(DART_GPTR_NULL)
-    , _mem_space(nullptr)
+    : m_dart_pointer(DART_GPTR_NULL)
+    , m_mem_space(nullptr)
   {
   }
 
@@ -173,8 +173,8 @@ public:
 
       ::type>
   constexpr GlobPtr(const GlobPtr<From, GlobMemT> &other)
-    : _rbegin_gptr(other._rbegin_gptr)
-    , _mem_space(reinterpret_cast<const GlobMemT *>(other._mem_space))
+    : m_dart_pointer(other.m_dart_pointer)
+    , m_mem_space(reinterpret_cast<const GlobMemT *>(other.m_mem_space))
   {
   }
 
@@ -184,8 +184,8 @@ public:
   template <typename T, class MemSpaceT>
   self_t &operator=(const GlobPtr<T, MemSpaceT> &other)
   {
-    _rbegin_gptr = other._rbegin_gptr;
-    _mem_space   = reinterpret_cast<const GlobMemT *>(other._mem_space);
+    m_dart_pointer = other.m_dart_pointer;
+    m_mem_space   = reinterpret_cast<const GlobMemT *>(other.m_mem_space);
     return *this;
   }
 
@@ -226,7 +226,7 @@ public:
    */
   explicit constexpr operator dart_gptr_t() const noexcept
   {
-    return _rbegin_gptr;
+    return m_dart_pointer;
   }
 
   /**
@@ -234,7 +234,7 @@ public:
    */
   constexpr dart_gptr_t dart_gptr() const noexcept
   {
-    return _rbegin_gptr;
+    return m_dart_pointer;
   }
 
   /**
@@ -338,8 +338,8 @@ public:
   constexpr bool operator==(const GlobPtrT &other) const noexcept
   {
     return DART_GPTR_EQUAL(
-        static_cast<dart_gptr_t>(_rbegin_gptr),
-        static_cast<dart_gptr_t>(other._rbegin_gptr));
+        static_cast<dart_gptr_t>(m_dart_pointer),
+        static_cast<dart_gptr_t>(other.m_dart_pointer));
   }
 
   /**
@@ -347,7 +347,7 @@ public:
    */
   constexpr bool operator==(std::nullptr_t) const noexcept
   {
-    return DART_GPTR_ISNULL(static_cast<dart_gptr_t>(_rbegin_gptr));
+    return DART_GPTR_ISNULL(static_cast<dart_gptr_t>(m_dart_pointer));
   }
 
   /**
@@ -437,7 +437,7 @@ public:
   value_type *local()
   {
     void *addr = 0;
-    if (dart_gptr_getaddr(_rbegin_gptr, &addr) == DART_OK) {
+    if (dart_gptr_getaddr(m_dart_pointer, &addr) == DART_OK) {
       return static_cast<value_type*>(addr);
     }
     return nullptr;
@@ -453,7 +453,7 @@ public:
   const value_type *local() const
   {
     void *addr = 0;
-    if (dart_gptr_getaddr(_rbegin_gptr, &addr) == DART_OK) {
+    if (dart_gptr_getaddr(m_dart_pointer, &addr) == DART_OK) {
       return static_cast<const value_type *>(addr);
     }
     return nullptr;
@@ -464,7 +464,7 @@ public:
    */
   void set_unit(team_unit_t unit_id)
   {
-    DASH_ASSERT_RETURNS(dart_gptr_setunit(&_rbegin_gptr, unit_id), DART_OK);
+    DASH_ASSERT_RETURNS(dart_gptr_setunit(&m_dart_pointer, unit_id), DART_OK);
   }
 
   /**
@@ -473,12 +473,12 @@ public:
    */
   bool is_local() const
   {
-    return dash::internal::is_local(_rbegin_gptr);
+    return dash::internal::is_local(m_dart_pointer);
   }
 
   constexpr explicit operator bool() const noexcept
   {
-    return !DART_GPTR_ISNULL(_rbegin_gptr);
+    return !DART_GPTR_ISNULL(m_dart_pointer);
   }
 
 private:
@@ -488,30 +488,30 @@ private:
 
   void do_increment(size_type offs, memory_space_contiguous)
   {
-    if (_mem_space == nullptr || *this >= _mem_space->end()) {
+    if (m_mem_space == nullptr || *this >= m_mem_space->end()) {
       return;
     }
 
-    auto current_uid = _rbegin_gptr.unitid;
+    auto current_uid = m_dart_pointer.unitid;
 
     // current local size
-    auto lsize = _mem_space->capacity(dart_team_unit_t{current_uid}) /
+    auto lsize = m_mem_space->capacity(dart_team_unit_t{current_uid}) /
                  sizeof(value_type);
 
     // current local offset
-    auto ptr_offset = _rbegin_gptr.addr_or_offs.offset / sizeof(value_type);
+    auto ptr_offset = m_dart_pointer.addr_or_offs.offset / sizeof(value_type);
 
     // unit at global end points to (last_unit + 1, 0)
-    auto const unit_end = _mem_space->end()._rbegin_gptr.unitid;
+    auto const unit_end = m_mem_space->end().m_dart_pointer.unitid;
 
     if (offs + ptr_offset < lsize) {
       // Case A: Pointer position still in same unit space:
-      _rbegin_gptr.addr_or_offs.offset += offs * sizeof(value_type);
+      m_dart_pointer.addr_or_offs.offset += offs * sizeof(value_type);
     }
     else if (++current_uid >= unit_end) {
       // We are iterating beyond the end
-      _rbegin_gptr.addr_or_offs.offset = 0;
-      _rbegin_gptr.unitid = current_uid;
+      m_dart_pointer.addr_or_offs.offset = 0;
+      m_dart_pointer.unitid = current_uid;
     }
     else {
       // Case B: jump across units and find the correct local offset
@@ -521,14 +521,14 @@ private:
 
       // first iter
       lsize =
-          _mem_space->capacity(static_cast<dash::team_unit_t>(current_uid)) /
+          m_mem_space->capacity(static_cast<dash::team_unit_t>(current_uid)) /
           sizeof(value_type);
 
       // Skip units until we have ther the correct one or the last valid unit.
       while (offs >= lsize && current_uid < (unit_end - 1)) {
         offs -= lsize;
         ++current_uid;
-        lsize = _mem_space->capacity(
+        lsize = m_mem_space->capacity(
                     static_cast<dash::team_unit_t>(current_uid)) /
                 sizeof(value_type);
       }
@@ -550,8 +550,8 @@ private:
             current_uid, unit_end, "current_uid must equal unit_end");
       }
 
-      _rbegin_gptr.addr_or_offs.offset = offs * sizeof(value_type);
-      _rbegin_gptr.unitid = current_uid;
+      m_dart_pointer.addr_or_offs.offset = offs * sizeof(value_type);
+      m_dart_pointer.unitid = current_uid;
     }
   }
   void increment(size_type offs)
@@ -563,26 +563,26 @@ private:
 
   void do_decrement(size_type offs, memory_space_contiguous)
   {
-    if (_mem_space == nullptr || *this <= _mem_space->begin()) {
+    if (m_mem_space == nullptr || *this <= m_mem_space->begin()) {
       return;
     }
 
-    auto current_uid = _rbegin_gptr.unitid;
+    auto current_uid = m_dart_pointer.unitid;
 
     // current local offset
-    auto ptr_offset = _rbegin_gptr.addr_or_offs.offset / sizeof(value_type);
+    auto ptr_offset = m_dart_pointer.addr_or_offs.offset / sizeof(value_type);
 
     // unit at global begin
-    auto const unit_begin = _mem_space->begin()._rbegin_gptr.unitid;
+    auto const unit_begin = m_mem_space->begin().m_dart_pointer.unitid;
 
     if (ptr_offset >= offs) {
       // Case A: Pointer position still in same unit space
-      _rbegin_gptr.addr_or_offs.offset -= offs * sizeof(value_type);
+      m_dart_pointer.addr_or_offs.offset -= offs * sizeof(value_type);
     }
     else if (--current_uid < unit_begin) {
       // We iterate beyond the begin
-      _rbegin_gptr.addr_or_offs.offset = 0;
-      _rbegin_gptr.unitid = DART_UNDEFINED_UNIT_ID;
+      m_dart_pointer.addr_or_offs.offset = 0;
+      m_dart_pointer.unitid = DART_UNDEFINED_UNIT_ID;
     }
     else {
       // Case B: jump across units and find the correct local offset
@@ -591,13 +591,13 @@ private:
       offs -= ptr_offset;
 
       // first iter
-      auto lsize = _mem_space->capacity(dart_team_unit_t{current_uid}) /
+      auto lsize = m_mem_space->capacity(dart_team_unit_t{current_uid}) /
                    sizeof(value_type);
 
       while (offs >= lsize && current_uid > unit_begin) {
         offs -= lsize;
         --current_uid;
-        lsize = _mem_space->capacity(dart_team_unit_t{current_uid}) / sizeof(value_type);
+        lsize = m_mem_space->capacity(dart_team_unit_t{current_uid}) / sizeof(value_type);
       }
 
       if (offs > lsize) {
@@ -618,8 +618,8 @@ private:
         offs = lsize - offs;
       }
 
-      _rbegin_gptr.addr_or_offs.offset = offs * sizeof(value_type);
-      _rbegin_gptr.unitid = current_uid;
+      m_dart_pointer.addr_or_offs.offset = offs * sizeof(value_type);
+      m_dart_pointer.unitid = current_uid;
     }
   }
 
@@ -645,11 +645,11 @@ std::ostream &operator<<(std::ostream &os, const GlobPtr<T, MemSpaceT> &gptr)
   sprintf(
       buf,
       "u%06X|f%02X|s%04X|t%04X|o%016lX",
-      gptr._rbegin_gptr.unitid,
-      gptr._rbegin_gptr.flags,
-      gptr._rbegin_gptr.segid,
-      gptr._rbegin_gptr.teamid,
-      gptr._rbegin_gptr.addr_or_offs.offset);
+      gptr.m_dart_pointer.unitid,
+      gptr.m_dart_pointer.flags,
+      gptr.m_dart_pointer.segid,
+      gptr.m_dart_pointer.teamid,
+      gptr.m_dart_pointer.addr_or_offs.offset);
   ss << "dash::GlobPtr<" << typeid(T).name() << ">(" << buf << ")";
   return operator<<(os, ss.str());
 }
@@ -691,40 +691,40 @@ dash::gptrdiff_t distance(
       "value types of global pointers are not compatible for dash::distance");
 
   // Both pointers in same unit space:
-  if (gbegin._rbegin_gptr.unitid == gend._rbegin_gptr.unitid ||
-      gbegin._mem_space == nullptr) {
+  if (gbegin.m_dart_pointer.unitid == gend.m_dart_pointer.unitid ||
+      gbegin.m_mem_space == nullptr) {
     auto offset_end =
-        static_cast<dash::gptrdiff_t>(gend._rbegin_gptr.addr_or_offs.offset);
+        static_cast<dash::gptrdiff_t>(gend.m_dart_pointer.addr_or_offs.offset);
     auto offset_begin =
-        static_cast<dash::gptrdiff_t>(gbegin._rbegin_gptr.addr_or_offs.offset);
+        static_cast<dash::gptrdiff_t>(gbegin.m_dart_pointer.addr_or_offs.offset);
 
     return (offset_end - offset_begin) / dash::gptrdiff_t{sizeof(value_type)};
   }
   // If unit of begin pointer is after unit of end pointer,
   // return negative distance with swapped argument order:
-  if (gbegin._rbegin_gptr.unitid > gend._rbegin_gptr.unitid) {
+  if (gbegin.m_dart_pointer.unitid > gend.m_dart_pointer.unitid) {
     return -(dash::distance(gend, gbegin));
   }
   // Pointers span multiple unit spaces, accumulate sizes of
   // local unit memory ranges in the pointer range:
   index_type const remaining_dist_begin_unit =
     //remaining capacity of this unit in bytes
-      (gbegin._mem_space->capacity(dash::team_unit_t{gbegin._rbegin_gptr.unitid}) -
-      gbegin._rbegin_gptr.addr_or_offs.offset)
+      (gbegin.m_mem_space->capacity(dash::team_unit_t{gbegin.m_dart_pointer.unitid}) -
+      gbegin.m_dart_pointer.addr_or_offs.offset)
       // get number of elements
       / sizeof(value_type);
 
   index_type const remaining_dist_end_unit =
-      (gend._rbegin_gptr.addr_or_offs.offset / sizeof(value_type));
+      (gend.m_dart_pointer.addr_or_offs.offset / sizeof(value_type));
 
   //sum remainders of begin and end unit
   index_type dist = remaining_dist_begin_unit + remaining_dist_end_unit;
 
   //accumulate units in between
-  for (auto u = static_cast<dash::team_unit_t>(gbegin._rbegin_gptr.unitid + 1);
-       u < gend._rbegin_gptr.unitid;
+  for (auto u = static_cast<dash::team_unit_t>(gbegin.m_dart_pointer.unitid + 1);
+       u < gend.m_dart_pointer.unitid;
        ++u) {
-    dist += gend._mem_space->capacity(u) / sizeof(value_type);
+    dist += gend.m_mem_space->capacity(u) / sizeof(value_type);
   }
   return dist;
 }

@@ -244,13 +244,17 @@ TEST_F(GlobStaticMemTest, MakeUnique)
   auto ptr = dash::make_unique<value_t>(&globmem, 10);
 
   EXPECT_TRUE_U(ptr);
-  auto gptr = ptr.get();
 
   static_assert(
-      std::is_same<decltype(gptr), gptr_t>::value,
+      std::is_same<decltype(ptr.get()), gptr_t>::value,
       "invalid pointer type");
 
+  auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
+  EXPECT_EQ_U(reg.lookup(static_cast<dart_gptr_t>(ptr.get())), &globmem);
+
   ptr.reset();
+
+  EXPECT_EQ_U(reg.lookup(static_cast<dart_gptr_t>(ptr.get())), nullptr);
 
   //we can compare both unique_ptr and dash::GlobPtr with a nullptr_t
   EXPECT_EQ_U(ptr, nullptr);

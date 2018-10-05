@@ -664,7 +664,7 @@ public:
   typedef typename std::make_unsigned<IndexType>::type                 size_type;
   typedef typename std::make_unsigned<IndexType>::type           difference_type;
 
-  typedef dash::GlobStaticMem<LocalMemSpaceT>          glob_mem_type;
+  typedef dash::GlobStaticMem<LocalMemSpaceT>                      glob_mem_type;
 
   typedef GlobIter<      value_type, PatternType, glob_mem_type>        iterator;
   typedef GlobIter<const value_type, PatternType, glob_mem_type>  const_iterator;
@@ -675,11 +675,11 @@ public:
   typedef          GlobRef<value_type>                                 reference;
   typedef typename GlobRef<value_type>::const_type               const_reference;
 
-  typedef typename iterator::pointer   pointer;
-  typedef typename pointer::const_type const_pointer;
+  typedef typename iterator::pointer                                     pointer;
+  typedef typename pointer::const_type                             const_pointer;
 
-  typedef ElementType *                                            local_pointer;
-  typedef ElementType const *                                const_local_pointer;
+  typedef typename pointer::local_type                             local_pointer;
+  typedef typename pointer::const_local_type                 const_local_pointer;
 
   typedef DistributionSpec<1>                                  distribution_spec;
 

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <dash/Types.h>
+#include <dash/dart/if/dart_globmem.h>
 
 namespace dash {
 
@@ -28,6 +29,11 @@ public:
   bool    add(key_t key, value_t value);
   value_t lookup(key_t key) const noexcept;
   void    erase(key_t key);
+
+  inline value_t lookup(dart_gptr_t pointer) const noexcept
+  {
+    return lookup(std::make_pair(pointer.teamid, pointer.segid));
+  }
 
 private:
   static std::unique_ptr<MemorySpaceRegistry> m_instance;

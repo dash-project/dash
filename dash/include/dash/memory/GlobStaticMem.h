@@ -418,7 +418,13 @@ GlobStaticMem<LMemSpace>::do_allocate(size_type nbytes, size_type alignment)
       DART_OK);
 
   m_lbegin = alloc_rec.first;
-  m_lend   = static_cast<char *>(m_lbegin) + nbytes;
+  m_lend   = static_cast<unsigned char *>(m_lbegin) + nbytes;
+
+
+  //add this instance to the global memory space registry
+  auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
+  reg.add(std::make_pair(m_begin.teamid, m_begin.segid), this);
+
 
   return void_pointer(*this, m_begin);
 }
@@ -465,6 +471,9 @@ inline void GlobStaticMem<LMemSpace>::do_deallocate(
         nbytes,
         alignment);
   }
+
+  auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
+  reg.erase(std::make_pair(m_begin.teamid, m_begin.segid));
 
   m_begin  = DART_GPTR_NULL;
   m_lbegin = nullptr;
