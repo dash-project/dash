@@ -168,7 +168,14 @@ endif()
 # See https://en.cppreference.com/w/cpp/compiler_support for 
 # minimum versions
 # Set C++ compiler flags:
-if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
+
+# CMAKE prior to 3.10 detects IBM's XL as Clang.
+# Check for the __ibmxl__ macro instead
+CHECK_SYMBOL_EXISTS("__ibmxl__" "" HAVE_XLC_COMPILER)
+if(HAVE_XLC_COMPILER)
+  set (CXX_STD_FLAG "-std=c++${DASH_CXX_STD_PREFERED}"
+       CACHE STRING "C++ compiler std flag")
+elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
   set (CXX_STD_FLAG "--std=c++${DASH_CXX_STD_PREFERED}"
        CACHE STRING "C++ compiler std flag")
@@ -220,7 +227,10 @@ if(OPENMP_FOUND)
 endif()
 
 # Set C compiler flags:
-if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang")
+if(HAVE_XLC_COMPILER)
+  set (CC_STD_FLAG "-std=c${DART_C_STD_PREFERED}"
+       CACHE STRING "C compiler std flag")
+elseif ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
   set (CC_STD_FLAG "--std=c${DART_C_STD_PREFERED}"
        CACHE STRING "C compiler std flag")
