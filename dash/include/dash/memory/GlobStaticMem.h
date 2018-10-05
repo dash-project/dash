@@ -103,11 +103,6 @@ class GlobStaticMem : public MemorySpace<
       synchronization_collective,
       typename memory_traits::memory_space_type_category>;
 
-  using pointer             = dash::GlobPtr<void, GlobStaticMem>;
-  using const_pointer       = dash::GlobPtr<const void, GlobStaticMem>;
-  using local_pointer       = void*;
-  using const_local_pointer = const void *;
-
 public:
   using memory_space_domain_category =
       typename base_t::memory_space_domain_category;
@@ -124,10 +119,10 @@ public:
 
   using allocator_type = cpp17::pmr::polymorphic_allocator<byte>;
 
-  using void_pointer             = pointer;
-  using const_void_pointer       = const_pointer;
-  using local_void_pointer       = local_pointer;
-  using const_local_void_pointer = const_local_pointer;
+  using void_pointer             = dash::GlobPtr<void, GlobStaticMem>;
+  using const_void_pointer       = dash::GlobPtr<const void, GlobStaticMem>;
+  using local_void_pointer       = void*;
+  using const_local_void_pointer = const void *;
 
 public:
   //GlobStaticMem() = delete;
@@ -149,35 +144,35 @@ public:
     return m_local_sizes.at(uid);
   }
 
-  local_pointer lbegin() noexcept
+  local_void_pointer lbegin() noexcept
   {
     return m_lbegin;
   }
-  const_local_pointer lbegin() const noexcept
+  const_local_void_pointer lbegin() const noexcept
   {
     return m_lbegin;
   }
 
-  local_pointer lend() noexcept
+  local_void_pointer lend() noexcept
   {
     return m_lend;
   }
 
-  const_local_pointer lend() const noexcept
+  const_local_void_pointer lend() const noexcept
   {
     return m_lend;
   }
 
-  pointer begin() noexcept
+  void_pointer begin() noexcept
   {
-    return pointer(*this, m_begin);
+    return void_pointer(*this, m_begin);
   }
-  const_pointer begin() const noexcept
+  const_void_pointer begin() const noexcept
   {
-    return const_pointer(*this, m_begin);
+    return const_void_pointer(*this, m_begin);
   }
 
-  pointer end() noexcept
+  void_pointer end() noexcept
   {
     auto soon_to_be_end = m_begin;
     // unitId points one past the last unit
@@ -185,9 +180,9 @@ public:
     // reset local offset to 0
     soon_to_be_end.addr_or_offs.offset = 0;
 
-    return pointer(*this, soon_to_be_end);
+    return void_pointer(*this, soon_to_be_end);
   }
-  const_pointer end() const noexcept
+  const_void_pointer end() const noexcept
   {
     auto soon_to_be_end = m_begin;
     // unitId points one past the last unit
@@ -195,10 +190,10 @@ public:
     // reset local offset to 0
     soon_to_be_end.addr_or_offs.offset = 0;
 
-    return const_pointer(*this, soon_to_be_end);
+    return const_void_pointer(*this, soon_to_be_end);
   }
 
-  pointer allocate(size_type nbytes, size_type alignment = max_align)
+  void_pointer allocate(size_type nbytes, size_type alignment = max_align)
   {
     if (DART_GPTR_ISNULL(m_begin)) {
       return do_allocate(nbytes, alignment);
@@ -214,11 +209,11 @@ public:
           m_alignment,
           "alignment does not match the originally requested alignment");
     }
-    return pointer(*this, m_begin);
+    return void_pointer(*this, m_begin);
   }
 
   void deallocate(
-      pointer gptr, size_type /*nbytes*/, size_type alignment = max_align)
+      void_pointer gptr, size_type /*nbytes*/, size_type alignment = max_align)
   {
 
     //In case of nullpointer early return
@@ -295,51 +290,6 @@ public:
     dart_flush_local(gptr);
   }
 
-#if 0
-
-  /**
-   * Resolve the global pointer from an element position in a unit's
-   * local memory.
-   */
-  template <typename IndexType>
-  pointer at(
-      /// The unit id
-      team_unit_t unit,
-      /// The unit's local address offset
-      IndexType local_index) const
-  {
-    DASH_LOG_DEBUG("MemorySpace.at(unit,l_idx)", unit, local_index);
-    if (m_team->size() == 0 || DART_GPTR_ISNULL(m_begin)) {
-      DASH_LOG_DEBUG(
-          "MemorySpace.at(unit,l_idx) >", "global memory not allocated");
-      return pointer(nullptr);
-    }
-    // Initialize with global pointer to start address:
-    dart_gptr_t gptr = m_begin;
-    // Resolve global unit id
-    DASH_LOG_TRACE_VAR("MemorySpace.at (=g_begptr)", gptr);
-    DASH_LOG_TRACE_VAR("MemorySpace.at", gptr.unitid);
-    team_unit_t lunit{gptr.unitid};
-    DASH_ASSERT_EQ(gptr.unitid, 0, "invalid global begin pointer");
-    DASH_ASSERT_RANGE(
-        0, lunit.id, m_team->size() - 1, "invalid global begin pointer");
-    DASH_LOG_TRACE_VAR("MemorySpace.at", lunit);
-    // lunit = (lunit + unit) % _team->size();
-    lunit = lunit + unit;
-
-    DASH_LOG_TRACE_VAR("MemorySpace.at", lunit);
-    // Apply global unit to global pointer:
-    dart_gptr_setunit(&gptr, lunit);
-    // increment locally only
-    gptr.addr_or_offs.offset += local_index * sizeof(value_type);
-    // Apply local offset to global pointer:
-    pointer res_gptr(*this, gptr);
-    DASH_LOG_DEBUG("MemorySpace.at (+g_unit) >", res_gptr);
-    return res_gptr;
-  }
-
-#endif
-
 private:
   dash::Team const*          m_team{};
   allocator_type             m_allocator{};
@@ -349,14 +299,14 @@ private:
   // Uniform Initialization does not work in G++ 4.9.x
   // This is why we have to use C-Style Initializer Initialization
   dart_gptr_t   m_begin = DART_GPTR_NULL;
-  local_pointer m_lbegin{nullptr};
-  local_pointer m_lend{nullptr};
+  local_void_pointer m_lbegin{nullptr};
+  local_void_pointer m_lend{nullptr};
   // global size across all units in bytes
   mutable size_type m_size{std::numeric_limits<size_type>::max()};
 
 private:
-  pointer do_allocate(size_type nbytes, size_type alignment);
-  void    do_deallocate(pointer gptr, size_type nbytes, size_type alignment);
+  void_pointer do_allocate(size_type nbytes, size_type alignment);
+  void    do_deallocate(void_pointer gptr, size_type nbytes, size_type alignment);
 };
 
 ///////////// Implementation ///////////////////
@@ -427,7 +377,7 @@ inline GlobStaticMem<LMemSpace>& GlobStaticMem<LMemSpace>::operator=(
 }
 
 template <class LMemSpace>
-inline typename GlobStaticMem<LMemSpace>::pointer
+inline typename GlobStaticMem<LMemSpace>::void_pointer
 GlobStaticMem<LMemSpace>::do_allocate(size_type nbytes, size_type alignment)
 {
   if (!DART_GPTR_ISNULL(m_begin)) {
@@ -467,10 +417,10 @@ GlobStaticMem<LMemSpace>::do_allocate(size_type nbytes, size_type alignment)
           m_team->dart_id()),
       DART_OK);
 
-  m_lbegin = static_cast<local_pointer>(alloc_rec.first);
-  m_lend   = static_cast<uint8_t *>(m_lbegin) + nbytes;
+  m_lbegin = alloc_rec.first;
+  m_lend   = static_cast<char *>(m_lbegin) + nbytes;
 
-  return pointer(*this, m_begin);
+  return void_pointer(*this, m_begin);
 }
 
 template <class LMemSpace>
@@ -490,7 +440,7 @@ inline GlobStaticMem<LMemSpace>::~GlobStaticMem()
 
 template <class LMemSpace>
 inline void GlobStaticMem<LMemSpace>::do_deallocate(
-    pointer gptr, size_type nbytes, size_type alignment)
+    void_pointer gptr, size_type nbytes, size_type alignment)
 {
   DASH_LOG_DEBUG("< MemorySpace.do_deallocate");
 

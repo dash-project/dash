@@ -86,7 +86,7 @@ public:
     }
   }
 
-  void * local()
+  void *local()
   {
     void *addr = 0;
     if (dart_gptr_getaddr(m_dart_gptr, &addr) == DART_OK) {

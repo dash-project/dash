@@ -49,8 +49,7 @@ MemorySpace<memory_domain_global, memory_space_host_tag>*
 get_default_memory_space<memory_domain_global, memory_space_host_tag>();
 
 template <typename T>
-GlobPtr<T, GlobLocalMemoryPool<dash::HostSpace>> memalloc(
-    size_t nelem)
+GlobPtr<T, GlobLocalMemoryPool<dash::HostSpace>> memalloc(size_t nelem)
 {
   using memory_t = GlobLocalMemoryPool<dash::HostSpace>;
 
@@ -67,8 +66,7 @@ GlobPtr<T, GlobLocalMemoryPool<dash::HostSpace>> memalloc(
 
 template <class T>
 void memfree(
-    GlobPtr<T, GlobLocalMemoryPool<dash::HostSpace>> gptr,
-    size_t                                                    nels)
+    GlobPtr<T, GlobLocalMemoryPool<dash::HostSpace>> gptr, size_t nels)
 {
   using memory_t = GlobLocalMemoryPool<dash::HostSpace>;
 
@@ -79,6 +77,53 @@ void memfree(
   DASH_ASSERT_MSG(mspace, "invalid default memory space");
 
   mspace->deallocate(gptr, nels * sizeof(T), alignof(T));
+}
+
+template <class T, class MemorySpaceT>
+class DefaultGlobPtrDeleter {
+  using size_type = typename MemorySpaceT::size_type;
+
+  MemorySpaceT* m_resource{};
+  size_type     m_count{};
+
+public:
+  using pointer = typename MemorySpaceT::void_pointer::template rebind<T>;
+
+  DefaultGlobPtrDeleter() = default;
+
+  DefaultGlobPtrDeleter(MemorySpaceT* resource, size_type count)
+    : m_resource(resource)
+    , m_count(count)
+  {
+  }
+
+  void operator()(pointer gptr)
+  {
+    if (m_resource && m_count) {
+      m_resource->deallocate(gptr, sizeof(T) * m_count, alignof(T));
+    }
+  }
+};
+
+template <class T, class MemorySpaceT>
+auto make_unique(
+    MemorySpaceT* resource, typename MemorySpaceT::size_type count)
+    -> std::unique_ptr<T, dash::DefaultGlobPtrDeleter<T, MemorySpaceT>>
+{
+  // Unique pointer to handle deallocation of underlying resource
+  using value_t      = T;
+  using memory_t     = MemorySpaceT;
+  using deleter_t    = dash::DefaultGlobPtrDeleter<value_t, memory_t>;
+
+  if (resource && count) {
+
+    auto const nbytes = count * sizeof(value_t);
+
+    return {resource->allocate(nbytes, alignof(value_t)),
+            deleter_t{resource, count}};
+  }
+
+  return {nullptr};
 }
 
 }  // namespace dash
