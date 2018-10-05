@@ -1,5 +1,5 @@
-#ifndef DASH__ALGORITHM__ACCUMULATE_H__
-#define DASH__ALGORITHM__ACCUMULATE_H__
+#ifndef DASH__ALGORITHM__REDUCE_H__
+#define DASH__ALGORITHM__REDUCE_H__
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/iterator/IteratorTraits.h>
@@ -19,7 +19,7 @@ namespace internal {
   };
 
   template<typename ValueType, typename F>
-  void accumulate_custom_fn(
+  void reduce_custom_fn(
     const void *invec,
           void *inoutvec,
           size_t,
@@ -44,24 +44,22 @@ namespace internal {
 /**
  * Accumulate values in each process' range [\ref in_first, \ref in_last) using
  * the provided binary reduce function \c binary_op, which must be commutative
- * and linear.
+ * and associative.
  *
- * The iteration order is defined by the data distribution and the reduction
- * follows a two-step process: each unit first accumulates its local elements
- * in local iteration using \ref binary_op order before combining the results
- * across units.
+ * The iteration order is not specified and the result is non-deterministic if
+ * \c binary_op is not commutative and associative.
+ *
+ * The result type is determined by the type of the elements in the range
+ * and the value of \c init is cast to this type.
  *
  * Collective operation.
  *
- * \note: For equivalent of semantics of \c MPI_Accumulate, see
- * \ref dash::transform.
- *
  * \param in_first  Local iterator describing the beginning of the range to
- *                  accumulate.
+ *                  reduce.
  * \param in_last   Local iterator describing the end of the range to accumualte
  * \param init      The initial element to use in the accumulation.
- * \param binary_op The binary operation to apply to accumulate two elements
- *                  (default: using \c operator+)
+ * \param binary_op The binary operation to apply to reduce two elements
+ *                  (default: using \ref dash::plus)
  * \param non_empty Whether all units are guaranteed to provide a non-empty local
  *                  range (default \c false).
  * \param team      The team to use for the collective operation.
@@ -71,20 +69,23 @@ namespace internal {
 
 template <
   class LocalInputIter,
-  class ValueType,
-  class BinaryOperation,
+  class InitType,
+  class BinaryOperation
+        = dash::plus<typename std::iterator_traits<LocalInputIter>::value_type>,
   typename = typename std::enable_if<
                         !dash::detail::is_global_iterator<LocalInputIter>::value
                       >::type>
-ValueType accumulate(
-  const LocalInputIter   in_first,
-  const LocalInputIter   in_last,
-  const ValueType      & init,
-  BinaryOperation        binary_op,
-  bool                   non_empty = true,
-  dash::Team           & team = dash::Team::All())
+typename std::iterator_traits<LocalInputIter>::value_type
+reduce(
+  LocalInputIter    in_first,
+  LocalInputIter    in_last,
+  InitType          init,
+  BinaryOperation   binary_op = BinaryOperation(),
+  bool              non_empty = true,
+  dash::Team      & team = dash::Team::All())
 {
-  using local_result_t = struct dash::internal::local_result<ValueType>;
+  using value_t    = typename std::iterator_traits<LocalInputIter>::value_type;
+  using local_result_t = struct dash::internal::local_result<value_t>;
   auto myid        = team.myid();
   auto l_first     = in_first;
   auto l_last      = in_last;
@@ -99,7 +100,7 @@ ValueType accumulate(
   }
   dart_operation_t dop =
                   dash::internal::dart_reduce_operation<BinaryOperation>::value;
-  dart_datatype_t  dtype = dash::dart_storage<ValueType>::dtype;
+  dart_datatype_t  dtype = dash::dart_storage<value_t>::dtype;
 
   if (!non_empty || dop == DART_OP_UNDEFINED || dtype == DART_TYPE_UNDEFINED)
   {
@@ -108,7 +109,7 @@ ValueType accumulate(
     // we need a custom reduction operation because not every unit
     // may have valid values
     dart_op_create(
-      &dash::internal::accumulate_custom_fn<ValueType, BinaryOperation>,
+      &dash::internal::reduce_custom_fn<value_t, BinaryOperation>,
       &binary_op, true, dtype, true, &dop);
     dart_allreduce(&l_result, &g_result, 1, dtype, dop, team.dart_id());
     dart_op_destroy(&dop);
@@ -132,16 +133,17 @@ ValueType accumulate(
  * Accumulate values across the local ranges \c[in_first,in_last) of each
  * process as the sum of all values in the range.
  *
- * The iteration order is defined by the data distribution and the reduction
- * follows a two-step process: each unit first accumulates its local elements
- * in local iteration using \ref binary_op order before combining the results
- * across units.
+ * The iteration order is not specified.
+ * The reduction is performed using \ref dash::plus.
+ *
+ * The result type is determined by the type of the elements in the range
+ * and the value of \c init is cast to this type.
  *
  * \note: For equivalent of semantics of \c MPI_Accumulate, see
  * \ref dash::transform.
  *
  * \param in_first  Local pointer describing the beginning of the range to
- *                  accumulate.
+ *                  reduce.
  * \param in_last   Local pointer describing the end of the range to accumualte
  * \param init      The initial element to use in the accumulation.
  * \param non_empty Whether all units are guaranteed to provide a non-empty local
@@ -152,22 +154,24 @@ ValueType accumulate(
  */
 template <
   class LocalInputIter,
-  class ValueType,
+  class InitType = typename std::iterator_traits<LocalInputIter>::value_type,
   typename = typename std::enable_if<
                         !dash::detail::is_global_iterator<LocalInputIter>::value
                       >::type>
-ValueType accumulate(
-  const LocalInputIter   in_first,
-  const LocalInputIter   in_last,
-  const ValueType      & init,
-  bool                   non_empty = false,
-  dash::Team           & team = dash::Team::All())
+typename std::iterator_traits<LocalInputIter>::value_type
+reduce(
+  LocalInputIter  in_first,
+  LocalInputIter  in_last,
+  InitType        init,
+  bool            non_empty,
+  dash::Team    & team = dash::Team::All())
 {
-  return dash::accumulate(
+  using value_t = typename std::iterator_traits<LocalInputIter>::value_type;
+  return dash::reduce(
             in_first,
             in_last,
             init,
-            dash::plus<ValueType>(),
+            dash::plus<value_t>(),
             non_empty,
             team);
 }
@@ -177,18 +181,19 @@ ValueType accumulate(
  * the provided binary reduce function \c binary_op, which must be commutative
  * and linear.
  *
- * The iteration order is defined by the data distribution and the reduction
- * follows a two-step process: each unit first accumulates its local elements
- * in local iteration using \ref binary_op order before combining the results
- * across units.
+ * The iteration order is not specified and the result is non-deterministic if
+ * \c binary_op is not commutative and associative.
+ *
+ * The result type is determined by the type of the elements in the range
+ * and the value of \c init is cast to this type.
  *
  * Collective operation.
  *
  * \param in_first  Global iterator describing the beginning of the range to
- *                  accumulate.
+ *                  reduce.
  * \param in_last   Global iterator describing the end of the range to accumualte
  * \param init      The initial element to use in the accumulation.
- * \param binary_op The associative, commutative binary operation to to apply.
+ * \param binary_op The associative, commutative binary operation to apply.
  *
  * \note: For equivalent of semantics of \c MPI_Accumulate, see
  * \ref dash::transform.
@@ -197,16 +202,18 @@ ValueType accumulate(
  */
 template <
   class GlobInputIt,
-  class ValueType,
-  class BinaryOperation = dash::plus<ValueType>,
+  class InitType = typename dash::iterator_traits<GlobInputIt>::value_type,
+  class BinaryOperation
+          = dash::plus<typename dash::iterator_traits<GlobInputIt>::value_type>,
   typename = typename std::enable_if<
                         dash::detail::is_global_iterator<GlobInputIt>::value
                       >::type>
-ValueType accumulate(
-        GlobInputIt   in_first,
-        GlobInputIt   in_last,
-  const ValueType   & init,
-  BinaryOperation     binary_op = dash::plus<ValueType>())
+typename dash::iterator_traits<GlobInputIt>::value_type
+reduce(
+  GlobInputIt     in_first,
+  GlobInputIt     in_last,
+  InitType        init,
+  BinaryOperation binary_op = BinaryOperation())
 {
   auto & team      = in_first.team();
   auto index_range = dash::local_range(in_first, in_last);
@@ -215,14 +222,14 @@ ValueType accumulate(
 
   // TODO: can we figure out whether or not units are empty?
   static constexpr bool units_non_empty = false;
-  return dash::accumulate(l_first,
-                          l_last,
-                          init,
-                          binary_op,
-                          units_non_empty,
-                          team);
+  return dash::reduce(l_first,
+                      l_last,
+                      init,
+                      binary_op,
+                      units_non_empty,
+                      team);
 }
 
 } // namespace dash
 
-#endif // DASH__ALGORITHM__ACCUMULATE_H__
+#endif // DASH__ALGORITHM__REDUCE_H__
