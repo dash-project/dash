@@ -729,28 +729,6 @@ dash::gptrdiff_t distance(
   return dist;
 }
 
-/**
- * Resolve the number of elements between two global pointers.
- *
- * \tparam      ElementType  Type of the elements in the range
- * \complexity  O(1)
- *
- * \ingroup     Algorithms
- *
- * \concept{DashMemorySpaceConcept}
- */
-template <typename ElementType, class MemSpaceT>
-dash::default_index_t distance(
-    /// Global pointer to the initial position in the global range
-    dart_gptr_t first,
-    /// Global pointer to the final position in the global range
-    dart_gptr_t last)
-{
-  GlobPtr<ElementType, MemSpaceT> gptr_first(first);
-  GlobPtr<ElementType, MemSpaceT> gptr_last(last);
-  return gptr_last - gptr_first;
-}
-
 }  // namespace dash
 
 #endif  // DASH__GLOB_PTR_H_
