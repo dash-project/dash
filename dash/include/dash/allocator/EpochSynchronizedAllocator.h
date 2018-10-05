@@ -10,6 +10,7 @@
 
 #include <dash/GlobPtr.h>
 #include <dash/allocator/AllocatorTraits.h>
+#include <dash/allocator/AllocatorBase.h>
 #include <dash/allocator/internal/Types.h>
 #include <dash/memory/MemorySpace.h>
 
