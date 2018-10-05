@@ -239,7 +239,7 @@ public:
   {
     DASH_ASSERT(static_cast<bool>(m_glob_pointer));
     DASH_ASSERT_RETURNS(
-      dart_flush(m_glob_pointer.raw()),
+      dart_flush(static_cast<dart_gptr_t>(m_glob_pointer)),
       DART_OK);
   }
 

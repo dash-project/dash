@@ -12,7 +12,6 @@
 #include <dash/iterator/internal/GlobPtrBase.h>
 
 #include <dash/memory/MemorySpaceBase.h>
-#include <dash/memory/RawDartPointer.h>
 
 #include <cstddef>
 #include <iostream>
@@ -97,7 +96,7 @@ public:
 
 private:
   // Raw global pointer used to initialize this pointer instance
-  RawDartPointer _rbegin_gptr{DART_GPTR_NULL};
+  dart_gptr_t _rbegin_gptr{DART_GPTR_NULL};
   // Memory space refernced by this global pointer
   const GlobMemT *_mem_space{nullptr};
 
@@ -229,11 +228,6 @@ public:
    * Converts pointer to its underlying global address.
    */
   explicit constexpr operator dart_gptr_t() const noexcept
-  {
-    return _rbegin_gptr;
-  }
-
-  constexpr RawDartPointer raw() const noexcept
   {
     return _rbegin_gptr;
   }
@@ -482,8 +476,7 @@ public:
    */
   void set_unit(team_unit_t unit_id)
   {
-    //DASH_ASSERT_RETURNS(dart_gptr_setunit(&_rbegin_gptr, unit_id), DART_OK);
-    _rbegin_gptr.unitid(unit_id);
+    DASH_ASSERT_RETURNS(dart_gptr_setunit(&_rbegin_gptr, unit_id), DART_OK);
   }
 
   /**
@@ -497,7 +490,7 @@ public:
 
   constexpr explicit operator bool() const noexcept
   {
-    return static_cast<bool>(_rbegin_gptr);
+    return !DART_GPTR_ISNULL(_rbegin_gptr);
   }
 
 private:
@@ -511,26 +504,26 @@ private:
       return;
     }
 
-    auto current_uid = _rbegin_gptr.unitid();
+    auto current_uid = _rbegin_gptr.unitid;
 
     // current local size
     auto lsize = _mem_space->capacity(dart_team_unit_t{current_uid}) /
                  sizeof(value_type);
 
     // current local offset
-    auto ptr_offset = _rbegin_gptr.offset() / sizeof(value_type);
+    auto ptr_offset = _rbegin_gptr.addr_or_offs.offset / sizeof(value_type);
 
     // unit at global end points to (last_unit + 1, 0)
-    auto const unit_end = _mem_space->end()._rbegin_gptr.unitid();
+    auto const unit_end = _mem_space->end()._rbegin_gptr.unitid;
 
     if (offs + ptr_offset < lsize) {
       // Case A: Pointer position still in same unit space:
-      _rbegin_gptr.inc_offset(offs * sizeof(value_type));
+      _rbegin_gptr.addr_or_offs.offset += offs * sizeof(value_type);
     }
     else if (++current_uid >= unit_end) {
       // We are iterating beyond the end
-      _rbegin_gptr.offset(0);
-      _rbegin_gptr.unitid(current_uid);
+      _rbegin_gptr.addr_or_offs.offset = 0;
+      _rbegin_gptr.unitid = current_uid;
     }
     else {
       // Case B: jump across units and find the correct local offset
@@ -539,13 +532,17 @@ private:
       offs -= (lsize - ptr_offset);
 
       // first iter
-      lsize = _mem_space->capacity(current_uid) / sizeof(value_type);
+      lsize =
+          _mem_space->capacity(static_cast<dash::team_unit_t>(current_uid)) /
+          sizeof(value_type);
 
       // Skip units until we have ther the correct one or the last valid unit.
       while (offs >= lsize && current_uid < (unit_end - 1)) {
         offs -= lsize;
         ++current_uid;
-        lsize = _mem_space->capacity(current_uid) / sizeof(value_type);
+        lsize = _mem_space->capacity(
+                    static_cast<dash::team_unit_t>(current_uid)) /
+                sizeof(value_type);
       }
 
       if (offs >= lsize && current_uid == unit_end - 1) {
@@ -565,8 +562,8 @@ private:
             current_uid, unit_end, "current_uid must equal unit_end");
       }
 
-      _rbegin_gptr.offset(offs * sizeof(value_type));
-      _rbegin_gptr.unitid(current_uid);
+      _rbegin_gptr.addr_or_offs.offset = offs * sizeof(value_type);
+      _rbegin_gptr.unitid = current_uid;
     }
   }
   void increment(size_type offs)
@@ -582,22 +579,22 @@ private:
       return;
     }
 
-    auto current_uid = _rbegin_gptr.unitid();
+    auto current_uid = _rbegin_gptr.unitid;
 
     // current local offset
-    auto ptr_offset = _rbegin_gptr.offset() / sizeof(value_type);
+    auto ptr_offset = _rbegin_gptr.addr_or_offs.offset / sizeof(value_type);
 
     // unit at global begin
-    auto const unit_begin = _mem_space->begin()._rbegin_gptr.unitid();
+    auto const unit_begin = _mem_space->begin()._rbegin_gptr.unitid;
 
     if (ptr_offset >= offs) {
       // Case A: Pointer position still in same unit space
-      _rbegin_gptr.dec_offset(offs * sizeof(value_type));
+      _rbegin_gptr.addr_or_offs.offset -= offs * sizeof(value_type);
     }
     else if (--current_uid < unit_begin) {
       // We iterate beyond the begin
-      _rbegin_gptr.offset(0);
-      _rbegin_gptr.unitid(DART_UNDEFINED_TEAM_UNIT_ID);
+      _rbegin_gptr.addr_or_offs.offset = 0;
+      _rbegin_gptr.unitid = DART_UNDEFINED_UNIT_ID;
     }
     else {
       // Case B: jump across units and find the correct local offset
@@ -633,8 +630,8 @@ private:
         offs = lsize - offs;
       }
 
-      _rbegin_gptr.offset(offs * sizeof(value_type));
-      _rbegin_gptr.unitid(current_uid);
+      _rbegin_gptr.addr_or_offs.offset = offs * sizeof(value_type);
+      _rbegin_gptr.unitid = current_uid;
     }
   }
 
@@ -660,11 +657,11 @@ std::ostream &operator<<(std::ostream &os, const GlobPtr<T, MemSpaceT> &gptr)
   sprintf(
       buf,
       "u%06X|f%02X|s%04X|t%04X|o%016lX",
-      gptr._rbegin_gptr.unitid().id,
-      gptr._rbegin_gptr.flags(),
-      gptr._rbegin_gptr.segid(),
-      gptr._rbegin_gptr.teamid(),
-      gptr._rbegin_gptr.offset());
+      gptr._rbegin_gptr.unitid,
+      gptr._rbegin_gptr.flags,
+      gptr._rbegin_gptr.segid,
+      gptr._rbegin_gptr.teamid,
+      gptr._rbegin_gptr.addr_or_offs.offset);
   ss << "dash::GlobPtr<" << typeid(T).name() << ">(" << buf << ")";
   return operator<<(os, ss.str());
 }
@@ -925,38 +922,38 @@ dash::gptrdiff_t distance(
       "value types of global pointers are not compatible for dash::distance");
 
   // Both pointers in same unit space:
-  if (gbegin._rbegin_gptr.unitid() == gend._rbegin_gptr.unitid() ||
+  if (gbegin._rbegin_gptr.unitid == gend._rbegin_gptr.unitid ||
       gbegin._mem_space == nullptr) {
     auto offset_end =
-        static_cast<dash::gptrdiff_t>(gend._rbegin_gptr.offset());
+        static_cast<dash::gptrdiff_t>(gend._rbegin_gptr.addr_or_offs.offset);
     auto offset_begin =
-        static_cast<dash::gptrdiff_t>(gbegin._rbegin_gptr.offset());
+        static_cast<dash::gptrdiff_t>(gbegin._rbegin_gptr.addr_or_offs.offset);
 
     return (offset_end - offset_begin) / dash::gptrdiff_t{sizeof(value_type)};
   }
   // If unit of begin pointer is after unit of end pointer,
   // return negative distance with swapped argument order:
-  if (gbegin._rbegin_gptr.unitid() > gend._rbegin_gptr.unitid()) {
+  if (gbegin._rbegin_gptr.unitid > gend._rbegin_gptr.unitid) {
     return -(dash::distance(gend, gbegin));
   }
   // Pointers span multiple unit spaces, accumulate sizes of
   // local unit memory ranges in the pointer range:
   index_type const remaining_dist_begin_unit =
     //remaining capacity of this unit in bytes
-      (gbegin._mem_space->capacity(gbegin._rbegin_gptr.unitid()) -
-      gbegin._rbegin_gptr.offset())
+      (gbegin._mem_space->capacity(dash::team_unit_t{gbegin._rbegin_gptr.unitid}) -
+      gbegin._rbegin_gptr.addr_or_offs.offset)
       // get number of elements
       / sizeof(value_type);
 
   index_type const remaining_dist_end_unit =
-      (gend._rbegin_gptr.offset() / sizeof(value_type));
+      (gend._rbegin_gptr.addr_or_offs.offset / sizeof(value_type));
 
   //sum remainders of begin and end unit
   index_type dist = remaining_dist_begin_unit + remaining_dist_end_unit;
 
   //accumulate units in between
-  for (auto u = ++gbegin._rbegin_gptr.unitid();
-       u < gend._rbegin_gptr.unitid();
+  for (auto u = static_cast<dash::team_unit_t>(gbegin._rbegin_gptr.unitid + 1);
+       u < gend._rbegin_gptr.unitid;
        ++u) {
     dist += gend._mem_space->capacity(u) / sizeof(value_type);
   }
