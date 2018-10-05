@@ -3,14 +3,16 @@
 
 #include <dash/dart/if/dart.h>
 
+#include <dash/Exception.h>
+#include <dash/Init.h>
+
+#include <dash/atomic/Type_traits.h>
+
 #include <dash/internal/Logging.h>
+#include <dash/iterator/internal/GlobPtrBase.h>
 
 #include <dash/memory/MemorySpaceBase.h>
 #include <dash/memory/RawDartPointer.h>
-
-#include <dash/Exception.h>
-#include <dash/Init.h>
-#include <dash/Pattern.h>
 
 #include <cstddef>
 #include <iostream>
@@ -23,15 +25,6 @@ bool operator==(const dart_gptr_t &lhs, const dart_gptr_t &rhs);
 bool operator!=(const dart_gptr_t &lhs, const dart_gptr_t &rhs);
 
 namespace dash {
-
-namespace internal {
-static bool is_local(dart_gptr_t gptr)
-{
-  dart_team_unit_t luid;
-  DASH_ASSERT_RETURNS(dart_team_myid(gptr.teamid, &luid), DART_OK);
-  return gptr.unitid == luid.id;
-}
-}  // namespace internal
 
 // Forward-declarations
 template <typename T>
@@ -47,6 +40,15 @@ template <class T, class MemSpaceT>
 dash::gptrdiff_t distance(
     const GlobPtr<T, MemSpaceT> &gbegin, const GlobPtr<T, MemSpaceT> &gend);
 
+namespace internal {
+static bool is_local(dart_gptr_t gptr)
+{
+  dart_team_unit_t luid;
+  DASH_ASSERT_RETURNS(dart_team_myid(gptr.teamid, &luid), DART_OK);
+  return gptr.unitid == luid.id;
+}
+}  // namespace internal
+
 /**
  * Pointer in global memory space with random access arithmetics.
  *
@@ -61,6 +63,7 @@ private:
 
   using local_pointer_traits =
       std::pointer_traits<typename GlobMemT::local_void_pointer>;
+
 public:
   typedef ElementType                          value_type;
   typedef GlobPtr<const ElementType, GlobMemT> const_type;
@@ -151,12 +154,29 @@ public:
    */
   self_t &operator=(const self_t &rhs) = default;
 
-  // TODO: we allow this only if both memory compares equal
+  //clang-format off
   /**
-   * Copy constructor.
+   * Implicit Converting Constructor, only allowed if one of the following
+   * conditions is satisfied:
+   *   - Either From or To (value_type) are void. Like in C we can convert any
+   *     pointer type to a void pointer and back again.
+   *   - From::value_type& is assignable to value_type&.
+   *
+   * NOTE: Const correctness is considered. We can assign a GlobPtr<const T>
+   *       to a GlobPtr<T> but not the other way around
    */
-  template <typename T, class MemSpaceT>
-  constexpr GlobPtr(const GlobPtr<T, MemSpaceT> &other)
+  //clang-format on
+  template <
+      typename From,
+      typename = typename std::enable_if<
+          // We always allow GlobPtr<T> -> GlobPtr<void> or the other way)
+          // or if From is assignable to To (value_type)
+          dash::internal::is_pointer_assignable<
+              typename dash::remove_atomic<From>::type,
+              typename dash::remove_atomic<value_type>::type>::value>
+
+      ::type>
+  constexpr GlobPtr(const GlobPtr<From, GlobMemT> &other)
     : _rbegin_gptr(other._rbegin_gptr)
     , _mem_space(reinterpret_cast<const GlobMemT *>(other._mem_space))
   {
@@ -335,7 +355,17 @@ public:
   template <class GlobPtrT>
   constexpr bool operator==(const GlobPtrT &other) const noexcept
   {
-    return _rbegin_gptr == other._rbegin_gptr;
+    return DART_GPTR_EQUAL(
+        static_cast<dart_gptr_t>(_rbegin_gptr),
+        static_cast<dart_gptr_t>(other._rbegin_gptr));
+  }
+
+  /**
+   * Equality comparison operator.
+   */
+  constexpr bool operator==(std::nullptr_t) const noexcept
+  {
+    return DART_GPTR_ISNULL(static_cast<dart_gptr_t>(_rbegin_gptr));
   }
 
   /**
@@ -620,6 +650,8 @@ private:
   }
 };
 
+
+
 template <typename T, class MemSpaceT>
 std::ostream &operator<<(std::ostream &os, const GlobPtr<T, MemSpaceT> &gptr)
 {
@@ -833,6 +865,8 @@ public:
     return base_t::operator>=(other);
   }
 };
+
+
 
 template <typename T, class MemSpaceT>
 std::ostream &operator<<(

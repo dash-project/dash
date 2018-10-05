@@ -12,6 +12,7 @@
 #include <dash/HView.h>
 #include <dash/Meta.h>
 
+
 #include <dash/iterator/GlobIter.h>
 #include <dash/pattern/BlockPattern1D.h>
 #include <dash/std/memory.h>
@@ -19,7 +20,6 @@
 #include <iterator>
 #include <initializer_list>
 #include <type_traits>
-
 
 /**
  * \defgroup  DashArrayConcept  Array Concept
@@ -740,7 +740,7 @@ private:
   dash::Team *m_team{nullptr};
   /// Element distribution pattern
   PatternType m_pattern{};
-  /// Global memory allocation and -access
+  /// Global memory resource
   PtrGlobMemType_t m_globmem{};
   /// Iterator to initial element in the array
   iterator m_begin{};
@@ -1489,6 +1489,7 @@ private:
     DASH_LOG_TRACE_VAR("Array._allocate", m_myid);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
+
 
     auto allocated_ptr = static_cast<pointer>(m_globmem->allocate(
         m_pattern.local_size() * sizeof(value_type), alignment));
