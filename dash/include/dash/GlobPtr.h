@@ -93,7 +93,7 @@ public:
 
 private:
   // Raw global pointer used to initialize this pointer instance
-  dart_gptr_t _rbegin_gptr{DART_GPTR_NULL};
+  dart_gptr_t _rbegin_gptr = DART_GPTR_NULL;
   // Memory space refernced by this global pointer
   const GlobMemT *_mem_space{nullptr};
 
