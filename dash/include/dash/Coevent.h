@@ -74,7 +74,13 @@ public:
   }
 
   const_iterator begin() const noexcept {
-    return const_iterator(static_cast<const_pointer_t>(_event_counts.begin()));
+    // TODO FIXME
+    //CoevenIter is not const correct, so we need a hack and unpack a nonconst
+    //pointer from a const iterator to make the comiler happy.
+    //return const_iterator(static_cast<const_pointer_t>(_event_counts.begin()));
+    auto dart_ptr = _event_counts.begin().dart_gptr();
+    pointer_t nonconst_ptr{_event_counts.begin().globmem(), dart_ptr};
+    return const_iterator(nonconst_ptr);
   }
 
   iterator end() {
@@ -84,7 +90,13 @@ public:
 
   const_iterator end() const {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
-    return const_iterator(static_cast<const_pointer_t>(_event_counts.end()));
+    // TODO FIXME
+    //CoevenIter is not const correct, so we need a hack and unpack a nonconst
+    //pointer from a const iterator to make the comiler happy.
+    //return const_iterator(static_cast<const_pointer_t>(_event_counts.end()));
+    auto dart_ptr = _event_counts.end().dart_gptr();
+    pointer_t nonconst_ptr{_event_counts.end().globmem(), dart_ptr};
+    return const_iterator(nonconst_ptr);
   }
 
   size_type size() const {
