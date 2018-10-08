@@ -336,8 +336,8 @@ public:
   /**
    * Equality comparison operator.
    */
-  template <class GlobPtrT>
-  constexpr bool operator==(const GlobPtrT &other) const noexcept
+  //template <class GlobPtrT>
+  constexpr bool operator==(const GlobPtr &other) const noexcept
   {
     return DART_GPTR_EQUAL(
         static_cast<dart_gptr_t>(m_dart_pointer),
@@ -486,6 +486,7 @@ public:
 private:
   void do_increment(size_type offs, memory_space_noncontiguous)
   {
+
   }
 
   void do_increment(size_type offs, memory_space_contiguous)
@@ -696,28 +697,37 @@ dash::gptrdiff_t distance(
       "to the same DART segment");
 
   bool is_reverse = false;
-  // If unit of begin pointer is after unit of end pointer,
-  // return negative distance with swapped argument order:
-  if (gbegin.m_dart_pointer.unitid > gend.m_dart_pointer.unitid) {
-    std::swap(gbegin, gend);
-    is_reverse=true;
-  } else if (gbegin.m_dart_pointer.unitid == gend.m_dart_pointer.unitid ||
-      gbegin.m_mem_space == nullptr) {
+
+  auto unit_at_begin =
+      static_cast<dash::team_unit_t>(gbegin.m_dart_pointer.unitid);
+
+  auto unit_at_end =
+      static_cast<dash::team_unit_t>(gend.m_dart_pointer.unitid);
+
+  if (unit_at_begin == unit_at_end || gbegin.m_mem_space == nullptr) {
     // Both pointers in same unit space:
     auto offset_end =
         static_cast<index_type>(gend.m_dart_pointer.addr_or_offs.offset);
     auto offset_begin =
         static_cast<index_type>(gbegin.m_dart_pointer.addr_or_offs.offset);
 
-    return (offset_end - offset_begin) / static_cast<index_type>(sizeof(value_type));
+    return (offset_end - offset_begin) /
+           static_cast<index_type>(sizeof(value_type));
+  }
+  else if (unit_at_begin > unit_at_end) {
+    // If unit of begin pointer is after unit of end pointer,
+    // return negative distance with swapped argument order:
+    std::swap(gbegin, gend);
+    std::swap(unit_at_begin, unit_at_end);
+    is_reverse = true;
   }
 
-  auto const & mem_space = *(gbegin.m_mem_space);
+  auto const &mem_space = *(gbegin.m_mem_space);
 
   // Pointers span multiple unit spaces, accumulate sizes of
   // local unit memory ranges in the pointer range:
-  index_type const capacity_unit_begin = mem_space.capacity(
-      dash::team_unit_t{gbegin.m_dart_pointer.unitid});
+  index_type const capacity_unit_begin =
+      mem_space.capacity(dash::team_unit_t{unit_at_begin});
 
   index_type const remainder_unit_begin =
       // remaining capacity of this unit in bytes
@@ -728,17 +738,17 @@ dash::gptrdiff_t distance(
   index_type const remainder_unit_end =
       (gend.m_dart_pointer.addr_or_offs.offset / sizeof(value_type));
 
-  //sum remainders of begin and end unit
+  // sum remainders of begin and end unit
   index_type dist = remainder_unit_begin + remainder_unit_end;
 
-  if (gend.m_dart_pointer.unitid - gbegin.m_dart_pointer.unitid > 1) {
+  if (unit_at_end - unit_at_begin > 1) {
     // accumulate units in between
     std::vector<dash::team_unit_t> units_in_between(
-        gend.m_dart_pointer.unitid - gbegin.m_dart_pointer.unitid - 1);
+        unit_at_end - unit_at_begin - 1);
     std::iota(
         std::begin(units_in_between),
         std::end(units_in_between),
-        dash::team_unit_t{gbegin.m_dart_pointer.unitid + 1});
+        dash::team_unit_t{unit_at_begin + 1});
 
     dist = std::accumulate(
         std::begin(units_in_between),
