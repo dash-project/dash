@@ -63,9 +63,9 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=OFF \
                         \
-                        -DENABLE_LOGGING=ON \
-                        -DENABLE_TRACE_LOGGING=ON \
-                        -DENABLE_DART_LOGGING=ON \
+                        -DENABLE_LOGGING=OFF \
+                        -DENABLE_TRACE_LOGGING=OFF \
+                        -DENABLE_DART_LOGGING=OFF \
                         \
                         -DENABLE_LIBNUMA=OFF \
                         -DENABLE_LIKWID=OFF \
@@ -78,7 +78,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_PLASMA=OFF \
                         -DENABLE_HDF5=OFF \
                         \
-                        -DBUILD_EXAMPLES=OFF \
+                        -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=OFF \
                         -DBUILD_DOCS=OFF \
                         \
