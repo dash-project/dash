@@ -101,7 +101,7 @@ struct allocation_dynamic {
 struct memory_space_noncontiguous {
 };
 
-struct memory_space_contiguous {
+struct memory_space_contiguous: public memory_space_noncontiguous {
 };
 
 /// Synchronization Policy
