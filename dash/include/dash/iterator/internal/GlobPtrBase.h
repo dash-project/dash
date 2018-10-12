@@ -191,11 +191,12 @@ inline dash::gptrdiff_t distance(
 template <class T, class MemorySpaceT>
 dart_gptr_t increment(
     dart_gptr_t dart_gptr,
-    typename MemorySpaceT::size_type,
+    typename MemorySpaceT::size_type offs,
     MemorySpaceT const *mem_space,
     memory_space_noncontiguous)
 {
-  DASH_THROW(dash::exception::NotImplemented, "not implemented yet");
+  dart_gptr.addr_or_offs.offset += offs * sizeof(T);
+  return dart_gptr;
 }
 
 
