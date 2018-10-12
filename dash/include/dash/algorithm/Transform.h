@@ -4,7 +4,6 @@
 #include <dash/GlobAsyncRef.h>
 #include <dash/GlobRef.h>
 
-#include <dash/algorithm/Accumulate.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
 
@@ -89,7 +88,7 @@ OutputIt transform(
  * \endcode
  *
  * \returns  Output iterator to the element past the last element transformed.
- * \see      dash::accumulate
+ * \see      dash::reduce
  * \see      DashReduceOperations
  *
  * \tparam   InputIt         Iterator on first (local) input range

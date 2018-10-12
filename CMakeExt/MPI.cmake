@@ -77,7 +77,7 @@ if (NOT DEFINED MPI_IMPL_ID)
     if (HAVE_I_MPI)
       set (MPI_IMPL_IS_INTEL TRUE CACHE BOOL "IntelMPI detected")
       set (MPI_IMPL_ID "intelmpi" CACHE STRING "MPI implementation identifier")
-      set (MPI_CXX_SKIP_FLAGS "-DOMPI_SKIP_MPICXX"
+      set (MPI_CXX_SKIP_FLAGS "-DMPICH_SKIP_MPICXX"
             CACHE STRING "Flag to suppress MPI C++ bindings")
     endif ()
   endif ()
@@ -122,7 +122,7 @@ if (NOT DEFINED MPI_IMPL_ID)
   endif ()
 
   if (NOT DEFINED MPI_IMPL_ID)
-    # check for MVAPICH
+    # check for MPICH
     check_symbol_exists(
       MPICH
       mpi.h
