@@ -1,13 +1,16 @@
 #ifndef DASH__COEVENT_H__INCLUDED
 #define DASH__COEVENT_H__INCLUDED
 
+#include <thread>
+
+#include <dash/Array.h>
+#include <dash/Atomic.h>
+#include <dash/GlobPtr.h>
 #include <dash/Exception.h>
 #include <dash/Team.h>
 #include <dash/Types.h>
-#include <dash/GlobPtr.h>
-#include <dash/Atomic.h>
 
-#include <dash/Algorithm.h>
+#include <dash/algorithm/Fill.h>
 
 #include <dash/coarray/CoEventIter.h>
 #include <dash/coarray/CoEventRef.h>
