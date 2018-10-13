@@ -309,8 +309,8 @@ dash::Future<ValueType *> copy_async(
     // Entire input range is local:
     DASH_LOG_TRACE("dash::copy_async", "entire input range is local");
     ValueType * l_out_last = out_first + total_copy_elem;
-    ValueType * l_in_first = in_first.local();
-    ValueType * l_in_last  = l_in_first + total_copy_elem;
+    auto const * l_in_first = in_first.local();
+    auto const * l_in_last  = l_in_first + total_copy_elem;
 
     // Use memcpy for data ranges below 64 KB
     if (use_memcpy) {
@@ -319,8 +319,8 @@ dash::Future<ValueType *> copy_async(
                   num_local_elem * sizeof(ValueType));
       out_last = out_first + num_local_elem;
     } else {
-      ValueType * l_in_first = in_first.local();
-      ValueType * l_in_last  = l_in_first + num_local_elem;
+      auto const * l_in_first = in_first.local();
+      auto const * l_in_last  = l_in_first + num_local_elem;
       out_last = std::copy(l_in_first,
                            l_in_last,
                            out_first);
@@ -416,8 +416,8 @@ dash::Future<ValueType *> copy_async(
     //     ^          ^           ^          ^
     //     in_first   l_in_first  l_in_last  in_last
     //
-    ValueType * l_in_first = g_l_in_first.local();
-    ValueType * l_in_last  = l_in_first + num_local_elem;
+    auto const * l_in_first = g_l_in_first.local();
+    auto const * l_in_last  = l_in_first + num_local_elem;
     DASH_LOG_TRACE_VAR("dash::copy_async", l_in_first);
     DASH_LOG_TRACE_VAR("dash::copy_async", l_in_last);
     // Verify conversion of global input iterators to local pointers:
