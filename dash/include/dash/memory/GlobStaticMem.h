@@ -125,8 +125,6 @@ public:
   using const_local_void_pointer = const void *;
 
 public:
-  //GlobStaticMem() = delete;
-
   explicit GlobStaticMem(dash::Team const& team = dash::Team::All());
   GlobStaticMem(LMemSpace* r, dash::Team const& team);
   ~GlobStaticMem() override;

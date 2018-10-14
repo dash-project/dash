@@ -153,8 +153,6 @@ public:
 
       auto* laddr = static_cast<element_t *>(ptr_alloc.local());
 
-      DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", val);
-
       //get the underlying allocator for local memory space
       auto local_alloc         = m_globmem->get_allocator();
       using allocator_traits = std::allocator_traits<decltype(local_alloc)>;

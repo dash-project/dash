@@ -770,15 +770,6 @@ public:
     , async(this)
     , m_team(&team)
     , m_pattern(SizeSpec_t(0), distribution_spec(dash::BLOCKED), team)
-    , m_globmem(nullptr)
-    , m_begin()
-    , m_end()
-    , m_size(0)
-    , m_lsize(0)
-    , m_lcapacity(0)
-    , m_lbegin(nullptr)
-    , m_lend(nullptr)
-    , m_myid()
   {
     DASH_LOG_TRACE("Array() >", "finished default constructor");
   }
@@ -787,20 +778,14 @@ public:
    * Constructor, specifies the array's global capacity and distribution.
    */
   Array(
-    size_type                  nelem,
-    const distribution_spec  & distribution,
-    Team                     & team = dash::Team::All())
-  : local(this),
-    async(this),
-    m_team(&team),
-    m_pattern(
-      SizeSpec_t(nelem),
-      distribution,
-      team),
-    m_globmem(std::make_unique<glob_mem_type>(team)),
-    m_size(0),
-    m_lsize(0),
-    m_lcapacity(0)
+      size_type                nelem,
+      const distribution_spec &distribution,
+      Team &                   team = dash::Team::All())
+    : local(this)
+    , async(this)
+    , m_team(&team)
+    , m_pattern(SizeSpec_t(nelem), distribution, team)
+    , m_globmem(std::make_unique<glob_mem_type>(team))
   {
     DASH_LOG_TRACE("Array(nglobal,dist,team)()", "size:", nelem);
     allocate(m_pattern);
@@ -810,14 +795,11 @@ public:
   /**
    * Delegating constructor, specifies the array's global capacity.
    */
-  explicit
-  Array(
-    size_type   nelem,
-    Team      & team = dash::Team::All())
-  : Array(nelem, dash::BLOCKED, team)
+  explicit Array(size_type nelem, Team &team = dash::Team::All())
+    : Array(nelem, dash::BLOCKED, team)
   {
-    DASH_LOG_TRACE("Array(nglobal,team) >",
-                   "finished delegating constructor");
+    DASH_LOG_TRACE(
+        "Array(nglobal,team) >", "finished delegating constructor");
   }
 
   /**
