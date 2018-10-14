@@ -11,14 +11,15 @@
 
 namespace dash {
 
-class HBWSpace : public dash::MemorySpace<memory_domain_local, memory_space_hbw_tag> {
-
+class HBWSpace
+  : public dash::MemorySpace<memory_domain_local, memory_space_hbw_tag> {
 #ifdef DASH_ENABLE_MEMKIND
   static_assert(alignof(void*) == sizeof(void*), "Required by Memkind");
 #endif
 
 public:
-  using memory_space_type_category = dash::memory_space_hbw_tag;
+  using void_pointer       = void*;
+  using const_void_pointer = const void*;
 
 public:
   HBWSpace()                      = default;

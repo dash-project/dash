@@ -8,6 +8,10 @@ namespace dash {
 class HostSpace
   : public dash::MemorySpace<memory_domain_local, memory_space_host_tag> {
 public:
+  using void_pointer       = void*;
+  using const_void_pointer = const void*;
+
+public:
   HostSpace()                       = default;
   HostSpace(HostSpace const& other) = default;
   HostSpace(HostSpace&& other)      = default;
