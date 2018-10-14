@@ -403,7 +403,7 @@ TEST_F(CoarrayTest, Comutex){
   std::this_thread::sleep_for(std::chrono::microseconds(100));
 
   // sum should be dash::size() * repetitions
-  auto sum = dash::accumulate(arr.begin(), arr.end(), 0, dash::plus<int>());
+  auto sum = dash::reduce(arr.begin(), arr.end(), 0, dash::plus<int>());
   if(this_image() == 0){
     ASSERT_EQ_U(sum, dash::size() * repetitions);
   }
