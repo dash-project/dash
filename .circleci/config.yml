@@ -100,7 +100,7 @@ jobs:
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: ON
       CC: gcc
-      CXX: c++
+      CXX: g++
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
