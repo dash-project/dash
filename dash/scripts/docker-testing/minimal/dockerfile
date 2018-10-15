@@ -1,6 +1,6 @@
 # Dockerfile for the DASH project
 # This container provides an environment for our minimal system requirements
-FROM          ubuntu:14.04
+FROM          ubuntu:latest
 
 MAINTAINER    The DASH Team <team@dash-project.org>
 

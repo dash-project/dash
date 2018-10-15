@@ -8,8 +8,8 @@ jobs:
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: ON
-      CC: gcc-5
-      CXX: g++-5
+      CC: gcc
+      CXX: g++
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
@@ -31,8 +31,8 @@ jobs:
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
-      CC: gcc-5
-      CXX: g++-5
+      CC: gcc
+      CXX: g++
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
@@ -54,8 +54,8 @@ jobs:
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
-      CC: gcc-5
-      CXX: g++-5
+      CC: gcc
+      CXX: g++
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
@@ -99,8 +99,8 @@ jobs:
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: ON
-      CC: gcc-5
-      CXX: g++-5
+      CC: gcc
+      CXX: g++
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
@@ -122,8 +122,8 @@ jobs:
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
-      CC: gcc-5
-      CXX: g++-5
+      CC: gcc
+      CXX: g++
     steps:
       - run: apt update && apt install lcov gcovr curl libatlas-base-dev -y
       - checkout
