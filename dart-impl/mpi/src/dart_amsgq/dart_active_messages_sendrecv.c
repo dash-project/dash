@@ -142,7 +142,17 @@ dart_amsg_sendrecv_openq(
   // post receives
   for (int i = 0; i < msg_count; ++i) {
     res->recv_bufs[i] = malloc(res->msg_size);
+/*
     MPI_Irecv(
+      res->recv_bufs[i],
+      res->msg_size,
+      MPI_BYTE,
+      MPI_ANY_SOURCE,
+      res->tag,
+      res->comm,
+      &res->recv_reqs[i]);
+*/
+    MPI_Recv_init(
       res->recv_bufs[i],
       res->msg_size,
       MPI_BYTE,
@@ -153,6 +163,8 @@ dart_amsg_sendrecv_openq(
     res->send_bufs[i] = malloc(res->msg_size);
     res->send_reqs[i] = MPI_REQUEST_NULL;
   }
+
+  MPI_Startall(msg_count, res->recv_reqs);
 
   MPI_Barrier(res->comm);
 
@@ -284,11 +296,13 @@ amsg_sendrecv_process_internal(
       header->fn(data);
 
       // repost the recv
+/*
       MPI_Irecv(
         amsgq->recv_bufs[idx], amsgq->msg_size, MPI_BYTE,
         MPI_ANY_SOURCE, amsgq->tag,
         amsgq->comm, &amsgq->recv_reqs[idx]);
-
+*/
+      MPI_Start(&amsgq->recv_reqs[idx]);
       ++num_msg;
     }
 
@@ -386,7 +400,7 @@ dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
 
   for (int i = 0; i < amsgq->msg_count; ++i) {
     if (amsgq->recv_reqs[i] != MPI_REQUEST_NULL) {
-      MPI_Cancel(&amsgq->recv_reqs[i]);
+      MPI_Request_free(&amsgq->recv_reqs[i]);
     }
     free(amsgq->recv_bufs[i]);
     free(amsgq->send_bufs[i]);
