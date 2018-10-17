@@ -33,7 +33,7 @@ dart__tasking__cancel_task(dart_task_t *task)
 {
   task->state = DART_TASK_CANCELLED;
   dart_tasking_datadeps_release_local_task(task, dart__tasking__current_thread());
-  DART_DEC_AND_FETCH32(&task->parent->num_children);
+  DART_DEC_AND_FETCH32(&task->parent->exec->num_children);
   dart__tasking__destroy_task(task);
 }
 
@@ -87,7 +87,7 @@ void dart__tasking__abort_current_task(dart_thread_t* thread)
   // jump back before the beginning of the task
   DART_LOG_DEBUG("abort_current_task: Aborting execution of task %p",
                  thread->current_task);
-  longjmp(thread->current_task->taskctx->cancel_return, 1);
+  longjmp(thread->current_task->exec->taskctx->cancel_return, 1);
 }
 
 void

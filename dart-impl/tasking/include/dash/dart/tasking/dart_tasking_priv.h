@@ -54,10 +54,30 @@ typedef enum {
 typedef
 struct dart_wait_handle_s dart_wait_handle_t;
 
+typedef struct task_exec_state {
+  context_t                 *taskctx;         // context to start/resume task
+  struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
+  dart_wait_handle_t        *wait_handle;
+  struct dart_task_data     *recycle_tasks;   // list of destroyed child tasks
+  int                        delay;           // delay in case this task yields
+  int                        num_children;
+} task_exec_state_t;
 
+/**
+ * Structure describing a task. This is all the data that is required to describe
+ * the static properties of the task, i.e., it's action and dependencies.
+ * The dynamic part is outsourced to the \c task_exec_state.
+ *
+ * NOTE: the size has been carefully reduced to 128B (2 cache lines).
+ *       Be careful when you add fields!
+ *
+ * TODO: Can we get rid of of the mutex (>50B), e.g., using an atomic flag?
+ *
+ */
 struct dart_task_data {
   struct dart_task_data     *next;            // next entry in a task list/queue
   struct dart_task_data     *prev;            // previous entry in a task list/queue
+  task_exec_state_t         *exec;            // the dynamic state of the task
   union {
     // used for dummy tasks
     struct {
@@ -74,17 +94,10 @@ struct dart_task_data {
   int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
   struct task_list          *successor;       // the list of tasks that depend on this task
   struct dart_task_data     *parent;          // the task that created this task
-  struct dart_task_data     *recycle_tasks;   // list of destroyed child tasks
-  // TODO: pack using pahole, move all execution-specific fields into context
-  context_t                 *taskctx;         // context to start/resume task
   struct dart_dephash_elem  *remote_successor;
-  struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
-  dart_wait_handle_t        *wait_handle;
   const char                *descr;           // the description of the task
   dart_mutex_t               mutex;
   dart_taskphase_t           phase;
-  int                        delay;           // delay in case this task yields
-  int                        num_children;
   bool                       has_ref;
   bool                       data_allocated;  // whether the data was allocated and copied
   int8_t                     state;           // one of dart_task_state_t, single byte sufficient

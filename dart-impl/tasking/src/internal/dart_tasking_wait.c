@@ -63,30 +63,30 @@ dart__task__wait_handle(dart_handle_t *handles, size_t num_handle)
   dart_task_t *current_task = dart_task_current_task();
   if (dart__tasking__is_root_task(current_task)) {
     // we cannot requeue the root task so we test-and-yield
-    current_task->wait_handle = NULL;
+    current_task->exec->wait_handle = NULL;
     test_yield(handles, num_handle);
   } else {
     dart_wait_handle_t *waithandle = malloc(sizeof(*waithandle) +
                                             sizeof(dart_handle_t)*num_handle);
     memcpy(waithandle->handle, handles, sizeof(*handles)*num_handle);
     waithandle->num_handle    = num_handle;
-    current_task->wait_handle = waithandle;
+    current_task->exec->wait_handle = waithandle;
     // mark the task as waiting so that it won't be requeued immediately
     current_task->state = DART_TASK_BLOCKED;
     DART_LOG_TRACE("wait_handle: Blocking task %p (%p)",
-                   current_task, current_task->wait_handle);
+                   current_task, current_task->exec->wait_handle);
     dart_task_yield(-1);
-    if (current_task->wait_handle != NULL) {
+    if (current_task->exec->wait_handle != NULL) {
       DART_LOG_DEBUG("wait_handle: yield did not block task %p until completion, "
                      "falling back to test-yield!", current_task);
-      free(current_task->wait_handle);
-      current_task->wait_handle = NULL;
+      free(current_task->exec->wait_handle);
+      current_task->exec->wait_handle = NULL;
       current_task->state = DART_TASK_SUSPENDED;
       test_yield(handles, num_handle);
     }
     // TODO: check wait_handle field and fall back to yield-test cycles
     DART_LOG_TRACE("wait_handle: Resuming task %p (%p)",
-                   current_task, current_task->wait_handle);
+                   current_task, current_task->exec->wait_handle);
   }
 
   return DART_OK;
@@ -106,12 +106,12 @@ dart__task__wait_progress()
     while ((task = dart_tasking_taskqueue_pop(&handle_list)) != NULL) {
       int32_t flag;
       DART_LOG_TRACE("wait_handle: Testing task %p", task);
-      dart_wait_handle_t *waithandle = task->wait_handle;
+      dart_wait_handle_t *waithandle = task->exec->wait_handle;
       dart_testall(waithandle->handle, waithandle->num_handle, &flag);
       if (flag) {
         // all transfers finished, the task can be requeued
         task->state       = DART_TASK_SUSPENDED;
-        task->wait_handle = NULL;
+        task->exec->wait_handle = NULL;
         DART_LOG_TRACE("wait_handle: Unblocking task %p", task);
         dart__tasking__enqueue_runnable(task);
         free(waithandle);
@@ -132,6 +132,6 @@ void
 dart__task__wait_enqueue(dart_task_t *task)
 {
   DART_LOG_TRACE("Enqueueing blocked task %p \n", task);
-  DART_ASSERT(task->wait_handle != NULL);
+  DART_ASSERT(task->exec->wait_handle != NULL);
   dart_tasking_taskqueue_pushback(&handle_list, task);
 }
