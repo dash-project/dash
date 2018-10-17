@@ -105,11 +105,6 @@ class GlobStaticMem : public MemorySpace<
       synchronization_collective,
       typename memory_traits::memory_space_type_category>;
 
-  using __size_type = dash::default_size_t;
-
-  using vector_of_size_t = std::vector<__size_type>;
-  using is_vector_nothrow_swappable = std::is_nothrow_swappable<vector_of_size_t>;
-
 public:
   using memory_space_domain_category =
       typename base_t::memory_space_domain_category;
