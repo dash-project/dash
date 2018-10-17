@@ -720,7 +720,7 @@ private:
   typedef std::unique_ptr<glob_mem_type>
     PtrGlobMemType_t;
 
-  using unique_gptr_t = decltype(dash::make_unique<value_type>(
+  using unique_gptr_t = decltype(dash::allocate_unique<value_type>(
       static_cast<glob_mem_type *>(nullptr), std::size_t{}));
 
   using allocator_traits =
@@ -1473,7 +1473,7 @@ private:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
 
     m_data = std::move(
-        dash::make_unique<value_type>(&m_globmem, m_pattern.local_size()));
+        dash::allocate_unique<value_type>(&m_globmem, m_pattern.local_size()));
 
     if (m_pattern.local_size()) {
       DASH_ASSERT(m_data);

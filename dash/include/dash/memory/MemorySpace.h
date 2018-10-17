@@ -110,7 +110,7 @@ public:
 };
 
 template <class T, class MemorySpaceT>
-auto make_unique(
+auto allocate_unique(
     MemorySpaceT* resource, typename MemorySpaceT::size_type count)
     -> std::unique_ptr<T, dash::DefaultGlobPtrDeleter<T, MemorySpaceT>>
 {

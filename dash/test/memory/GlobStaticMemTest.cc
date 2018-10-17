@@ -241,7 +241,7 @@ TEST_F(GlobStaticMemTest, MakeUnique)
   memory_t globmem{};
 
   //create a global pointer to an array of 10 integers
-  auto ptr = dash::make_unique<value_t>(&globmem, 10);
+  auto ptr = dash::allocate_unique<value_t>(&globmem, 10);
 
   EXPECT_TRUE_U(ptr);
 
