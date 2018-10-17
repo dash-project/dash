@@ -15,7 +15,6 @@
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/pattern/BlockPattern1D.h>
-#include <dash/std/memory.h>
 
 #include <iterator>
 #include <initializer_list>

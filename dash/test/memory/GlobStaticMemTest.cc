@@ -1,8 +1,6 @@
 #include "GlobStaticMemTest.h"
 #include <dash/memory/MemorySpace.h>
 
-#include <dash/std/memory.h>
-
 TEST_F(GlobStaticMemTest, GlobalRandomAccess)
 {
   auto globmem_local_elements = {1, 2, 3};

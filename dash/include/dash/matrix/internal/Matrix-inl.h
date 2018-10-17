@@ -11,7 +11,6 @@
 #include <dash/internal/Logging.h>
 
 #include <dash/iterator/GlobIter.h>
-#include <dash/std/memory.h>
 
 #include <dash/Matrix.h>
 

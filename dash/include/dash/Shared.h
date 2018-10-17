@@ -2,7 +2,6 @@
 #define DASH__SHARED_H_
 
 #include <memory>
-#include <dash/std/memory.h>
 
 #include <dash/dart/if/dart_types.h>
 
