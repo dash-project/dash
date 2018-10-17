@@ -156,41 +156,58 @@ TEST_F(GlobStaticMemTest, MoveSemantics)
   // local pointer type
   using lptr_t = typename std::pointer_traits<
       typename memory_t::local_void_pointer>::template rebind<value_t>;
+
+  auto &reg = dash::internal::MemorySpaceRegistry::GetInstance();
   // move construction
   {
     memory_t memory_a{};
-    memory_a.allocate(5 * sizeof(value_t), alignof(value_t));
+    auto const ptr = memory_a.allocate(5 * sizeof(value_t), alignof(value_t));
 
     *(static_cast<lptr_t>(memory_a.lbegin())) = 5;
     dash::barrier();
 
+    EXPECT_EQ_U(reg.lookup(static_cast<dart_gptr_t>(ptr)), &memory_a);
+
     memory_t memory_b(std::move(memory_a));
     int      value = *(static_cast<lptr_t>(memory_b.lbegin()));
+
+    EXPECT_EQ_U(reg.lookup(static_cast<dart_gptr_t>(ptr)), &memory_b);
+
     ASSERT_EQ_U(value, 5);
   }
   dash::barrier();
   // move assignment
   {
     memory_t memory_a{};
-    memory_a.allocate(10 * sizeof(value_t), alignof(value_t));
+    auto const ptrA = memory_a.allocate(10 * sizeof(value_t), alignof(value_t));
     {
       memory_t memory_b{};
-      memory_b.allocate(8 * sizeof(value_t), alignof(value_t));
+      auto const ptrB =
+          memory_b.allocate(8 * sizeof(value_t), alignof(value_t));
+
+      EXPECT_EQ_U(reg.lookup(static_cast<dart_gptr_t>(ptrA)), &memory_a);
+      EXPECT_EQ_U(reg.lookup(static_cast<dart_gptr_t>(ptrB)), &memory_b);
 
       *(static_cast<lptr_t>(memory_a.lbegin())) = 1;
       *(static_cast<lptr_t>(memory_b.lbegin())) = 2;
       memory_a                                  = std::move(memory_b);
+
+      EXPECT_EQ_U(reg.lookup(static_cast<dart_gptr_t>(ptrA)), &memory_b);
       // leave scope of memory_b
     }
+
     ASSERT_EQ_U(*(static_cast<lptr_t>(memory_a.lbegin())), 2);
+
   }
   dash::barrier();
   // swap
   {
     memory_t memory_a{};
-    memory_a.allocate(10 * sizeof(value_t), alignof(value_t));
+    auto const ptrA = memory_a.allocate(10 * sizeof(value_t), alignof(value_t));
+    EXPECT_EQ_U(reg.lookup(static_cast<dart_gptr_t>(ptrA)), &memory_a);
     memory_t memory_b{};
-    memory_b.allocate(8 * sizeof(value_t), alignof(value_t));
+    auto const ptrB = memory_b.allocate(8 * sizeof(value_t), alignof(value_t));
+    EXPECT_EQ_U(reg.lookup(static_cast<dart_gptr_t>(ptrB)), &memory_b);
 
     *(static_cast<lptr_t>(memory_a.lbegin())) = 1;
     *(static_cast<lptr_t>(memory_b.lbegin())) = 2;
@@ -198,6 +215,10 @@ TEST_F(GlobStaticMemTest, MoveSemantics)
     std::swap(memory_a, memory_b);
     ASSERT_EQ_U(*(static_cast<lptr_t>(memory_a.lbegin())), 2);
     ASSERT_EQ_U(*(static_cast<lptr_t>(memory_b.lbegin())), 1);
+
+    EXPECT_EQ_U(reg.lookup(static_cast<dart_gptr_t>(ptrA)), &memory_b);
+    EXPECT_EQ_U(reg.lookup(static_cast<dart_gptr_t>(ptrB)), &memory_a);
+
   }
 }
 

@@ -8,6 +8,8 @@
 #include <dash/allocator/AllocationPolicy.h>
 #include <dash/memory/MemorySpaceBase.h>
 
+#include <cpp17/type_traits.h>
+
 // clang-format off
 
 /**
@@ -103,6 +105,11 @@ class GlobStaticMem : public MemorySpace<
       synchronization_collective,
       typename memory_traits::memory_space_type_category>;
 
+  using __size_type = dash::default_size_t;
+
+  using vector_of_size_t = std::vector<__size_type>;
+  using is_vector_nothrow_swappable = std::is_nothrow_swappable<vector_of_size_t>;
+
 public:
   using memory_space_domain_category =
       typename base_t::memory_space_domain_category;
@@ -133,9 +140,10 @@ public:
   GlobStaticMem& operator=(const GlobStaticMem&) = delete;
 
   GlobStaticMem(GlobStaticMem&&) noexcept(
-      std::is_nothrow_move_constructible<std::vector<size_type>>::value);
+      std::is_nothrow_assignable<GlobStaticMem, GlobStaticMem>::value);
 
-  GlobStaticMem& operator=(GlobStaticMem&&) noexcept;
+  GlobStaticMem& operator=(GlobStaticMem&&) noexcept(
+      std::is_nothrow_swappable<std::vector<size_type>>::value);
 
   size_type capacity() const noexcept;
 
@@ -315,9 +323,9 @@ private:
 
   void    reset_members() noexcept
   {
-    m_begin  = DART_GPTR_NULL;
-    m_lbegin = nullptr;
-    m_lend   = nullptr;
+    m_begin     = DART_GPTR_NULL;
+    m_lbegin    = nullptr;
+    m_lend      = nullptr;
     m_alignment = 0;
     m_local_sizes.clear();
     m_size = std::numeric_limits<size_type>::max();
@@ -353,36 +361,23 @@ inline GlobStaticMem<LMemSpace>::GlobStaticMem(
 template <class LMemSpace>
 inline GlobStaticMem<LMemSpace>::
     GlobStaticMem(GlobStaticMem&& other) noexcept(
-        std::is_nothrow_move_constructible<std::vector<size_type>>::value)
-  : m_team(std::move(other.m_team))
-  , m_allocator(std::move(other.m_allocator))
-  , m_allocation_policy(std::move(other.m_allocation_policy))
-  , m_local_sizes(std::move(other.m_local_sizes))
-  , m_alignment(std::move(other.m_alignment))
-  , m_begin(std::move(other.m_begin))
-  , m_lbegin(std::move(other.m_lbegin))
-  , m_lend(std::move(other.m_lend))
+        std::is_nothrow_assignable<GlobStaticMem, GlobStaticMem>::value)
 {
-  other.m_team   = &dash::Team::Null();
-  other.m_begin  = DART_GPTR_NULL;
-  other.m_lbegin = nullptr;
-  other.m_lend   = nullptr;
+  // redirect to move assignment
+  *this = std::move(other);
 }
 
 template <class LMemSpace>
-inline GlobStaticMem<LMemSpace>& GlobStaticMem<LMemSpace>::operator=(
-    GlobStaticMem&& other) noexcept
+inline GlobStaticMem<LMemSpace>& GlobStaticMem<LMemSpace>::
+                                 operator=(GlobStaticMem&& other) noexcept(
+    std::is_nothrow_swappable<std::vector<size_type>>::value)
 {
-  // deallocate own memory
-  if (!DART_GPTR_ISNULL(m_begin)) {
-    do_deallocate(
-        begin(),
-        m_local_sizes.at(m_team->myid()),
-        m_alignment);
+  auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
 
-    reset_members();
-  }
-  // and swap..
+  reg.erase(std::make_pair(m_begin.teamid, m_begin.segid));
+  reg.erase(std::make_pair(other.m_begin.teamid, other.m_begin.segid));
+
+  //Swap all members
   std::swap(m_team, other.m_team);
   std::swap(m_allocator, other.m_allocator);
   std::swap(m_allocation_policy, other.m_allocation_policy);
@@ -391,6 +386,16 @@ inline GlobStaticMem<LMemSpace>& GlobStaticMem<LMemSpace>::operator=(
   std::swap(m_begin, other.m_begin);
   std::swap(m_lbegin, other.m_lbegin);
   std::swap(m_lend, other.m_lend);
+  std::swap(m_size, other.m_size);
+
+  if (!DART_GPTR_ISNULL(m_begin)) {
+    reg.add(std::make_pair(m_begin.teamid, m_begin.segid), this);
+  }
+
+  if (!DART_GPTR_ISNULL(other.m_begin)) {
+    reg.add(
+        std::make_pair(other.m_begin.teamid, other.m_begin.segid), &other);
+  }
 
   return *this;
 }

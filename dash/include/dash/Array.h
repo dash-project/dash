@@ -1451,7 +1451,6 @@ private:
     while (new_last != soon_to_be_new_last) {
       allocator_traits::destroy(local_alloc, --soon_to_be_new_last);
     }
-    DASH_ASSERT_EQ(new_last, soon_to_be_new_last, "proper destruction failed");
     m_lend = new_last;
   }
 
