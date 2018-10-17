@@ -89,12 +89,16 @@ class DefaultGlobPtrDeleter {
 public:
   using pointer = typename MemorySpaceT::void_pointer::template rebind<T>;
 
-  DefaultGlobPtrDeleter() = default;
+  constexpr DefaultGlobPtrDeleter() noexcept = default;
 
   DefaultGlobPtrDeleter(MemorySpaceT* resource, size_type count)
     : m_resource(resource)
     , m_count(count)
   {
+    DASH_LOG_TRACE(
+        "DefaultGlobPtrDeleter.DefaultGlobPtrDeleter(resource, count)",
+        resource,
+        count);
   }
 
   void operator()(pointer gptr)
@@ -115,7 +119,7 @@ auto make_unique(
   using memory_t     = MemorySpaceT;
   using deleter_t    = dash::DefaultGlobPtrDeleter<value_t, memory_t>;
 
-  if (resource && count) {
+  if (resource) {
 
     auto const nbytes = count * sizeof(value_t);
 

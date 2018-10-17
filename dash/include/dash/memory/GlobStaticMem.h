@@ -130,10 +130,12 @@ public:
   ~GlobStaticMem() override;
 
   GlobStaticMem(const GlobStaticMem&) = delete;
-  GlobStaticMem(GlobStaticMem&&);
-
   GlobStaticMem& operator=(const GlobStaticMem&) = delete;
-  GlobStaticMem& operator                        =(GlobStaticMem&&);
+
+  GlobStaticMem(GlobStaticMem&&) noexcept(
+      std::is_nothrow_move_constructible<std::vector<size_type>>::value);
+
+  GlobStaticMem& operator=(GlobStaticMem&&) noexcept;
 
   size_type capacity() const noexcept;
 
@@ -194,6 +196,7 @@ public:
   void_pointer allocate(size_type nbytes, size_type alignment = max_align)
   {
     if (DART_GPTR_ISNULL(m_begin)) {
+      m_local_sizes.resize(m_team->size());
       return do_allocate(nbytes, alignment);
     }
     else {
@@ -219,6 +222,8 @@ public:
       return;
     }
 
+    DASH_LOG_TRACE("GlobStaticMem.deallocate(gptr, size, alignment)", gptr, m_begin);
+
     DASH_ASSERT_MSG(
         DART_GPTR_EQUAL(gptr.dart_gptr(), m_begin),
         "invalid pointer to deallocate");
@@ -232,6 +237,8 @@ public:
         gptr,
         m_local_sizes.at(m_team->myid()),
         alignment);
+
+    reset_members();
   }
 
   dash::Team const& team() const noexcept
@@ -254,7 +261,7 @@ public:
   /**
    * Complete all outstanding non-blocking operations to all units.
    */
-  void flush() noexcept
+  void flush() const
   {
     dart_flush_all(m_begin);
   }
@@ -262,7 +269,7 @@ public:
   /**
    * Complete all outstanding non-blocking operations to the specified unit.
    */
-  void flush(dash::team_unit_t target) noexcept
+  void flush(dash::team_unit_t target) const
   {
     dart_gptr_t gptr = m_begin;
     gptr.unitid      = target.id;
@@ -272,7 +279,7 @@ public:
   /**
    * Locally complete all outstanding non-blocking operations to all units.
    */
-  void flush_local() noexcept
+  void flush_local() const
   {
     dart_flush_local_all(m_begin);
   }
@@ -281,7 +288,7 @@ public:
    * Locally complete all outstanding non-blocking operations to the specified
    * unit.
    */
-  void flush_local(dash::team_unit_t target) noexcept
+  void flush_local(dash::team_unit_t target) const
   {
     dart_gptr_t gptr = m_begin;
     gptr.unitid      = target.id;
@@ -305,6 +312,16 @@ private:
 private:
   void_pointer do_allocate(size_type nbytes, size_type alignment);
   void    do_deallocate(void_pointer gptr, size_type nbytes, size_type alignment);
+
+  void    reset_members() noexcept
+  {
+    m_begin  = DART_GPTR_NULL;
+    m_lbegin = nullptr;
+    m_lend   = nullptr;
+    m_alignment = 0;
+    m_local_sizes.clear();
+    m_size = std::numeric_limits<size_type>::max();
+  }
 };
 
 ///////////// Implementation ///////////////////
@@ -334,7 +351,9 @@ inline GlobStaticMem<LMemSpace>::GlobStaticMem(
 }
 
 template <class LMemSpace>
-inline GlobStaticMem<LMemSpace>::GlobStaticMem(GlobStaticMem&& other)
+inline GlobStaticMem<LMemSpace>::
+    GlobStaticMem(GlobStaticMem&& other) noexcept(
+        std::is_nothrow_move_constructible<std::vector<size_type>>::value)
   : m_team(std::move(other.m_team))
   , m_allocator(std::move(other.m_allocator))
   , m_allocation_policy(std::move(other.m_allocation_policy))
@@ -352,7 +371,7 @@ inline GlobStaticMem<LMemSpace>::GlobStaticMem(GlobStaticMem&& other)
 
 template <class LMemSpace>
 inline GlobStaticMem<LMemSpace>& GlobStaticMem<LMemSpace>::operator=(
-    GlobStaticMem&& other)
+    GlobStaticMem&& other) noexcept
 {
   // deallocate own memory
   if (!DART_GPTR_ISNULL(m_begin)) {
@@ -360,6 +379,8 @@ inline GlobStaticMem<LMemSpace>& GlobStaticMem<LMemSpace>::operator=(
         begin(),
         m_local_sizes.at(m_team->myid()),
         m_alignment);
+
+    reset_members();
   }
   // and swap..
   std::swap(m_team, other.m_team);
@@ -400,6 +421,8 @@ GlobStaticMem<LMemSpace>::do_allocate(size_type nbytes, size_type alignment)
   DASH_ASSERT_MSG(
       !DART_GPTR_ISNULL(m_begin), "global memory allocation failed");
 
+  DASH_ASSERT_EQ(m_team->size(), m_local_sizes.size(), "invalid setting");
+
 
   DASH_ASSERT_RETURNS(
       dart_allgather(
@@ -439,6 +462,8 @@ inline GlobStaticMem<LMemSpace>::~GlobStaticMem()
         m_alignment);
   }
 
+  reset_members();
+
   DASH_LOG_DEBUG("MemorySpace.~MemorySpace >");
 }
 
@@ -457,7 +482,7 @@ inline void GlobStaticMem<LMemSpace>::do_deallocate(
   DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_begin);
   DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_local_sizes.size());
 
-  if (*m_team != dash::Team::Null() && !DART_GPTR_ISNULL(m_begin)) {
+  if (*m_team != dash::Team::Null()) {
     DASH_ASSERT_RETURNS(dart_barrier(m_team->dart_id()), DART_OK);
 
     m_allocation_policy.deallocate_segment(
@@ -472,11 +497,6 @@ inline void GlobStaticMem<LMemSpace>::do_deallocate(
 
   auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
   reg.erase(std::make_pair(m_begin.teamid, m_begin.segid));
-
-  m_begin  = DART_GPTR_NULL;
-  m_lbegin = nullptr;
-  m_lend   = nullptr;
-  m_local_sizes.clear();
 
   DASH_LOG_DEBUG("MemorySpace.do_deallocate >");
 }
