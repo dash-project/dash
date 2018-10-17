@@ -112,7 +112,7 @@ private:
 protected:
   void* do_allocate(size_t bytes, size_t alignment) override;
   void  do_deallocate(void* p, size_t bytes, size_t alignment) override;
-  bool  do_is_equal(cpp17::pmr::memory_resource const& other) const
+  bool  do_is_equal(std::pmr::memory_resource const& other) const
       noexcept override;
 
 public:
@@ -225,7 +225,7 @@ inline void SimpleMemoryPoolResource<LocalMemSpace>::do_deallocate(
 
 template <typename LocalMemSpace>
 inline bool SimpleMemoryPoolResource<LocalMemSpace>::do_is_equal(
-    cpp17::pmr::memory_resource const& other) const noexcept
+    std::pmr::memory_resource const& other) const noexcept
 {
   const SimpleMemoryPoolResource* other_p =
       dynamic_cast<const SimpleMemoryPoolResource*>(&other);

@@ -6,9 +6,13 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 
+#if __cpp_lib_memory_resource < 201603
+
 #include <cpp17/polymorphic_allocator.h>
 
-namespace cpp17 {
+
+
+namespace std {
 
 std::atomic<pmr::memory_resource *> pmr::memory_resource::s_default_resource(
     nullptr);
@@ -22,5 +26,7 @@ pmr::new_delete_resource *pmr::new_delete_resource_singleton()
 }
 
 }  // namespace cpp17
+
+#endif
 
 // end polymorphic_allocator.cpp

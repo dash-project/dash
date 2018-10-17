@@ -362,8 +362,6 @@ typedef
 #endif
 max_align_t;
 
-using cpp17::byte;
-
 } // namespace dash
 
 #endif // DASH__TYPES_H_

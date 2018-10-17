@@ -54,7 +54,7 @@ public:
 
   // We use a polymorhic allocator to obtain memory from the
   // local memory space
-  using allocator_type = cpp17::pmr::polymorphic_allocator<byte>;
+  using allocator_type = std::pmr::polymorphic_allocator<std::byte>;
 
   using void_pointer = pointer;
   using const_void_pointer = const_pointer;

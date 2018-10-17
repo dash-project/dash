@@ -117,7 +117,7 @@ public:
   using memory_space_synchronization_policy = synchronization_collective;
   using memory_space_layout_tag             = memory_space_contiguous;
 
-  using allocator_type = cpp17::pmr::polymorphic_allocator<byte>;
+  using allocator_type = std::pmr::polymorphic_allocator<std::byte>;
 
   using void_pointer             = dash::GlobPtr<void, GlobStaticMem>;
   using const_void_pointer       = dash::GlobPtr<const void, GlobStaticMem>;

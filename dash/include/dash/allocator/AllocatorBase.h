@@ -10,7 +10,7 @@ namespace dash {
 namespace allocator {
 
 template <typename T>
-using polymorphic_allocator = cpp17::pmr::polymorphic_allocator<T>;
+using polymorphic_allocator = std::pmr::polymorphic_allocator<T>;
 
 template <typename T>
 class DefaultAllocator : public polymorphic_allocator<T> {

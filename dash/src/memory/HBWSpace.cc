@@ -53,14 +53,14 @@ void* dash::HBWSpace::do_allocate(size_t bytes, size_t alignment)
         "HBWSpace.do_allocate(bytes, alignment)",
         "hbw_malloc is not available. Falling back to default host space");
 
-    ptr = cpp17::pmr::get_default_resource()->allocate(bytes, alignment);
+    ptr = std::pmr::get_default_resource()->allocate(bytes, alignment);
   }
 #else
   DASH_LOG_WARN(
       "HBWSpace.do_allocate(bytes, alignment)",
       "libmemkind is not available. Falling back to default host space");
 
-  ptr = cpp17::pmr::get_default_resource()->allocate(bytes, alignment);
+  ptr = std::pmr::get_default_resource()->allocate(bytes, alignment);
 #endif
 
   DASH_LOG_DEBUG("HBWSpace.do_allocate(bytes, alignment) >");
@@ -74,14 +74,14 @@ void dash::HBWSpace::do_deallocate(void* p, size_t bytes, size_t alignment)
     hbw_free(p);
   }
   else {
-    cpp17::pmr::get_default_resource()->deallocate(p, bytes, alignment);
+    std::pmr::get_default_resource()->deallocate(p, bytes, alignment);
   }
 #else
-  cpp17::pmr::get_default_resource()->deallocate(p, bytes, alignment);
+  std::pmr::get_default_resource()->deallocate(p, bytes, alignment);
 #endif
 }
 bool dash::HBWSpace::do_is_equal(
-    cpp17::pmr::memory_resource const& other) const noexcept
+    std::pmr::memory_resource const& other) const noexcept
 {
   const HBWSpace* other_p = dynamic_cast<const HBWSpace*>(&other);
 

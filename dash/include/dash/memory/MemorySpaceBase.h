@@ -242,9 +242,9 @@ struct memory_space_traits {
 ///////////////////////////////////////////////////////////////////////////////
 
 template <class MemoryType>
-class LocalMemorySpaceBase : public cpp17::pmr::memory_resource {
+class LocalMemorySpaceBase : public std::pmr::memory_resource {
   // We may add something here in figure
-  using base_t = cpp17::pmr::memory_resource;
+  using base_t = std::pmr::memory_resource;
 
 public:
   /// Memory Traits
