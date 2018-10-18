@@ -63,6 +63,28 @@ typedef struct task_exec_state {
   int                        num_children;
 } task_exec_state_t;
 
+
+#ifdef USE_DART_MUTEX
+typedef dart_mutex_t tasklock_t;
+#define TASKLOCK_INIT(__task) do { \
+ static dart_mutex_t tmp = DART_MUTEX_INITIALIZER; \
+ (__task)->lock = tmp; \
+} while (0)
+#define LOCK_TASK(__task) dart__base__mutex_lock(&(__task)->lock)
+#define UNLOCK_TASK(__task) dart__base__mutex_unlock(&(__task)->lock)
+# else
+typedef int32_t tasklock_t;
+#define TASKLOCK_INIT(__task) do { \
+  __task->lock = 0;\
+} while (0)
+#define LOCK_TASK(__task) do {\
+  while (DART_COMPARE_AND_SWAP32(&(__task)->lock, 0, 1) == 0){} \
+} while(0)
+#define UNLOCK_TASK(__task) do {\
+  DART_ASSERT(DART_FETCH_AND_DEC32(&(__task)->lock) == 1); \
+} while(0)
+#endif // USE_DART_MUTEX
+
 /**
  * Structure describing a task. This is all the data that is required to describe
  * the static properties of the task, i.e., it's action and dependencies.
@@ -77,6 +99,18 @@ typedef struct task_exec_state {
 struct dart_task_data {
   struct dart_task_data     *next;            // next entry in a task list/queue
   struct dart_task_data     *prev;            // previous entry in a task list/queue
+  int32_t                    unresolved_deps; // the number of unresolved task dependencies
+  int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
+  struct task_list          *successor;       // the list of tasks that depend on this task
+  struct dart_dephash_elem  *remote_successor;
+  const char                *descr;           // the description of the task
+  tasklock_t                 lock;
+  dart_taskphase_t           phase;
+  bool                       has_ref;
+  bool                       data_allocated;  // whether the data was allocated and copied
+  int8_t                     state;           // one of dart_task_state_t, single byte sufficient
+  int8_t                     prio;
+  struct dart_task_data     *parent;          // the task that created this task
   task_exec_state_t         *exec;            // the dynamic state of the task
   union {
     // used for dummy tasks
@@ -90,18 +124,6 @@ struct dart_task_data {
       void                  *data;            // the data to be passed to the action
     };
   };
-  int32_t                    unresolved_deps; // the number of unresolved task dependencies
-  int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
-  struct task_list          *successor;       // the list of tasks that depend on this task
-  struct dart_task_data     *parent;          // the task that created this task
-  struct dart_dephash_elem  *remote_successor;
-  const char                *descr;           // the description of the task
-  dart_mutex_t               mutex;
-  dart_taskphase_t           phase;
-  bool                       has_ref;
-  bool                       data_allocated;  // whether the data was allocated and copied
-  int8_t                     state;           // one of dart_task_state_t, single byte sufficient
-  int8_t                     prio;
 };
 
 #define DART_STACK_PUSH(_head, _elem) \
