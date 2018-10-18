@@ -222,9 +222,9 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
 {
   dart_task_t *current_task = get_current_task();
 
-  if (current_task->exec == NULL) {
-    current_task->exec = calloc(1, sizeof(task_exec_state_t));
-    current_task->exec->task = current_task;
+  if (task->exec == NULL) {
+    task->exec = calloc(1, sizeof(task_exec_state_t));
+    task->exec->task = task;
   }
 
   if (task->exec->taskctx == NULL) {
@@ -241,8 +241,6 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
     // store current thread's context and jump into new task
     dart__tasking__context_swap(&thread->retctx, task->exec->taskctx);
     DART_LOG_TRACE("Returning from task %p ('%s')", task, task->descr);
-    free(current_task->exec);
-    current_task->exec = NULL;
   }
 }
 
@@ -684,6 +682,9 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       // release the context
       dart__tasking__context_release(task->exec->taskctx);
       task->exec->taskctx = NULL;
+
+      free(task->exec);
+      task->exec = NULL;
 
       bool has_ref = task->has_ref;
       task_exec_state_t *parent = task->parent;
