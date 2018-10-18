@@ -186,7 +186,7 @@ dart_ret_t dart_tasking_datadeps_reset(dart_task_t *task)
 #ifdef USE_FREELIST
   dart__base__mutex_lock(&local_deps_mutex);
 #endif
-  if (task->exec != NULL ||
+  if (task->exec != NULL &&
       task->exec->local_deps != NULL) {
     for (int i = 0; i < DART_DEPHASH_SIZE; ++i) {
       dart_dephash_elem_t *elem = task->exec->local_deps[i];
