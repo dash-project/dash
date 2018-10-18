@@ -54,18 +54,11 @@ typedef enum {
 typedef
 struct dart_wait_handle_s dart_wait_handle_t;
 
-typedef struct task_exec_state {
-  context_t                 *taskctx;         // context to start/resume task
-  struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
-  dart_wait_handle_t        *wait_handle;
-  struct dart_task_data     *recycle_tasks;   // list of destroyed child tasks
-  int                        delay;           // delay in case this task yields
-  int                        num_children;
-} task_exec_state_t;
-
+//#define USE_DART_MUTEX
 
 #ifdef USE_DART_MUTEX
 typedef dart_mutex_t tasklock_t;
+#define TASKLOCK_INITIALIZER DART_MUTEX_INITIALIZER
 #define TASKLOCK_INIT(__task) do { \
  static dart_mutex_t tmp = DART_MUTEX_INITIALIZER; \
  (__task)->lock = tmp; \
@@ -74,8 +67,9 @@ typedef dart_mutex_t tasklock_t;
 #define UNLOCK_TASK(__task) dart__base__mutex_unlock(&(__task)->lock)
 # else
 typedef int32_t tasklock_t;
+#define TASKLOCK_INITIALIZER ((int32_t)0)
 #define TASKLOCK_INIT(__task) do { \
-  __task->lock = 0;\
+  __task->lock = TASKLOCK_INITIALIZER;\
 } while (0)
 #define LOCK_TASK(__task) do {\
   while (DART_COMPARE_AND_SWAP32(&(__task)->lock, 0, 1) == 0){} \
@@ -84,6 +78,18 @@ typedef int32_t tasklock_t;
   DART_ASSERT(DART_FETCH_AND_DEC32(&(__task)->lock) == 1); \
 } while(0)
 #endif // USE_DART_MUTEX
+
+typedef struct task_exec_state {
+  context_t                 *taskctx;         // context to start/resume task
+  struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
+  dart_wait_handle_t        *wait_handle;
+  struct dart_task_data     *recycle_tasks;   // list of destroyed child tasks
+  dart_task_t               *task;            // reference to the task
+  tasklock_t                 lock;            // lock to lock the execution state
+  int                        delay;           // delay in case this task yields
+  int                        num_children;
+} task_exec_state_t;
+
 
 /**
  * Structure describing a task. This is all the data that is required to describe
@@ -110,7 +116,7 @@ struct dart_task_data {
   bool                       data_allocated;  // whether the data was allocated and copied
   int8_t                     state;           // one of dart_task_state_t, single byte sufficient
   int8_t                     prio;
-  struct dart_task_data     *parent;          // the task that created this task
+  task_exec_state_t         *parent;          // the task that created this task
   task_exec_state_t         *exec;            // the dynamic state of the task
   union {
     // used for dummy tasks
