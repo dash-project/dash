@@ -13,7 +13,7 @@ jobs:
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
-      - run: bash -c 'export DASH_FORCE_CXX_STD=11; export DART_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
+      - run: bash -c 'export DART_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
       - run:
           command: bash dash/scripts/circleci/collect-artifacts.sh
           when: always
@@ -36,7 +36,7 @@ jobs:
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
-      - run: bash -c 'export DASH_FORCE_CXX_STD=11; export DART_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
+      - run: bash -c 'export DART_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
       - run:
           command: bash dash/scripts/circleci/collect-artifacts.sh
           when: always
@@ -59,7 +59,7 @@ jobs:
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
-      - run: bash -c 'export DASH_FORCE_CXX_STD=11; export DART_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
+      - run: bash -c 'export DART_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
       - run:
           command: bash dash/scripts/circleci/collect-artifacts.sh
           when: always
@@ -81,7 +81,7 @@ jobs:
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
-      - run: bash -c 'export DASH_FORCE_CXX_STD=11; export DART_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
+      - run: bash -c 'export DART_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
       - run:
           command: bash dash/scripts/circleci/collect-artifacts.sh
           when: always
