@@ -105,8 +105,10 @@ static task_exec_state_t root_exec = {
   .local_deps    = NULL,
   .wait_handle   = NULL,
   .recycle_tasks = NULL,
+  .task          = NULL,
   .delay         = 0,
-  .num_children  = 0
+  .num_children  = 0,
+  .lock          = TASKLOCK_INITIALIZER
 };
 
 // a dummy task that serves as a root task for all other tasks
@@ -122,7 +124,8 @@ static dart_task_t root_task = {
     .remote_successor = NULL,
     .prio             = DART_PRIO_DEFAULT,
     .state            = DART_TASK_ROOT,
-    .data_allocated   = false
+    .data_allocated   = false,
+    .lock             = TASKLOCK_INITIALIZER
 };
 
 static void
@@ -221,6 +224,7 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
 
   if (current_task->exec == NULL) {
     current_task->exec = calloc(1, sizeof(task_exec_state_t));
+    current_task->exec->task = current_task;
   }
 
   if (task->exec->taskctx == NULL) {
@@ -559,16 +563,17 @@ dart_task_t * create_task(
     task->data_allocated = false;
   }
   task->fn           = fn;
-  task->parent       = get_current_task();
+  dart_task_t *parent = get_current_task();
+  task->parent       = parent->exec;
   task->state        = DART_TASK_NASCENT;
-  task->phase        = task->parent->state == DART_TASK_ROOT ?
-                                                dart__tasking__phase_current()
-                                                : DART_PHASE_ANY;
+  task->phase        = parent->state == DART_TASK_ROOT ?
+                                          dart__tasking__phase_current()
+                                        : DART_PHASE_ANY;
   task->has_ref       = false;
   task->remote_successor = NULL;
   task->prev          = NULL;
   task->successor     = NULL;
-  task->prio          = (prio == DART_PRIO_PARENT) ? task->parent->prio : prio;
+  task->prio          = (prio == DART_PRIO_PARENT) ? parent->prio : prio;
   task->exec          = NULL;
   task->unresolved_deps = 0;
   task->unresolved_remote_deps = 0;
@@ -596,7 +601,7 @@ void remote_progress(dart_thread_t *thread, bool force)
 
 void dart__tasking__destroy_task(dart_task_t *task)
 {
-  dart_task_t *parent = task->parent;
+  task_exec_state_t *parent_exec = task->parent;
   if (task->data_allocated) {
     free(task->data);
   }
@@ -617,9 +622,9 @@ void dart__tasking__destroy_task(dart_task_t *task)
   free(task->exec);
   task->exec = NULL;
 
-  LOCK_TASK(parent);
-  DART_STACK_PUSH(parent->exec->recycle_tasks, task);
-  UNLOCK_TASK(parent);
+  LOCK_TASK(parent_exec);
+  DART_STACK_PUSH(parent_exec->recycle_tasks, task);
+  UNLOCK_TASK(parent_exec);
 }
 
 /**
@@ -681,7 +686,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       task->exec->taskctx = NULL;
 
       bool has_ref = task->has_ref;
-      dart_task_t *parent = task->parent;
+      task_exec_state_t *parent = task->parent;
 
       // clean up
       if (!has_ref){
@@ -692,8 +697,8 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       }
 
       // let the parent know that we are done
-      int32_t nc = DART_DEC_AND_FETCH32(&parent->exec->num_children);
-      DART_LOG_DEBUG("Parent %p has %i children left\n", parent, nc);
+      int32_t nc = DART_DEC_AND_FETCH32(&parent->num_children);
+      DART_LOG_DEBUG("Parent %p has %i children left\n", parent->task, nc);
 
     }
     // return to previous task
@@ -907,6 +912,8 @@ dart__tasking__init()
     return DART_ERR_INVAL;
   }
 
+  root_exec.task = &root_task;
+
   thread_idle_method = dart__base__env__str2int(DART_THREAD_IDLE_ENVSTR,
                                                 thread_idle_env,
                                                 DART_THREAD_IDLE_USLEEP);
@@ -996,7 +1003,7 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
 
   bool enqueued = false;
   // check whether the task has to be deferred
-  if (task->parent == &root_task &&
+  if (task->parent->task == &root_task &&
       !dart__tasking__phase_is_runnable(task->phase)) {
     dart_tasking_taskqueue_lock(&local_deferred_tasks);
     if (!dart__tasking__phase_is_runnable(task->phase)) {
@@ -1049,8 +1056,8 @@ dart__tasking__create_task(
 
   dart_task_t *task = create_task(fn, data, data_size, prio, descr);
 
-  int32_t nc = DART_INC_AND_FETCH32(&task->parent->exec->num_children);
-  DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
+  int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
+  DART_LOG_DEBUG("Parent %p now has %i children", task->parent->task, nc);
 
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
 
@@ -1091,8 +1098,8 @@ dart__tasking__create_task_handle(
   dart_task_t *task = create_task(fn, data, data_size, prio, NULL);
   task->has_ref = true;
 
-  int32_t nc = DART_INC_AND_FETCH32(&task->parent->exec->num_children);
-  DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
+  int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
+  DART_LOG_DEBUG("Parent %p now has %i children", task->parent->task, nc);
 
   LOCK_TASK(task);
   task->state = DART_TASK_CREATED;
