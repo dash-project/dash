@@ -195,11 +195,9 @@ dart_ret_t dart_tasking_datadeps_reset(dart_task_t *task)
     free(task->exec->local_deps);
     task->exec->local_deps = NULL;
   }
-  free_dephash_list_unsafe(task->remote_successor);
 #ifdef USE_FREELIST
   dart__base__mutex_unlock(&local_deps_mutex);
 #endif
-  task->remote_successor = NULL;
   task->unresolved_deps  = 0;
   task->unresolved_remote_deps = 0;
   return DART_OK;
