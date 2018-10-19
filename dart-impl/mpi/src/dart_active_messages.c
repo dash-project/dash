@@ -42,7 +42,8 @@ enum {
   DART_AMSGQ_TWOWIN,
   DART_AMSGQ_SINGLEWIN,
   DART_AMSGQ_NOLOCK,
-  DART_AMSGQ_SENDRECV
+  DART_AMSGQ_SENDRECV,
+  DART_AMSGQ_PSENDRECV
 };
 
 static struct dart_env_str2int env_vals[] = {
@@ -50,6 +51,7 @@ static struct dart_env_str2int env_vals[] = {
   {"singlewin", DART_AMSGQ_SINGLEWIN},
   {"nolock",    DART_AMSGQ_NOLOCK},
   {"sendrecv",  DART_AMSGQ_SENDRECV},
+  {"psendrecv", DART_AMSGQ_PSENDRECV},
   {NULL, 0}
 };
 
@@ -76,6 +78,10 @@ dart_amsg_init()
       break;
     case DART_AMSGQ_SENDRECV:
       res = dart_amsg_sendrecv_init(&amsgq_impl);
+      DART_LOG_INFO("Using send/recv-based active message queue");
+      break;
+    case DART_AMSGQ_PSENDRECV:
+      res = dart_amsg_psendrecv_init(&amsgq_impl);
       DART_LOG_INFO("Using send/recv-based active message queue");
       break;
     default:

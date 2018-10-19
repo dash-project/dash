@@ -142,7 +142,7 @@ dart_amsg_sendrecv_openq(
   // post receives
   for (int i = 0; i < msg_count; ++i) {
     res->recv_bufs[i] = malloc(res->msg_size);
-    MPI_Irecv(
+    MPI_Recv_init(
       res->recv_bufs[i],
       res->msg_size,
       MPI_BYTE,
@@ -286,10 +286,7 @@ amsg_sendrecv_process_internal(
       header->fn(data);
 
       // repost the recv
-      MPI_Irecv(
-        amsgq->recv_bufs[idx], amsgq->msg_size, MPI_BYTE,
-        MPI_ANY_SOURCE, amsgq->tag,
-        amsgq->comm, &amsgq->recv_reqs[idx]);
+      MPI_Start(&amsgq->recv_reqs[idx]);
       ++num_msg;
     }
 
@@ -439,7 +436,7 @@ dart_amsg_sendrecv_buffered_send(
 }
 
 
-dart_ret_t dart_amsg_sendrecv_init(dart_amsgq_impl_t* impl)
+dart_ret_t dart_amsg_psendrecv_init(dart_amsgq_impl_t* impl)
 {
   impl->openq   = dart_amsg_sendrecv_openq;
   impl->closeq  = dart_amsg_sendrecv_closeq;
