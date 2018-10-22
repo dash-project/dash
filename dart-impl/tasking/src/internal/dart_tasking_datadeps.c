@@ -315,10 +315,10 @@ static dart_ret_t dephash_add_local(
   tr.local = task;
   dart_dephash_elem_t *elem = dephash_allocate_elem(dep, tr, myguid);
   task_exec_state_t *parent_exec = task->parent;
+  int slot = hash_gptr(dep->gptr);
   LOCK_TASK(parent_exec);
   dephash_require_alloc(parent_exec);
   // put the new entry at the beginning of the list
-  int slot = hash_gptr(dep->gptr);
   DART_STACK_PUSH(parent_exec->local_deps[slot], elem);
   UNLOCK_TASK(parent_exec);
 

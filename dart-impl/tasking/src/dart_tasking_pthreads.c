@@ -74,7 +74,8 @@ static pthread_cond_t  task_avail_cond   = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // task life-cycle lists
-static dart_task_t *task_free_list        = NULL;
+static dart_task_t       *task_free_list = NULL;
+static task_exec_state_t *exec_free_list = NULL;
 static pthread_mutex_t task_free_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static dart_thread_t **thread_pool;
@@ -223,9 +224,19 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
   dart_task_t *current_task = get_current_task();
 
   if (task->exec == NULL) {
-    task->exec = calloc(1, sizeof(task_exec_state_t));
-    task->exec->task = task;
+    if (exec_free_list != NULL) {
+      pthread_mutex_lock(&task_free_mutex);
+      if (exec_free_list != NULL) {
+        DART_STACK_POP(exec_free_list, task->exec);
+      }
+      pthread_mutex_unlock(&task_free_mutex);
+    }
   }
+  if (task->exec == NULL) {
+    task->exec = calloc(1, sizeof(task_exec_state_t));
+    TASKLOCK_INIT(task->exec);
+  }
+  task->exec->task = task;
 
   if (task->exec->taskctx == NULL) {
     // create a context for a task invoked for the first time
@@ -615,11 +626,6 @@ void dart__tasking__destroy_task(dart_task_t *task)
   task->has_ref          = false;
   task->descr            = NULL;
 
-  dart_tasking_datadeps_reset(task);
-
-  free(task->exec);
-  task->exec = NULL;
-
   LOCK_TASK(parent_exec);
   DART_STACK_PUSH(parent_exec->recycle_tasks, task);
   UNLOCK_TASK(parent_exec);
@@ -682,8 +688,12 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       // release the context
       dart__tasking__context_release(task->exec->taskctx);
       task->exec->taskctx = NULL;
+      task->exec->task = NULL;
 
-      free(task->exec);
+      dart_tasking_datadeps_reset(task);
+      pthread_mutex_lock(&task_free_mutex);
+      DART_STACK_PUSH(exec_free_list, task->exec);
+      pthread_mutex_unlock(&task_free_mutex);
       task->exec = NULL;
 
       bool has_ref = task->has_ref;
@@ -1467,6 +1477,14 @@ dart__tasking__fini()
   dart_tasking_datadeps_fini();
   dart__tasking__context_cleanup();
   destroy_threadpool(true);
+
+  task_exec_state_t *exec = exec_free_list;
+  while (exec) {
+    task_exec_state_t *next = exec->next;
+    free(exec);
+    exec = next;
+  }
+  exec_free_list = NULL;
 
 #ifndef DART_TASK_THREADLOCAL_Q
   dart_tasking_taskqueue_finalize(&task_queue);

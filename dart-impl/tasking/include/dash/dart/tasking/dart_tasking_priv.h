@@ -82,6 +82,7 @@ typedef int32_t tasklock_t;
 #endif // USE_DART_MUTEX
 
 typedef struct task_exec_state {
+  struct task_exec_state    *next;
   context_t                 *taskctx;         // context to start/resume task
   struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
   dart_wait_handle_t        *wait_handle;
