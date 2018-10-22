@@ -72,7 +72,9 @@ typedef int32_t tasklock_t;
   __task->lock = TASKLOCK_INITIALIZER;\
 } while (0)
 #define LOCK_TASK(__task) do {\
+  int cnt = 0; \
   while (DART_COMPARE_AND_SWAP32(&(__task)->lock, 0, 1) != 0) \
+  { if (++cnt == 1000) { sched_yield(); cnt = 0; } } \
 } while(0)
 #define UNLOCK_TASK(__task) do {\
   DART_ASSERT(DART_FETCH_AND_DEC32(&(__task)->lock) == 1); \
