@@ -997,10 +997,16 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
       queuable = true;
     }
     UNLOCK_TASK(task);
+  } else if (task->state == DART_TASK_SUSPENDED) {
+    queuable = true;
   }
 
-  // make sure we don't queue the task if are not allowed to
-  if (!queuable) return;
+  // make sure we don't queue the task if we are not allowed to
+  if (!queuable) {
+    DART_LOG_TRACE("Refusing to enqueue task %p which is in state %d",
+                   task, task->state);
+    return;
+  }
 
   bool enqueued = false;
   // check whether the task has to be deferred

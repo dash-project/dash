@@ -1244,7 +1244,8 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
         free(local_task);
       }
     } else {
-      DART_ASSERT(state == DART_TASK_CREATED);
+      DART_ASSERT_MSG(state == DART_TASK_CREATED, "Unexpected task state: %d",
+                      state);
       dart__tasking__enqueue_runnable(local_task);
     }
   }

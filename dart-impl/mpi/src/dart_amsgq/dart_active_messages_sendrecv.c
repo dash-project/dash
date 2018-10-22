@@ -154,8 +154,6 @@ dart_amsg_sendrecv_openq(
     res->send_reqs[i] = MPI_REQUEST_NULL;
   }
 
-  MPI_Startall(msg_count, res->recv_reqs);
-
   MPI_Barrier(res->comm);
 
   *queue = res;

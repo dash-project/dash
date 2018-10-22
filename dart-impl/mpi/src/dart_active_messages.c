@@ -61,7 +61,7 @@ dart_amsg_init()
   dart_ret_t res;
 
   int impl = dart__base__env__str2int(DART_AMSGQ_IMPL_ENVSTR,
-                                      env_vals, DART_AMSGQ_SINGLEWIN);
+                                      env_vals, DART_AMSGQ_SENDRECV);
 
   switch(impl) {
     case DART_AMSGQ_TWOWIN:
@@ -82,7 +82,7 @@ dart_amsg_init()
       break;
     case DART_AMSGQ_PSENDRECV:
       res = dart_amsg_psendrecv_init(&amsgq_impl);
-      DART_LOG_INFO("Using send/recv-based active message queue");
+      DART_LOG_INFO("Using persistent send/recv-based active message queue");
       break;
     default:
       DART_LOG_ERROR("UNKNOWN active message queue implementation: %d", impl);

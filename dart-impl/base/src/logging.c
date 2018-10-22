@@ -109,12 +109,13 @@ dart__base__log_message(
   const char *filename,
   int         line,
   int         level,
+  bool        print_always,
   const char *format,
   ...
 )
 {
-  if (level > dart__logging__log_level() ||
-      level > DART_LOGLEVEL_TRACE) {
+  if (!print_always &&
+      level > dart__logging__log_level()) {
     return;
   }
   va_list argp;
