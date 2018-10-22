@@ -7,10 +7,12 @@
 #include <dash/GlobPtr.h>
 #include <dash/Atomic.h>
 
-#include <dash/Algorithm.h>
+#include <dash/algorithm/Fill.h>
 
 #include <dash/coarray/CoEventIter.h>
 #include <dash/coarray/CoEventRef.h>
+
+#include <thread>
 
 namespace dash {
 

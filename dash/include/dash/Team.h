@@ -181,8 +181,9 @@ public:
     }
 
     if (_group != DART_GROUP_NULL) {
-      dart_group_destroy(&_group);
-      _group = DART_GROUP_NULL;
+      if (DART_OK != dart_group_destroy(&_group)) {
+        DASH_LOG_ERROR("Failed to destroy DART group!");
+      }
     }
 
     if (_child) {
@@ -195,6 +196,14 @@ public:
     }
 
     free();
+
+    if (DART_TEAM_NULL != _dartid &&
+        DART_TEAM_ALL  != _dartid) {
+      if (DART_OK != dart_team_destroy(&_dartid))
+      {
+        DASH_LOG_ERROR("Failed to destroy DART group!");
+      }
+    }
   }
 
   /**
