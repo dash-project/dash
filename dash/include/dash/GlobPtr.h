@@ -30,7 +30,7 @@ bool operator!=(
 namespace dash {
 
 namespace internal {
-  static bool is_local(dart_gptr_t gptr) {
+  static inline bool is_local(dart_gptr_t gptr) {
     dart_team_unit_t luid;
     DASH_ASSERT_RETURNS(
       dart_team_myid(gptr.teamid, &luid),

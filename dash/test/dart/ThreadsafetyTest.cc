@@ -246,7 +246,7 @@ TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
   ASSERT_GT_U(team_all.size(), 0);
   ASSERT_GT_U(team_split.size(), 0);
 
-  pointer_t ptr[_num_threads];
+  std::vector<pointer_t> ptr(_num_threads);
 
 #pragma omp parallel num_threads(2)
   {

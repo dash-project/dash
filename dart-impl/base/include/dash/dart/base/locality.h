@@ -55,7 +55,7 @@ dart_ret_t dart__base__locality__clone_domain(
 {
   DART_LOG_TRACE("dart__base__locality__clone_domain() "
                  "domain %s (%p)",
-                 domain_in->domain_tag, domain_in);
+                 domain_in->domain_tag, (const void*) domain_in);
 
   *domain_out = NULL;
   dart_ret_t ret = dart__base__locality__create_domain(domain_out);
@@ -65,7 +65,7 @@ dart_ret_t dart__base__locality__clone_domain(
 
   DART_LOG_TRACE("dart__base__locality__clone_domain > "
                  "domain %s (%p) -> (%p)",
-                 domain_in->domain_tag, domain_in, *domain_out);
+                 domain_in->domain_tag, (const void *) domain_in,(const void *) (*domain_out));
   return ret;
 }
 
@@ -76,7 +76,7 @@ dart_ret_t dart__base__locality__assign_domain(
 {
   DART_LOG_TRACE("dart__base__locality__assign_domain() "
                  "lhs (%p) <- rhs (%p): %s",
-                 domain_lhs, domain_rhs, domain_rhs->domain_tag);
+                 (const void *)domain_lhs, (const void *) domain_rhs, domain_rhs->domain_tag);
 
   dart_ret_t ret = dart__base__locality__domain__destruct(domain_lhs);
   if (DART_OK != ret) { return ret; }
@@ -84,7 +84,7 @@ dart_ret_t dart__base__locality__assign_domain(
 
   DART_LOG_TRACE("dart__base__locality__assign_domain > "
                  "lhs (%p) <- rhs (%p): %s",
-                 domain_lhs, domain_rhs, domain_rhs->domain_tag);
+                 (const void *)domain_lhs, (const void *)domain_rhs, domain_rhs->domain_tag);
   return ret;
 }
 
@@ -94,12 +94,12 @@ dart_ret_t dart__base__locality__destruct_domain(
 {
   DART_LOG_TRACE("dart__base__locality__destruct_domain() "
                  "domain %s (%p)",
-                 domain->domain_tag, domain);
+                 domain->domain_tag, (const void *)domain);
   dart_ret_t ret = dart__base__locality__domain__destruct(domain);
   if (ret != DART_OK) { return ret; }
   free(domain);
   DART_LOG_TRACE("dart__base__locality__destruct_domain > ~(%p)",
-                 domain);
+                 (const void *)domain);
   return DART_OK;
 }
 

@@ -367,7 +367,7 @@ dart_team_memalloc_aligned_dynamic(
   DART_LOG_DEBUG(
     "dart_team_memalloc_aligned_dynamic: bytes:%lu gptr_unitid:%d "
     "baseptr:%p segid:%i across team %d",
-    nbytes, gptr_unitid, sub_mem, segment->segid, teamid);
+    nbytes, gptr_unitid, (const void*)sub_mem, segment->segid, teamid);
 
   return DART_OK;
 }
@@ -532,7 +532,7 @@ dart_ret_t dart_team_memfree(
 #endif
   DART_LOG_DEBUG("dart_team_memfree: collective free, team unit id: %2d "
                  "offset:%"PRIu64", segid=%d, baseptr=%p, gptr_unitid:%d across team %d",
-                 unitid.id, gptr.addr_or_offs.offset, segid, sub_mem, gptr.unitid, teamid);
+                 unitid.id, gptr.addr_or_offs.offset, segid, (const void *)sub_mem, gptr.unitid, teamid);
   /* Remove the related correspondence relation record from the related
    * translation table. */
   if (dart_segment_free(&team_data->segdata, segid) != DART_OK) {

@@ -19,6 +19,7 @@
 #include <dash/dart/base/internal/host_topology.h>
 #include <dash/dart/base/internal/unit_locality.h>
 #include <dash/dart/base/internal/domain_locality.h>
+#include <dash/dart/base/internal/compiler_tweaks.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
@@ -144,7 +145,7 @@ dart_ret_t dart__base__locality__domain__copy(
   dart_domain_locality_t           * domain_dst)
 {
   DART_LOG_TRACE("dart__base__locality__domain__copy() %s (%p -> %p)",
-                 domain_src->domain_tag, domain_src, domain_dst);
+                 domain_src->domain_tag, (const void *)domain_src, (const void *)domain_dst);
   dart_ret_t ret = DART_ERR_OTHER;
 
   dart__base__locality__domain__init(domain_dst);
@@ -346,7 +347,10 @@ dart_ret_t dart__base__locality__domain__child_rec(
   dart_domain_locality_t          ** subdomain_out)
 {
   if (strcmp(domain->domain_tag, subdomain_tag) == 0) {
+PUSH__WARN_IGNORE__
     *subdomain_out = (dart_domain_locality_t *)(domain);
+POP__WARN_IGNORE__
+
     return DART_OK;
   }
   /*
@@ -388,7 +392,9 @@ dart_ret_t dart__base__locality__domain__parent(
     subdomains_prefix[subdomains_prefix_len] = '\0';
   }
   if (subdomains_prefix_len == 0) {
+PUSH__WARN_IGNORE__
     *domain_out = (dart_domain_locality_t *)(domain_in);
+POP__WARN_IGNORE__
     return DART_OK;
   }
 

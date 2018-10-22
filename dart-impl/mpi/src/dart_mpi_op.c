@@ -22,19 +22,21 @@ typedef void (*dart__mpi_min_max_reduce_t)(void*, void*, int*, MPI_Datatype*);
 DART_INLINE void DART_NAME_MINMAX_OP(__name)(            \
   void *lhs_, void *rhs_, int *len_, MPI_Datatype *dptr_)
 
-#define DART_DEFINE_MINMAX_OP(__name, __type)               \
-DART_DECLARE_MINMAX_OP(__name){                             \
-  const __type *lhs = (__type *)lhs_;                       \
-  int len = *len_;                                          \
-  __type *rhs = (__type *)rhs_;                             \
-  DART_ASSERT_MSG((len%2) == 0,                             \
-    "DART_OP_MINMAX requires multiple of two elements");    \
-  for (int i = 0; i < len; i += 2, rhs += 2, lhs += 2) {    \
-    if (rhs[DART_OP_MINMAX_MIN] > lhs[DART_OP_MINMAX_MIN])  \
-      rhs[DART_OP_MINMAX_MIN] = lhs[DART_OP_MINMAX_MIN];    \
-    if (rhs[DART_OP_MINMAX_MAX] < lhs[DART_OP_MINMAX_MAX])  \
-      rhs[DART_OP_MINMAX_MAX] = lhs[DART_OP_MINMAX_MAX];    \
-  }                                                         \
+#define DART_DEFINE_MINMAX_OP(__name, __type)                              \
+DART_DECLARE_MINMAX_OP(__name)                                             \
+{                                                                          \
+  (void)(dptr_);                                                           \
+  const __type *lhs = (__type *)lhs_;                                      \
+  int           len = *len_;                                               \
+  __type *      rhs = (__type *)rhs_;                                      \
+  DART_ASSERT_MSG(                                                         \
+      (len % 2) == 0, "DART_OP_MINMAX requires multiple of two elements"); \
+  for (int i = 0; i < len; i += 2, rhs += 2, lhs += 2) {                   \
+    if (rhs[DART_OP_MINMAX_MIN] > lhs[DART_OP_MINMAX_MIN])                 \
+      rhs[DART_OP_MINMAX_MIN] = lhs[DART_OP_MINMAX_MIN];                   \
+    if (rhs[DART_OP_MINMAX_MAX] < lhs[DART_OP_MINMAX_MAX])                 \
+      rhs[DART_OP_MINMAX_MAX] = lhs[DART_OP_MINMAX_MAX];                   \
+  }                                                                        \
 }
 
 DART_DEFINE_MINMAX_OP(byte,             char)
@@ -133,7 +135,7 @@ static void dart__mpi__op_invoke_custom(
 {
   struct dart_operation_struct *dart_op = get_op(*dptr_);
   DART_LOG_TRACE("Invoking custom operation %p (op=%p, ud=%p)",
-                 dart_op, dart_op->op, dart_op->user_data);
+                 (const void *)dart_op, (const void *)dart_op->op, dart_op->user_data);
   // forward to the user operator
   dart_op->op(lhs_, rhs_, *len_, dart_op->user_data);
 }
@@ -178,8 +180,8 @@ dart_op_create(
 
   DART_LOG_DEBUG(
     "Created custom operation %p (op=%p, ud=%p, mpi_type=%p, mpi_op=%p)",
-    dart_op, dart_op->op, dart_op->user_data, dart_op->mpi_type_op,
-    dart_op->mpi_op);
+    (const void *)dart_op, (const void *)dart_op->op, dart_op->user_data, (const void*)(uintptr_t)dart_op->mpi_type_op,
+    (const void*)(uintptr_t)dart_op->mpi_op);
 
   register_op(dart_op);
   struct dart_operation_struct **new_op_ptr;
@@ -239,7 +241,7 @@ static struct dart_operation_struct * get_op(MPI_Datatype mpi_type)
 
   if (elem == NULL) {
     DART_LOG_ERROR("Unknown MPI datatype %p for custom operation detected!",
-                   mpi_type);
+                   (const void*)(uintptr_t)mpi_type);
   }
   dart__base__mutex_unlock(&hash_mtx);
 

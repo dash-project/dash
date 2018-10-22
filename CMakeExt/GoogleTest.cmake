@@ -27,7 +27,7 @@ if (BUILD_TESTS)
     message(STATUS "gtest_main library path: " ${GTEST_MAINLIB})
 
     find_path(GTEST_HEADER "gtest.h" ${GTEST_INCLUDE_PATH}/gtest)
-    if (NOT GTEST_HEADER OR NOT (EXISTS ${GTEST_LIBRARY} AND EXISTS ${GTEST_MAINLIB})) 
+    if (NOT GTEST_HEADER OR NOT (EXISTS ${GTEST_LIBRARY} AND EXISTS ${GTEST_MAINLIB}))
       message(WARNING "Cannot use user-supplied GoogleTest directory")
     else ()
       set (GTEST_FOUND 1)
@@ -104,10 +104,12 @@ if (BUILD_TESTS)
 
 
     if (git_res EQUAL 0)
-      # BUILD_BYPRODUCTS not avalable in CMAKE < 3.2.0
+      # remove -Werror flag for googletest
+      string(REPLACE " -Werror" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
       add_subdirectory(../vendor/googletest/googletest ${PROJECT_BINARY_DIR}/testing)
-      # Gtest infects the build with Werr flag
-      remove_definitions(-Werror)
+      # add the flag again
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+
 
       set (GTEST_FOUND 1)
       set (GTEST_FOUND 1 PARENT_SCOPE)

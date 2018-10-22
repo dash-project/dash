@@ -19,6 +19,7 @@
 #include <dash/dart/base/internal/host_topology.h>
 #include <dash/dart/base/internal/unit_locality.h>
 #include <dash/dart/base/internal/domain_locality.h>
+#include <dash/dart/base/internal/compiler_tweaks.h>
 
 #include <dash/dart/base/string.h>
 
@@ -26,6 +27,7 @@
 #include <dash/dart/if/dart_locality.h>
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_team_group.h>
+
 
 /* ====================================================================== *
  * Private Data                                                           *
@@ -309,7 +311,7 @@ dart_ret_t dart__base__locality__scope_domains(
 
   *num_domains_out = 0;
   *domains_out     = NULL;
-  
+
   dart_ret_t ret = dart__base__locality__scope_domains_rec(
                      domain_in, scope, num_domains_out, domains_out);
   if (DART_OK == ret && *num_domains_out <= 0) {
@@ -487,7 +489,7 @@ dart_ret_t dart__base__locality__domain_group(
   for (int sd = 0; sd < group_size; sd++) {
     DART_LOG_TRACE("dart__base__locality__domain_group: "
                    "group_subdomain_tags[%d]: %p = %s",
-                   sd, (void *)(group_subdomain_tags[sd]),
+                   sd, (const void *)(group_subdomain_tags[sd]),
                    group_subdomain_tags[sd]);
   }
 #endif
@@ -649,7 +651,7 @@ dart_ret_t dart__base__locality__domain_group(
     group_domain->num_units      = 0;
     group_domain->unit_ids       = NULL;
     group_domain->num_domains    = num_group_subdomains;
-    group_domain->children       = calloc(num_group_subdomains, 
+    group_domain->children       = calloc(num_group_subdomains,
                                           sizeof(dart_domain_locality_t *));
 
     DART_LOG_TRACE("dart__base__locality__domain_group: tag group domain");
@@ -735,7 +737,7 @@ dart_ret_t dart__base__locality__domain_group(
                    "select %d subdomains in group = %s",
                    group_size, group_domain->domain_tag);
 
-    // TODO DEBUG: check if removed subdomains are correctly destroyed 
+    // TODO DEBUG: check if removed subdomains are correctly destroyed
     //
     ret = dart__base__locality__select_subdomains(
             group_domain,
@@ -1092,7 +1094,7 @@ dart_ret_t dart__base__locality__group_subdomains(
 
   for (int g = 0; g < num_existing_domain_groups; g++) {
     int abs_g = g + num_ungrouped;
-    
+
     DART_LOG_TRACE(
       "dart__base__locality__group_subdomains: ==> domains[%d] g: %s",
       abs_g, domain->children[abs_g]->domain_tag);
@@ -1168,8 +1170,10 @@ dart_ret_t dart__base__locality__scope_domains_rec(
                                          sizeof(dart_domain_locality_t *) *
                                          (*num_domains_out)));
     if (NULL != domains_temp) {
+PUSH__WARN_IGNORE__
       *domains_out            = domains_temp;
       (*domains_out)[dom_idx] = (dart_domain_locality_t *)(domain);
+POP__WARN_IGNORE__
       DART_LOG_TRACE("dart__base__locality__scope_domains_rec: "
                      "domain %d: %s",
                      dom_idx, (*domains_out)[dom_idx]->domain_tag);

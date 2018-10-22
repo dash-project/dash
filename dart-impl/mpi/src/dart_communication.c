@@ -248,7 +248,7 @@ dart__mpi__get_basic(
 
   if (nchunks > 0) {
     DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %zu)",
-        dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+        (const void *)dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     CHECK_MPI_RET(
         dart__mpi__get(dest_ptr, nchunks,
           dart__mpi__datatype_maxtype(dtype),
@@ -264,7 +264,7 @@ dart__mpi__get_basic(
 
   if (remainder > 0) {
     DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %zu)",
-        dest_ptr, remainder);
+        (const void *)dest_ptr, remainder);
     CHECK_MPI_RET(
         dart__mpi__get(dest_ptr,
           remainder,
@@ -312,7 +312,7 @@ dart__mpi__get_complex(
     dst_num_elem = src_num_elem;
   }
 
-  DART_LOG_TRACE("dart_get:  MPI_Rget (dest %p, size %zu)", dest_ptr, nelem);
+  DART_LOG_TRACE("dart_get:  MPI_Rget (dest %p, size %zu)", (const void *)dest_ptr, nelem);
   CHECK_MPI_RET(
       dart__mpi__get(dest_ptr,
         dst_num_elem,
@@ -384,7 +384,7 @@ dart__mpi__put_basic(
 
   if (nchunks > 0) {
     DART_LOG_TRACE("dart_put:  MPI_Rput (src %p, size %zu)",
-        src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+        (const void *)src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     CHECK_MPI_RET(
         dart__mpi__put(src_ptr,
           nchunks,
@@ -401,7 +401,7 @@ dart__mpi__put_basic(
   }
 
   if (remainder > 0) {
-    DART_LOG_TRACE("dart_put:  MPI_Put (src %p, size %zu)", src_ptr, remainder);
+    DART_LOG_TRACE("dart_put:  MPI_Put (src %p, size %zu)", (const void *)src_ptr, remainder);
 
     CHECK_MPI_RET(
         dart__mpi__put(src_ptr,
@@ -456,7 +456,7 @@ dart__mpi__put_complex(
 
   DART_LOG_TRACE(
       "dart_put:  MPI_Put (src %p, size %zu, src_type %p, dst_type %p)",
-      src_ptr, nelem, src_mpi_type, dst_mpi_type);
+      (const void *)src_ptr, nelem, (const void*)src_type, (const void *) dst_type);
 
   CHECK_MPI_RET(
       dart__mpi__put(src_ptr,
@@ -610,8 +610,8 @@ dart_ret_t dart_accumulate(
 
   CHECK_UNITID_RANGE(team_unit_id, team_data);
 
-  DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%ld op:%d unit:%d",
-      nelem, dtype, op, team_unit_id.id);
+  DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%ld op:%p unit:%d",
+      nelem, dtype, (const void *)op, team_unit_id.id);
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
       &(team_data->segdata), seg_id);
@@ -631,7 +631,7 @@ dart_ret_t dart_accumulate(
 
   if (nchunks > 0) {
     DART_LOG_TRACE("dart_accumulate:  MPI_Accumulate (src %p, size %zu)",
-        src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+        (const void *) src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     CHECK_MPI_RET(
         MPI_Accumulate(
           src_ptr,
@@ -650,7 +650,7 @@ dart_ret_t dart_accumulate(
 
   if (remainder > 0) {
     DART_LOG_TRACE("dart_accumulate:  MPI_Accumulate (src %p, size %zu)",
-        src_ptr, remainder);
+        (const void *)src_ptr, remainder);
 
     MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
     CHECK_MPI_RET(
@@ -701,7 +701,7 @@ dart_ret_t dart_accumulate_blocking_local(
 
   CHECK_UNITID_RANGE(team_unit_id, team_data);
 
-  DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%ld op:%d unit:%d",
+  DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%ld op:%ld unit:%d",
       nelem, dtype, op, team_unit_id.id);
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
@@ -725,7 +725,7 @@ dart_ret_t dart_accumulate_blocking_local(
 
   if (nchunks > 0) {
     DART_LOG_TRACE("dart_accumulate:  MPI_Raccumulate (src %p, size %zu)",
-        src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+        (const void *)src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     CHECK_MPI_RET(
         MPI_Raccumulate(
           src_ptr,
@@ -745,7 +745,7 @@ dart_ret_t dart_accumulate_blocking_local(
 
   if (remainder > 0) {
     DART_LOG_TRACE("dart_accumulate:  MPI_Raccumulate (src %p, size %zu)",
-        src_ptr, remainder);
+        (const void *)src_ptr, remainder);
 
     MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
     CHECK_MPI_RET(
@@ -809,7 +809,7 @@ dart_ret_t dart_fetch_and_op(
 
   CHECK_UNITID_RANGE(team_unit_id, team_data);
 
-  DART_LOG_DEBUG("dart_fetch_and_op() dtype:%ld op:%d unit:%d "
+  DART_LOG_DEBUG("dart_fetch_and_op() dtype:%ld op:%ld unit:%d "
       "offset:%"PRIu64" segid:%d",
       dtype, op, team_unit_id.id,
       gptr.addr_or_offs.offset, seg_id);
@@ -1357,7 +1357,7 @@ dart_ret_t dart_wait_local(
   if (handleptr != NULL && *handleptr != DART_HANDLE_NULL) {
     dart_handle_t handle = *handleptr;
     DART_LOG_TRACE("dart_wait_local:     handle: %p",
-                   handle);
+                  (const void *) handle);
     DART_LOG_TRACE("dart_wait_local:     handle->dest: %d",
                    handle->dest);
     DART_LOG_TRACE("dart_wait_local:     handle->win:  %p",
@@ -1386,7 +1386,7 @@ dart_ret_t dart_wait(
   if (handleptr != NULL && *handleptr != DART_HANDLE_NULL) {
     dart_handle_t handle = *handleptr;
     DART_LOG_TRACE("dart_wait:     handle: %p",
-                   handle);
+                   (const void *)handle);
     DART_LOG_TRACE("dart_wait:     handle->dest: %d",
                    handle->dest);
     DART_LOG_TRACE("dart_wait:     handle->win:  %"PRIu64"",
@@ -1435,8 +1435,8 @@ dart_ret_t dart_waitall_local(
       if (handles[i] != DART_HANDLE_NULL) {
         for (uint8_t j = 0; j < handles[i]->num_reqs; ++j) {
           if (handles[i]->reqs[j] != MPI_REQUEST_NULL){
-            DART_LOG_TRACE("dart_waitall_local: -- handle[%"PRIu64"]: %p)",
-                          i, (void*)handles[i]->reqs[j]);
+            DART_LOG_TRACE("dart_waitall_local: -- handle[%"PRIu64"])",
+                          i);
             DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->dest: %d",
                           i, handles[i]->dest);
             mpi_req[r_n] = handles[i]->reqs[j];
@@ -1532,9 +1532,9 @@ dart_ret_t dart_waitall(
       if (handles[i] != DART_HANDLE_NULL) {
         for (uint8_t j = 0; j < handles[i]->num_reqs; ++j) {
           if (handles[i]->reqs[j] != MPI_REQUEST_NULL){
-            DART_LOG_DEBUG("dart_waitall: -- handle[%zu](%p): "
+            DART_LOG_DEBUG("dart_waitall: -- handle[%zu]: "
                           "dest:%d win:%"PRIu64,
-                          i, (void*)handles[i]->reqs[0],
+                          i,
                           handles[i]->dest,
                           (unsigned long)handles[i]->win);
             mpi_req[r_n] = handles[i]->reqs[j];

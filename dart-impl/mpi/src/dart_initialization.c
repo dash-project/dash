@@ -30,7 +30,7 @@ static
 dart_ret_t create_local_alloc(dart_team_data_t *team_data)
 {
   dart_localpool = dart_buddy_new(DART_LOCAL_ALLOC_SIZE);
-  MPI_Win dart_sharedmem_win_local_alloc;
+  MPI_Win dart_sharedmem_win_local_alloc = MPI_WIN_NULL;
   char* *dart_sharedmem_local_baseptr_set = NULL;
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)

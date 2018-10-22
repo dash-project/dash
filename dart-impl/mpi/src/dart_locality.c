@@ -110,7 +110,7 @@ dart_ret_t dart_domain_find(
   dart_domain_locality_t       ** subdomain_out)
 {
   DART_LOG_DEBUG("dart_domain_find() domain_in(%p) domain_tag(%s)",
-                 (void*)domain_in, domain_tag);
+                 (const void*)domain_in, domain_tag);
   dart_ret_t ret = dart__base__locality__domain(
                      domain_in, domain_tag, subdomain_out);
   DART_LOG_DEBUG("dart_domain_find > %d", ret);
@@ -169,7 +169,7 @@ dart_ret_t dart_domain_split_scope(
 {
   DART_LOG_DEBUG("dart_domain_split_scope() team(%d) domain(%s) "
                  "into %d parts at scope %d",
-                 domain_in->team, domain_in->domain_tag, num_parts, 
+                 domain_in->team, domain_in->domain_tag, num_parts,
                  scope);
 
   int    * group_sizes       = NULL;
@@ -220,12 +220,16 @@ dart_ret_t dart_domain_split_scope(
 
     /* Drop domains that are not in split group: */
     DART_LOG_TRACE("dart_domain_split_scope: selecting subdomains");
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-qual"
+
     DART_ASSERT_RETURNS(
       dart__base__locality__select_subdomains(
         domains_out + p,
         (const char **)(group_domain_tags[p]),
         group_sizes[p]),
       DART_OK);
+#pragma clang diagnostic pop
   }
 
   DART_LOG_DEBUG("dart_domain_split_scope >");
