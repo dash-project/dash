@@ -329,7 +329,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   )
 
   if(ENABLE_COMPTIME_RED)
-    cotire(${DASH_LIBRARY})
+      #cotire(${DASH_LIBRARY})
   endif()
 
   include_directories(
@@ -436,7 +436,7 @@ if (BUILD_TESTS)
 
   if (GTEST_FOUND)
     if (BUILD_COVERAGE_TESTS)
-      include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
+        #include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
     endif()
 
     foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
@@ -480,7 +480,7 @@ if (BUILD_TESTS)
       )
 
       if(ENABLE_COMPTIME_RED)
-        cotire(${DASH_TEST})
+          #cotire(${DASH_TEST})
       endif()
 
       if(INSTALL_TESTS)

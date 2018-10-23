@@ -347,9 +347,10 @@ dart_ret_t dart__base__locality__domain__child_rec(
   dart_domain_locality_t          ** subdomain_out)
 {
   if (strcmp(domain->domain_tag, subdomain_tag) == 0) {
-PUSH__WARN_IGNORE__
+PRAGMA__PUSH
+PRAGMA__IGNORE
     *subdomain_out = (dart_domain_locality_t *)(domain);
-POP__WARN_IGNORE__
+PRAGMA__POP
 
     return DART_OK;
   }
@@ -392,9 +393,10 @@ dart_ret_t dart__base__locality__domain__parent(
     subdomains_prefix[subdomains_prefix_len] = '\0';
   }
   if (subdomains_prefix_len == 0) {
-PUSH__WARN_IGNORE__
+PRAGMA__PUSH
+PRAGMA__IGNORE
     *domain_out = (dart_domain_locality_t *)(domain_in);
-POP__WARN_IGNORE__
+PRAGMA__POP
     return DART_OK;
   }
 

@@ -135,7 +135,7 @@ static void dart__mpi__op_invoke_custom(
 {
   struct dart_operation_struct *dart_op = get_op(*dptr_);
   DART_LOG_TRACE("Invoking custom operation %p (op=%p, ud=%p)",
-                 (const void *)dart_op, (const void *)dart_op->op, dart_op->user_data);
+                 (const void *)dart_op, (const void *)(uintptr_t)dart_op->op, dart_op->user_data);
   // forward to the user operator
   dart_op->op(lhs_, rhs_, *len_, dart_op->user_data);
 }
@@ -180,7 +180,7 @@ dart_op_create(
 
   DART_LOG_DEBUG(
     "Created custom operation %p (op=%p, ud=%p, mpi_type=%p, mpi_op=%p)",
-    (const void *)dart_op, (const void *)dart_op->op, dart_op->user_data, (const void*)(uintptr_t)dart_op->mpi_type_op,
+    (const void *)dart_op, (const void *)(uintptr_t)dart_op->op, dart_op->user_data, (const void*)(uintptr_t)dart_op->mpi_type_op,
     (const void*)(uintptr_t)dart_op->mpi_op);
 
   register_op(dart_op);

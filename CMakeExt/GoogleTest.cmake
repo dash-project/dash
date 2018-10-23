@@ -105,10 +105,12 @@ if (BUILD_TESTS)
 
     if (git_res EQUAL 0)
       # remove -Werror flag for googletest
-      string(REPLACE " -Werror" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+      #string(REPLACE " -Werror" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+      #string(REPLACE "-Wmissing-include-dirs" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
       add_subdirectory(../vendor/googletest/googletest ${PROJECT_BINARY_DIR}/testing)
       # add the flag again
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+      #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+      #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wmissing-include-dirs")
 
 
       set (GTEST_FOUND 1)

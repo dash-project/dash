@@ -1,23 +1,26 @@
 #ifndef DART__BASE__INTERNAL__COMPILER_TWEAKS_H__
 #define DART__BASE__INTERNAL__COMPILER_TWEAKS_H__
 
-#define PUSH__WARN_IGNORE__
+#define STRINGIFY(x) #x
 #ifdef __GNUC__
 #ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcast-qual"
+#define PRAGMA__PUSH _Pragma(STRINGIFY(clang diagnostic push))
 #else
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-qual"
+#define PRAGMA__PUSH _Pragma(STRINGIFY(GCC diagnostic push))
 #endif
 #endif
-
-#define POP__WARN_IGNORE__
 #ifdef __GNUC__
 #ifdef __clang__
-#pragma clang diagnostic pop
+#define PRAGMA__IGNORE _Pragma(STRINGIFY(clang diagnostic ignored "-Wcast-qual"))
 #else
-#pragma GCC diagnostic pop
+#define PRAGMA__IGNORE _Pragma(STRINGIFY(GCC diagnostic ignored "-Wcast-qual"))
+#endif
+#endif
+#ifdef __GNUC__
+#ifdef __clang__
+#define PRAGMA__POP _Pragma(STRINGIFY(clang diagnostic pop))
+#else
+#define PRAGMA__POP _Pragma(STRINGIFY(GCC diagnostic pop))
 #endif
 #endif
 

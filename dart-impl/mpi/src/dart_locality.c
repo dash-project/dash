@@ -8,6 +8,7 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/locality.h>
 #include <dash/dart/base/internal/unit_locality.h>
+#include <dash/dart/base/internal/compiler_tweaks.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
@@ -220,16 +221,15 @@ dart_ret_t dart_domain_split_scope(
 
     /* Drop domains that are not in split group: */
     DART_LOG_TRACE("dart_domain_split_scope: selecting subdomains");
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcast-qual"
-
+PRAGMA__PUSH
+PRAGMA__IGNORE
     DART_ASSERT_RETURNS(
       dart__base__locality__select_subdomains(
         domains_out + p,
         (const char **)(group_domain_tags[p]),
         group_sizes[p]),
       DART_OK);
-#pragma clang diagnostic pop
+PRAGMA__POP
   }
 
   DART_LOG_DEBUG("dart_domain_split_scope >");

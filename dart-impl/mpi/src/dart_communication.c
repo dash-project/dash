@@ -35,7 +35,7 @@
   do {                                                                      \
     if (dart__unlikely(_unitid.id < 0 || _unitid.id > _team_data->size)) {  \
       DART_LOG_ERROR("%s ! failed: unitid out of range 0 <= %d < %d",       \
-          __FUNCTION__, _unitid.id, _team_data->size);           \
+          __func__, _unitid.id, _team_data->size);           \
       return DART_ERR_INVAL;                                                \
     }                                                                       \
   } while (0)
@@ -46,7 +46,7 @@
       char *src_name = dart__mpi__datatype_name(_src_type);                   \
       char *dst_name = dart__mpi__datatype_name(dst_type);                    \
       DART_LOG_ERROR("%s ! Cannot convert base-types (%s vs %s)",             \
-          __FUNCTION__, src_name, dst_name);                        \
+          __func__, src_name, dst_name);                        \
       free(src_name);                                                         \
       free(dst_name);                                                         \
       return DART_ERR_INVAL;                                                  \
@@ -62,7 +62,7 @@
       char *dst_name = dart__mpi__datatype_name(dst_type);                    \
       DART_LOG_ERROR(                                                         \
           "%s ! Type-mismatch would lead to truncation (%s vs %s with %zu elems)",\
-          __FUNCTION__, src_name, dst_name, _num_elem);             \
+          __func__, src_name, dst_name, _num_elem);             \
       free(src_name);                                                         \
       free(dst_name);                                                         \
       return DART_ERR_INVAL;                                                  \

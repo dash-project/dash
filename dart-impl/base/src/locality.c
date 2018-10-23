@@ -1170,10 +1170,11 @@ dart_ret_t dart__base__locality__scope_domains_rec(
                                          sizeof(dart_domain_locality_t *) *
                                          (*num_domains_out)));
     if (NULL != domains_temp) {
-PUSH__WARN_IGNORE__
+PRAGMA__PUSH
+PRAGMA__IGNORE
       *domains_out            = domains_temp;
       (*domains_out)[dom_idx] = (dart_domain_locality_t *)(domain);
-POP__WARN_IGNORE__
+PRAGMA__POP
       DART_LOG_TRACE("dart__base__locality__scope_domains_rec: "
                      "domain %d: %s",
                      dom_idx, (*domains_out)[dom_idx]->domain_tag);

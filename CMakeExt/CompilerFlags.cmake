@@ -64,14 +64,14 @@ if (ENABLE_DEV_COMPILER_WARNINGS
           "${DASH_DEVELOPER_CXX_FLAGS} -Wall -pedantic -Werror")
       set (DASH_DEVELOPER_CC_FLAGS
           "${DASH_DEVELOPER_CC_FLAGS} -Wall -pedantic -Werror")
-  else()
+   endif()
+      # else()
     set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
 
    if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" AND OPENMP_FOUND)
     set (DASH_DEVELOPER_CCXX_FLAGS
          "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
-   endif()
 
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
@@ -92,7 +92,7 @@ if (ENABLE_DEV_COMPILER_WARNINGS
 
   # C++-only warning flags
 
-  set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
+  set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CXX_FLAGS} ${DASH_DEVELOPER_CCXX_FLAGS}")
 
   set (DASH_DEVELOPER_CXX_FLAGS
          "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy")
@@ -105,7 +105,7 @@ if (ENABLE_DEV_COMPILER_WARNINGS
 
   # C-only warning flags
 
-  set (DASH_DEVELOPER_CC_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
+  set (DASH_DEVELOPER_CC_FLAGS "${DASH_DEVELOPER_CC_FLAGS} ${DASH_DEVELOPER_CCXX_FLAGS}")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast")
   set (DASH_DEVELOPER_CC_FLAGS
@@ -118,8 +118,8 @@ if (ENABLE_DEV_COMPILER_WARNINGS
 
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wpointer-sign")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
+   #set (DASH_DEVELOPER_CC_FLAGS
+   #s    "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
 
   if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
     set (DASH_DEVELOPER_CC_FLAGS
