@@ -76,8 +76,10 @@ typedef int32_t tasklock_t;
   while (DART_COMPARE_AND_SWAP32(&(__task)->lock, 0, 1) != 0) \
   { if (++cnt == 1000) { sched_yield(); cnt = 0; } } \
 } while(0)
-#define UNLOCK_TASK(__task) do {\
-  DART_ASSERT(DART_FETCH_AND_DEC32(&(__task)->lock) == 1); \
+#define UNLOCK_TASK(__task) do {                          \
+  tasklock_t lck = DART_FETCH_AND_DEC32(&(__task)->lock); \
+  dart__unused(lck);                                      \
+  DART_ASSERT(lck == 1);                                  \
 } while(0)
 #endif // USE_DART_MUTEX
 
