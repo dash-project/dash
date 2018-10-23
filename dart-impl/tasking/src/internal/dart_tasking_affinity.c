@@ -69,16 +69,16 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
 {
   //hwloc_const_cpuset_t ccpuset = hwloc_topology_get_allowed_cpuset(topology);
   hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
-  int cnt = 0;
+  int cnt = -1;
   // iterate over bitmap, round-robin thread-binding
   int entry;
   do {
     for (entry  = hwloc_bitmap_first(ccpuset);
-         entry != hwloc_bitmap_last(ccpuset);
+         entry != -1;
          entry  = hwloc_bitmap_next(ccpuset, entry))
     {
+      ++cnt;
       if (cnt == dart_thread_id) break;
-      cnt++;
     }
   } while (cnt != dart_thread_id);
 
