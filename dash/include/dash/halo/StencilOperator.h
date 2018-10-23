@@ -126,10 +126,10 @@ public:
   }
 
   /**
-   * Updates all inner elements using a userdefined stencil operation.
+   * Updates all inner elements using a user-defined stencil operation.
    *
    * \param begin_dst Pointer to the beginning of the destination memory
-   * \param operation User definied operation for updating all inner elements
+   * \param operation User-definied operation for updating all inner elements
   */
   template <typename Op>
   void update(ElementT* begin_dst, Op operation) {
@@ -137,13 +137,13 @@ public:
   }
 
   /**
-   * Updates all inner elements within a user defined range using a userdefined
+   * Updates all inner elements within a user defined range using a user-defined
    * stencil operation.
    *
-   * \param begin Iterator to the beginnning inner data element
-   * \param end Iterator to the last inner data element
+   * \param begin Iterator of the beginnning inner data element
+   * \param end Iterator of the last inner data element
    * \param begin_dst Pointer to the beginning of the destination memory
-   * \param operation User definied operation for updating all inner elements
+   * \param operation User-definied operation for updating all inner elements
   */
   template <typename Op>
   void update(iterator begin, iterator end, ElementT* begin_dst, Op operation) {
@@ -162,6 +162,7 @@ public:
     center += offset;
     auto center_dst = begin_dst + offset;
 
+    // specialization for 2-D
     if(NumDimensions == 2) {
       for(int i = begin_coords[0]; i <= end_coords[0]; ++i,
               center += offsets[0], center_dst += offsets[0],
@@ -178,6 +179,7 @@ public:
       return;
     }
 
+    // specialization for 3-D
     if(NumDimensions == 3) {
       for(int i = begin_coords[0]; i <= end_coords[0]; ++i,
               center += offsets[0], center_dst += offsets[0],
@@ -202,6 +204,7 @@ public:
       return;
     }
 
+    // dimensions above 3-D
     for(int i = begin_coords[0]; i <= end_coords[0]; ++i, center += offsets[0],
             center_dst += offsets[0], offset += offsets[0]) {
       Loop<1, Op>()(_stencil_op->_stencil_offsets, offsets, begin_coords,
@@ -422,10 +425,10 @@ public:
   }
 
   /**
-   * Updates all boundary elements using a userdefined stencil operation.
+   * Updates all boundary elements using a user-defined stencil operation.
    *
    * \param begin_dst Pointer to the beginning of the destination memory
-   * \param operation User definied operation for updating all boundary elements
+   * \param operation User-definied operation for updating all boundary elements
   */
   template <typename Op>
   void update(ElementT* begin_dst, Op operation) {
@@ -437,10 +440,10 @@ public:
    * Updates all boundary elements within a user defined range using a userdefined
    * stencil operation.
    *
-   * \param begin Iterator to the beginnning boundary data element
-   * \param end Iterator to the last boundary data element
+   * \param begin Iterator of the beginnning boundary data element
+   * \param end Iterator of the last boundary data element
    * \param begin_dst Pointer to the beginning of the destination memory
-   * \param operation User definied operation for updating all inner elements
+   * \param operation User-definied operation for updating all inner elements
   */
   template <typename Op>
   void update(const iterator& begin, const iterator& end, ElementT* begin_out,
