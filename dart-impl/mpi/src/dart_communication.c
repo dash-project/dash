@@ -610,8 +610,8 @@ dart_ret_t dart_accumulate(
 
   CHECK_UNITID_RANGE(team_unit_id, team_data);
 
-  DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%ld op:%p unit:%d",
-      nelem, dtype, (const void *)op, team_unit_id.id);
+  DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%ld op:%ld unit:%d",
+      nelem, dtype, op, team_unit_id.id);
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
       &(team_data->segdata), seg_id);
