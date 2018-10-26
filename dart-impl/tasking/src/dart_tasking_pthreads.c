@@ -1393,7 +1393,10 @@ destroy_threadpool(bool print_stats)
   if (print_stats) {
     DART_LOG_INFO("######################");
     for (int i = 0; i < num_threads; ++i) {
-      DART_LOG_INFO("Thread %i executed %lu tasks", i, thread_pool[i]->taskcntr);
+      if (thread_pool[i]) {
+        DART_LOG_INFO("Thread %i executed %lu tasks",
+                      i, thread_pool[i]->taskcntr);
+      }
     }
     DART_LOG_INFO("######################");
   }
