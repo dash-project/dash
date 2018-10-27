@@ -367,10 +367,15 @@ inline GlobStaticMem<LMemSpace>& GlobStaticMem<LMemSpace>::
                                  operator=(GlobStaticMem&& other) noexcept(
     std::is_nothrow_swappable<std::vector<size_type>>::value)
 {
+
+  if (this == &other) {
+    return *this;
+  }
+
   auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
 
-  reg.erase(std::make_pair(m_begin.teamid, m_begin.segid));
-  reg.erase(std::make_pair(other.m_begin.teamid, other.m_begin.segid));
+  reg.erase(static_cast<dart_gptr_t>(m_begin));
+  reg.erase(static_cast<dart_gptr_t>(other.m_begin));
 
   //Swap all members
   std::swap(m_team, other.m_team);
@@ -384,12 +389,11 @@ inline GlobStaticMem<LMemSpace>& GlobStaticMem<LMemSpace>::
   std::swap(m_size, other.m_size);
 
   if (!DART_GPTR_ISNULL(m_begin)) {
-    reg.add(std::make_pair(m_begin.teamid, m_begin.segid), this);
+    reg.add(static_cast<dart_gptr_t>(m_begin), this);
   }
 
   if (!DART_GPTR_ISNULL(other.m_begin)) {
-    reg.add(
-        std::make_pair(other.m_begin.teamid, other.m_begin.segid), &other);
+    reg.add(static_cast<dart_gptr_t>(other.m_begin), &other);
   }
 
   return *this;
@@ -444,7 +448,7 @@ GlobStaticMem<LMemSpace>::do_allocate(size_type nbytes, size_type alignment)
 
   //add this instance to the global memory space registry
   auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
-  reg.add(std::make_pair(m_begin.teamid, m_begin.segid), this);
+  reg.add(static_cast<dart_gptr_t>(m_begin), this);
 
 
   return void_pointer(*this, m_begin);
@@ -496,7 +500,7 @@ inline void GlobStaticMem<LMemSpace>::do_deallocate(
   }
 
   auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
-  reg.erase(std::make_pair(m_begin.teamid, m_begin.segid));
+  reg.erase(static_cast<dart_gptr_t>(gptr));
 
   DASH_LOG_DEBUG("MemorySpace.do_deallocate >");
 }

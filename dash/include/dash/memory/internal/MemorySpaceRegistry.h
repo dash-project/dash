@@ -18,6 +18,9 @@ class MemorySpaceRegistry {
 
   using key_t = std::pair<teamid_t, segid_t>;
 
+  static constexpr int IDX_TEAMID = 0;
+  static constexpr int IDX_SEGID  = 1;
+
   using value_t = void*;
 
 public:
@@ -26,13 +29,18 @@ public:
   ~MemorySpaceRegistry() = default;
   static MemorySpaceRegistry& GetInstance();
 
-  bool    add(key_t key, value_t value);
-  value_t lookup(key_t key) const noexcept;
-  void    erase(key_t key);
+  bool add(dart_gptr_t gptr, value_t mem_space);
+  void erase(dart_gptr_t gptr);
 
   inline value_t lookup(dart_gptr_t pointer) const noexcept
   {
-    return lookup(std::make_pair(pointer.teamid, pointer.segid));
+    auto it = do_lookup(std::make_pair(pointer.teamid, pointer.segid));
+
+    if (it != std::end(m_segments)) {
+      return it->second;
+    }
+
+    return nullptr;
   }
 
 private:

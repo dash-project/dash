@@ -79,6 +79,7 @@ void memfree(
   mspace->deallocate(gptr, nels * sizeof(T), alignof(T));
 }
 
+
 template <class T, class MemorySpaceT>
 class DefaultGlobPtrDeleter {
   using size_type = typename MemorySpaceT::size_type;

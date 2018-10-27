@@ -192,7 +192,7 @@ template <class T, class MemorySpaceT>
 dart_gptr_t increment(
     dart_gptr_t dart_gptr,
     typename MemorySpaceT::size_type offs,
-    MemorySpaceT const *mem_space,
+    MemorySpaceT const * /*mem_space*/,
     memory_space_noncontiguous)
 {
   dart_gptr.addr_or_offs.offset += offs * sizeof(T);

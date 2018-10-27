@@ -76,7 +76,7 @@ public:
   ~GlobLocalMemoryPool() override;
 
   GlobLocalMemoryPool(const GlobLocalMemoryPool&) = delete;
-  GlobLocalMemoryPool(GlobLocalMemoryPool&&)      = default;
+  GlobLocalMemoryPool(GlobLocalMemoryPool&&);
 
   GlobLocalMemoryPool& operator=(const GlobLocalMemoryPool&) = delete;
   GlobLocalMemoryPool& operator=(GlobLocalMemoryPool&&);
@@ -202,9 +202,19 @@ inline GlobLocalMemoryPool<LMemSpace>::GlobLocalMemoryPool(
 }
 
 template <class LMemSpace>
+inline GlobLocalMemoryPool<LMemSpace>::GlobLocalMemoryPool(
+    GlobLocalMemoryPool&& other)
+{
+  *this = std::move(other);
+}
+
+template <class LMemSpace>
 inline GlobLocalMemoryPool<LMemSpace>& GlobLocalMemoryPool<LMemSpace>::
                                        operator=(GlobLocalMemoryPool&& other)
 {
+  if (this == &other) {
+    return *this;
+  }
   // deallocate own memory
   release();
   // and swap..
@@ -251,8 +261,6 @@ GlobLocalMemoryPool<LMemSpace>::do_allocate(
     DASH_LOG_DEBUG_VAR("LocalAllocator.allocate >", gptr);
 
     m_segments.emplace_back(std::make_pair(pointer{*this, gptr}, nbytes));
-    auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
-    reg.add(std::make_pair(gptr.teamid, gptr.segid), this);
     return m_segments.back().first;
   }
 
@@ -286,14 +294,6 @@ inline void GlobLocalMemoryPool<LMemSpace>::do_deallocate(
     do_segment_free(it_seg);
 
     m_segments.erase(it_seg);
-
-    if (m_segments.size() == 0) {
-      // remove ourselves from the global registry list since we do not have
-      // any segments anymore
-      auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
-      auto const dart_gptr = gptr.dart_gptr();
-      reg.erase(std::make_pair(dart_gptr.teamid, dart_gptr.segid));
-    }
   }
 
   DASH_LOG_DEBUG("MemorySpace.do_deallocate >");
@@ -312,11 +312,6 @@ inline void GlobLocalMemoryPool<LMemSpace>::release()
   }
 
   m_segments.clear();
-
-  // remove ourselves from the global registry list since we do not have
-  // any segments anymore
-  auto&      reg       = dash::internal::MemorySpaceRegistry::GetInstance();
-  reg.erase(std::make_pair(dart_gptr.teamid, dart_gptr.segid));
 }
 
 template <class LMemSpace>

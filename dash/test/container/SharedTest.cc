@@ -12,6 +12,9 @@ TEST_F(SharedTest, SingleWriteMultiRead)
 {
   typedef int value_t;
 
+  int wait =0;
+  while(wait);
+
   value_t shared_value_1 = 123;
   value_t shared_value_2 = 234;
   dash::Shared<value_t> shared;
@@ -301,4 +304,19 @@ TEST_F(SharedTest, DelayedAllocation)
 
   val = shared_delayed.get();
   EXPECT_EQ_U(1000, val);
+
+  dash::Shared<int32_t> anotherShared{42};
+  anotherShared.barrier();
+
+  dash::swap(shared_delayed, anotherShared);
+
+  shared_delayed.barrier();
+
+  EXPECT_EQ_U(42, static_cast<int32_t>(shared_delayed.get()));
+
+  /* if these two shared variables are in two different we have to wait for
+  this team as well to be ready */
+
+  //anotherShared.barrier();
+  EXPECT_EQ_U(1000, static_cast<int32_t>(anotherShared.get()));
 }

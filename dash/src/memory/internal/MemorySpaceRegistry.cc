@@ -12,53 +12,50 @@ std::vector<dash::internal::MemorySpaceRegistry::element_t>
 
 std::once_flag dash::internal::MemorySpaceRegistry::m_onceFlag;
 
+std::ostream &operator<<(std::ostream &os, const dart_gptr_t &dartptr);
+
 namespace dash {
 namespace internal {
 MemorySpaceRegistry& MemorySpaceRegistry::GetInstance()
 {
-  std::call_once(m_onceFlag, [] { m_instance.reset(new MemorySpaceRegistry); });
+  std::call_once(
+      m_onceFlag, [] { m_instance.reset(new MemorySpaceRegistry); });
   return *m_instance.get();
 }
 
-void* MemorySpaceRegistry::lookup(key_t key) const noexcept
+bool MemorySpaceRegistry::add(dart_gptr_t p, value_t value)
 {
-  auto it = do_lookup(key);
+  auto key = std::make_pair(p.teamid, p.segid);
 
-  if (it != std::end(m_segments)) {
-    return it->second;
-  }
-
-  return nullptr;
-}
-
-bool MemorySpaceRegistry::add(key_t key, value_t value)
-{
-  if (lookup(key)) {
+  if (do_lookup(key) != std::end(m_segments)) {
     return false;
   }
+
   DASH_LOG_TRACE(
-      "MemorySpaceRegistry.add",
-      "adding memory space segment",
-      key.first,
-      key.second,
-      value);
+      "MemorySpaceRegistry.add", "adding memory space segment", p, value);
+
   m_segments.emplace_back(std::make_pair(key, value));
+
   return true;
 }
 
-void MemorySpaceRegistry::erase(key_t key)
+void MemorySpaceRegistry::erase(dart_gptr_t p)
 {
+  auto const key = std::make_pair(p.teamid, p.segid);
+
   auto it = do_lookup(key);
 
-  if (it != std::end(m_segments)) {
-    DASH_LOG_TRACE(
-        "MemorySpaceRegistry.erase",
-        "erasing memory space segment",
-        key.first,
-        key.second,
-        it->second);
-    m_segments.erase(it);
+  if (it == std::end(m_segments)) {
+    return;
   }
+
+  DASH_LOG_TRACE(
+      "MemorySpaceRegistry.erase",
+      "removing memory space",
+      std::get<IDX_TEAMID>(key),
+      std::get<IDX_SEGID>(key));
+
+  m_segments.erase(it);
 }
 
 std::vector<dash::internal::MemorySpaceRegistry::element_t>::iterator
@@ -67,7 +64,7 @@ MemorySpaceRegistry::do_lookup(key_t key) const noexcept
   return std::find_if(
       std::begin(m_segments),
       std::end(m_segments),
-      [key](const std::pair<key_t, value_t>& item) {
+      [key](const element_t& item) {
         return item.first == key;
       });
 }
