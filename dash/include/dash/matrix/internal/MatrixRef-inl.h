@@ -178,7 +178,7 @@ MatrixRef<T, NumDim, CUR, PatternT, LocalMemT>
 ::begin() const noexcept
 {
   return const_iterator(
-           _refview._mat->_glob_mem.get(),
+           &(_refview._mat->_glob_mem),
            _refview._mat->_pattern,
            _refview._viewspec,
            // Relative iterator position
@@ -197,7 +197,7 @@ MatrixRef<T, NumDim, CUR, PatternT, LocalMemT>
 ::begin() noexcept
 {
   return iterator(
-           _refview._mat->_glob_mem.get(),
+           &(_refview._mat->_glob_mem),
            _refview._mat->_pattern,
            _refview._viewspec,
            // Relative iterator position
@@ -216,7 +216,7 @@ MatrixRef<T, NumDim, CUR, PatternT, LocalMemT>
 ::end() const noexcept
 {
   return const_iterator(
-           _refview._mat->_glob_mem.get(),
+           &(_refview._mat->_glob_mem),
            _refview._mat->_pattern,
            _refview._viewspec,
            // Relative iterator position
@@ -234,7 +234,7 @@ MatrixRef<T, NumDim, CUR, PatternT, LocalMemT>
 ::end() noexcept
 {
   return iterator(
-           _refview._mat->_glob_mem.get(),
+           &(_refview._mat->_glob_mem),
            _refview._mat->_pattern,
            _refview._viewspec,
            // Relative iterator position

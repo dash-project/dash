@@ -31,7 +31,7 @@ inline Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::Matrix(Team& t)
   , _lsize(0)
   , _lcapacity(0)
   , _pattern(size_spec(), distribution_spec(), *_team)
-  , _glob_mem(std::make_unique<GlobMem_t>(*_team))
+  , _glob_mem(*_team)
 {
   DASH_LOG_TRACE("Matrix()", "default constructor");
 }
@@ -52,7 +52,7 @@ inline Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::Matrix(
   , _lsize(0)
   , _lcapacity(0)
   , _pattern(ss, ds, ts, t)
-  , _glob_mem(std::make_unique<GlobMem_t>(*_team))
+  , _glob_mem(*_team)
 {
   DASH_LOG_TRACE_VAR("Matrix()", _team->myid());
   allocate(_pattern);
@@ -72,26 +72,30 @@ inline Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::Matrix(
   , _lsize(0)
   , _lcapacity(0)
   , _pattern(pattern)
-  , _glob_mem(std::make_unique<GlobMem_t>(*_team))
+  , _glob_mem(*_team)
 {
   DASH_LOG_TRACE("Matrix()", "pattern instance constructor");
   allocate(_pattern);
   DASH_LOG_TRACE("Matrix()", "Initialized");
 }
 
-template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
-inline Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
-::Matrix(
-  self_t && other)
-: _team(other._team),
-  _size(other._size),
-  _lcapacity(other._lcapacity),
-  _begin(other._begin),
-  _pattern(other._pattern),
-  _glob_mem(std::move(other._glob_mem)),
-  _lbegin(other._lbegin),
-  _lend(other._lend),
-  _ref(other._ref)
+template <
+    typename T,
+    dim_t NumDim,
+    typename IndexT,
+    class PatternT,
+    typename LocalMemT>
+inline Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::Matrix(self_t&& other)
+  : _team(other._team)
+  , _size(other._size)
+  , _lcapacity(other._lcapacity)
+  , _begin(other._begin)
+  , _pattern(other._pattern)
+  , _glob_mem(std::move(other._glob_mem))
+  , _data(other._data.release(), {&_glob_mem, _pattern.local_size()})
+  , _lbegin(other._lbegin)
+  , _lend(other._lend)
+  , _ref(other._ref)
 {
   // do not free other globmem
   other._lbegin = nullptr;
@@ -99,8 +103,7 @@ inline Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
   other._begin  = iterator{};
 
   // Register team deallocator:
-  _team->register_deallocator(
-    this, std::bind(&Matrix::deallocate, this));
+  _team->register_deallocator(this, std::bind(&Matrix::deallocate, this));
   DASH_LOG_TRACE("Matrix()", "Move-Constructed");
 }
 
@@ -118,29 +121,32 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::operator= (
   Matrix<T, NumDim, IndexT, PatternT, LocalMemT> && other)
 {
-  if (_glob_mem != nullptr)
-    deallocate();
+  if (this == &other) {
+    return *this;
+  }
+
+  _pattern = std::move(other._pattern);
+
+  // a) reset own data
+  _data.reset();
+  // b) move memory resource
+  _glob_mem = std::move(other._glob_mem);
+  // c) move the unique_gptr from other into this
+  unique_gptr_t __tmp{other._data.release(),
+                      {&_glob_mem, _pattern.local_size()}};
+  _data = std::move(__tmp);
 
   _team      = other._team;
   _size      = other._size;
   _lcapacity = other._lcapacity;
   _begin     = other._begin;
-  _pattern   = other._pattern;
-  std::swap(_glob_mem, other._glob_mem);
   _lbegin    = other._lbegin;
   _lend      = other._lend;
   _ref       = other._ref;
 
   // Re-register team deallocator:
-  if (_glob_mem != nullptr) {
-    _team->register_deallocator(
-      this, std::bind(&Matrix::deallocate, this));
-  }
+  _team->register_deallocator(this, std::bind(&Matrix::deallocate, this));
 
-  // do not free other globmem
-  other._begin = iterator{};
-  other._lbegin   = nullptr;
-  other._lend     = nullptr;
   DASH_LOG_TRACE("Matrix.operator=(&&)", "Move-Assigned");
   return *this;
 }
@@ -201,32 +207,41 @@ bool Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
   if (&_pattern != &pattern) {
     DASH_LOG_TRACE("Matrix.allocate()", "using specified pattern");
     _pattern = pattern;
+    _team = &pattern.team();
   }
 
+  if (_glob_mem.team() != *_team) {
+    _data.reset();
+    _glob_mem = std::move(GlobMem_t{*_team});
+  }
 
   // Copy sizes from pattern:
   _size      = _pattern.size();
   _team      = &(_pattern.team());
   _lsize     = _pattern.local_size();
   _lcapacity = _pattern.local_capacity();
-  _glob_mem  = std::move(std::make_unique<GlobMem_t>(_pattern.team()));
+
+  _data = std::move(dash::allocate_unique<value_type>(&_glob_mem, _lsize));
+
   DASH_LOG_TRACE_VAR("Matrix.allocate", _size);
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lsize);
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
-  // Allocate and initialize memory
-  // use _lcapacity as the collective allocator requires symmetric allocations
-  auto allocated_ptr = static_cast<pointer>(_glob_mem->allocate(
-      _pattern.local_size() * sizeof(value_type), alignof(T)));
 
-  DASH_ASSERT(allocated_ptr);
 
-  _begin  = iterator(_glob_mem.get(), _pattern);
-  _lbegin = static_cast<typename iterator::local_type>(_glob_mem->lbegin());
-  _lend   = std::next(_lbegin, _lsize);
+  _begin  = iterator(&_glob_mem, _pattern);
+
+  if (_size) {
+    DASH_ASSERT(_data);
+  }
 
   if (_lsize) {
+    auto soon_to_be_lbegin = _data.get();
+    soon_to_be_lbegin.set_unit(_team->myid());
+    _lbegin = soon_to_be_lbegin.local();
     DASH_ASSERT(_lbegin);
+    _lend   = std::next(_lbegin, _lsize);
   }
+
   // Register team deallocator:
   _team->register_deallocator(
     this, std::bind(&Matrix::deallocate, this));
@@ -283,24 +298,40 @@ void Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
     this, std::bind(&Matrix::deallocate, this));
   // Actual destruction of the array instance:
 
-  if (_glob_mem && _size > 0) {
-    // iterator -> pointer conversion
-    auto ptr = static_cast<pointer>(_begin);
-
-    _glob_mem->deallocate(
-        ptr,
-        // local capacity
-        _lcapacity * sizeof(value_type),
-        // alignment
-        alignof(value_type));
-
-    // reset the pointer
-    _begin = iterator{};
-    _lbegin = nullptr;
-    _lend = nullptr;
+  if (_data) {
+    destruct_at_end(_lbegin);
   }
 
-  _size = 0;
+  _data.reset();
+
+  // reset the pointer
+  _begin  = iterator{};
+  _size   = 0;
+  _lbegin = nullptr;
+  _lend   = nullptr;
+  _lsize  = 0;
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
+void Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::destruct_at_end(
+    value_type * new_last)
+{
+  DASH_LOG_DEBUG_VAR("Matrix.destruct_at_end", new_last);
+  if (!_data || !new_last) {
+    return;
+  }
+
+  DASH_ASSERT(_lend);
+
+  local_pointer soon_to_be_new_last = _lend;
+
+  auto local_alloc = _glob_mem.get_allocator();
+  using allocator_traits = std::allocator_traits<decltype(local_alloc)>;
+
+  while (new_last != soon_to_be_new_last) {
+    allocator_traits::destroy(local_alloc, --soon_to_be_new_last);
+  }
+  _lend = new_last;
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
@@ -396,28 +427,32 @@ template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename Lo
 inline void
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::flush() {
-  _glob_mem->flush();
+  if (_data)
+    _glob_mem.flush();
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
 inline void
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::flush(dash::team_unit_t target) {
-  _glob_mem->flush(target);
+  if (_data)
+    _glob_mem.flush(target);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
 inline void
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::flush_local() {
-  _glob_mem->flush_local();
+  if (_data)
+    _glob_mem.flush_local();
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
 inline void
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::flush_local(dash::team_unit_t target) {
-  _glob_mem->flush_local(target);
+  if (_data)
+    _glob_mem.flush_local(target);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>

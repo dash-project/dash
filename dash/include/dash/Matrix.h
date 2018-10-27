@@ -262,6 +262,9 @@ public:
   static constexpr dim_t ndim() {
     return NumDimensions;
   }
+private:
+  using unique_gptr_t = decltype(dash::allocate_unique<value_type>(
+      static_cast<GlobMem_t *>(nullptr), std::size_t{}));
 
 private:
   /// Team containing all units that collectively instantiated the
@@ -278,7 +281,9 @@ private:
   /// The matrix elements' distribution pattern
   Pattern_t _pattern;
   /// Global memory allocation and -access
-  std::unique_ptr<GlobMem_t> _glob_mem{};
+  GlobMem_t _glob_mem{};
+  /// Unique pointer to memory allocated by global memory instance
+  unique_gptr_t _data{};
   /// Native pointer to first local element in the array
   ElementT *_lbegin{};
   /// Native pointer past last local element in the array
@@ -759,6 +764,8 @@ public:
   operator
     MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT, LocalMemSpaceT> ();
 
+private:
+  void destruct_at_end(value_type *new_last);
 };
 
 /**

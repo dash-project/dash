@@ -1440,7 +1440,7 @@ private:
     } while (nl > 0);
   }
 
-  void destruct_at_end(local_pointer new_last) noexcept
+  void destruct_at_end(local_pointer new_last)
   {
     if (0 == m_lsize || m_lend == nullptr) return;
 
