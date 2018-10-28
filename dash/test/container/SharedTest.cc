@@ -12,9 +12,6 @@ TEST_F(SharedTest, SingleWriteMultiRead)
 {
   typedef int value_t;
 
-  int wait =0;
-  while(wait);
-
   value_t shared_value_1 = 123;
   value_t shared_value_2 = 234;
   dash::Shared<value_t> shared;

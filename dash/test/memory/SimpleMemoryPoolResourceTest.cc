@@ -11,9 +11,6 @@ TEST_F(SimpleMemoryPoolTest, usageExampleStack)
 {
   DASH_TEST_LOCAL_ONLY();
 
-  int wait = 0;
-  while(wait);
-
   using ValueType = int;
   using IntStack = Stack<ValueType, dash::HostSpace>;
 
