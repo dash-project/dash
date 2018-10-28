@@ -61,7 +61,7 @@ GlobPtr<T, GlobLocalMemoryPool<dash::HostSpace>> memalloc(size_t nelem)
 
   auto ptr = mspace->allocate(nelem * sizeof(T), alignof(T));
 
-  return dash::GlobPtr<T, memory_t>(*mspace, ptr.dart_gptr());
+  return static_cast<dash::GlobPtr<T, memory_t>>(ptr);
 }
 
 template <class T>

@@ -360,7 +360,7 @@ public:
                        local_pos.index + offset);
     // Create global pointer from unit and local offset:
     auto const    dart_pointer = _get_pointer_at(local_pos);
-    const_pointer gptr(*_globmem, dart_pointer);
+    const_pointer gptr(dart_pointer);
     gptr += offset;
     return gptr;
   }
@@ -402,7 +402,7 @@ public:
     // Create global pointer from unit and local offset:
 
     auto const    dart_pointer = _get_pointer_at(local_pos);
-    pointer gptr(*_globmem, dart_pointer);
+    pointer gptr(dart_pointer);
     gptr += offset;
     return gptr;
   }
@@ -446,7 +446,7 @@ public:
                    "local index:", local_pos.index);
     // Global pointer to element at given position:
     auto const    dart_pointer = _get_pointer_at(local_pos);
-    const_pointer gptr(*_globmem, dart_pointer);
+    const_pointer gptr(dart_pointer);
     DASH_LOG_TRACE_VAR("GlobIter.dart_gptr >", gptr);
     return (gptr + offset).dart_gptr();
   }
@@ -1010,13 +1010,11 @@ private:
     //dart pointer to global begin
     auto dart_pointer = static_cast<dart_gptr_t>(_globmem->begin());
 
-    //set unit
-    DASH_ASSERT_RETURNS(
-        dart_gptr_setunit(&dart_pointer, pos.unit), DART_OK);
+    DASH_ASSERT(pos.index >= 0);
 
-    //set offset
-    DASH_ASSERT_RETURNS(
-        dart_gptr_incaddr(&dart_pointer, pos.index * sizeof(value_type)), DART_OK);
+    dart_pointer.unitid = pos.unit;
+
+    dart_pointer.addr_or_offs.offset += pos.index * sizeof(value_type);
 
     return dart_pointer;
   }

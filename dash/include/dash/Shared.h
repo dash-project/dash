@@ -162,8 +162,6 @@ public:
       return false;
     }
 
-    dart_gptr_t bcast = DART_GPTR_NULL;
-
     // Shared value is only allocated at unit 0:
     if (!m_data && m_team->myid() == m_owner) {
       DASH_LOG_DEBUG(
@@ -181,16 +179,14 @@ public:
 
       // copy construct based on val
       allocator_traits::construct(local_alloc, laddr, element_t{val});
-      bcast = static_cast<dart_gptr_t>(m_data.get());
+      m_glob_pointer = m_data.get();
     }
     // Broadcast global pointer of shared value at unit 0 to all units:
-    dash::dart_storage<dart_gptr_t> ds(1);
+    dash::dart_storage<pointer_t> ds(nels);
 
     DASH_ASSERT_RETURNS(
-        dart_bcast(&bcast, ds.nelem, ds.dtype, m_owner, m_team->dart_id()),
+        dart_bcast(&m_glob_pointer, ds.nelem, ds.dtype, m_owner, m_team->dart_id()),
         DART_OK);
-
-    m_glob_pointer = pointer_t(m_memory_resource, bcast);
 
     DASH_LOG_DEBUG_VAR("Shared.init(value,team,owner) >", m_glob_pointer);
     DASH_LOG_DEBUG("Shared.init(value,team,owner) >");

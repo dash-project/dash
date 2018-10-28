@@ -260,11 +260,11 @@ GlobLocalMemoryPool<LMemSpace>::do_allocate(
     }
     DASH_LOG_DEBUG_VAR("LocalAllocator.allocate >", gptr);
 
-    m_segments.emplace_back(std::make_pair(pointer{*this, gptr}, nbytes));
+    m_segments.emplace_back(std::make_pair(pointer{gptr}, nbytes));
     return m_segments.back().first;
   }
 
-  return pointer{*this, DART_GPTR_NULL};
+  return pointer{DART_GPTR_NULL};
 }
 
 template <class LMemSpace>

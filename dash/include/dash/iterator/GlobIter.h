@@ -257,7 +257,7 @@ public:
 
     auto const dart_pointer = _get_pointer_at(local_pos);
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(dart_pointer), "dart pointer must not be null");
-    return pointer(*_globmem, dart_pointer) + offset;
+    return pointer(dart_pointer) + offset;
   }
 
   /**
@@ -291,7 +291,7 @@ public:
 
     auto const dart_pointer = _get_pointer_at(local_pos);
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(dart_pointer), "dart pointer must not be null");
-    return pointer(*_globmem, dart_pointer) + offset;
+    return pointer(dart_pointer) + offset;
   }
 
   /**
@@ -328,7 +328,7 @@ public:
                    "local index:", local_pos.index);
     auto const dart_pointer = _get_pointer_at(local_pos);
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(dart_pointer), "dart pointer must not be null");
-    auto gptr = pointer(*_globmem, dart_pointer);
+    auto gptr = pointer(dart_pointer);
     DASH_LOG_TRACE_VAR("GlobIter.dart_gptr >", gptr);
     return (gptr + offset).dart_gptr();
   }
@@ -673,16 +673,13 @@ public:
 private:
 
   dart_gptr_t _get_pointer_at(typename pattern_type::local_index_t pos) const {
-    //dart pointer to global begin
     auto dart_pointer = static_cast<dart_gptr_t>(_globmem->begin());
 
-    //set unit
-    DASH_ASSERT_RETURNS(
-        dart_gptr_setunit(&dart_pointer, pos.unit), DART_OK);
+    DASH_ASSERT(pos.index >= 0);
 
-    //set offset
-    DASH_ASSERT_RETURNS(
-        dart_gptr_incaddr(&dart_pointer, pos.index * sizeof(value_type)), DART_OK);
+    dart_pointer.unitid = pos.unit;
+
+    dart_pointer.addr_or_offs.offset += pos.index * sizeof(value_type);
 
     return dart_pointer;
   }
@@ -702,8 +699,7 @@ std::ostream & operator<<(
           ElementType, Pattern, GlobStaticMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<const ElementType, GlobStaticMem> ptr(*it._globmem,
-                                                it.dart_gptr());
+  dash::GlobPtr<const ElementType, GlobStaticMem> ptr(it.dart_gptr());
   ss << "dash::GlobIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";

@@ -168,11 +168,11 @@ public:
 
   void_pointer begin() noexcept
   {
-    return void_pointer(*this, m_begin);
+    return void_pointer(m_begin);
   }
   const_void_pointer begin() const noexcept
   {
-    return const_void_pointer(*this, m_begin);
+    return const_void_pointer(m_begin);
   }
 
   void_pointer end() noexcept
@@ -183,7 +183,7 @@ public:
     // reset local offset to 0
     soon_to_be_end.addr_or_offs.offset = 0;
 
-    return void_pointer(*this, soon_to_be_end);
+    return void_pointer(soon_to_be_end);
   }
   const_void_pointer end() const noexcept
   {
@@ -193,7 +193,7 @@ public:
     // reset local offset to 0
     soon_to_be_end.addr_or_offs.offset = 0;
 
-    return const_void_pointer(*this, soon_to_be_end);
+    return const_void_pointer(soon_to_be_end);
   }
 
   void_pointer allocate(size_type nbytes, size_type alignment = max_align)
@@ -213,7 +213,7 @@ public:
           m_alignment,
           "alignment does not match the originally requested alignment");
     }
-    return void_pointer(*this, m_begin);
+    return void_pointer(m_begin);
   }
 
   void deallocate(
@@ -451,7 +451,7 @@ GlobStaticMem<LMemSpace>::do_allocate(size_type nbytes, size_type alignment)
   reg.add(static_cast<dart_gptr_t>(m_begin), this);
 
 
-  return void_pointer(*this, m_begin);
+  return void_pointer(m_begin);
 }
 
 template <class LMemSpace>

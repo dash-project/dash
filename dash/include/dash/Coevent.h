@@ -82,7 +82,7 @@ public:
     //pointer from a const iterator to make the comiler happy.
     //return const_iterator(static_cast<const_pointer_t>(_event_counts.begin()));
     auto dart_ptr = _event_counts.begin().dart_gptr();
-    pointer_t nonconst_ptr{_event_counts.begin().globmem(), dart_ptr};
+    pointer_t nonconst_ptr{dart_ptr};
     return const_iterator(nonconst_ptr);
   }
 
@@ -98,7 +98,7 @@ public:
     //pointer from a const iterator to make the comiler happy.
     //return const_iterator(static_cast<const_pointer_t>(_event_counts.end()));
     auto dart_ptr = _event_counts.end().dart_gptr();
-    pointer_t nonconst_ptr{_event_counts.end().globmem(), dart_ptr};
+    pointer_t nonconst_ptr{dart_ptr};
     return const_iterator(nonconst_ptr);
   }
 

@@ -89,9 +89,6 @@ public:
 private:
   // Raw global pointer used to initialize this pointer instance
   dart_gptr_t m_dart_pointer = DART_GPTR_NULL;
-  // Memory space refernced by this global pointer
-  const GlobMemT *m_mem_space{nullptr};
-
 public:
   /**
    * Default constructor, underlying global address is unspecified.
@@ -101,9 +98,8 @@ public:
   /**
    * Constructor, specifies underlying global address.
    */
-  GlobPtr(const GlobMemT &mem_space, dart_gptr_t gptr)
+  GlobPtr(dart_gptr_t gptr)
     : m_dart_pointer(gptr)
-    , m_mem_space(&mem_space)
   {
   }
 
@@ -112,7 +108,6 @@ public:
    */
   explicit constexpr GlobPtr(std::nullptr_t)
     : m_dart_pointer(DART_GPTR_NULL)
-    , m_mem_space(nullptr)
   {
   }
 
@@ -150,7 +145,6 @@ public:
       ::type>
   constexpr GlobPtr(const GlobPtr<From, GlobMemT> &other)
     : m_dart_pointer(other.m_dart_pointer)
-    , m_mem_space(reinterpret_cast<const GlobMemT *>(other.m_mem_space))
   {
   }
 
@@ -161,7 +155,6 @@ public:
   self_t &operator=(const GlobPtr<T, MemSpaceT> &other)
   {
     m_dart_pointer = other.m_dart_pointer;
-    m_mem_space    = reinterpret_cast<const GlobMemT *>(other.m_mem_space);
     return *this;
   }
 
@@ -460,6 +453,9 @@ public:
 private:
   void increment(size_type offs)
   {
+    if (offs == 0) {
+      return;
+    }
     using memory_space_traits = dash::memory_space_traits<GlobMemT>;
 
     if (DART_GPTR_ISNULL(m_dart_pointer)) {
@@ -468,11 +464,13 @@ private:
           "cannot increment a global null pointer");
     }
 
+    auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
+    auto const * mem_space = static_cast<const GlobMemT *>(reg.lookup(m_dart_pointer));
     // get a new dart with the requested offset
     auto const newPtr = dash::internal::increment<value_type>(
         m_dart_pointer,
         offs,
-        m_mem_space,
+        mem_space,
         typename memory_space_traits::memory_space_layout_tag{});
 
     DASH_ASSERT(!DART_GPTR_ISNULL(newPtr));
@@ -482,6 +480,10 @@ private:
 
   void decrement(size_type offs)
   {
+    if (offs == 0) {
+      return;
+    }
+
     using memory_space_traits = dash::memory_space_traits<GlobMemT>;
 
     if (DART_GPTR_ISNULL(m_dart_pointer)) {
@@ -490,11 +492,15 @@ private:
           "cannot decrement a global null pointer");
     }
 
+    auto &      reg = dash::internal::MemorySpaceRegistry::GetInstance();
+    auto const *mem_space =
+        static_cast<const GlobMemT *>(reg.lookup(m_dart_pointer));
+
     // get a new dart with the requested offset
     auto const newPtr = dash::internal::decrement<value_type>(
         m_dart_pointer,
         offs,
-        m_mem_space,
+        mem_space,
         typename memory_space_traits::memory_space_layout_tag{});
 
     DASH_ASSERT(!DART_GPTR_ISNULL(newPtr));
@@ -546,10 +552,20 @@ dash::gptrdiff_t distance(
 {
   using memory_space_traits = dash::memory_space_traits<MemSpaceT>;
 
+  auto const begin = static_cast<dart_gptr_t>(gbegin);
+  auto const end = static_cast<dart_gptr_t>(gbegin);
+
+  DASH_ASSERT_EQ(begin.teamid, end.teamid, "teamid must be equal");
+  DASH_ASSERT_EQ(begin.segid, end.segid, "segid must be equal");
+
+  auto &      reg = dash::internal::MemorySpaceRegistry::GetInstance();
+  auto const *mem_space =
+      static_cast<const MemSpaceT *>(reg.lookup(begin));
+
   return dash::internal::distance<T>(
       static_cast<dart_gptr_t>(gbegin),
       static_cast<dart_gptr_t>(gend),
-      gbegin.m_mem_space,
+      mem_space,
       typename memory_space_traits::memory_space_layout_tag{});
 }
 

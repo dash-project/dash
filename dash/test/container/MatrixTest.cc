@@ -668,7 +668,7 @@ TEST_F(MatrixTest, ViewIteration)
 
       // Compare with GlobPtr from global iterator without view projection:
       glob_ptr_t glob_elem_gptr(
-          matrix.begin().globmem(), matrix[gcoord_y][gcoord_x].dart_gptr());
+          matrix[gcoord_y][gcoord_x].dart_gptr());
 
       int block_value = *block_elem_gptr;
       int glob_value  = *glob_elem_gptr;
