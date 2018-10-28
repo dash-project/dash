@@ -361,5 +361,6 @@ dart_gptr_t decrement(
 }
 
 }  // namespace internal
+
 }  // namespace dash
 #endif

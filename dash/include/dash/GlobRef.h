@@ -421,8 +421,17 @@ std::ostream & operator<<(
  * specialization for unqualified calls to swap
  */
 template<typename T>
-void swap(dash::GlobRef<T> && a, dash::GlobRef<T> && b){
+inline void swap(dash::GlobRef<T> && a, dash::GlobRef<T> && b){
   a.swap(b);
+}
+
+/**
+ * specialization for unqualified calls to swap
+ */
+template <class MemSpaceT, class T>
+inline auto addressof(dash::GlobRef<T> const & ref)
+{
+  return dash::GlobPtr<T, MemSpaceT>(ref.dart_gptr());
 }
 
 } // namespace dash

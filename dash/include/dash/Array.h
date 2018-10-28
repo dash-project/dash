@@ -464,13 +464,13 @@ public:
   typedef typename std::make_unsigned<IndexType>::type             size_type;
   typedef typename std::make_unsigned<IndexType>::type       difference_type;
 
-  typedef GlobIter<value_type, PatternType, typename Array_t::glob_mem_type>
+  typedef GlobIter<value_type, PatternType, typename Array_t::GlobMem_t>
       iterator;
 
   typedef GlobIter<
       const value_type,
       PatternType,
-      typename Array_t::glob_mem_type>
+      typename Array_t::GlobMem_t>
       const_iterator;
 
   typedef std::reverse_iterator<iterator>       reverse_iterator;
@@ -659,10 +659,10 @@ public:
   typedef typename std::make_unsigned<IndexType>::type                 size_type;
   typedef typename std::make_unsigned<IndexType>::type           difference_type;
 
-  typedef dash::GlobStaticMem<LocalMemSpaceT>                      glob_mem_type;
+  typedef dash::GlobStaticMem<LocalMemSpaceT>                      GlobMem_t;
 
-  typedef GlobIter<      value_type, PatternType, glob_mem_type>        iterator;
-  typedef GlobIter<const value_type, PatternType, glob_mem_type>  const_iterator;
+  typedef GlobIter<      value_type, PatternType, GlobMem_t>        iterator;
+  typedef GlobIter<const value_type, PatternType, GlobMem_t>  const_iterator;
 
   typedef std::reverse_iterator<      iterator>                 reverse_iterator;
   typedef std::reverse_iterator<const_iterator>           const_reverse_iterator;
@@ -716,14 +716,14 @@ public:
 private:
   typedef SizeSpec<1, size_type>
     SizeSpec_t;
-  typedef std::unique_ptr<glob_mem_type>
+  typedef std::unique_ptr<GlobMem_t>
     PtrGlobMemType_t;
 
   using unique_gptr_t = decltype(dash::allocate_unique<value_type>(
-      static_cast<glob_mem_type *>(nullptr), std::size_t{}));
+      static_cast<GlobMem_t *>(nullptr), std::size_t{}));
 
   using allocator_traits =
-      std::allocator_traits<typename glob_mem_type::allocator_type>;
+      std::allocator_traits<typename GlobMem_t::allocator_type>;
 
   static constexpr size_t alignment = alignof(value_type);
 
@@ -739,7 +739,7 @@ private:
   /// Element distribution pattern
   PatternType m_pattern{};
   /// Global memory resource
-  glob_mem_type m_globmem{};
+  GlobMem_t m_globmem{};
   /// Unique Pointer to a global memory object allocated through m_globmem
   unique_gptr_t m_data{nullptr};
   /// Iterator to initial element in the array
@@ -884,7 +884,7 @@ public:
    * The underlying memory does not have to be movable (it might).
    */
   Array(self_t &&other) noexcept(
-      std::is_nothrow_move_constructible<glob_mem_type>::value)
+      std::is_nothrow_move_constructible<GlobMem_t>::value)
     : local(this)
     , async(this)
     , m_team(other.m_team)
@@ -1007,7 +1007,7 @@ public:
    * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
-  constexpr const glob_mem_type & globmem() const noexcept
+  constexpr const GlobMem_t & globmem() const noexcept
   {
     return m_globmem;
   }
@@ -1493,7 +1493,7 @@ private:
     m_data.reset();
 
     if (m_globmem.team() != *m_team) {
-      m_globmem = std::move(glob_mem_type{*m_team});
+      m_globmem = std::move(GlobMem_t{*m_team});
     }
 
     do_allocate();
@@ -1544,7 +1544,7 @@ public:
     m_data.reset();
 
     if (m_globmem.team() != *m_team) {
-      m_globmem = std::move(glob_mem_type{*m_team});
+      m_globmem = std::move(GlobMem_t{*m_team});
     }
 
     do_allocate();

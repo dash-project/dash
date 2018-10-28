@@ -165,12 +165,13 @@ private:
     LocalRef_const_t;
   typedef PatternT
     Pattern_t;
-  typedef GlobStaticMem<LocalMemSpaceT>
-    GlobMem_t;
 
   template<class MatrixT_>
   friend class halo::HaloMatrixWrapper;
 public:
+  typedef GlobStaticMem<LocalMemSpaceT>
+    GlobMem_t;
+
   template<
     typename T_,
     dim_t NumDimensions1,
