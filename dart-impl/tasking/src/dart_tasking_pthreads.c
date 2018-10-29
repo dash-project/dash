@@ -209,22 +209,30 @@ void wrap_task(dart_task_t *task)
 static
 void invoke_task(dart_task_t *task, dart_thread_t *thread)
 {
-  dart_task_t *current_task = get_current_task();
+  DART_LOG_TRACE("invoke_task: %p, cancellation %d", task, dart__tasking__cancellation_requested());
+  if (!dart__tasking__cancellation_requested()) {
+    dart_task_t *current_task = get_current_task();
+    if (task->taskctx == NULL) {
+      // create a context for a task invoked for the first time
+      task->taskctx = dart__tasking__context_create(
+                        (context_func_t*)&wrap_task, task);
+    }
 
-  if (task->taskctx == NULL) {
-    // create a context for a task invoked for the first time
-    task->taskctx = dart__tasking__context_create(
-                      (context_func_t*)&wrap_task, task);
-  }
-
-  if (current_task->state == DART_TASK_SUSPENDED ||
-      current_task->state == DART_TASK_BLOCKED) {
-    // store current task's state and jump into new task
-    dart__tasking__context_swap(current_task->taskctx, task->taskctx);
+    if (current_task->state == DART_TASK_SUSPENDED ||
+        current_task->state == DART_TASK_BLOCKED) {
+      // store current task's state and jump into new task
+      dart__tasking__context_swap(current_task->taskctx, task->taskctx);
+    } else {
+      // store current thread's context and jump into new task
+      dart__tasking__context_swap(&thread->retctx, task->taskctx);
+      DART_LOG_TRACE("Returning from task %p ('%s')", task, task->descr);
+    }
   } else {
-    // store current thread's context and jump into new task
-    dart__tasking__context_swap(&thread->retctx, task->taskctx);
-    DART_LOG_TRACE("Returning from task %p ('%s')", task, task->descr);
+    DART_LOG_TRACE("Skipping task %p because cancellation has been requested!",
+                   task);
+
+    // simply set the current task
+    set_current_task(task);
   }
 }
 
@@ -962,6 +970,12 @@ int
 dart__tasking__num_threads()
 {
   return (dart__likely(initialized) ? num_threads : 1);
+}
+
+int
+dart__tasking__num_tasks()
+{
+  return root_task.num_children;
 }
 
 void
