@@ -42,6 +42,8 @@ enum {
   DART_AMSGQ_TWOWIN,
   DART_AMSGQ_SINGLEWIN,
   DART_AMSGQ_NOLOCK,
+  DART_AMSGQ_ATOMIC,
+  DART_AMSGQ_SOPNOP,
   DART_AMSGQ_SENDRECV,
   DART_AMSGQ_PSENDRECV
 };
@@ -50,6 +52,8 @@ static struct dart_env_str2int env_vals[] = {
   {"dualwin",   DART_AMSGQ_TWOWIN},
   {"singlewin", DART_AMSGQ_SINGLEWIN},
   {"nolock",    DART_AMSGQ_NOLOCK},
+  {"atomic",    DART_AMSGQ_ATOMIC},
+  {"sopnop",    DART_AMSGQ_SOPNOP},
   {"sendrecv",  DART_AMSGQ_SENDRECV},
   {"psendrecv", DART_AMSGQ_PSENDRECV},
   {NULL, 0}
@@ -75,6 +79,14 @@ dart_amsg_init()
     case DART_AMSGQ_NOLOCK:
       res = dart_amsg_nolock_init(&amsgq_impl);
       DART_LOG_INFO("Using nolock single-window active message queue");
+      break;
+    case DART_AMSGQ_ATOMIC:
+      res = dart_amsg_atomic_init(&amsgq_impl);
+      DART_LOG_INFO("Using 2-op-atomic single-window active message queue");
+      break;
+    case DART_AMSGQ_SOPNOP:
+      res = dart_amsg_sopnop_init(&amsgq_impl);
+      DART_LOG_INFO("Using same-op-no-op single-window active message queue");
       break;
     case DART_AMSGQ_SENDRECV:
       res = dart_amsg_sendrecv_init(&amsgq_impl);
