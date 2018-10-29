@@ -462,7 +462,6 @@ static
 dart_task_t * next_task(dart_thread_t *thread)
 {
   // stop processing tasks if they are cancelled
-  if (dart__tasking__cancellation_requested()) return NULL;
   if (thread->next_task != NULL) {
     // check for high-priority tasks and execute them first
     dart_task_t *task = thread->next_task;
@@ -645,7 +644,9 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       // blocked (see dart__tasking__yield)
       dart__task__wait_enqueue(prev_task);
     } else {
-      DART_ASSERT(prev_task->state == DART_TASK_RUNNING);
+      DART_ASSERT_MSG(prev_task->state == DART_TASK_RUNNING ||
+                      prev_task->state == DART_TASK_CANCELLED,
+                      "Unexpected task state: %d", prev_task->state);
       if (!dart__tasking__cancellation_requested()) {
         // Implicit wait for child tasks
         dart__tasking__task_complete();
@@ -942,6 +943,8 @@ dart__tasking__init()
 #endif // DART_ENABLE_AYUDAME
 
   dart__task__wait_init();
+
+  dart__tasking__cancellation_init();
 
   initialized = true;
 
@@ -1457,6 +1460,8 @@ dart__tasking__fini()
   dart__task__wait_fini();
 
   dart_tasking_tasklist_fini();
+
+  dart__tasking__cancellation_fini();
 
   initialized = false;
   DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");

@@ -482,7 +482,7 @@ TEST_F(DARTTaskingTest, CancelLocal)
         sizeof(td),          // size of the tasks's data (if to be copied)
         &dep,                // dependency
         1,                    // number of dependencies
-        DART_PRIO_LOW, 
+        DART_PRIO_LOW,
         NULL)
     );
   }
@@ -575,9 +575,9 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
     dep[1].gptr  = in_gptr;
     dep[1].phase = DART_PHASE_TASK;
     dep[1].type  = DART_DEP_IN;
-    // serialize iterations locally, otherwise only one result would be valid
+    // serialize iterations globally, otherwise some units may run ahead
     dep[2].gptr  = in_gptr;
-    dep[2].gptr.unitid = dash::myid();
+    dep[2].gptr.unitid = 0;
     dep[2].phase = DART_PHASE_TASK;
     dep[2].type  = DART_DEP_IN;
     ASSERT_EQ(

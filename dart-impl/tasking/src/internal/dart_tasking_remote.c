@@ -339,7 +339,9 @@ dart_ret_t dart_tasking_remote_sendrequest(
 dart_ret_t dart_tasking_remote_bcast_cancel(dart_team_t team)
 {
   DART_LOG_DEBUG("Broadcasting cancellation request across team %d", team);
-  return dart_amsg_bcast(team, amsgq, &request_cancellation, NULL, 0);
+  dart_amsg_bcast(team, amsgq, &request_cancellation, &team, sizeof(team));
+  // wait for all units to receive the cancellation signal
+  dart_barrier(team);
 }
 
 /**
@@ -452,8 +454,9 @@ request_send(void *data)
 static void
 request_cancellation(void *data)
 {
-  // data is NULL
-  (void)data;
+  dart_team_t team = *(dart_team_t*)data;
+  // wait for all units to receive the cancellation signal
+  dart_barrier(team);
   // we cannot call dart_task_cancel() here as it does not return
   // just signal cancellation instead and let the threads detect it
   dart__tasking__cancel_start();
