@@ -1092,6 +1092,8 @@ dart__tasking__create_task_handle(
   int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
   DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
 
+  dart_tasking_datadeps_handle_task(task, deps, ndeps);
+
   dart__base__mutex_lock(&task->mutex);
   task->state = DART_TASK_CREATED;
   bool is_runnable = dart_tasking_datadeps_is_runnable(task);
