@@ -19,10 +19,16 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
 
   memory_t globmem{};
 
-  globmem.allocate(
-      globmem_local_elements.size() * sizeof(value_t), alignof(value_t));
+  auto const ptr_alloc = static_cast<gptr_t>(globmem.allocate(
+      globmem_local_elements.size() * sizeof(value_t), alignof(value_t)));
 
-  auto *lbegin = static_cast<lptr_t>(globmem.lbegin());
+  EXPECT_TRUE_U(ptr_alloc);
+
+  auto soon_to_be_lbegin = ptr_alloc;
+  soon_to_be_lbegin.set_unit(dash::Team::All().myid());
+  auto *lbegin = soon_to_be_lbegin.local();
+
+  EXPECT_TRUE_U(lbegin);
 
   std::uninitialized_copy(
       std::begin(globmem_local_elements),
@@ -35,7 +41,7 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
   EXPECT_EQ_U(globmem.capacity(), 3 * dash::size() * sizeof(value_t));
 
   if (dash::myid() == 0) {
-    auto gbegin = static_cast<gptr_t>(globmem.begin());
+    auto gbegin = ptr_alloc;
     auto glast  = gbegin + (ngelem - 1);
     auto gend   = gbegin + ngelem;
 
@@ -54,9 +60,9 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
       if (g < ngelem) {
         int gvalue = *gbegin;
         EXPECT_EQ((g % 3) + 1, gvalue);
-        EXPECT_EQ(*gbegin, static_cast<gptr_t>(globmem.begin())[g]);
+        EXPECT_EQ(*gbegin, ptr_alloc[g]);
       }
-      EXPECT_EQ(gbegin, static_cast<gptr_t>(globmem.begin()) + g);
+      EXPECT_EQ(gbegin, ptr_alloc + g);
 
       EXPECT_EQ(
           (static_cast<dash::gptrdiff_t>(ngelem) - g),
@@ -79,7 +85,7 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
   globmem.barrier();
 
   if (dash::myid() == dash::size() - 1) {
-    auto gbegin = static_cast<gptr_t>(globmem.begin());
+    auto gbegin = ptr_alloc;
     auto gend   = gbegin + ngelem;
     // Reverse iteratation on entire global memory space, starting at
     // end pointer:
@@ -90,7 +96,7 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
         value_t gvalue = *gend;
         EXPECT_EQ((g % 3) + 1, gvalue);
       }
-      EXPECT_EQ(gend, static_cast<gptr_t>(globmem.begin()) + g);
+      EXPECT_EQ(gend, ptr_alloc + g);
 
       EXPECT_EQ(gend - gbegin, dash::distance(gbegin, gend));
       EXPECT_EQ(gbegin - gend, dash::distance(gend, gbegin));
@@ -103,6 +109,11 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
       }
     }
   }
+
+  globmem.deallocate(
+      ptr_alloc,
+      globmem_local_elements.size() * sizeof(value_t),
+      alignof(value_t));
 }
 
 TEST_F(GlobStaticMemTest, LocalBegin)
@@ -131,7 +142,12 @@ TEST_F(GlobStaticMemTest, LocalBegin)
 
   EXPECT_TRUE_U(gptr);
 
-  auto *lbegin = static_cast<lptr_t>(target.lbegin());
+  auto soon_to_be_lbegin = gptr;
+  soon_to_be_lbegin.set_unit(target.team().myid());
+
+
+  auto *lbegin = soon_to_be_lbegin.local();
+
   EXPECT_NE_U(lbegin, nullptr);
 
   std::uninitialized_copy(
@@ -144,6 +160,9 @@ TEST_F(GlobStaticMemTest, LocalBegin)
   for (int l = 0; l < target_local_elements.size(); l++) {
     EXPECT_EQ_U(*(gptr + l), lbegin[l]);
   }
+
+  target.deallocate(
+      gptr, target_local_elements.size() * sizeof(value_t), alignof(value_t));
 }
 
 TEST_F(GlobStaticMemTest, MoveSemantics)

@@ -90,6 +90,7 @@ class GlobStaticMem : public MemorySpace<
                           /// The local memory space
                           typename dash::memory_space_traits<
                               LMemSpace>::memory_space_type_category> {
+
   static constexpr size_t max_align = alignof(max_align_t);
 
   using memory_traits = dash::memory_space_traits<LMemSpace>;
