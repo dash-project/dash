@@ -19,9 +19,19 @@
  */
 #define DART_AMSGQ_IMPL_ENVSTR "DART_AMSGQ_IMPL"
 
-static bool initialized = false;
-static bool needs_translation = false;
-static intptr_t *offsets = NULL;
+/**
+ * Name of the environment variable specifying the number of entries in the
+ * active message queue. This value overrides any values passed to the
+ * constructor of the message queue.
+ *
+ * Type: integral value with optional B, K, M, G qualifier.
+ */
+#define DART_AMSGQ_SIZE_ENVSTR  "DART_AMSGQ_SIZE"
+
+static bool initialized          = false;
+static bool needs_translation    = false;
+static intptr_t *offsets         = NULL;
+static size_t msgq_size_override = 0;
 
 struct dart_amsgq {
   struct dart_amsgq_impl_data* impl;
@@ -105,6 +115,8 @@ dart_amsg_init()
     return res;
   }
 
+  msgq_size_override = dart__base__env__size(DART_AMSGQ_SIZE_ENVSTR, 0);
+
   res = exchange_fnoffsets();
 
   return res;
@@ -119,7 +131,11 @@ dart_amsg_openq(
 {
   *queue = malloc(sizeof(struct dart_amsgq));
   (*queue)->team = team;
-  return amsgq_impl.openq(msg_size, msg_count, team, &(*queue)->impl);
+  return amsgq_impl.openq(
+    msg_size,
+    msgq_size_override ? msgq_size_override : msg_count,
+    team,
+    &(*queue)->impl);
 }
 
 dart_ret_t
@@ -298,8 +314,8 @@ static inline dart_ret_t exchange_fnoffsets() {
   for (size_t i = 0; i < numunits; i++) {
     if (bases[i] != base) {
       needs_translation = true;
-      DART_LOG_INFO("Using base pointer offsets for active messages "
-                    "(%p against %p on unit %i).", base, bases[i], i);
+      DART_LOG_DEBUG("Using base pointer offsets for active messages "
+                     "(%#lx against %#lx on unit %zu).", base, bases[i], i);
       break;
     }
   }
@@ -312,7 +328,7 @@ static inline dart_ret_t exchange_fnoffsets() {
     DART_LOG_TRACE("Active message function offsets:");
     for (size_t i = 0; i < numunits; i++) {
       offsets[i] = bases[i] - ((uint64_t)&dart_amsg_openq);
-      DART_LOG_TRACE("   %i: %lli", i, offsets[i]);
+      DART_LOG_TRACE("   %zu: %#lx", i, offsets[i]);
     }
   }
 
