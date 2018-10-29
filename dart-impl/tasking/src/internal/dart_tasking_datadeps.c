@@ -329,20 +329,9 @@ static void dart_tasking_datadeps_release_dummy_task(dart_task_t *task)
 
 
 dart_ret_t
-dart_tasking_datadeps_handle_defered_local(
-  dart_thread_t    * thread)
+dart_tasking_datadeps_handle_defered_local()
 {
   dart_tasking_taskqueue_lock(&local_deferred_tasks);
-
-  // also lock the thread's queue for the time we're processing to reduce
-  // overhead
-#ifdef DART_TASK_THREADLOCAL_Q
-  dart_taskqueue_t *target_queue = &thread->queue;
-#else
-  dart__unused(thread);
-  dart_taskqueue_t *target_queue = &task_queue;
-#endif // DART_TASK_THREADLOCAL_Q
-  dart_tasking_taskqueue_lock(target_queue);
 
   DART_LOG_TRACE("Releasing %zu deferred local tasks from queue %p",
                  local_deferred_tasks.num_elem, &local_deferred_tasks);
@@ -363,11 +352,10 @@ dart_tasking_datadeps_handle_defered_local(
     dart__base__mutex_unlock(&task->mutex);
     if (runnable){
       DART_LOG_TRACE("Releasing deferred task %p\n", task);
-      dart_tasking_taskqueue_push_unsafe(target_queue, task);
+      dart__tasking__enqueue_runnable(task);
     }
   }
 
-  dart_tasking_taskqueue_unlock(target_queue);
   dart_tasking_taskqueue_unlock(&local_deferred_tasks);
   // NOTE: no need to wake up threads here, it's done by the caller
   return DART_OK;
@@ -1168,31 +1156,14 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
 
     if (runnable) {
       if (state == DART_TASK_CREATED) {
-        if (dart__tasking__phase_is_runnable(succ->phase)) {
-          // short-cut and avoid enqueuing the task
-          // NOTE: we take the last available task as this is likely the task that
-          //       is next in the chain (the list is a stack)
-          if (thread->next_task != NULL) {
-            thread->next_task->state = DART_TASK_CREATED;
-            dart__tasking__enqueue_runnable(thread->next_task);
-            thread->next_task = NULL;
-          }
-          dart__base__mutex_lock(&succ->mutex);
-          // check that we can actually enqueue the task
-          if (succ->state == DART_TASK_CREATED) {
-            succ->state = DART_TASK_QUEUED;
-            thread->next_task = succ;
-            DART_LOG_TRACE("Short-cutting task %p", succ);
-          } else {
-            DART_LOG_TRACE("Ignoring runnable task with state %d", succ->state);
-          }
-          dart__base__mutex_unlock(&succ->mutex);
-        } else
-        {
-          dart__tasking__enqueue_runnable(succ);
-        }
+        dart__tasking__enqueue_runnable(succ);
       } else if (state == DART_TASK_DUMMY) {
         dart_tasking_datadeps_release_dummy_task(succ);
+      } else {
+        DART_ASSERT_MSG(state == DART_TASK_CREATED ||
+                        state == DART_TASK_DUMMY   ||
+                        state == DART_TASK_NASCENT,
+                        "Unexpected task state %d in dependency release!", state);
       }
     }
   }

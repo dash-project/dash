@@ -123,7 +123,7 @@ dart_tasking_datadeps_handle_defered_remote() DART_INTERNAL;
  * released.
  */
 dart_ret_t
-dart_tasking_datadeps_handle_defered_local(dart_thread_t *thread) DART_INTERNAL;
+dart_tasking_datadeps_handle_defered_local() DART_INTERNAL;
 
 DART_INLINE
 bool
