@@ -1010,16 +1010,17 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
   // check whether the task has to be deferred
   if (task->parent == &root_task &&
       !dart__tasking__phase_is_runnable(task->phase)) {
-    dart_tasking_taskqueue_lock(&local_deferred_tasks);
+    dart__base__mutex_lock(&task->mutex);
     if (!dart__tasking__phase_is_runnable(task->phase)) {
       DART_LOG_TRACE("Deferring release of task %p in phase %d (q=%p, s=%zu)",
                      task, task->phase,
                      &local_deferred_tasks,
                      local_deferred_tasks.num_elem);
-      dart_tasking_taskqueue_push_unsafe(&local_deferred_tasks, task);
+      task->state = DART_TASK_CREATED;
+      dart_tasking_taskqueue_push(&local_deferred_tasks, task);
       enqueued = true;
     }
-    dart_tasking_taskqueue_unlock(&local_deferred_tasks);
+    dart__base__mutex_unlock(&task->mutex);
   }
 
   if (!enqueued){

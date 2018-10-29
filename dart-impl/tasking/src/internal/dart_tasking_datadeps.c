@@ -355,11 +355,15 @@ dart_tasking_datadeps_handle_defered_local(
     // since it's deferrement
     // Note: if the task has gained dependencies we drop the reference
     //       here because it will be released through a dependency release later.
-    if (dart_tasking_datadeps_is_runnable(task)){
+    dart__base__mutex_lock(&task->mutex);
+    bool runnable = dart_tasking_datadeps_is_runnable(task);
+    if (!runnable) {
+      task->state = DART_TASK_CREATED;
+    }
+    dart__base__mutex_unlock(&task->mutex);
+    if (runnable){
       DART_LOG_TRACE("Releasing deferred task %p\n", task);
       dart_tasking_taskqueue_push_unsafe(target_queue, task);
-    } else {
-      task->state = DART_TASK_CREATED;
     }
   }
 
@@ -501,11 +505,11 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
     if (direct_dep_candidate != NULL) {
       // this task has to wait for the remote task to finish because it will
       // overwrite the input of the remote task
+      int32_t unresolved_deps = DART_FETCH_AND_INC32(
+                                  &direct_dep_candidate->unresolved_remote_deps);
       dart_global_unit_t target = origin;
       dart_tasking_remote_direct_taskdep(target, direct_dep_candidate,
                                          rdep->task);
-      int32_t unresolved_deps = DART_FETCH_AND_INC32(
-                                  &direct_dep_candidate->unresolved_remote_deps);
       DART_LOG_DEBUG("DIRECT task dep: task %p (ph:%i) directly depends on "
                      "remote task %p (ph:%d) at unit %i and has %i remote dependencies",
                      direct_dep_candidate,
@@ -514,7 +518,6 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
                      rdep->taskdep.phase,
                      target.id,
                      unresolved_deps + 1);
-      }
     }
 
     if (candidate == NULL) {
@@ -1157,8 +1160,10 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
   while ((succ = dart_tasking_tasklist_pop(&task->successor)) != NULL) {
     DART_LOG_TRACE("  Releasing task %p", succ);
 
+    dart__base__mutex_lock(&succ->mutex);
     bool runnable = release_local_dep_counter(succ);
     dart_task_state_t state = succ->state;
+    dart__base__mutex_unlock(&succ->mutex);
     DART_LOG_TRACE("  Task %p: state %d runnable %i", succ, state, runnable);
 
     if (runnable) {
@@ -1204,8 +1209,10 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
   dart_task_t *local_task)
 {
   // release the task if it is runnable
+  dart__base__mutex_lock(&local_task->mutex);
   bool runnable = release_remote_dep_counter(local_task);
   dart_task_state_t state = local_task->state;
+  dart__base__mutex_unlock(&local_task->mutex);
 
   if (runnable) {
     // enqueue as runnable
@@ -1219,10 +1226,12 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
         // dummy is not needed anymore so we can free it
         free(local_task);
       }
-    } else {
-      DART_ASSERT_MSG(state == DART_TASK_CREATED, "Unexpected task state: %d",
-                      state);
+    } else if (state == DART_TASK_CREATED) {
       dart__tasking__enqueue_runnable(local_task);
+    } else {
+      // if the task is nascent someone else will take care of enqueueing it
+      DART_ASSERT_MSG(state == DART_TASK_NASCENT, "Unexpected task state: %d",
+                      state);
     }
   }
   return DART_OK;
