@@ -203,7 +203,7 @@ TEST_F(DARTActiveMessagesTest, Broadcast)
   dart_gptr_t gptr;
   dash::dart_storage<value_t> ds(1);
   dart_ret_t ret = dart_amsg_openq(
-      sizeof(gptr), 1000, dash::Team::All().dart_id(), &q);
+      sizeof(gptr), 1000, DART_TEAM_ALL, &q);
   ASSERT_EQ_U(DART_OK, ret);
 
   if (dash::myid() == 0) {
@@ -214,6 +214,9 @@ TEST_F(DARTActiveMessagesTest, Broadcast)
       DART_TEAM_ALL, q, &remote_fn_increment_gptr<value_t>, &gptr, sizeof(gptr));
   }
   ret = dart_amsg_process_blocking(q, DART_TEAM_ALL);
+  // dart_amsg_process_blocking guarantees that all messages have been exchanged
+  // but not that they are all processed.
+  dart_barrier(DART_TEAM_ALL);
   ASSERT_EQ_U(DART_OK, ret);
 
   if (dash::myid() == 0) {
