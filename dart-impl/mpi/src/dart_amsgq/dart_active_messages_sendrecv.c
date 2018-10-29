@@ -39,7 +39,6 @@ struct dart_amsgq_impl_data {
   int          send_tailpos;
   size_t       msg_size;
   int          msg_count;
-  dart_team_t  team;
   MPI_Comm     comm;
   dart_mutex_t send_mutex;
   dart_mutex_t processing_mutex;
@@ -122,8 +121,7 @@ dart_amsg_sendrecv_openq(
     return DART_ERR_INVAL;
   }
   struct dart_amsgq_impl_data* res = calloc(1, sizeof(*res));
-  res->team = team;
-  res->comm = team_data->comm;
+  MPI_Comm_dup(team_data->comm, &res->comm);
   dart__base__mutex_init(&res->send_mutex);
   dart__base__mutex_init(&res->processing_mutex);
   res->msg_size = sizeof(struct dart_amsg_header) + msg_size;
@@ -134,7 +132,6 @@ dart_amsg_sendrecv_openq(
   res->recv_reqs   = malloc(msg_count*sizeof(*res->recv_reqs));
   res->recv_outidx = malloc(msg_count*sizeof(*res->recv_outidx));
   res->send_outidx = malloc(msg_count*sizeof(*res->send_outidx));
-  MPI_Comm_dup(team_data->comm, &res->comm);
   MPI_Comm_rank(res->comm, &res->my_rank);
 
   res->tag = amsgq_mpi_tag++;
@@ -315,12 +312,6 @@ dart_amsg_sendrevc_process_blocking(
 {
   MPI_Request req = MPI_REQUEST_NULL;
 
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
-  if (team_data == NULL) {
-    DART_LOG_ERROR("dart_gptr_getaddr ! Unknown team %i", team);
-    return DART_ERR_INVAL;
-  }
-
   dart__base__mutex_lock(&amsgq->processing_mutex);
 
   int         barrier_flag = 0;
@@ -342,7 +333,7 @@ dart_amsg_sendrevc_process_blocking(
         DART_LOG_DEBUG("MPI_Testall: all %d sent active messages completed!",
                        amsgq->send_tailpos);
         amsgq->send_tailpos = 0;
-        MPI_Ibarrier(team_data->comm, &req);
+        MPI_Ibarrier(amsgq->comm, &req);
       }
     }
   } while (!(barrier_flag && send_flag));
@@ -363,9 +354,6 @@ static
 dart_ret_t
 dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
 {
-
-  MPI_Comm_free(&amsgq->comm);
-
   if (amsgq->send_tailpos > 0) {
     DART_LOG_INFO("Waiting for %d active messages to complete",
                   amsgq->send_tailpos);
@@ -400,6 +388,8 @@ dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
 
   dart__base__mutex_destroy(&amsgq->send_mutex);
   dart__base__mutex_destroy(&amsgq->processing_mutex);
+
+  MPI_Comm_free(&amsgq->comm);
 
   free(amsgq);
 
