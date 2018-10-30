@@ -1043,8 +1043,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
       // NOTE: we take the last available task as this is likely the task that
       //       is next in the chain (the list is a stack)
       if (thread->next_task != NULL) {
-        DART_LOG_TRACE("Un-short-cutting task %p", task);
-        dart_tasking_taskqueue_push(q, task);
+        DART_LOG_TRACE("Un-short-cutting task %p", thread->next_task);
+        dart_tasking_taskqueue_push(q, thread->next_task);
         thread->next_task = NULL;
       }
       thread->next_task = task;
