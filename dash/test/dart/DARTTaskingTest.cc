@@ -103,7 +103,7 @@ static void testfn_assign_cancel_barrier(void *data) {
   *valptr = td->assign;
 
   if (td->assign == TASK_CANCEL_CUTOFF) {
-    printf("Cancelling task %p\n", dart_task_current_task());
+    LOG_MESSAGE("Cancelling task %p", dart_task_current_task());
     dart_task_cancel_barrier();
     // this should never be executed
     *valptr = 0;
@@ -123,7 +123,7 @@ static void testfn_assign_cancel_bcast_barrier(void *data) {
   // unit 0 broadcasts the abort to all other units
   if (td->assign == TASK_CANCEL_CUTOFF) {
     if (dash::myid() == 0) {
-      printf("Cancelling task %p\n", dart_task_current_task());
+      LOG_MESSAGE("Cancelling task %p", dart_task_current_task());
       dart_task_cancel_bcast();
       // this should never be executed
       *valptr = 0;
@@ -141,22 +141,23 @@ static void testfn_assign_cancel_bcast(void *data) {
   int val;
   dart_get_blocking(&val, td->src, 1, DART_TYPE_INT, DART_TYPE_INT);
   ASSERT_EQ_U(td->expected, val);
-  int newval = val+1;
-  dart_put_blocking(td->dst, &newval, 1, DART_TYPE_INT, DART_TYPE_INT);
-  LOG_MESSAGE("[Task %p] testfn: incremented value from %i to %i (t:%d,s:%d,o:%p,u:%d)",
-    dart_task_current_task(), val, newval, td->src.teamid, td->dst.segid,
-    td->dst.addr_or_offs.addr, td->dst.unitid);
 
   // unit 0 broadcasts the abort to all other units
   if (td->expected == TASK_CANCEL_CUTOFF) {
     if (dash::myid() == 0) {
-      dart_get_blocking(&val, td->dst, 1, DART_TYPE_INT, DART_TYPE_INT);
-      printf("Cancelling task %p with dst=%d\n", dart_task_current_task(), val);
+      LOG_MESSAGE("Cancelling task %p with dst=%d", dart_task_current_task(), val);
       dart_task_cancel_bcast();
       // this should never be executed
       int zero = 0;
       dart_put_blocking(td->dst, &zero, 1, DART_TYPE_INT, DART_TYPE_INT);
     }
+  } else {
+    // increment the value
+    int newval = val+1;
+    dart_put_blocking(td->dst, &newval, 1, DART_TYPE_INT, DART_TYPE_INT);
+    LOG_MESSAGE("[Task %p] testfn: incremented value from %i to %i (t:%d,s:%d,o:%p,u:%d)",
+      dart_task_current_task(), val, newval, td->src.teamid, td->dst.segid,
+      td->dst.addr_or_offs.addr, td->dst.unitid);
   }
 }
 
@@ -599,7 +600,7 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
   // fetch result
   dart_get_blocking(&val, gptr1, 1, DART_TYPE_INT, DART_TYPE_INT);
   // we will have (TASK_CANCEL_CUTOFF + 1) increments on the first value
-  ASSERT_EQ_U(TASK_CANCEL_CUTOFF+1, val);
+  ASSERT_EQ_U(TASK_CANCEL_CUTOFF-1, val);
 
   // fetch result
   dart_get_blocking(&val, gptr2, 1, DART_TYPE_INT, DART_TYPE_INT);
