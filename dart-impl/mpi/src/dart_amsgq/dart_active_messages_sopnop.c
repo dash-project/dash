@@ -348,19 +348,7 @@ amsg_sopnop_process_internal(
   do {
     MPI_Comm_rank(amsgq->comm, &unitid);
 
-    //int64_t queuenum = *(int64_t*)amsgq->queue_ptr;
-    int64_t queuenum;
-
-    // fetch queue number
-    MPI_Fetch_and_op(
-      NULL,
-      &queuenum,
-      MPI_INT64_T,
-      unitid,
-      OFFSET_QUEUENUM,
-      MPI_NO_OP,
-      amsgq->queue_win);
-    MPI_Win_flush_local(unitid, amsgq->queue_win);
+    int64_t queuenum = *(int64_t*)amsgq->queue_ptr;
 
     DART_ASSERT(queuenum == 0 || queuenum == 1);
 
@@ -426,9 +414,8 @@ amsg_sopnop_process_internal(
       // processing
       // Any later attempt to write to this queue will return a negative offset
       // and cause the writer to switch to the new queue
-      int64_t readypos = 0;
-      int64_t prev_tailpos =  tailpos;
-      int64_t tailpos_sub  = -tailpos - INT32_MAX;
+      int64_t readypos    = 0;
+      int64_t tailpos_sub = -tailpos - INT32_MAX;
       MPI_Fetch_and_op(
         &tailpos_sub,
         &tailpos,
