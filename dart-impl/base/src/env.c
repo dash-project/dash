@@ -79,10 +79,13 @@ ssize_t dart__base__env__size(const char *env, ssize_t fallback)
     if (*endptr != '\0') {
       // check for B, K, M, or G suffix
       switch(*endptr) {
+      case 'g':
       case 'G':
         res *= 1024; /* fall-through */
+      case 'm':
       case 'M':
         res *= 1024; /* fall-through */
+      case 'k':
       case 'K':
         res *= 1024; /* fall-through */
       case 'B':
