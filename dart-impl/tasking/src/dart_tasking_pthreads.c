@@ -998,7 +998,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
       queuable = true;
     }
     dart__base__mutex_unlock(&task->mutex);
-  } else if (task->state == DART_TASK_SUSPENDED) {
+  } else if (task->state == DART_TASK_SUSPENDED ||
+             task->state == DART_TASK_DEFERRED) {
     queuable = true;
   }
 
@@ -1019,8 +1020,10 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
                      task, task->phase,
                      &local_deferred_tasks,
                      local_deferred_tasks.num_elem);
-      task->state = DART_TASK_CREATED;
-      dart_tasking_taskqueue_push(&local_deferred_tasks, task);
+      if (task->state == DART_TASK_CREATED || task->state == DART_TASK_QUEUED) {
+        task->state = DART_TASK_DEFERRED;
+        dart_tasking_taskqueue_push(&local_deferred_tasks, task);
+      }
       enqueued = true;
     }
     dart__base__mutex_unlock(&task->mutex);

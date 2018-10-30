@@ -1197,7 +1197,7 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
         // dummy is not needed anymore so we can free it
         free(local_task);
       }
-    } else if (state == DART_TASK_CREATED) {
+    } else if (state == DART_TASK_CREATED || state == DART_TASK_DEFERRED) {
       dart__tasking__enqueue_runnable(local_task);
     } else {
       // if the task is nascent someone else will take care of enqueueing it

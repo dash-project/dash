@@ -31,6 +31,7 @@ typedef enum {
   // active task states begin here
   // NOTE: check IS_ACTIVE_TASK macro if you make changes here!!
   DART_TASK_CREATED,
+  DART_TASK_DEFERRED,      // the task is deferred because its phase is not release yet
   DART_TASK_QUEUED,
   DART_TASK_DUMMY,         // the task is a dummy for a remote task
   DART_TASK_RUNNING,
