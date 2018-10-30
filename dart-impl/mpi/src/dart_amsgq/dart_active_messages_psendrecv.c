@@ -139,7 +139,7 @@ dart_amsg_sendrecv_openq(
   // post receives
   for (int i = 0; i < msg_count; ++i) {
     res->recv_bufs[i] = malloc(res->msg_size);
-    MPI_Irecv(
+    MPI_Recv_init(
       res->recv_bufs[i],
       res->msg_size,
       MPI_BYTE,
@@ -150,6 +150,8 @@ dart_amsg_sendrecv_openq(
     res->send_bufs[i] = malloc(res->msg_size);
     res->send_reqs[i] = MPI_REQUEST_NULL;
   }
+
+  MPI_Startall(msg_count, res->recv_reqs);
 
   MPI_Barrier(res->comm);
 
@@ -281,10 +283,7 @@ amsg_sendrecv_process_internal(
       header->fn(data);
 
       // repost the recv
-      MPI_Irecv(
-        amsgq->recv_bufs[idx], amsgq->msg_size, MPI_BYTE,
-        MPI_ANY_SOURCE, amsgq->tag,
-        amsgq->comm, &amsgq->recv_reqs[idx]);
+      MPI_Start(&amsgq->recv_reqs[idx]);
       ++num_msg;
     }
 
@@ -339,7 +338,7 @@ dart_amsg_sendrevc_process_blocking(
   } while (!(barrier_flag && send_flag));
 #ifdef IS_ISSEND_BROKEN
   // if Issend is broken we need another round of synchronization
-  MPI_Barrier(team_data->comm);
+  MPI_Barrier(amsgq->comm);
 #endif
   amsg_sendrecv_process_internal(amsgq, true, true);
   // final synchronization
@@ -354,6 +353,7 @@ static
 dart_ret_t
 dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
 {
+
   if (amsgq->send_tailpos > 0) {
     DART_LOG_INFO("Waiting for %d active messages to complete",
                   amsgq->send_tailpos);
@@ -386,10 +386,10 @@ dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
   free(amsgq->recv_outidx);
   free(amsgq->send_outidx);
 
+  MPI_Comm_free(&amsgq->comm);
+
   dart__base__mutex_destroy(&amsgq->send_mutex);
   dart__base__mutex_destroy(&amsgq->processing_mutex);
-
-  MPI_Comm_free(&amsgq->comm);
 
   free(amsgq);
 
@@ -427,7 +427,7 @@ dart_amsg_sendrecv_buffered_send(
 }
 
 
-dart_ret_t dart_amsg_sendrecv_init(dart_amsgq_impl_t* impl)
+dart_ret_t dart_amsg_psendrecv_init(dart_amsgq_impl_t* impl)
 {
   impl->openq   = dart_amsg_sendrecv_openq;
   impl->closeq  = dart_amsg_sendrecv_closeq;

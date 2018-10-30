@@ -19,9 +19,19 @@
  */
 #define DART_AMSGQ_IMPL_ENVSTR "DART_AMSGQ_IMPL"
 
-static bool initialized = false;
-static bool needs_translation = false;
-static intptr_t *offsets = NULL;
+/**
+ * Name of the environment variable specifying the number of entries in the
+ * active message queue. This value overrides any values passed to the
+ * constructor of the message queue.
+ *
+ * Type: integral value with optional B, K, M, G qualifier.
+ */
+#define DART_AMSGQ_SIZE_ENVSTR  "DART_AMSGQ_SIZE"
+
+static bool initialized          = false;
+static bool needs_translation    = false;
+static intptr_t *offsets         = NULL;
+static size_t msgq_size_override = 0;
 
 struct dart_amsgq {
   struct dart_amsgq_impl_data* impl;
@@ -42,14 +52,20 @@ enum {
   DART_AMSGQ_TWOWIN,
   DART_AMSGQ_SINGLEWIN,
   DART_AMSGQ_NOLOCK,
-  DART_AMSGQ_SENDRECV
+  DART_AMSGQ_ATOMIC,
+  DART_AMSGQ_SOPNOP,
+  DART_AMSGQ_SENDRECV,
+  DART_AMSGQ_PSENDRECV
 };
 
 static struct dart_env_str2int env_vals[] = {
   {"dualwin",   DART_AMSGQ_TWOWIN},
   {"singlewin", DART_AMSGQ_SINGLEWIN},
   {"nolock",    DART_AMSGQ_NOLOCK},
+  {"atomic",    DART_AMSGQ_ATOMIC},
+  {"sopnop",    DART_AMSGQ_SOPNOP},
   {"sendrecv",  DART_AMSGQ_SENDRECV},
+  {"psendrecv", DART_AMSGQ_PSENDRECV},
   {NULL, 0}
 };
 
@@ -59,7 +75,7 @@ dart_amsg_init()
   dart_ret_t res;
 
   int impl = dart__base__env__str2int(DART_AMSGQ_IMPL_ENVSTR,
-                                      env_vals, DART_AMSGQ_SINGLEWIN);
+                                      env_vals, DART_AMSGQ_SENDRECV);
 
   switch(impl) {
     case DART_AMSGQ_TWOWIN:
@@ -74,9 +90,21 @@ dart_amsg_init()
       res = dart_amsg_nolock_init(&amsgq_impl);
       DART_LOG_INFO("Using nolock single-window active message queue");
       break;
+    case DART_AMSGQ_ATOMIC:
+      res = dart_amsg_atomic_init(&amsgq_impl);
+      DART_LOG_INFO("Using 2-op-atomic single-window active message queue");
+      break;
+    case DART_AMSGQ_SOPNOP:
+      res = dart_amsg_sopnop_init(&amsgq_impl);
+      DART_LOG_INFO("Using same-op-no-op single-window active message queue");
+      break;
     case DART_AMSGQ_SENDRECV:
       res = dart_amsg_sendrecv_init(&amsgq_impl);
       DART_LOG_INFO("Using send/recv-based active message queue");
+      break;
+    case DART_AMSGQ_PSENDRECV:
+      res = dart_amsg_psendrecv_init(&amsgq_impl);
+      DART_LOG_INFO("Using persistent send/recv-based active message queue");
       break;
     default:
       DART_LOG_ERROR("UNKNOWN active message queue implementation: %d", impl);
@@ -86,6 +114,8 @@ dart_amsg_init()
   if (res != DART_OK) {
     return res;
   }
+
+  msgq_size_override = dart__base__env__size(DART_AMSGQ_SIZE_ENVSTR, 0);
 
   res = exchange_fnoffsets();
 
@@ -101,7 +131,11 @@ dart_amsg_openq(
 {
   *queue = malloc(sizeof(struct dart_amsgq));
   (*queue)->team = team;
-  return amsgq_impl.openq(msg_size, msg_count, team, &(*queue)->impl);
+  return amsgq_impl.openq(
+    msg_size,
+    msgq_size_override ? msgq_size_override : msg_count,
+    team,
+    &(*queue)->impl);
 }
 
 dart_ret_t
@@ -280,8 +314,8 @@ static inline dart_ret_t exchange_fnoffsets() {
   for (size_t i = 0; i < numunits; i++) {
     if (bases[i] != base) {
       needs_translation = true;
-      DART_LOG_INFO("Using base pointer offsets for active messages "
-                    "(%p against %p on unit %i).", base, bases[i], i);
+      DART_LOG_DEBUG("Using base pointer offsets for active messages "
+                     "(%#lx against %#lx on unit %zu).", base, bases[i], i);
       break;
     }
   }
@@ -294,7 +328,7 @@ static inline dart_ret_t exchange_fnoffsets() {
     DART_LOG_TRACE("Active message function offsets:");
     for (size_t i = 0; i < numunits; i++) {
       offsets[i] = bases[i] - ((uint64_t)&dart_amsg_openq);
-      DART_LOG_TRACE("   %i: %lli", i, offsets[i]);
+      DART_LOG_TRACE("   %zu: %#lx", i, offsets[i]);
     }
   }
 

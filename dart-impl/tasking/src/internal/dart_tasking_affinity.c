@@ -36,7 +36,10 @@ dart__tasking__affinity_init()
                     DART_THREAD_AFFINITY_VERBOSE_ENVSTR, false);
 #endif // DART_ENABLE_LOGGING
 
+
   if (print_binding) {
+    DART_LOG_INFO_ALWAYS(
+      "Using hwloc to set affinity (print: %d)", print_binding);
     int num_cpus = hwloc_bitmap_weight(ccpuset);
     size_t len = num_cpus * 8;
     char* buf = malloc(sizeof(char) * len);
@@ -66,16 +69,16 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
 {
   //hwloc_const_cpuset_t ccpuset = hwloc_topology_get_allowed_cpuset(topology);
   hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
-  int cnt = 0;
+  int cnt = -1;
   // iterate over bitmap, round-robin thread-binding
   int entry;
   do {
     for (entry  = hwloc_bitmap_first(ccpuset);
-         entry != hwloc_bitmap_last(ccpuset);
+         entry != -1;
          entry  = hwloc_bitmap_next(ccpuset, entry))
     {
+      ++cnt;
       if (cnt == dart_thread_id) break;
-      cnt++;
     }
   } while (cnt != dart_thread_id);
 
@@ -121,7 +124,10 @@ dart__tasking__affinity_init()
                     DART_THREAD_AFFINITY_VERBOSE_ENVSTR, false);
 #endif // DART_ENABLE_LOGGING
 
+
   if (print_binding) {
+    DART_LOG_INFO_ALWAYS(
+      "Using pthread_setaffinity_np to set affinity (print: %d)", print_binding);
     int count = 0;
     int num_cpus = CPU_COUNT(&set);
     size_t len = num_cpus * 8;

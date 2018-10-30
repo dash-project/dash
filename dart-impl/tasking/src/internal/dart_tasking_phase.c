@@ -28,8 +28,7 @@ dart__tasking__phase_advance()
 //  if (matching_interval > 0 && creation_phase > 0 && creation_phase % matching_interval == 0) {
   if (--phases_remaining == 0) {
     DART_LOG_TRACE("Performing intermediate matching");
-    dart__tasking__perform_matching(dart__tasking__current_thread(),
-                                    creation_phase);
+    dart__tasking__perform_matching(creation_phase);
     phases_remaining = matching_interval;
   }
   ++creation_phase;

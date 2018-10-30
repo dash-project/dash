@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #ifdef DART_LOG_OUTPUT_STDOUT
 #define DART_LOG_OUTPUT_TARGET stdout
@@ -54,9 +55,10 @@ dart__base__log_message(
   const char *filename,
   int         line,
   int         level,
+  bool        print_always,
   const char *format,
   ...
-) __attribute__((format(printf, 4, 5)));
+) __attribute__((format(printf, 5, 6)));
 
 //
 // Always log error messages and warnings:
@@ -66,6 +68,7 @@ dart__base__log_message(
     __FILE__,               \
     __LINE__,               \
     DART_LOGLEVEL_ERROR,    \
+    false,                  \
     __VA_ARGS__);
 
 #define DART_LOG_WARN(...)  \
@@ -73,15 +76,16 @@ dart__base__log_message(
     __FILE__,               \
     __LINE__,               \
     DART_LOGLEVEL_WARN,     \
+    false,                  \
     __VA_ARGS__);
 
 #define DART_LOG_INFO_ALWAYS(...)    \
-  dart__base__log_message(    \
-      __FILE__,               \
-      __LINE__,               \
-      DART_LOGLEVEL_INFO,     \
-      __VA_ARGS__             \
-    );
+  dart__base__log_message( \
+    __FILE__,              \
+    __LINE__,              \
+    DART_LOGLEVEL_INFO,    \
+    true,                  \
+    __VA_ARGS__);
 
 //
 // Debug, Info, and Trace log messages:
@@ -89,26 +93,28 @@ dart__base__log_message(
 #ifdef DART_ENABLE_LOGGING
 
 #define DART_LOG_TRACE(...) \
-  dart__base__log_message(   \
+  dart__base__log_message(  \
     __FILE__,               \
     __LINE__,               \
     DART_LOGLEVEL_TRACE,    \
+    false,                  \
     __VA_ARGS__);
 
 #define DART_LOG_DEBUG(...) \
-  dart__base__log_message(   \
+  dart__base__log_message(  \
     __FILE__,               \
     __LINE__,               \
     DART_LOGLEVEL_DEBUG,    \
+    false,                  \
     __VA_ARGS__);
 
-#define DART_LOG_INFO(...)    \
-  dart__base__log_message(    \
-      __FILE__,               \
-      __LINE__,               \
-      DART_LOGLEVEL_INFO,     \
-      __VA_ARGS__             \
-    );
+#define DART_LOG_INFO(...)  \
+  dart__base__log_message(  \
+    __FILE__,               \
+    __LINE__,               \
+    DART_LOGLEVEL_INFO,     \
+    false,                  \
+    __VA_ARGS__);
 
 #define DART_LOG_TRACE_ARRAY(context, fmt, array, nelem) \
   do { \

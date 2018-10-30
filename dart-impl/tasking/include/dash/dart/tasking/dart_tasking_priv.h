@@ -31,6 +31,7 @@ typedef enum {
   // active task states begin here
   // NOTE: check IS_ACTIVE_TASK macro if you make changes here!!
   DART_TASK_CREATED,
+  DART_TASK_DEFERRED,      // the task is deferred because its phase is not release yet
   DART_TASK_QUEUED,
   DART_TASK_DUMMY,         // the task is a dummy for a remote task
   DART_TASK_RUNNING,
@@ -127,16 +128,17 @@ typedef struct {
   dart_task_t           * current_task;
 #ifdef DART_TASK_THREADLOCAL_Q
   struct dart_taskqueue   queue;
+  int                     last_steal_thread;
 #endif // DART_TASK_THREADLOCAL_Q
   uint64_t                taskcntr;
   pthread_t               pthread;
   context_t               retctx;            // the thread-specific context to return to eventually
   context_list_t        * ctxlist;
   int                     thread_id;
-  int                     last_steal_thread;
   dart_yield_target_t     yield_target;
   double                  last_progress_ts;  // the timestamp of the last remote progress call
   dart_task_t           * next_task;         // short-cut on the next task to execute
+  bool                    is_releasing_deps; // whether the thread is currently releasing dependencies
 } dart_thread_t;
 
 struct dart_wait_handle_s {
@@ -152,6 +154,9 @@ dart__tasking__thread_num() DART_INTERNAL;
 
 int
 dart__tasking__num_threads() DART_INTERNAL;
+
+int
+dart__tasking__num_tasks()   DART_INTERNAL;
 
 int32_t
 dart__tasking__epoch_bound() DART_INTERNAL;
@@ -220,7 +225,6 @@ dart__tasking__current_thread() DART_INTERNAL;
 
 void
 dart__tasking__perform_matching(
-  dart_thread_t    * thread,
   dart_taskphase_t   phase) DART_INTERNAL;
 
 DART_INLINE

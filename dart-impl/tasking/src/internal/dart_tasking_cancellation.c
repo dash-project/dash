@@ -17,10 +17,22 @@
 extern dart_taskqueue_t task_queue;
 #endif
 
-// true if dart_task_canceled has been cancelled
-static volatile bool cancel_requested = false;
-// counter to spin on while waiting for all threads to finish cancelling
-static volatile int thread_cancel_counter = 0;
+// true if dart_task_cancele has been called
+static volatile bool cancel_requested = 0;
+
+static dart_team_t cancel_team;
+
+void
+dart__tasking__cancellation_init()
+{
+  dart_team_clone(DART_TEAM_ALL, &cancel_team);
+}
+
+void
+dart__tasking__cancellation_fini()
+{
+  dart_team_destroy(&cancel_team);
+}
 
 bool
 dart__tasking__cancellation_requested()
@@ -47,26 +59,46 @@ cancel_thread_tasks(dart_thread_t *thread)
   dart_taskqueue_t *target_queue = &task_queue;
 #endif
   while ((task = dart_tasking_taskqueue_pop(target_queue)) != NULL) {
+    DART_LOG_TRACE("Cancelling task %p", task);
     dart__tasking__cancel_task(task);
   }
 }
 
 static void
 dart__tasking__cancellation_barrier(dart_thread_t *thread) {
-  // cancel our own remaining tasks
-  cancel_thread_tasks(thread);
+  // counter to spin on while waiting for threads to enter the barrier
+  static volatile int thread_enter_counter  = 0;
+  // counter to spin on while waiting for all threads to finish cancelling
+  static volatile int thread_cancel_counter = 0;
+
+  cancel_requested = 1;
+  int num_threads = dart__tasking__num_threads();
+  DART_LOG_TRACE("Thread %d entering cancellation_barrier", thread->thread_id);
+
+  DART_INC_AND_FETCH32(&thread_enter_counter);
+  while (DART_FETCH32(&thread_enter_counter) < num_threads) { }
+
+  // wait for all units to arrive here to make sure we don't
+  // release tasks too early
+  if (thread->thread_id == 0) {
+    dart_barrier(cancel_team);
+  }
+
+  while (dart__tasking__num_tasks()) {
+    cancel_thread_tasks(thread);
+    if (thread->thread_id == 0) {
+      dart_tasking_remote_progress(cancel_team);
+    }
+  }
+
   // signal that we are done canceling our tasks
   DART_INC_AND_FETCH32(&thread_cancel_counter);
-  printf("Thread %d entering cancellation_barrier\n", thread->thread_id);
-  // wait for all other threads to finish cancelation
   if (thread->thread_id == 0) {
-    int num_threads = dart__tasking__num_threads();
-    while (DART_FETCH32(&thread_cancel_counter) < num_threads) { }
     // thread 0 resets the barrier after it's done
-    // make sure all incoming requests have been served
-    dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
-    // cancel all remaining tasks with remote dependencies
-    dart_tasking_datadeps_cancel_remote_deps();
+    // make sure all incoming requests have been served, serves as barrier
+    while (DART_FETCH32(&thread_cancel_counter) < num_threads) { }
+    dart_tasking_remote_progress_blocking(cancel_team);
+    DART_LOG_TRACE("Finished with cancellation barrier!");
     thread_cancel_counter = 0;
     cancel_requested      = false;
   } else {
@@ -96,10 +128,9 @@ dart__tasking__cancel_bcast()
   DART_LOG_DEBUG("dart__tasking__cancel_bcast: cancelling remaining task "
                  "execution throgh broadcast!");
   if (!cancel_requested) {
-    // signal cancellation
     cancel_requested = true;
     // send cancellation request to all other units
-    dart_tasking_remote_bcast_cancel(DART_TEAM_ALL);
+    dart_tasking_remote_bcast_cancel(cancel_team);
   }
   dart_thread_t *thread = dart__tasking__current_thread();
   // jump back to the thread's main routine
@@ -112,7 +143,7 @@ dart__tasking__cancel_barrier()
   DART_LOG_DEBUG("dart__tasking__cancel_global: cancelling remaining task "
                  "execution in collective call!");
   // signal cancellation
-  cancel_requested = true;
+  cancel_requested = 1;
   dart_thread_t *thread = dart__tasking__current_thread();
   // jump back to the thread's main routine
   dart__tasking__abort_current_task(thread);

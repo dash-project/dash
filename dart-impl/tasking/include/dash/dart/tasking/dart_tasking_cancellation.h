@@ -5,6 +5,12 @@
 #include <dash/dart/base/macro.h>
 
 void
+dart__tasking__cancellation_init() DART_INTERNAL;
+
+void
+dart__tasking__cancellation_fini() DART_INTERNAL;
+
+void
 dart__tasking__check_cancellation(dart_thread_t *thread) DART_INTERNAL;
 
 bool
