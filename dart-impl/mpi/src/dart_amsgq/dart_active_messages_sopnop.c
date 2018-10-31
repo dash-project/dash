@@ -533,6 +533,12 @@ dart_amsg_sopnop_flush_buffer(struct dart_amsgq_impl_data * amsgq)
       message_cache_t *cache = amsgq->message_cache[target];
       dart__base__mutex_lock(&cache->mutex);
 
+      if (cache->pos == 0) {
+        dart__base__mutex_unlock(&cache->mutex);
+        // nothing to be done
+        continue;
+      }
+
       dart_ret_t ret;
       do {
         dart_team_unit_t t = {target};
