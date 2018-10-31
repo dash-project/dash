@@ -2,6 +2,7 @@
 #define DASH__ALLOCATOR_H__INCLUDED
 
 #include <dash/allocator/AllocatorTraits.h>
+#include <dash/allocator/GlobalAllocator.h>
 
 #include <dash/allocator/EpochSynchronizedAllocator.h>
 

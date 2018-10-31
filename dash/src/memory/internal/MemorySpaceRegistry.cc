@@ -27,15 +27,22 @@ bool MemorySpaceRegistry::add(dart_gptr_t p, value_t value)
 {
   auto key = std::make_pair(p.teamid, p.segid);
 
-  if (do_lookup(key) != std::end(m_segments)) {
-    return false;
+  auto it = do_lookup(key);
+
+  if (it != std::end(m_segments)) {
+    DASH_LOG_TRACE(
+        "MemorySpaceRegistry.add",
+        "updating memory space segment to new value",
+        p,
+        value);
+    it->second = value;
   }
+  else {
+    DASH_LOG_TRACE(
+        "MemorySpaceRegistry.add", "adding memory space segment", p, value);
 
-  DASH_LOG_TRACE(
-      "MemorySpaceRegistry.add", "adding memory space segment", p, value);
-
-  m_segments.emplace_back(std::make_pair(key, value));
-
+    m_segments.emplace_back(std::make_pair(key, value));
+  }
   return true;
 }
 

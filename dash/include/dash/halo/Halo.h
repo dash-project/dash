@@ -778,12 +778,22 @@ public:
   /**
    * Constructor, creates a region iterator.
    */
-  RegionIter(GlobMem_t* globmem, const PatternT* pattern,
-             const ViewSpec_t& _region_view, pattern_index_t pos,
-             pattern_size_t size)
-  : _globmem(globmem), _pattern(pattern), _region_view(_region_view), _idx(pos),
-    _max_idx(size - 1), _myid(pattern->team().myid()),
-    _lbegin(static_cast<local_pointer>(globmem->lbegin())) {}
+  RegionIter(
+      GlobMem_t*        globmem,
+      const PatternT*   pattern,
+      const ViewSpec_t& _region_view,
+      pattern_index_t   pos,
+      pattern_size_t    size)
+    : _globmem(globmem)
+    , _pattern(pattern)
+    , _region_view(_region_view)
+    , _idx(pos)
+    , _max_idx(size - 1)
+    , _myid(pattern->team().myid())
+    , _lbegin(dash::local_begin(
+          static_cast<pointer>(globmem->begin()), pattern->team().myid()))
+  {
+  }
 
   /**
    * Copy constructor.

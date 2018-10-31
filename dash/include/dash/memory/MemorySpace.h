@@ -78,59 +78,6 @@ void memfree(
 
   mspace->deallocate(gptr, nels * sizeof(T), alignof(T));
 }
-
-
-template <class T, class MemorySpaceT>
-class DefaultGlobPtrDeleter {
-  using size_type = typename MemorySpaceT::size_type;
-
-  MemorySpaceT* m_resource{};
-  size_type     m_count{};
-
-public:
-  using pointer = typename MemorySpaceT::void_pointer::template rebind<T>;
-
-  constexpr DefaultGlobPtrDeleter() noexcept = default;
-
-  DefaultGlobPtrDeleter(MemorySpaceT* resource, size_type count)
-    : m_resource(resource)
-    , m_count(count)
-  {
-    DASH_LOG_TRACE(
-        "DefaultGlobPtrDeleter.DefaultGlobPtrDeleter(resource, count)",
-        resource,
-        count);
-  }
-
-  void operator()(pointer gptr)
-  {
-    if (m_resource && m_count) {
-      m_resource->deallocate(gptr, sizeof(T) * m_count, alignof(T));
-    }
-  }
-};
-
-template <class T, class MemorySpaceT>
-auto allocate_unique(
-    MemorySpaceT* resource, typename MemorySpaceT::size_type count)
-    -> std::unique_ptr<T, dash::DefaultGlobPtrDeleter<T, MemorySpaceT>>
-{
-  // Unique pointer to handle deallocation of underlying resource
-  using value_t      = T;
-  using memory_t     = MemorySpaceT;
-  using deleter_t    = dash::DefaultGlobPtrDeleter<value_t, memory_t>;
-
-  if (resource) {
-
-    auto const nbytes = count * sizeof(value_t);
-
-    return {resource->allocate(nbytes, alignof(value_t)),
-            deleter_t{resource, count}};
-  }
-
-  return {nullptr};
-}
-
 }  // namespace dash
 
 #endif

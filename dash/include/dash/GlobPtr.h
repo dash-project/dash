@@ -98,7 +98,7 @@ public:
   /**
    * Constructor, specifies underlying global address.
    */
-  GlobPtr(dart_gptr_t gptr)
+  explicit constexpr GlobPtr(dart_gptr_t gptr)
     : m_dart_pointer(gptr)
   {
   }
@@ -146,16 +146,6 @@ public:
   constexpr GlobPtr(const GlobPtr<From, GlobMemT> &other)
     : m_dart_pointer(other.m_dart_pointer)
   {
-  }
-
-  /**
-   * Assignment operator.
-   */
-  template <typename T, class MemSpaceT>
-  self_t &operator=(const GlobPtr<T, MemSpaceT> &other)
-  {
-    m_dart_pointer = other.m_dart_pointer;
-    return *this;
   }
 
   /**
@@ -433,7 +423,7 @@ public:
    */
   void set_unit(team_unit_t unit_id)
   {
-    DASH_ASSERT_RETURNS(dart_gptr_setunit(&m_dart_pointer, unit_id), DART_OK);
+    m_dart_pointer.unitid = unit_id.id;
   }
 
   /**
@@ -567,6 +557,23 @@ dash::gptrdiff_t distance(
       static_cast<dart_gptr_t>(gend),
       mem_space,
       typename memory_space_traits::memory_space_layout_tag{});
+}
+
+template <class T, class MemSpaceT>
+DASH_CONSTEXPR inline typename std::enable_if<
+    std::is_same<
+        typename dash::memory_space_traits<
+            MemSpaceT>::memory_space_layout_tag,
+        memory_space_contiguous>::value,
+    T>::type *
+local_begin(GlobPtr<T, MemSpaceT> global_begin, dash::team_unit_t unit)
+    DASH_NOEXCEPT
+{
+  // reset offset to 0
+  auto dart_gptr                = static_cast<dart_gptr_t>(global_begin);
+  dart_gptr.unitid              = unit.id;
+  dart_gptr.addr_or_offs.offset = 0;
+  return GlobPtr<T, MemSpaceT>(dart_gptr).local();
 }
 
 }  // namespace dash

@@ -257,7 +257,7 @@ public:
 
     auto const dart_pointer = _get_pointer_at(local_pos);
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(dart_pointer), "dart pointer must not be null");
-    return pointer(dart_pointer) + offset;
+    return const_pointer(dart_pointer) + offset;
   }
 
   /**
@@ -435,15 +435,18 @@ public:
     local_pos_t local_pos = _pattern->local(idx);
     DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.index);
+
     if (_globmem->team().myid() != local_pos.unit) {
       // Iterator position does not point to local element
       return nullptr;
     }
-    DASH_ASSERT(_globmem);
-    DASH_ASSERT(_globmem->lbegin());
-    return std::next(
-        static_cast<local_type>(_globmem->lbegin()),
-        local_pos.index + offset);
+
+    auto* lbegin = dash::local_begin(
+        static_cast<pointer>(_globmem->begin()), _pattern->team().myid());
+
+    DASH_ASSERT(lbegin);
+
+    return std::next(lbegin, local_pos.index + offset);
   }
 
   /**
@@ -673,6 +676,7 @@ public:
 private:
 
   dart_gptr_t _get_pointer_at(typename pattern_type::local_index_t pos) const {
+
     auto dart_pointer = static_cast<dart_gptr_t>(_globmem->begin());
 
     DASH_ASSERT(pos.index >= 0);

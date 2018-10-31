@@ -42,4 +42,12 @@
   -> decltype(__VA_ARGS__)                                \
   /**/
 
+#ifndef DASH_ENABLE_ASSERTIONS
+#define DASH_CONSTEXPR constexpr
+#define DASH_NOEXCEPT noexcept
+#else
+#define DASH_CONSTEXPR
+#define DASH_NOEXCEPT
+#endif
+
 #endif // DASH__INTERNAL__MACRO_H_

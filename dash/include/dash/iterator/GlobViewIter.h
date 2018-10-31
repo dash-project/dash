@@ -576,9 +576,13 @@ public:
       // Iterator position does not point to local element
       return nullptr;
     }
-    return std::next(
-        static_cast<local_type>(_globmem->lbegin()),
-        local_pos.index + offset);
+
+    auto* lbegin = dash::local_begin(
+        static_cast<pointer>(_globmem->begin()), _pattern->team().myid());
+
+    DASH_ASSERT(lbegin);
+
+    return std::next(lbegin, local_pos.index + offset);
   }
 
   /**

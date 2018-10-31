@@ -1,19 +1,20 @@
 #ifndef ARRAY_H_INCLUDED
 #define ARRAY_H_INCLUDED
 
-#include <dash/Types.h>
-#include <dash/Team.h>
-#include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
-#include <dash/memory/MemorySpace.h>
+#include <dash/Exception.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
 #include <dash/HView.h>
 #include <dash/Meta.h>
+#include <dash/Team.h>
+#include <dash/Types.h>
 
-
+#include <dash/allocator/GlobalAllocator.h>
 #include <dash/iterator/GlobIter.h>
+#include <dash/memory/MemorySpace.h>
+#include <dash/memory/UniquePtr.h>
 #include <dash/pattern/BlockPattern1D.h>
 
 #include <iterator>
@@ -464,13 +465,13 @@ public:
   typedef typename std::make_unsigned<IndexType>::type             size_type;
   typedef typename std::make_unsigned<IndexType>::type       difference_type;
 
-  typedef GlobIter<value_type, PatternType, typename Array_t::GlobMem_t>
+  typedef GlobIter<value_type, PatternType, typename Array_t::memory_type>
       iterator;
 
   typedef GlobIter<
       const value_type,
       PatternType,
-      typename Array_t::GlobMem_t>
+      typename Array_t::memory_type>
       const_iterator;
 
   typedef std::reverse_iterator<iterator>       reverse_iterator;
@@ -659,10 +660,11 @@ public:
   typedef typename std::make_unsigned<IndexType>::type                 size_type;
   typedef typename std::make_unsigned<IndexType>::type           difference_type;
 
-  typedef dash::GlobStaticMem<LocalMemSpaceT>                      GlobMem_t;
+  typedef dash::GlobStaticMem<LocalMemSpaceT>            memory_type;
+  typedef dash::GlobalAllocator<value_type, memory_type> allocator_type;
 
-  typedef GlobIter<      value_type, PatternType, GlobMem_t>        iterator;
-  typedef GlobIter<const value_type, PatternType, GlobMem_t>  const_iterator;
+  typedef GlobIter<      value_type, PatternType, memory_type>        iterator;
+  typedef GlobIter<const value_type, PatternType, memory_type>  const_iterator;
 
   typedef std::reverse_iterator<      iterator>                 reverse_iterator;
   typedef std::reverse_iterator<const_iterator>           const_reverse_iterator;
@@ -716,14 +718,12 @@ public:
 private:
   typedef SizeSpec<1, size_type>
     SizeSpec_t;
-  typedef std::unique_ptr<GlobMem_t>
-    PtrGlobMemType_t;
 
-  using unique_gptr_t = decltype(dash::allocate_unique<value_type>(
-      static_cast<GlobMem_t *>(nullptr), std::size_t{}));
+  using unique_gptr_t = decltype(
+      dash::allocate_unique<value_type>(allocator_type{}, std::size_t{}));
 
   using allocator_traits =
-      std::allocator_traits<typename GlobMem_t::allocator_type>;
+      std::allocator_traits<typename memory_type::allocator_type>;
 
   static constexpr size_t alignment = alignof(value_type);
 
@@ -739,8 +739,10 @@ private:
   /// Element distribution pattern
   PatternType m_pattern{};
   /// Global memory resource
-  GlobMem_t m_globmem{};
-  /// Unique Pointer to a global memory object allocated through m_globmem
+  memory_type m_globmem{};
+  /// GlobalAllocator
+  allocator_type m_allocator{};
+  /// Unique Pointer to a global memory object allocated through m_allocator
   unique_gptr_t m_data{nullptr};
   /// Iterator to initial element in the array
   iterator m_begin{};
@@ -765,12 +767,11 @@ public:
    * Sets the associated team to DART_TEAM_NULL for global array instances
    * that are declared before \c dash::Init().
    */
-  explicit Array(Team &team = dash::Team::Null())
+  explicit constexpr Array(Team &team = dash::Team::Null())
     : local(this)
     , async(this)
     , m_team(&team)
     , m_pattern(SizeSpec_t(0), distribution_spec(dash::BLOCKED), team)
-    , m_globmem(*m_team)
   {
     DASH_LOG_TRACE("Array() >", "finished default constructor");
   }
@@ -786,7 +787,6 @@ public:
     , async(this)
     , m_team(&team)
     , m_pattern(SizeSpec_t(nelem), distribution, team)
-    , m_globmem(*m_team)
   {
     DASH_LOG_TRACE("Array(nglobal,dist,team)()", "size:", nelem);
     allocate(m_pattern);
@@ -817,6 +817,7 @@ public:
     , m_team(&team)
     , m_pattern(SizeSpec_t(nelem), distribution, team)
     , m_globmem(*m_team)
+    , m_allocator(&m_globmem)
     , m_myid(team.myid())
   {
     DASH_LOG_TRACE("Array(nglobal,lvals,dist,team)()",
@@ -884,15 +885,16 @@ public:
    * The underlying memory does not have to be movable (it might).
    */
   Array(self_t &&other) noexcept(
-      std::is_nothrow_move_constructible<GlobMem_t>::value)
+      std::is_nothrow_move_constructible<memory_type>::value)
     : local(this)
     , async(this)
     , m_team(other.m_team)
     , m_pattern(std::move(other.m_pattern))
     , m_globmem(std::move(other.m_globmem))
+    , m_allocator(&m_globmem)
     , m_data(
           other.m_data.release(),
-          typename unique_gptr_t::deleter_type{&m_globmem,
+          typename unique_gptr_t::deleter_type{m_allocator,
                                                m_pattern.local_size()})
     , m_begin(other.m_begin)
     , m_end(other.m_end)
@@ -903,17 +905,16 @@ public:
     , m_lend(other.m_lend)
     , m_myid(other.m_myid)
   {
-    other.m_begin = iterator{};
-    other.m_end = iterator{};
+    other.m_begin  = iterator{};
+    other.m_end    = iterator{};
     other.m_lbegin = nullptr;
     other.m_lend   = nullptr;
-    other.m_lsize   = 0;
-    other.m_size    = 0;
+    other.m_lsize  = 0;
+    other.m_size   = 0;
 
     // Register deallocator of this array instance at the team
     // instance that has been used to initialized it:
-    m_team->register_deallocator(
-      this, std::bind(&Array::deallocate, this));
+    m_team->register_deallocator(this, std::bind(&Array::deallocate, this));
   }
 
   /**
@@ -943,21 +944,29 @@ public:
    * The pattern has to be movable or copyable
    * The underlying memory does not have to be movable (it might).
    */
-  self_t & operator=(self_t && other) noexcept {
+  self_t & operator=(self_t && other) {
+    if (this == &other) {
+      return *this;
+    }
 
-    if (this == &other) return *this;
+    m_pattern = std::move(other.m_pattern);
 
-
-    std::swap(m_pattern, other.m_pattern);
+    DASH_ASSERT_EQ(
+        m_allocator.resource(),
+        &m_globmem,
+        "invalid state in move assignment");
 
     // a) reset own data
+    if (m_data) {
+      destruct_at_end(m_lbegin);
+    }
     m_data.reset();
     // b) swap memory resources
-    std::swap(m_globmem, other.m_globmem);
+    m_globmem = std::move(other.m_globmem);
     // c) move the unique_gptr from other into this
     unique_gptr_t __tmp{other.m_data.release(),
                         typename unique_gptr_t::deleter_type{
-                            &m_globmem, m_pattern.local_size()}};
+                            m_allocator, m_pattern.local_size()}};
     m_data = std::move(__tmp);
 
     this->m_begin     = other.m_begin;
@@ -977,8 +986,6 @@ public:
     other.m_lend    = nullptr;
     other.m_lsize   = 0;
     other.m_size    = 0;
-
-
 
     m_team->register_deallocator(this, std::bind(&Array::deallocate, this));
 
@@ -1007,7 +1014,7 @@ public:
    * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
-  constexpr const GlobMem_t & globmem() const noexcept
+  constexpr const memory_type & globmem() const noexcept
   {
     return m_globmem;
   }
@@ -1252,7 +1259,7 @@ public:
     //if (m_globmem && m_begin != m_end) {
     if (m_data) {
       //If we have some allocated memory -> flush it
-      m_globmem.flush();
+      m_globmem.flush(m_data.get());
     }
   }
 
@@ -1262,7 +1269,7 @@ public:
    */
   inline void flush(dash::team_unit_t target) const {
     if (m_data) {
-      m_globmem.flush(target);
+      m_globmem.flush(m_data.get(), target);
     }
   }
 
@@ -1272,7 +1279,7 @@ public:
    */
   inline void flush_local() const {
     if (m_data) {
-      m_globmem.flush_local();
+      m_globmem.flush_local(m_data.get());
     }
   }
 
@@ -1283,7 +1290,7 @@ public:
    */
   inline void flush_local(dash::team_unit_t target) const {
     if (m_data) {
-      m_globmem.flush_local(target);
+      m_globmem.flush_local(m_data.get(), target);
     }
   }
 
@@ -1412,34 +1419,6 @@ public:
   }
 
 private:
-  template <typename _Iter>
-  void construct_at_end(_Iter begin, _Iter end)
-  {
-    if (m_lsize == 0) return;
-
-    auto local_alloc = this->globmem().get_allocator();
-
-    DASH_ASSERT_EQ(
-        std::distance(begin, end), m_lsize, "Invalid size of local range");
-
-    for (auto it = begin; it < end; ++it, ++m_lend) {
-      allocator_traits::construct(local_alloc, m_lend, *it);
-    }
-  }
-
-  void construct_at_end(size_type nl)
-  {
-    if (nl == 0) return;
-
-    auto local_alloc = this->globmem().get_allocator();
-
-    do {
-      allocator_traits::construct(local_alloc, this->m_lend);
-      ++this->m_lend;
-      --nl;
-    } while (nl > 0);
-  }
-
   void destruct_at_end(local_pointer new_last)
   {
     if (0 == m_lsize || m_lend == nullptr) return;
@@ -1455,6 +1434,13 @@ private:
   }
 
   void do_allocate() {
+    //reset old data
+    m_data.reset();
+
+    m_team      = &(m_pattern.team());
+    m_globmem   = memory_type{*m_team};
+    m_allocator = allocator_type{&m_globmem};
+
     // Check requested capacity:
     m_size = m_pattern.capacity();
     m_team = &m_pattern.team();
@@ -1470,8 +1456,8 @@ private:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
 
-    m_data = std::move(
-        dash::allocate_unique<value_type>(&m_globmem, m_pattern.local_size()));
+    m_data = std::move(dash::allocate_unique<value_type>(
+        m_allocator, m_pattern.local_size()));
 
     if (m_pattern.local_size()) {
       DASH_ASSERT(m_data);
@@ -1482,19 +1468,12 @@ private:
     m_end   = iterator(m_begin) + m_size;
   }
 
-  bool allocate(
-    std::initializer_list<value_type>   local_elements)
+  bool allocate(std::initializer_list<value_type> local_elements)
   {
     DASH_LOG_TRACE("< Array.allocate", "finished");
 
     DASH_ASSERT_EQ(
         m_pattern.local_size(), local_elements.size(), "invalid arguments");
-
-    m_data.reset();
-
-    if (m_globmem.team() != *m_team) {
-      m_globmem = std::move(GlobMem_t{*m_team});
-    }
 
     do_allocate();
 
@@ -1505,11 +1484,9 @@ private:
 
     DASH_ASSERT(m_lbegin);
 
-    //m_lend will be properly set in construct_at_end...
-    m_lend      = m_lbegin;
-
     //construct all elements and properly set m_lend
-    construct_at_end(std::begin(local_elements), std::end(local_elements));
+    std::uninitialized_copy(std::begin(local_elements), std::end(local_elements), m_lbegin);
+    m_lend = std::next(m_lbegin, local_elements.size());
 
     DASH_LOG_TRACE_VAR("Array._allocate", m_myid);
     DASH_LOG_TRACE_VAR("Array._allocate", m_size);
@@ -1538,13 +1515,6 @@ public:
     if (&m_pattern != &pattern) {
       DASH_LOG_TRACE("Array.allocate()", "using specified pattern");
       m_pattern = pattern;
-      m_team = &(m_pattern.team());
-    }
-
-    m_data.reset();
-
-    if (m_globmem.team() != *m_team) {
-      m_globmem = std::move(GlobMem_t{*m_team});
     }
 
     do_allocate();

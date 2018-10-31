@@ -316,8 +316,10 @@ local_range(
   }
   // Local start address from global memory:
   const auto& pattern = first.pattern();
-  auto*       lbegin  = static_cast<typename GlobIterType::const_local_type>(
-      first.globmem().lbegin());
+
+  auto* lbegin = dash::local_begin(
+      static_cast<typename GlobIterType::pointer>(first.globmem().begin()),
+      first.team().myid());
   // Add local offsets to local start address:
   if (lbegin == nullptr) {
     DASH_LOG_TRACE("local_range >", "lbegin null");
@@ -356,8 +358,11 @@ local_range(
     return LocalRange<value_t> { nullptr, nullptr };
   }
   // Local start address from global memory:
-  auto* lbegin = static_cast<typename GlobIterType::local_type>(
-      first.globmem().lbegin());
+
+  auto* lbegin = dash::local_begin(
+      static_cast<typename GlobIterType::pointer>(first.globmem().begin()),
+      first.team().myid());
+
   // Add local offsets to local start address:
   if (lbegin == nullptr) {
     DASH_LOG_TRACE("local_range >", "lbegin null");

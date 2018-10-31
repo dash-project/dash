@@ -16,6 +16,7 @@
 #include <dash/matrix/LocalMatrixRef.h>
 
 #include <dash/memory/MemorySpace.h>
+#include <dash/memory/UniquePtr.h>
 
 #include <type_traits>
 
@@ -264,8 +265,10 @@ public:
     return NumDimensions;
   }
 private:
+  using allocator_type = dash::GlobalAllocator<std::byte, GlobMem_t>;
+
   using unique_gptr_t = decltype(dash::allocate_unique<value_type>(
-      static_cast<GlobMem_t *>(nullptr), std::size_t{}));
+      allocator_type{}, std::size_t{}));
 
 private:
   /// Team containing all units that collectively instantiated the
@@ -283,6 +286,8 @@ private:
   Pattern_t _pattern;
   /// Global memory allocation and -access
   GlobMem_t _glob_mem{};
+  /// Global allocator
+  allocator_type _allocator;
   /// Unique pointer to memory allocated by global memory instance
   unique_gptr_t _data{};
   /// Native pointer to first local element in the array

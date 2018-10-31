@@ -56,10 +56,10 @@ public:
   // local memory space
   using allocator_type = std::pmr::polymorphic_allocator<std::byte>;
 
-  using void_pointer = pointer;
-  using const_void_pointer = const_pointer;
-  using local_void_pointer = void *;
-  using const_local_void_pointer = void *;
+  using void_pointer             = pointer;
+  using const_void_pointer       = const_pointer;
+  using local_void_pointer       = void*;
+  using const_local_void_pointer = void*;
 
 public:
   GlobLocalMemoryPool() = delete;
@@ -168,11 +168,11 @@ private:
   std::vector<std::pair<pointer, size_t>> m_segments;
 
 private:
-  //alignment not used: Pools always allocate with alignof(max_align_t)
+  // alignment not used: Pools always allocate with alignof(max_align_t)
   pointer do_allocate(size_type nbytes, size_type /*alignment*/);
-  void    do_deallocate(pointer gptr, size_type nbytes, size_type /*alignment*/);
-  void    do_segment_free(
-         typename std::vector<std::pair<pointer, size_t>>::iterator it_erase);
+  void do_deallocate(pointer gptr, size_type nbytes, size_type /*alignment*/);
+  void do_segment_free(
+      typename std::vector<std::pair<pointer, size_t>>::iterator it_erase);
 };
 
 ///////////// Implementation ///////////////////
@@ -218,11 +218,13 @@ inline GlobLocalMemoryPool<LMemSpace>& GlobLocalMemoryPool<LMemSpace>::
   // deallocate own memory
   release();
   // and swap..
-  std::swap(m_team, other.m_team);
-  std::swap(m_size, other.m_size);
-  std::swap(m_capacity, other.m_capacity);
-  std::swap(m_allocator, other.m_allocator);
-  std::swap(m_segments, other.m_segments);
+  m_team      = other.m_team;
+  m_size      = other.m_size;
+  m_capacity  = other.m_capacity;
+  m_allocator = allocator_type{other.m_allocator.resource()};
+  m_segments  = std::move(other.m_segments);
+
+  other.m_segments.clear();
 
   return *this;
 }
@@ -261,6 +263,7 @@ GlobLocalMemoryPool<LMemSpace>::do_allocate(
     DASH_LOG_DEBUG_VAR("LocalAllocator.allocate >", gptr);
 
     m_segments.emplace_back(std::make_pair(pointer{gptr}, nbytes));
+    m_size += nbytes;
     return m_segments.back().first;
   }
 
@@ -292,8 +295,8 @@ inline void GlobLocalMemoryPool<LMemSpace>::do_deallocate(
 
   if (it_seg != std::end(m_segments)) {
     do_segment_free(it_seg);
-
     m_segments.erase(it_seg);
+    m_size -= nbytes;
   }
 
   DASH_LOG_DEBUG("MemorySpace.do_deallocate >");
@@ -301,12 +304,6 @@ inline void GlobLocalMemoryPool<LMemSpace>::do_deallocate(
 template <class LMemSpace>
 inline void GlobLocalMemoryPool<LMemSpace>::release()
 {
-  dart_gptr_t dart_gptr = DART_GPTR_NULL;
-
-  if (m_segments.size() != 0) {
-    dart_gptr = m_segments.back().first.dart_gptr();
-  }
-
   for (auto it = std::begin(m_segments); it != std::end(m_segments); ++it) {
     do_segment_free(it);
   }

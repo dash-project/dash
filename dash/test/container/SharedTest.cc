@@ -311,9 +311,13 @@ TEST_F(SharedTest, DelayedAllocation)
 
   EXPECT_EQ_U(42, static_cast<int32_t>(shared_delayed.get()));
 
-  /* if these two shared variables are in two different we have to wait for
+
+  /* if these two shared variables are in two different teams we have to wait for
   this team as well to be ready */
 
   //anotherShared.barrier();
   EXPECT_EQ_U(1000, static_cast<int32_t>(anotherShared.get()));
+
+  shared_delayed.barrier();
+  anotherShared.barrier();
 }

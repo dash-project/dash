@@ -298,28 +298,73 @@ public:
    * Constructor that takes a \ref HaloBlock, a \ref HaloMemory,
    * a \ref StencilSpec and a local \ref ViewSpec
    */
-  StencilOperator(const HaloBlock_t* haloblock, HaloMemory_t* halomemory,
-                  const StencilSpecT& stencil_spec,
-                  const ViewSpec_t*   view_local)
-  : inner(this), boundary(this), _halo_block(haloblock),
-    _halo_memory(halomemory), _stencil_spec(stencil_spec),
-    _view_local(view_local), _stencil_offsets(set_stencil_offsets()),
-    _local_memory(const_cast<ElementT*>(static_cast<ElementT const *>(_halo_block->globmem().lbegin()))),
-    _spec_views(*_halo_block, _stencil_spec, _view_local),
-    _begin(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets,
-           *_view_local, _spec_views.inner_with_boundaries(), 0),
-    _end(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets,
-         *_view_local, _spec_views.inner_with_boundaries(),
-         _spec_views.inner_with_boundaries().size()),
-    _ibegin(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets,
-            *_view_local, _spec_views.inner(), 0),
-    _iend(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets,
-          *_view_local, _spec_views.inner(), _spec_views.inner().size()),
-    _bbegin(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets,
-            *_view_local, _spec_views.boundary_views(), 0),
-    _bend(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets,
-          *_view_local, _spec_views.boundary_views(),
-          _spec_views.boundary_size()) {}
+  StencilOperator(
+      const HaloBlock_t*  haloblock,
+      HaloMemory_t*       halomemory,
+      const StencilSpecT& stencil_spec,
+      const ViewSpec_t*   view_local)
+    : inner(this)
+    , boundary(this)
+    , _halo_block(haloblock)
+    , _halo_memory(halomemory)
+    , _stencil_spec(stencil_spec)
+    , _view_local(view_local)
+    , _stencil_offsets(set_stencil_offsets())
+    , _local_memory(static_cast<ElementT *>(
+          const_cast<void *>(dash::local_begin(
+              _halo_block->globmem().begin(),
+              _halo_block->globmem().team().myid()))))
+    , _spec_views(*_halo_block, _stencil_spec, _view_local)
+    , _begin(
+          _local_memory,
+          _halo_memory,
+          &_stencil_spec,
+          &_stencil_offsets,
+          *_view_local,
+          _spec_views.inner_with_boundaries(),
+          0)
+    , _end(
+          _local_memory,
+          _halo_memory,
+          &_stencil_spec,
+          &_stencil_offsets,
+          *_view_local,
+          _spec_views.inner_with_boundaries(),
+          _spec_views.inner_with_boundaries().size())
+    , _ibegin(
+          _local_memory,
+          _halo_memory,
+          &_stencil_spec,
+          &_stencil_offsets,
+          *_view_local,
+          _spec_views.inner(),
+          0)
+    , _iend(
+          _local_memory,
+          _halo_memory,
+          &_stencil_spec,
+          &_stencil_offsets,
+          *_view_local,
+          _spec_views.inner(),
+          _spec_views.inner().size())
+    , _bbegin(
+          _local_memory,
+          _halo_memory,
+          &_stencil_spec,
+          &_stencil_offsets,
+          *_view_local,
+          _spec_views.boundary_views(),
+          0)
+    , _bend(
+          _local_memory,
+          _halo_memory,
+          &_stencil_spec,
+          &_stencil_offsets,
+          *_view_local,
+          _spec_views.boundary_views(),
+          _spec_views.boundary_size())
+  {
+  }
 
   /**
    * Returns the begin iterator for all relevant elements (inner + boundary)

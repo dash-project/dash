@@ -7,6 +7,7 @@
 
 #include <dash/GlobRef.h>
 #include <dash/memory/MemorySpace.h>
+#include <dash/memory/UniquePtr.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -37,10 +38,11 @@ public:
   typedef typename reference::value_type value_type;
 
 private:
-  using GlobMem_t     = dash::GlobLocalMemoryPool<dash::HostSpace>;
-  using unique_gptr_t = decltype(dash::allocate_unique<element_t>(
-      static_cast<GlobMem_t*>(nullptr), std::size_t{}));
-  using pointer_t     = typename unique_gptr_t::pointer;
+  using memory_type    = dash::GlobLocalMemoryPool<dash::HostSpace>;
+  using allocator_type = dash::GlobalAllocator<element_t, memory_type>;
+  using unique_gptr_t  = decltype(
+      dash::allocate_unique<element_t>(allocator_type{}, std::size_t{}));
+  using pointer_t = typename unique_gptr_t::pointer;
 
   template <typename T_>
   friend void swap(Shared<T_>& a, Shared<T_>& b);
@@ -49,11 +51,12 @@ private:
   static constexpr size_t nbytes = sizeof(element_t);
 
 private:
-  dash::Team*   m_team{nullptr};
-  team_unit_t   m_owner{DART_UNDEFINED_UNIT_ID};
-  GlobMem_t     m_memory_resource{nullptr};
-  unique_gptr_t m_data{nullptr};
-  pointer_t     m_glob_pointer;
+  dash::Team*    m_team{nullptr};
+  team_unit_t    m_owner{DART_UNDEFINED_UNIT_ID};
+  memory_type    m_memory_resource{nullptr};
+  allocator_type m_allocator{};
+  unique_gptr_t  m_data{};
+  pointer_t      m_glob_pointer;
 
 public:
   /**
@@ -84,6 +87,7 @@ public:
     : m_team(&team)
     , m_owner(owner)
     , m_memory_resource(nbytes, team)
+    , m_allocator(&m_memory_resource)
   {
     DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner)()", owner);
     if (dash::is_initialized()) {
@@ -105,10 +109,14 @@ public:
    * Move-constructor. Transfers ownership from other instance.
    */
   Shared(self_t&& other) noexcept
-
+    : m_team(other.m_team)
+    , m_owner(other.m_owner)
+    , m_memory_resource(std::move(other.m_memory_resource))
+    , m_allocator(&m_memory_resource)
   {
-    // redirect to move assignment
-    *this = std::move(other);
+    auto gptr = other.m_data.release();
+    m_data    = unique_gptr_t{
+        gptr, typename unique_gptr_t::deleter{m_allocator, nels}};
     DASH_LOG_DEBUG("Shared.Shared(Shared&&) >");
   }
 
@@ -120,19 +128,34 @@ public:
   /**
    * Move-assignment operator.
    */
-  self_t& operator=(self_t&& other) noexcept
+  self_t& operator=(self_t&& other) DASH_NOEXCEPT
   {
-    m_team    = other.m_team;
-    m_owner   = other.m_owner;
-    //releases own resources..
-    m_memory_resource = std::move(other.m_memory_resource);
+    if (this == &other) {
+      return *this;
+    }
 
-    auto tmp__ = unique_gptr_t{other.m_data.release(),
-                   typename unique_gptr_t::deleter_type{&m_memory_resource, nels}};
-    m_data =
-        std::move(tmp__);
+    m_team  = other.m_team;
+    m_owner = other.m_owner;
+    // a) release old resources with current memory resource
+    m_data.reset();
+
+    // b) move the memory resource
+    m_memory_resource = std::move(other.m_memory_resource);
+    // do no move the allocator because we already have one...
+    DASH_ASSERT_EQ(
+        m_allocator.resource(),
+        &m_memory_resource,
+        "invalid state in move assignment");
+
+    // c) move the data, set pointer
+    m_data.reset(other.m_data.release());
 
     m_glob_pointer = other.m_glob_pointer;
+
+    if (m_team->myid() == m_owner) {
+      DASH_ASSERT_EQ(
+          m_glob_pointer, m_data.get(), "invalid state in move assignment");
+    }
 
     DASH_LOG_DEBUG("Shared.Shared(Shared&&) >");
     return *this;
@@ -168,7 +191,8 @@ public:
           "Shared.init(value,team,owner)",
           "allocating shared value in local memory");
 
-      m_data = std::move(dash::allocate_unique<element_t>(&m_memory_resource, nels));
+      m_data = std::move(dash::allocate_unique<element_t>(m_allocator, nels));
+
       DASH_ASSERT_MSG(m_data, "null pointer after allocation");
 
       auto* laddr = static_cast<element_t*>(m_data.get().local());
@@ -185,7 +209,8 @@ public:
     dash::dart_storage<pointer_t> ds(nels);
 
     DASH_ASSERT_RETURNS(
-        dart_bcast(&m_glob_pointer, ds.nelem, ds.dtype, m_owner, m_team->dart_id()),
+        dart_bcast(
+            &m_glob_pointer, ds.nelem, ds.dtype, m_owner, m_team->dart_id()),
         DART_OK);
 
     DASH_LOG_DEBUG_VAR("Shared.init(value,team,owner) >", m_glob_pointer);
@@ -298,19 +323,21 @@ public:
 template <typename T>
 void swap(dash::Shared<T>& a, dash::Shared<T>& b)
 {
-  using unique_ptr = typename Shared<T>::unique_gptr_t;
-  using deleter    = typename unique_ptr::deleter_type;
+  using std::swap;
 
-  ::std::swap(a.m_team, b.m_team);
-  ::std::swap(a.m_owner, b.m_owner);
-  ::std::swap(a.m_memory_resource, b.m_memory_resource);
-  ::std::swap(a.m_glob_pointer, b.m_glob_pointer);
+  swap(a.m_team, b.m_team);
+  swap(a.m_owner, b.m_owner);
+  swap(a.m_memory_resource, b.m_memory_resource);
 
-  auto tmp = a.m_data.release();
-  a.m_data = std::move(
-      unique_ptr{b.m_data.release(), deleter{&a.m_memory_resource, Shared<T>::nels}});
-  b.m_data = std::move(
-      unique_ptr{std::move(tmp), deleter{&b.m_memory_resource, Shared<T>::nels}});
+  // we cannot simply swap two unique_ptr as this swaps also the deleters.
+  // That is not what we want, because we swapped already the underlying
+  // resources
+
+  auto ptrA = a.m_data.release();
+  a.m_data.reset(b.m_data.release());
+  b.m_data.reset(ptrA);
+
+  swap(a.m_glob_pointer, b.m_glob_pointer);
 }
 
 }  // namespace dash

@@ -16,7 +16,7 @@ TEST_F(GlobRefTest, ArithmeticOps)
   int neighbor = (dash::myid() + 1) % dash::size();
   dash::GlobRef<value_t> gref = arr[neighbor];
 
-  auto address_of_ref = dash::addressof<typename array_t::GlobMem_t>(gref);
+  auto address_of_ref = dash::addressof<typename array_t::memory_type>(gref);
 
   ASSERT_EQ_U(
       static_cast<typename array_t::pointer>(arr.begin()) + neighbor,
