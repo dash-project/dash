@@ -165,8 +165,8 @@ dart_amsg_sopnop_sendbuf(
 
     // the queue is full, reset the offset
     int64_t neg_msg_size = -msg_size;
-    DART_LOG_TRACE("Queue %ld at %d full, reverting by %ld",
-                   queuenum, target.id, neg_msg_size);
+    DART_LOG_TRACE("Queue %ld at %d full/processing (tailpos %ld), reverting by %ld",
+                   queuenum, target.id, offset, neg_msg_size);
     MPI_Accumulate(&neg_msg_size, 1, MPI_INT64_T, target.id,
                    OFFSET_TAILPOS(queuenum), 1, MPI_INT64_T,
                    MPI_SUM, amsgq->queue_win);
@@ -233,7 +233,7 @@ dart_amsg_sopnop_trysend(
   int64_t queuenum = -1;
 
   DART_LOG_DEBUG("dart_amsg_trysend: u:%i ds:%zu",
-                 target.id, data_size);
+                 target.id, msg_size);
 
   do {
 
@@ -265,8 +265,8 @@ dart_amsg_sopnop_trysend(
 
     // the queue is full, reset the offset
     int64_t neg_msg_size = -msg_size;
-    DART_LOG_TRACE("Queue %ld at %d full, reverting by %ld",
-                   queuenum, target.id, neg_msg_size);
+    DART_LOG_TRACE("Queue %ld at %d full/processing (tailpos %ld), reverting by %ld",
+                   queuenum, target.id, offset, neg_msg_size);
     MPI_Accumulate(&neg_msg_size, 1, MPI_INT64_T, target.id,
                    OFFSET_TAILPOS(queuenum), 1, MPI_INT64_T,
                    MPI_SUM, amsgq->queue_win);
@@ -277,7 +277,7 @@ dart_amsg_sopnop_trysend(
   } while (1);
 
   DART_LOG_TRACE("Writing %ld into queue %ld at offset %ld at unit %i",
-                 data_size, queuenum, offset, target.id);
+                 msg_size, queuenum, offset, target.id);
 
   // write our payload
   struct dart_amsg_header header;
@@ -323,7 +323,7 @@ dart_amsg_sopnop_trysend(
 
   DART_LOG_TRACE("Sent message of size %zu with payload %zu to unit "
                 "%d starting at offset %ld",
-                msg_size, data_size, target.id, offset);
+                msg_size, msg_size, target.id, offset);
 
   return DART_OK;
 }
@@ -461,6 +461,8 @@ amsg_sopnop_process_internal(
       // remember the actual value of tailpos so we can wait for it later
       amsgq->prev_tailpos = tailpos_sub + tailpos;
 
+      DART_LOG_TRACE("Previous tailpos: %ld", amsgq->prev_tailpos);
+
       // reset readypos
       // NOTE: using MPI_REPLACE here is valid as no-one else will write to it
       //       at this time.
@@ -474,7 +476,8 @@ amsg_sopnop_process_internal(
         amsgq->queue_win);
       MPI_Win_flush(unitid, amsgq->queue_win);
 
-      // NOTE: deferred flush
+      DART_LOG_TRACE("Starting processing queue %ld: tailpos %ld, readypos %ld",
+                     queuenum, tailpos, readypos);
 
       // process the messages by invoking the functions on the data supplied
       int64_t  pos      = 0;
@@ -484,7 +487,7 @@ amsg_sopnop_process_internal(
 
       while (pos < tailpos) {
   #ifdef DART_ENABLE_LOGGING
-        int startpos = pos;
+        int64_t startpos = pos;
   #endif
         // unpack the message
         struct dart_amsg_header *header =
@@ -499,7 +502,7 @@ amsg_sopnop_process_internal(
 
         // invoke the message
         DART_LOG_INFO("Invoking active message %p from %i on data %p of "
-                      "size %i starting from tailpos %i",
+                      "size %i starting from tailpos %ld",
                       header->fn,
                       header->remote.id,
                       data,
