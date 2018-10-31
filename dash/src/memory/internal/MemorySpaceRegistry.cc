@@ -65,7 +65,7 @@ void MemorySpaceRegistry::erase(dart_gptr_t p)
   m_segments.erase(it);
 }
 
-std::vector<dash::internal::MemorySpaceRegistry::element_t>::iterator
+std::vector<MemorySpaceRegistry::element_t>::iterator
 MemorySpaceRegistry::do_lookup(key_t key) const noexcept
 {
   return std::find_if(

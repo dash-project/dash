@@ -227,7 +227,7 @@ public:
     DASH_LOG_DEBUG("Shared.set()");
     DASH_LOG_DEBUG_VAR("Shared.set", m_owner);
     DASH_LOG_DEBUG_VAR("Shared.set", m_glob_pointer);
-    DASH_ASSERT(static_cast<bool>(m_glob_pointer));
+    DASH_ASSERT(m_glob_pointer);
     this->get().set(val);
     DASH_LOG_DEBUG("Shared.set >");
   }

@@ -426,11 +426,11 @@ template<
 class ArrayRefView
 {
  public:
-  typedef typename PatternT::index_type             index_type;
+   typedef typename PatternT::index_type index_type;
 
  private:
-  Array<T, index_type, PatternT, MSpaceC>                  * _arr;
-  ViewSpec<1, index_type>                           _viewspec;
+   Array<T, index_type, PatternT, MSpaceC> *_arr;
+   ViewSpec<1, index_type>                  _viewspec;
 };
 
 /**

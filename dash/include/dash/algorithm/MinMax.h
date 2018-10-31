@@ -327,16 +327,15 @@ GlobInputIt min_element(
  * \ingroup     DashAlgorithms
  */
 template <
-  class GlobIter,
-  class Compare = std::greater<const typename GlobIter::value_type &> >
+    class GlobIter,
+    class Compare = std::greater<const typename GlobIter::value_type &> >
 GlobIter max_element(
-  /// Iterator to the initial position in the sequence
-  const GlobIter & first,
-  /// Iterator to the final position in the sequence
-  const GlobIter & last,
-  /// Element comparison function, defaults to std::less
-  Compare                                    compare
-    = Compare())
+    /// Iterator to the initial position in the sequence
+    const GlobIter &first,
+    /// Iterator to the final position in the sequence
+    const GlobIter &last,
+    /// Element comparison function, defaults to std::less
+    Compare compare = Compare())
 {
   // Same as min_element with different compare function
   return dash::min_element(first, last, compare);
@@ -359,17 +358,14 @@ GlobIter max_element(
  *
  * \ingroup     DashAlgorithms
  */
-template <
-  class ElementType,
-  class Compare = std::greater<ElementType &> >
-const ElementType * max_element(
-  /// Iterator to the initial position in the sequence
-  const ElementType * first,
-  /// Iterator to the final position in the sequence
-  const ElementType * last,
-  /// Element comparison function, defaults to std::less
-  Compare             compare
-    = Compare())
+template <class ElementType, class Compare = std::greater<ElementType &> >
+const ElementType *max_element(
+    /// Iterator to the initial position in the sequence
+    const ElementType *first,
+    /// Iterator to the final position in the sequence
+    const ElementType *last,
+    /// Element comparison function, defaults to std::less
+    Compare compare = Compare())
 {
   // Same as min_element with different compare function
   return dash::min_element(first, last, compare);

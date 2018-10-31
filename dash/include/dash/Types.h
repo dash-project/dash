@@ -347,20 +347,7 @@ constexpr team_unit_t   UNDEFINED_TEAM_UNIT_ID{DART_UNDEFINED_UNIT_ID};
  */
 constexpr global_unit_t UNDEFINED_GLOBAL_UNIT_ID{DART_UNDEFINED_UNIT_ID};
 
-typedef
-/* GCC Version < 4.9.0 */ \
-#if !defined(__clang__) && \
-    (defined(__GNUC__) && ((__GNUC__ == 4) && (__GNUC_MINOR__ < 9)))
-    struct {
-  long long __max_align_ll
-      __attribute__((__aligned__(__alignof__(long long))));
-  long double __max_align_ld
-      __attribute__((__aligned__(__alignof__(long double))));
-    }
-#else
-  typename std::max_align_t
-#endif
-max_align_t;
+typedef typename std::max_align_t max_align_t;
 
 } // namespace dash
 
