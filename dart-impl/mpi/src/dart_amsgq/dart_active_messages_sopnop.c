@@ -4,10 +4,12 @@
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <alloca.h>
 
 #include <dash/dart/base/mutex.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
+#include <dash/dart/base/atomic.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -36,6 +38,9 @@ struct dart_amsg_header {
   dart_task_action_t fn;
   dart_global_unit_t remote;
   uint32_t           data_size;
+#ifdef DART_DEBUG
+  uint32_t           msgid;
+#endif // DART_DEBUG
 };
 
 struct cached_message_s
@@ -50,6 +55,10 @@ struct message_cache_s
   int                     pos;
   int8_t                  buffer[];
 };
+
+#ifdef DART_ENABLE_LOGGING
+static uint32_t msgcnt = 0;
+#endif // DART_ENABLE_LOGGING
 
 #define OFFSET_QUEUENUM                 0
 #define OFFSET_TAILPOS(q)    (sizeof(int64_t)+q*2*sizeof(int64_t))
@@ -224,108 +233,26 @@ dart_amsg_sopnop_trysend(
 {
   dart_global_unit_t unitid;
 
-  //dart__base__mutex_lock(&amsgq->send_mutex);
-
   dart_myid(&unitid);
 
-  int64_t offset;
   int64_t msg_size = (sizeof(struct dart_amsg_header) + data_size);
-  int64_t queuenum = -1;
 
-  DART_LOG_DEBUG("dart_amsg_trysend: u:%i ds:%zu",
-                 target.id, msg_size);
+  // we allocate the message on the stack because we expect it to be small enough
+  cached_message_t *msg = alloca(msg_size);
 
-  do {
+  // assemble the message
+  msg->header.remote    = unitid;
+  msg->header.fn        = fn;
+  msg->header.data_size = data_size;
+#ifdef DART_ENABLE_LOGGING
+  msg->header.msgid     = DART_FETCH_AND_INC32(&msgcnt);
+#endif
+  memcpy(msg->data, data, data_size);
 
-    // fetch queue number
-    MPI_Fetch_and_op(
-      NULL,
-      &queuenum,
-      MPI_INT64_T,
-      target.id,
-      OFFSET_QUEUENUM,
-      MPI_NO_OP,
-      amsgq->queue_win);
-    MPI_Win_flush_local(target.id, amsgq->queue_win);
+  DART_LOG_INFO("Sending message %d of size %zu with payload %zu to unit %d",
+                msg->header.msgid, msg_size, data_size, target.id);
 
-    DART_ASSERT(queuenum == 0 || queuenum == 1);
-
-    // atomically fetch and update the writer offset
-    MPI_Fetch_and_op(
-      &msg_size,
-      &offset,
-      MPI_INT64_T,
-      target.id,
-      OFFSET_TAILPOS(queuenum),
-      MPI_SUM,
-      amsgq->queue_win);
-    MPI_Win_flush_local(target.id, amsgq->queue_win);
-
-    if (offset >= 0 && (offset + msg_size) <= amsgq->queue_size) break;
-
-    // the queue is full, reset the offset
-    int64_t neg_msg_size = -msg_size;
-    DART_LOG_TRACE("Queue %ld at %d full/processing (tailpos %ld), reverting by %ld",
-                   queuenum, target.id, offset, neg_msg_size);
-    MPI_Accumulate(&neg_msg_size, 1, MPI_INT64_T, target.id,
-                   OFFSET_TAILPOS(queuenum), 1, MPI_INT64_T,
-                   MPI_SUM, amsgq->queue_win);
-    MPI_Win_flush(target.id, amsgq->queue_win);
-
-    //dart__base__mutex_unlock(&amsgq->send_mutex);
-    return DART_ERR_AGAIN;
-  } while (1);
-
-  DART_LOG_TRACE("Writing %ld into queue %ld at offset %ld at unit %i",
-                 msg_size, queuenum, offset, target.id);
-
-  // write our payload
-  struct dart_amsg_header header;
-  header.remote    = unitid;
-  header.fn        = fn;
-  header.data_size = data_size;
-  DART_LOG_TRACE("MPI_Put at offset %ld", OFFSET_DATA(queuenum, amsgq->queue_size) + offset);
-  MPI_Put(
-    &header,
-    sizeof(header),
-    MPI_BYTE,
-    target.id,
-    OFFSET_DATA(queuenum, amsgq->queue_size) + offset,
-    sizeof(header),
-    MPI_BYTE,
-    amsgq->queue_win);
-  offset += sizeof(header);
-  DART_LOG_TRACE("MPI_Put at offset %ld", OFFSET_DATA(queuenum, amsgq->queue_size) + offset);
-  MPI_Put(
-    data,
-    data_size,
-    MPI_BYTE,
-    target.id,
-    OFFSET_DATA(queuenum, amsgq->queue_size) + offset,
-    data_size,
-    MPI_BYTE,
-    amsgq->queue_win);
-
-  // we have to flush here because MPI has no ordering guarantees
-  MPI_Win_flush(target.id, amsgq->queue_win);
-
-  DART_LOG_TRACE("Updating readypos in queue %ld at unit %i",
-                 queuenum, target.id);
-
-  // signal completion
-  MPI_Accumulate(&msg_size, 1, MPI_INT64_T, target.id,
-                 OFFSET_READYPOS(queuenum), 1, MPI_INT64_T,
-                 MPI_SUM, amsgq->queue_win);
-  // remote flush required, otherwise the message might never make it through
-  MPI_Win_flush(target.id, amsgq->queue_win);
-
-  //dart__base__mutex_unlock(&amsgq->send_mutex);
-
-  DART_LOG_TRACE("Sent message of size %zu with payload %zu to unit "
-                "%d starting at offset %ld",
-                msg_size, msg_size, target.id, offset);
-
-  return DART_OK;
+  return dart_amsg_sopnop_sendbuf(target, amsgq, msg, msg_size);
 }
 
 static dart_ret_t
@@ -399,15 +326,17 @@ amsg_sopnop_process_internal(
       MPI_Win_flush(unitid, amsgq->queue_win);
 
       // swap the queue number
+      int64_t queue_swap_sum = (queuenum == 0) ? 1 : -1;
       MPI_Fetch_and_op(
-        &newqueue,
+        &queue_swap_sum,
         &tmp,
         MPI_INT64_T,
         unitid,
         OFFSET_QUEUENUM,
-        MPI_REPLACE,
+        MPI_SUM,
         amsgq->queue_win);
       MPI_Win_flush(unitid, amsgq->queue_win);
+      DART_ASSERT(tmp == queuenum);
 
 
       // set the tailpos to a large negative number to signal the start of
@@ -501,9 +430,10 @@ amsg_sopnop_process_internal(
                          tailpos, pos);
 
         // invoke the message
-        DART_LOG_INFO("Invoking active message %p from %i on data %p of "
+        DART_LOG_INFO("Invoking active message %p id=%d from %i on data %p of "
                       "size %i starting from tailpos %ld",
                       header->fn,
+                      header->msgid,
                       header->remote.id,
                       data,
                       header->data_size,
@@ -627,10 +557,14 @@ dart_amsg_sopnop_bsend(
   cached_message_t *msg = (cached_message_t *)(cache->buffer + cache->pos);
   msg->header.fn        = fn;
   msg->header.data_size = data_size;
+#ifdef DART_ENABLE_LOGGING
+  msg->header.msgid     = DART_FETCH_AND_INC32(&msgcnt);
+#endif
   dart_myid(&msg->header.remote);
   memcpy(msg->data, data, data_size);
   cache->pos += sizeof(*msg) + data_size;
-  DART_LOG_TRACE("Cached message: fn=%p, r=%d, ds=%d", msg->header.fn, msg->header.remote.id, msg->header.data_size);
+  DART_LOG_TRACE("Cached message: fn=%p, r=%d, ds=%d, id=%d", msg->header.fn,
+                 msg->header.remote.id, msg->header.data_size, msg->header.msgid);
   dart__base__mutex_unlock(&cache->mutex);
   return DART_OK;
 }
