@@ -108,7 +108,7 @@ dart_ret_t dart__mpi__op_init()
 
 const char* dart__mpi__op_name(dart_operation_t op)
 {
-  DART_ASSERT(op >= DART_OP_UNDEFINED && op < DART_OP_LAST);
+  DART_ASSERT(op < DART_OP_LAST);
   return dart_op_names[op];
 }
 
