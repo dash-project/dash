@@ -209,7 +209,6 @@ private:
   using Self_t     = StencilIterator<ElementT, PatternT, GlobMemT, StencilSpecT, Scope>;
   using ViewSpec_t = typename PatternT::viewspec_type;
   using pattern_size_t        = typename PatternT::size_type;
-  using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
   using RegionCoords_t        = RegionCoords<NumDimensions>;
   using HaloBlock_t           = HaloBlock<ElementT, PatternT, GlobMemT>;
 
@@ -226,11 +225,13 @@ public:
   using region_index_t  = typename RegionCoords_t::region_index_t;
   using LocalLayout_t =
     CartesianIndexSpace<NumDimensions, MemoryArrange, pattern_index_t>;
-  using StencilP_t       = StencilPoint<NumDimensions>;
-  using ElementCoords_t  = std::array<pattern_index_t, NumDimensions>;
-  using StencilOffsets_t = std::array<signed_pattern_size_t, NumStencilPoints>;
-  using StencilSpecViews_t = StencilSpecificViews<HaloBlock_t, StencilSpecT>;
-  using BoundaryViews_t    = typename StencilSpecViews_t::BoundaryViews_t;
+  using StencilP_t            = StencilPoint<NumDimensions>;
+  using ElementCoords_t       = std::array<pattern_index_t, NumDimensions>;
+  using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
+  using StencilOffsets_t      =
+    std::array<signed_pattern_size_t, NumStencilPoints>;
+  using StencilSpecViews_t    = StencilSpecificViews<HaloBlock_t, StencilSpecT>;
+  using BoundaryViews_t       = typename StencilSpecViews_t::BoundaryViews_t;
 
 public:
   /**
@@ -253,7 +254,8 @@ public:
     _stencil_offsets(stencil_offsets), _view(view_scope),
     _local_memory(local_memory),
     _local_layout(view_local.extents()), _idx(idx) {
-    if(_idx < _view.size())
+    _size = _view.size();
+    if(_idx < _size)
       set_coords();
 
     const auto ext_max = stencil_spec->minmax_distances(FastestDimension);
@@ -290,10 +292,11 @@ public:
     _boundary_views(boundary_views),
     _local_memory(local_memory),
     _local_layout(view_local.extents()), _idx(idx) {
-    pattern_index_t size = 0;
+    _size = 0;
     for(const auto& view : boundary_views)
-      size += view.size();
-    if(_idx < size)
+      _size += view.size();
+
+    if(_idx < _size)
       set_coords();
 
     const auto ext_max = stencil_spec->minmax_distances(FastestDimension);
@@ -313,7 +316,8 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  Self_t& operator=(const Self_t& other) = default;
+  //Self_t& operator=(const Self_t& other) = default;
+  Self_t& operator=(const Self_t& other) = delete;
 
   /**
    * The number of dimensions of the iterator's underlying pattern.
@@ -418,34 +422,43 @@ public:
   Self_t operator--(int) {
     Self_t result = *this;
     --_idx;
-    set_coords();
+    if(_idx < _size) {
+      _coords = set_coords(_idx);
+      set_offsets();
+    }
 
     return result;
   }
 
   Self_t& operator+=(pattern_index_t n) {
     _idx += n;
-    set_coords();
+    if(_idx < _size) {
+      _coords = set_coords(_idx);
+      set_offsets();
+    }
 
     return *this;
   }
 
   Self_t& operator-=(pattern_index_t n) {
     _idx -= n;
-    set_coords();
+    if(_idx < _size) {
+      _coords = set_coords(_idx);
+      set_offsets();
+    }
 
     return *this;
   }
 
   Self_t operator+(pattern_index_t n) const {
-    Self_t res{ *this };
+    auto res( *this );
     res += n;
 
     return res;
   }
 
   Self_t operator-(pattern_index_t n) const {
-    Self_t res{ *this };
+    auto res( *this );
     res -= n;
 
     return res;
@@ -497,30 +510,6 @@ private:
     // TODO not the best solution
     return false;
   }
-
-  /*void set_view(const ViewSpec_t& view_tmp) {
-    if(Scope == StencilViewScope::BOUNDARY) {
-      const auto& bnd_elems = _haloblock.boundary_elements();
-      _bnd_elements.reserve(bnd_elems.size());
-      const auto& view_offs = view_tmp.offsets();
-      for(const auto& region : bnd_elems) {
-        auto off = region.offsets();
-        for(int d = 0; d < NumDimensions; ++d)
-          off[d] -= view_offs[d];
-
-        _bnd_elements.push_back(ViewSpec_t(off, region.extents()));
-      }
-
-      _view = ViewSpec_t(view_tmp.extents());
-    } else {
-      const auto& view_offsets = _haloblock.view().offsets();
-      auto        off          = view_tmp.offsets();
-      for(int d = 0; d < NumDimensions; ++d)
-        off[d] -= view_offsets[d];
-
-      _view = ViewSpec_t(off, view_tmp.extents());
-    }
-  }*/
 
   void next_element() {
     const auto& coord_fastest_dim = _coords[FastestDimension];
@@ -615,10 +604,14 @@ private:
         }
       }
     } else {
-      _coords = set_coords(_idx);
+      if(_idx < _size)
+        _coords = set_coords(_idx);
     }
 
-    // setup center point offset
+    set_offsets();
+  }
+
+  void set_offsets() {// setup center point offset
     if(MemoryArrange == ROW_MAJOR) {
       _offset = _coords[0];
       for(dim_t d = 1; d < NumDimensions; ++d)
@@ -674,6 +667,8 @@ private:
 
   ElementCoords_t set_coords(pattern_index_t idx) {
     if(Scope == StencilViewScope::BOUNDARY) {
+      _region_bound = 0;
+      _region_number = 0;
       auto local_idx = idx;
       for(const auto& region : _boundary_views) {
         _region_bound += region.size();
@@ -701,24 +696,6 @@ private:
            + _halomemory->offset(region_index, halo_coords));
   }
 
-  void set_stencil_offsets(const StencilSpecT& stencil_spec) {
-    for(auto i = 0; i < NumStencilPoints; ++i) {
-      signed_pattern_size_t offset = 0;
-      if(MemoryArrange == ROW_MAJOR) {
-        offset = stencil_spec[i][0];
-        for(dim_t d = 1; d < NumDimensions; ++d)
-          offset = stencil_spec[i][d] + offset * _local_layout.extent(d);
-      } else {
-        offset = stencil_spec[i][NumDimensions - 1];
-        for(dim_t d = NumDimensions - 1; d > 0;) {
-          --d;
-          offset = stencil_spec[i][d] + offset * _local_layout.extent(d);
-        }
-      }
-      (*_stencil_offsets)[i] = offset;
-    }
-  }
-
 private:
   HaloMemory_t*                           _halomemory;
   const StencilSpecT*                     _stencil_spec;
@@ -736,6 +713,7 @@ private:
   size_t                                      _region_number{ 0 };
   ElementCoords_t                             _coords;
   ElementT*                                   _current_lmemory_addr;
+  pattern_index_t                             _size;
 };  // class StencilIterator
 
 }  // namespace halo

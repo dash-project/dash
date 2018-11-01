@@ -76,6 +76,66 @@ public:
   }
 
   /**
+   * Returns coordinates adjusted by stencil point
+   */
+  template <typename ElementCoordsT>
+  ElementCoordsT stencil_coords(ElementCoordsT& coords) const {
+    return StencilPoint<NumDimensions, CoeffT>::stencil_coords(coords, this);
+  }
+
+  /**
+   * Returns coordinates adjusted by a given stencil point
+   */
+  template <typename ElementCoordsT>
+  static ElementCoordsT stencil_coords(
+    ElementCoordsT                             coords,
+    const StencilPoint<NumDimensions, CoeffT>& stencilp) {
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      coords[d] += stencilp[d];
+    }
+
+    return coords;
+  }
+
+  /**
+   * Returns coordinates adjusted by a stencil point and a boolean to indicate
+   * a if the adjusted coordinate points to elements out of the given
+   * \ref ViewSpecpossible (inside: true, else: false).
+   */
+  template <typename ElementCoordsT, typename ViewSpecT>
+  std::pair<ElementCoordsT, bool> stencil_coords_check(
+    ElementCoordsT coords, const ViewSpecT& view) const {
+    bool halo = false;
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      coords[d] += this->_values[d];
+      if(coords[d] < 0 || coords[d] >= view.extent(d))
+        halo = true;
+    }
+
+    return std::make_pair(coords, halo);
+  }
+
+  /**
+   * Returns coordinates adjusted by a stencil point and a boolean to indicate
+   * a if the adjusted coordinate points to elements out of the given
+   * \ref ViewSpecpossible (inside: true, else: false).
+   * If one dimension points to an element outside the \ref ViewSpec this method
+   * returns immediately the unfinished adjusted coordinate and true. Otherwise
+   * the adjusted coordinate and false is returned,
+   */
+  template <typename ElementCoordsT, typename ViewSpecT>
+  std::pair<ElementCoordsT, bool> stencil_coords_check_abort(
+    ElementCoordsT coords, const ViewSpecT& view) const {
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      coords[d] += this->_values[d];
+      if(coords[d] < 0 || coords[d] >= view.extent(d))
+        return std::make_pair(coords, true);
+    }
+
+    return std::make_pair(coords, false);
+  }
+
+  /**
    * Returns the coefficient for this stencil point
    */
   CoeffT coefficient() const { return _coefficient; }
@@ -88,7 +148,7 @@ template <dim_t NumDimensions, typename CoeffT>
 std::ostream& operator<<(
   std::ostream& os, const StencilPoint<NumDimensions, CoeffT>& stencil_point) {
   os << "dash::halo::StencilPoint<" << NumDimensions << ">"
-     << "(coefficient = " << stencil_point.coefficient << " - points: ";
+     << "(coefficient = " << stencil_point.coefficient() << " - points: ";
   for(auto d = 0; d < NumDimensions; ++d) {
     if(d > 0) {
       os << ",";
@@ -838,8 +898,14 @@ public:
    * \see DashGlobalIteratorConcept
    */
   reference operator[](pattern_index_t n) const {
-    //TODO dhinf: verify if this is correct
-    return *GlobIter<ElementT, PatternT, GlobMemT>(_globmem, *_pattern, gpos() + n);
+    auto coords    = glob_coords(_idx + n);
+    auto local_pos = _pattern->local_index(coords);
+
+    auto p = static_cast<pointer>(_globmem->begin());
+    p.set_unit(local_pos.unit);
+    p += local_pos.index;
+    return *p;
+
   }
 
   dart_gptr_t dart_gptr() const { return operator[](_idx).dart_gptr(); }
@@ -1584,14 +1650,14 @@ public:
   using Element_t = typename HaloBlockT::Element_t;
   using ElementCoords_t =
     std::array<typename Pattern_t::index_type, NumDimensions>;
-  using HaloBuffer_t = std::vector<Element_t>;
+  using HaloBuffer_t   = std::vector<Element_t>;
   using region_index_t = typename RegionCoords_t::region_index_t;
   using pattern_size_t = typename Pattern_t::size_type;
 
-  using iterator = typename HaloBuffer_t::iterator;
+  using iterator       = typename HaloBuffer_t::iterator;
   using const_iterator = const iterator;
 
-  using MemRange_t = std::pair<iterator,iterator>;
+  using MemRange_t = std::pair<iterator, iterator>;
 
 public:
   /**
@@ -1626,12 +1692,13 @@ public:
   MemRange_t range_at(region_index_t index) {
     auto it = _halo_offsets[index];
     if(it == _halobuffer.end())
-      return std::make_pair(it,it);
+      return std::make_pair(it, it);
 
     auto* region = _haloblock.halo_region(index);
 
-    DASH_ASSERT_MSG(region != nullptr,
-        "HaloMemory manages memory for a region that seemed to be empty.");
+    DASH_ASSERT_MSG(
+      region != nullptr,
+      "HaloMemory manages memory for a region that seemed to be empty.");
 
     return std::make_pair(it, it + region->size());
   }
@@ -1728,8 +1795,8 @@ public:
   }
 
 private:
-  const HaloBlockT&      _haloblock;
-  HaloBuffer_t           _halobuffer;
+  const HaloBlockT&              _haloblock;
+  HaloBuffer_t                   _halobuffer;
   std::array<iterator, MaxIndex> _halo_offsets{};
 };  // class HaloMemory
 
