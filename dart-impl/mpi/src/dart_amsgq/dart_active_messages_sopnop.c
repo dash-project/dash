@@ -120,6 +120,9 @@ dart_amsg_sopnop_openq(
 
   MPI_Barrier(res->comm);
 
+  DART_LOG_DEBUG("Allocated double-buffered message queue (buffer: %ld)",
+                 res->queue_size);
+
   *queue = res;
 
   return DART_OK;
@@ -190,7 +193,8 @@ dart_amsg_sopnop_sendbuf(
 
   // Write our payload
 
-  DART_LOG_TRACE("MPI_Put at offset %ld", OFFSET_DATA(queuenum, amsgq->queue_size) + offset);
+  DART_LOG_TRACE("MPI_Put into queue %ld offset %ld (%ld)",
+                 queuenum, offset, OFFSET_DATA(queuenum, amsgq->queue_size) + offset);
   MPI_Put(
     data,
     data_size,
@@ -344,7 +348,7 @@ amsg_sopnop_process_internal(
       // Any later attempt to write to this queue will return a negative offset
       // and cause the writer to switch to the new queue
       int64_t readypos    = 0;
-      int64_t tailpos_sub = -tailpos - INT32_MAX;
+      int64_t tailpos_sub = -INT32_MAX;
       MPI_Fetch_and_op(
         &tailpos_sub,
         &tailpos,
@@ -370,7 +374,6 @@ amsg_sopnop_process_internal(
           amsgq->queue_win);
 
         // we have to requiry the tail pos and possibly adjust it
-        int64_t tmp;
         MPI_Fetch_and_op(
           NULL,
           &tmp,
@@ -388,7 +391,7 @@ amsg_sopnop_process_internal(
       } while (readypos != tailpos);
 
       // remember the actual value of tailpos so we can wait for it later
-      amsgq->prev_tailpos = tailpos_sub + tailpos;
+      amsgq->prev_tailpos = tmp;
 
       DART_LOG_TRACE("Previous tailpos: %ld", amsgq->prev_tailpos);
 
