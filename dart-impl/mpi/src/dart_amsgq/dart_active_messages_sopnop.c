@@ -62,8 +62,8 @@ static uint32_t msgcnt = 0;
 
 #define OFFSET_QUEUENUM                 0
 #define OFFSET_TAILPOS(q)    (sizeof(int64_t)+q*2*sizeof(int64_t))
-#define OFFSET_READYPOS(q)   (OFFSET_TAILPOS(q)+sizeof(int64_t))
-#define OFFSET_DATA(q, qs)   (OFFSET_READYPOS(1)+sizeof(int64_t)+q*qs)
+#define OFFSET_WRITECNT(q)   (OFFSET_TAILPOS(q)+sizeof(int64_t))
+#define OFFSET_DATA(q, qs)   (OFFSET_WRITECNT(1)+sizeof(int64_t)+q*qs)
 
 static dart_ret_t
 dart_amsg_sopnop_openq(
@@ -84,8 +84,11 @@ dart_amsg_sopnop_openq(
   MPI_Comm_dup(team_data->comm, &res->comm);
 
   //printf("Allocating queue with queue-size %zu\n", res->queue_size);
-
-  size_t win_size = 2*(res->queue_size + 2*sizeof(int64_t)) + sizeof(int64_t);
+  // TODO: check if it is better to use 32-bit integer?!
+  size_t win_size = sizeof(int64_t)          // queuenumber (64-bit to guarantee alignment)
+                    + 2*(sizeof(int64_t)     // tailpos of each queue
+                       + sizeof(uint64_t))   // the writer count of each queue
+                    + 2*(res->queue_size);   // queue double-buffer
 
   dart__base__mutex_init(&res->send_mutex);
   dart__base__mutex_init(&res->processing_mutex);
@@ -112,6 +115,7 @@ dart_amsg_sopnop_openq(
     &(res->queue_ptr),
     &(res->queue_win));
   MPI_Info_free(&info);
+
   memset(res->queue_ptr, 0, win_size);
 
   MPI_Win_lock_all(0, res->queue_win);
@@ -137,17 +141,23 @@ dart_amsg_sopnop_sendbuf(
   const void                  * data,
   size_t                        data_size)
 {
-  // this lock is not needed, MPI will take care of it
-  //dart__base__mutex_lock(&amsgq->send_mutex);
+  // no locks needed, MPI will take care of it
 
   DART_LOG_DEBUG("dart_amsg_trysend: u:%i ds:%zu",
                  target.id, data_size);
 
+  const int64_t one  = 1;
+  const int64_t mone = -1;
   int64_t msg_size = data_size;
   int64_t offset;
   int64_t queuenum;
+  int64_t writecnt;
 
   do {
+
+    /**
+     * Number of accumulate ops: 4 ops
+     */
 
     // fetch queue number
     MPI_Fetch_and_op(
@@ -162,29 +172,55 @@ dart_amsg_sopnop_sendbuf(
 
     DART_ASSERT(queuenum == 0 || queuenum == 1);
 
-    // atomically fetch and update the writer offset
+    // register as a writer
     MPI_Fetch_and_op(
-      &msg_size,
-      &offset,
+      &one,
+      &writecnt,
       MPI_INT64_T,
       target.id,
-      OFFSET_TAILPOS(queuenum),
+      OFFSET_WRITECNT(queuenum),
       MPI_SUM,
       amsgq->queue_win);
-    MPI_Win_flush_local(target.id, amsgq->queue_win);
-
-    if (offset >= 0 && (offset + msg_size) <= amsgq->queue_size) break;
-
-    // the queue is full, reset the offset
-    int64_t neg_msg_size = -msg_size;
-    DART_LOG_TRACE("Queue %ld at %d full/processing (tailpos %ld), reverting by %ld",
-                   queuenum, target.id, offset, neg_msg_size);
-    MPI_Accumulate(&neg_msg_size, 1, MPI_INT64_T, target.id,
-                   OFFSET_TAILPOS(queuenum), 1, MPI_INT64_T,
-                   MPI_SUM, amsgq->queue_win);
     MPI_Win_flush(target.id, amsgq->queue_win);
 
-    //dart__base__mutex_unlock(&amsgq->send_mutex);
+    if (writecnt >= 0) {
+      // atomically fetch and update the writer offset
+      MPI_Fetch_and_op(
+        &msg_size,
+        &offset,
+        MPI_INT64_T,
+        target.id,
+        OFFSET_TAILPOS(queuenum),
+        MPI_SUM,
+        amsgq->queue_win);
+      MPI_Win_flush_local(target.id, amsgq->queue_win);
+
+      if (offset >= 0 && (offset + msg_size) <= amsgq->queue_size) break;
+
+      // the queue is full, reset the offset
+      int64_t neg_msg_size = -msg_size;
+      DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld, writecnt %ld),"
+                    "reverting by %ld",
+                    queuenum, target.id, offset, writecnt, neg_msg_size);
+      MPI_Accumulate(&neg_msg_size, 1, MPI_INT64_T, target.id,
+                    OFFSET_TAILPOS(queuenum), 1, MPI_INT64_T,
+                    MPI_SUM, amsgq->queue_win);
+      MPI_Win_flush(target.id, amsgq->queue_win);
+    } else {
+      DART_LOG_TRACE("Queue %ld at %d processing (writecnt %ld)",
+                    queuenum, target.id, writecnt);
+    }
+    // deregister as a writer
+    MPI_Fetch_and_op(
+      &mone,
+      &writecnt,
+      MPI_INT64_T,
+      target.id,
+      OFFSET_WRITECNT(queuenum),
+      MPI_SUM,
+      amsgq->queue_win);
+    MPI_Win_flush(target.id, amsgq->queue_win);
+
     return DART_ERR_AGAIN;
   } while (1);
 
@@ -207,17 +243,19 @@ dart_amsg_sopnop_sendbuf(
   // we have to flush here because MPI has no ordering guarantees
   MPI_Win_flush(target.id, amsgq->queue_win);
 
-  DART_LOG_TRACE("Updating readypos in queue %ld at unit %i",
+  DART_LOG_TRACE("Unregistering as writer from queue %ld at unit %i",
                  queuenum, target.id);
 
-  // signal completion
-  MPI_Accumulate(&msg_size, 1, MPI_INT64_T, target.id,
-                 OFFSET_READYPOS(queuenum), 1, MPI_INT64_T,
-                 MPI_SUM, amsgq->queue_win);
-  // remote flush required, otherwise the message might never make it through
+  // deregister as a writer
+  MPI_Fetch_and_op(
+    &mone,
+    &writecnt,
+    MPI_INT64_T,
+    target.id,
+    OFFSET_WRITECNT(queuenum),
+    MPI_SUM,
+    amsgq->queue_win);
   MPI_Win_flush(target.id, amsgq->queue_win);
-
-  //dart__base__mutex_unlock(&amsgq->send_mutex);
 
   DART_LOG_INFO("Sent message of size %zu with payload %zu to unit "
                 "%d starting at offset %ld",
@@ -285,7 +323,11 @@ amsg_sopnop_process_internal(
 
     //printf("Reading from queue %i\n", queuenum);
 
-    //check whether there are active messages available
+    /**
+     * Number of accumulate ops: 5 ops
+     */
+
+    // see whether there is anything available
     MPI_Fetch_and_op(
       NULL,
       &tailpos,
@@ -294,43 +336,22 @@ amsg_sopnop_process_internal(
       OFFSET_TAILPOS(queuenum),
       MPI_NO_OP,
       amsgq->queue_win);
-    MPI_Win_flush_local(unitid, amsgq->queue_win);
+    MPI_Win_flush(unitid, amsgq->queue_win);
 
 
     if (tailpos > 0) {
       DART_LOG_TRACE("Queue %ld has tailpos %ld", queuenum, tailpos);
       const int64_t zero = 0;
 
+      int64_t writecnt;
       int64_t tmp = 0;
       int64_t newqueue = (queuenum == 0) ? 1 : 0;
+      int64_t queue_swap_sum = (queuenum == 0) ? 1 : -1;
 
-      // wait for possible late senders on the new queue to finish
-      // NOTE: this is a poor-man's CAS
-      do {
-        MPI_Fetch_and_op(
-          NULL,
-          &tmp,
-          MPI_INT64_T,
-          unitid,
-          OFFSET_TAILPOS(newqueue),
-          MPI_NO_OP,
-          amsgq->queue_win);
-        MPI_Win_flush_local(unitid, amsgq->queue_win);
-      } while (tmp != amsgq->prev_tailpos);
-
-      // reset tailpos of new queue
-      MPI_Fetch_and_op(
-        &zero,
-        &tmp,
-        MPI_INT64_T,
-        unitid,
-        OFFSET_TAILPOS(newqueue),
-        MPI_REPLACE,
-        amsgq->queue_win);
-      MPI_Win_flush(unitid, amsgq->queue_win);
+      const int64_t processing_signal     = INT32_MIN;
+      const int64_t neg_processing_signal = -processing_signal;
 
       // swap the queue number
-      int64_t queue_swap_sum = (queuenum == 0) ? 1 : -1;
       MPI_Fetch_and_op(
         &queue_swap_sum,
         &tmp,
@@ -342,74 +363,48 @@ amsg_sopnop_process_internal(
       MPI_Win_flush(unitid, amsgq->queue_win);
       DART_ASSERT(tmp == queuenum);
 
-
-      // set the tailpos to a large negative number to signal the start of
-      // processing
-      // Any later attempt to write to this queue will return a negative offset
-      // and cause the writer to switch to the new queue
-      int64_t readypos    = 0;
-      int64_t tailpos_sub = -INT32_MAX;
+      // wait for all writers to finish
       MPI_Fetch_and_op(
-        &tailpos_sub,
-        &tailpos,
+        &processing_signal,
+        &writecnt,
         MPI_INT64_T,
         unitid,
-        OFFSET_TAILPOS(queuenum),
+        OFFSET_WRITECNT(queuenum),
         MPI_SUM,
         amsgq->queue_win);
+      MPI_Win_flush(unitid, amsgq->queue_win);
 
-      // NOTE: deferred flush
+      if (writecnt > 0) {
+        DART_LOG_TRACE("Waiting for writecnt=%ld writers to finish", writecnt);
 
-      // wait for all active writers to finish
-      // NOTE: This is a poor-man's CAS
-      do {
+        do {
+          MPI_Fetch_and_op(
+            NULL,
+            &writecnt,
+            MPI_INT64_T,
+            unitid,
+            OFFSET_WRITECNT(queuenum),
+            MPI_NO_OP,
+            amsgq->queue_win);
+          MPI_Win_flush_local(unitid, amsgq->queue_win);
+        } while (writecnt > processing_signal);
+      }
 
-        MPI_Fetch_and_op(
-          NULL,
-          &readypos,
-          MPI_INT64_T,
-          unitid,
-          OFFSET_READYPOS(queuenum),
-          MPI_NO_OP,
-          amsgq->queue_win);
-
-        // we have to requiry the tail pos and possibly adjust it
-        MPI_Fetch_and_op(
-          NULL,
-          &tmp,
-          MPI_INT64_T,
-          unitid,
-          OFFSET_TAILPOS(queuenum),
-          MPI_NO_OP,
-          amsgq->queue_win);
-        MPI_Win_flush_local(unitid, amsgq->queue_win);
-
-        tailpos = tmp + (-tailpos_sub);
-
-        DART_ASSERT(readypos <= tailpos);
-
-      } while (readypos != tailpos);
-
-      // remember the actual value of tailpos so we can wait for it later
-      amsgq->prev_tailpos = tmp;
-
-      DART_LOG_TRACE("Previous tailpos: %ld", amsgq->prev_tailpos);
-
-      // reset readypos
+      // reset tailpos
       // NOTE: using MPI_REPLACE here is valid as no-one else will write to it
       //       at this time.
       MPI_Fetch_and_op(
         &zero,
-        &readypos,
+        &tailpos,
         MPI_INT64_T,
         unitid,
-        OFFSET_READYPOS(queuenum),
+        OFFSET_TAILPOS(queuenum),
         MPI_REPLACE,
         amsgq->queue_win);
       MPI_Win_flush(unitid, amsgq->queue_win);
 
-      DART_LOG_TRACE("Starting processing queue %ld: tailpos %ld, readypos %ld",
-                     queuenum, tailpos, readypos);
+      DART_LOG_TRACE("Starting processing queue %ld: tailpos %ld",
+                     queuenum, tailpos);
 
       // process the messages by invoking the functions on the data supplied
       int64_t  pos      = 0;
@@ -444,6 +439,19 @@ amsg_sopnop_process_internal(
         header->fn(data);
         num_msg++;
       }
+
+      // reset writecnt
+      MPI_Fetch_and_op(
+        &neg_processing_signal,
+        &writecnt,
+        MPI_INT64_T,
+        unitid,
+        OFFSET_WRITECNT(queuenum),
+        MPI_SUM,
+        amsgq->queue_win);
+
+      MPI_Win_flush(unitid, amsgq->queue_win);
+      DART_ASSERT(writecnt >= processing_signal);
     }
   } while (blocking && tailpos > 0);
   dart__base__mutex_unlock(&amsgq->processing_mutex);
