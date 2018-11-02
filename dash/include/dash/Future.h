@@ -178,8 +178,17 @@ public:
    */
   bool test()
   {
-    if (!_ready && _test_func) {
-      _ready = _test_func(&_value);
+    if (!_ready) {
+      if (_test_func) {
+        _ready = _test_func(&_value);
+      } else if (_get_func) {
+        _value = _get_func();
+        _ready = true;
+      } else {
+        DASH_THROW(
+          dash::exception::RuntimeError,
+          "Future not initialized with function");
+      }
     }
     return _ready;
   }
