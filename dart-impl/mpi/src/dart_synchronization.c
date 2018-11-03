@@ -4,26 +4,26 @@
  *  Synchronization operations.
  */
 
-#include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
+#include <dash/dart/base/logging.h>
 #include <dash/dart/base/mutex.h>
 
-#include <dash/dart/if/dart_types.h>
-#include <dash/dart/if/dart_globmem.h>
-#include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_communication.h>
+#include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_synchronization.h>
+#include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_types.h>
 
-#include <dash/dart/mpi/dart_team_private.h>
-#include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
-#include <dash/dart/mpi/dart_synchronization_priv.h>
+#include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_segment.h>
+#include <dash/dart/mpi/dart_synchronization_priv.h>
+#include <dash/dart/mpi/dart_team_private.h>
 
+#include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <malloc.h>
 
 
 struct dart_lock_struct

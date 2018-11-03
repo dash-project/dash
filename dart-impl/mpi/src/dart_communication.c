@@ -7,37 +7,40 @@
  * one-sided runtime system.
  */
 
-#include <dash/dart/if/dart_types.h>
-#include <dash/dart/if/dart_initialization.h>
-#include <dash/dart/if/dart_globmem.h>
-#include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_communication.h>
+#include <dash/dart/if/dart_globmem.h>
+#include <dash/dart/if/dart_initialization.h>
+#include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_types.h>
 
 #include <dash/dart/mpi/dart_communication_priv.h>
-#include <dash/dart/mpi/dart_team_private.h>
+#include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_mpi_util.h>
 #include <dash/dart/mpi/dart_segment.h>
-#include <dash/dart/mpi/dart_globmem_priv.h>
+#include <dash/dart/mpi/dart_team_private.h>
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/math.h>
 
-#include <stdio.h>
-#include <mpi.h>
-#include <string.h>
+#include <alloca.h>
 #include <limits.h>
 #include <math.h>
-#include <alloca.h>
+#include <mpi.h>
+#include <stdio.h>
+#include <string.h>
 
-
-#define CHECK_UNITID_RANGE(_unitid, _team_data)                             \
-  do {                                                                      \
-    if (dart__unlikely(_unitid.id < 0 || _unitid.id > _team_data->size)) {  \
-      DART_LOG_ERROR("%s ! failed: unitid out of range 0 <= %d < %d",       \
-          __func__, _unitid.id, _team_data->size);           \
-      return DART_ERR_INVAL;                                                \
-    }                                                                       \
+#define CHECK_UNITID_RANGE(_unitid, _team_data)                       \
+  do {                                                                \
+    if (dart__unlikely(                                               \
+            (_unitid).id < 0 || (_unitid).id > (_team_data)->size)) { \
+      DART_LOG_ERROR(                                                 \
+          "%s ! failed: unitid out of range 0 <= %d < %d",            \
+          __func__,                                                   \
+          (_unitid).id,                                               \
+          (_team_data)->size);                                        \
+      return DART_ERR_INVAL;                                          \
+    }                                                                 \
   } while (0)
 
 #define CHECK_EQUAL_BASETYPE(_src_type, _dst_type) \
@@ -53,20 +56,25 @@
     }                                                                         \
   } while (0)
 
-#define CHECK_NUM_ELEM(_src_type, _dst_type, _num_elem)                       \
-  do {                                                                        \
-    size_t src_num_elem = dart__mpi__datatype_num_elem(_src_type);            \
-    size_t dst_num_elem = dart__mpi__datatype_num_elem(_dst_type);            \
-    if ((_num_elem % src_num_elem) != 0 || (_num_elem % dst_num_elem) != 0) { \
-      char *src_name = dart__mpi__datatype_name(_src_type);                   \
-      char *dst_name = dart__mpi__datatype_name(dst_type);                    \
-      DART_LOG_ERROR(                                                         \
-          "%s ! Type-mismatch would lead to truncation (%s vs %s with %zu elems)",\
-          __func__, src_name, dst_name, _num_elem);             \
-      free(src_name);                                                         \
-      free(dst_name);                                                         \
-      return DART_ERR_INVAL;                                                  \
-    }                                                                         \
+#define CHECK_NUM_ELEM(_src_type, _dst_type, _num_elem)                     \
+  do {                                                                      \
+    size_t src_num_elem = dart__mpi__datatype_num_elem(_src_type);          \
+    size_t dst_num_elem = dart__mpi__datatype_num_elem(_dst_type);          \
+    if (((_num_elem) % src_num_elem) != 0 ||                                \
+        ((_num_elem) % dst_num_elem) != 0) {                                \
+      char *src_name = dart__mpi__datatype_name(_src_type);                 \
+      char *dst_name = dart__mpi__datatype_name(dst_type);                  \
+      DART_LOG_ERROR(                                                       \
+          "%s ! Type-mismatch would lead to truncation (%s vs %s with %zu " \
+          "elems)",                                                         \
+          __func__,                                                         \
+          src_name,                                                         \
+          dst_name,                                                         \
+          _num_elem);                                                       \
+      free(src_name);                                                       \
+      free(dst_name);                                                       \
+      return DART_ERR_INVAL;                                                \
+    }                                                                       \
   } while (0)
 
 #define CHECK_TYPE_CONSTRAINTS(_src_type, _dst_type, _num_elem)               \
@@ -106,12 +114,11 @@ struct dart_handle_struct
  */
 #define CHECK_MPI_RET(__call, __name)                      \
   do {                                                     \
-    if (dart__unlikely(__call != MPI_SUCCESS)) {           \
+    if (dart__unlikely((__call) != MPI_SUCCESS)) {         \
       DART_LOG_ERROR("%s ! %s failed!", __func__, __name); \
       dart_abort(DART_EXIT_ABORT);                         \
     }                                                      \
   } while (0)
-
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 static dart_ret_t get_shared_mem(
@@ -174,11 +181,16 @@ dart__mpi__get(
     return MPI_Rget(origin_addr, origin_count, origin_datatype,
         target_rank, target_disp, target_count, target_datatype,
         win, &reqs[(*num_reqs)++]);
-  } else {
-    return MPI_Get(origin_addr, origin_count, origin_datatype,
-        target_rank, target_disp, target_count,
-        target_datatype, win);
   }
+  return MPI_Get(
+      origin_addr,
+      origin_count,
+      origin_datatype,
+      target_rank,
+      target_disp,
+      target_count,
+      target_datatype,
+      win);
 }
 
 static __attribute__((always_inline)) inline
@@ -193,11 +205,16 @@ dart__mpi__put(
     return MPI_Rput(origin_addr, origin_count, origin_datatype,
         target_rank, target_disp, target_count, target_datatype,
         win, &reqs[(*num_reqs)++]);
-  } else {
-    return MPI_Put(origin_addr, origin_count, origin_datatype,
-        target_rank, target_disp, target_count,
-        target_datatype, win);
   }
+  return MPI_Put(
+      origin_addr,
+      origin_count,
+      origin_datatype,
+      target_rank,
+      target_disp,
+      target_count,
+      target_datatype,
+      win);
 }
 
 static inline
@@ -213,7 +230,9 @@ dart__mpi__get_basic(
     MPI_Request               * reqs,
     uint8_t                   * num_reqs)
 {
-  if (num_reqs) *num_reqs = 0;
+  if (num_reqs) {
+    *num_reqs = 0;
+  }
 
   if (team_data->unitid == team_unit_id.id) {
     // use direct memcpy if we are on the same unit
@@ -292,7 +311,9 @@ dart__mpi__get_complex(
     MPI_Request               * reqs,
     uint8_t                   * num_reqs)
 {
-  if (num_reqs != NULL) *num_reqs = 0;
+  if (num_reqs != NULL) {
+    *num_reqs = 0;
+  }
 
   CHECK_TYPE_CONSTRAINTS(src_type, dst_type, nelem);
 
@@ -348,11 +369,15 @@ dart__mpi__put_basic(
     uint8_t                   * num_reqs,
     bool                      * flush_required_ptr)
 {
-  if (num_reqs) *num_reqs = 0;
+  if (num_reqs) {
+    *num_reqs = 0;
+  }
 
   /* copy data directly if we are on the same unit */
   if (team_unit_id.id == team_data->unitid) {
-    if (flush_required_ptr) *flush_required_ptr = false;
+    if (flush_required_ptr) {
+      *flush_required_ptr = false;
+    }
     memcpy(seginfo->selfbaseptr + offset, src,
         nelem * dart__mpi__datatype_sizeof(dtype));
     DART_LOG_DEBUG("dart_put: memcpy nelem:%zu (from global allocation)"
@@ -371,7 +396,9 @@ dart__mpi__put_basic(
   DART_LOG_DEBUG("dart_put: shared windows disabled");
 #endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
 
-  if (flush_required_ptr) *flush_required_ptr = true;
+  if (flush_required_ptr) {
+    *flush_required_ptr = true;
+  }
 
   // source on another node or shared memory windows disabled
   MPI_Win win            = seginfo->win;
@@ -432,8 +459,12 @@ dart__mpi__put_complex(
     uint8_t                   * num_reqs,
     bool                      * flush_required_ptr)
 {
-  if (flush_required_ptr) *flush_required_ptr = true;
-  if (num_reqs) *num_reqs = 0;
+  if (flush_required_ptr) {
+    *flush_required_ptr = true;
+  }
+  if (num_reqs) {
+    *num_reqs = 0;
+  }
 
   // slow path for derived types
   CHECK_TYPE_CONSTRAINTS(src_type, dst_type, nelem);

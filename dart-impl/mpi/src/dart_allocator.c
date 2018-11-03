@@ -3,8 +3,8 @@
 #include <dash/dart/if/dart_team_group.h>
 
 #include <dash/dart/base/logging.h>
-#include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_communication_priv.h>
+#include <dash/dart/mpi/dart_mem.h>
 
 #include <mpi.h>
 

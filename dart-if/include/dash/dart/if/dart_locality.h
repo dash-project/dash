@@ -178,10 +178,10 @@ dart_ret_t dart_domain_move_subdomain(
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_split_scope(
-  const dart_domain_locality_t  * domain_in,
-  dart_locality_scope_t           scope,
-  int                             num_parts,
-  dart_domain_locality_t        * split_domain_out)     DART_NOTHROW;
+    const dart_domain_locality_t* domain_in,
+    dart_locality_scope_t         scope,
+    int                           num_parts,
+    dart_domain_locality_t*       domains_out) DART_NOTHROW;
 
 /**
  * Domain tags of domains at the specified locality scope.
@@ -226,9 +226,9 @@ dart_ret_t dart_domain_group(
  * \ingroup DartLocality
  */
 dart_ret_t dart_unit_locality(
-  dart_team_t                     team,
-  dart_team_unit_t                unit,
-  dart_unit_locality_t         ** loc)                  DART_NOTHROW;
+    dart_team_t            team,
+    dart_team_unit_t       unit,
+    dart_unit_locality_t** locality) DART_NOTHROW;
 
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF

@@ -96,9 +96,8 @@ dart_ret_t dart_lock_acquire(
  * \threadsafe
  * \ingroup DartSync
  */
-dart_ret_t dart_lock_try_acquire(
-  dart_lock_t   lock,
-  int32_t     * result) DART_NOTHROW;
+dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *is_acquired)
+    DART_NOTHROW;
 
 /**
  * Release the lock acquired through \ref dart_lock_acquire or

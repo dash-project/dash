@@ -269,12 +269,12 @@ dart_ret_t dart_group_split(
  * \ingroup DartGroupTeam
 */
 dart_ret_t dart_group_locality_split(
-  const dart_group_t        g,
-  dart_domain_locality_t  * domain,
-  dart_locality_scope_t     scope,
-  size_t                    n,
-  size_t                  * nout,
-  dart_group_t            * gout) DART_NOTHROW;
+    const dart_group_t      group,
+    dart_domain_locality_t *domain,
+    dart_locality_scope_t   scope,
+    size_t                  num_groups,
+    size_t *                nout,
+    dart_group_t *          gout) DART_NOTHROW;
 
 /** \} */
 
@@ -442,9 +442,8 @@ dart_ret_t dart_team_clone(
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_team_myid(
-  dart_team_t        teamid,
-  dart_team_unit_t * myid) DART_NOTHROW;
+dart_ret_t dart_team_myid(dart_team_t teamid, dart_team_unit_t *unitid)
+    DART_NOTHROW;
 
 /**
  * Return the size of the specified team.
@@ -471,7 +470,7 @@ dart_ret_t dart_team_size(
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_myid(dart_global_unit_t *myid) DART_NOTHROW;
+dart_ret_t dart_myid(dart_global_unit_t *unitid) DART_NOTHROW;
 
 /**
  * Return the size of the default team \ref DART_TEAM_ALL
@@ -500,9 +499,9 @@ dart_ret_t dart_size(size_t *size) DART_NOTHROW;
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_unit_l2g(
-  dart_team_t          team,
-  dart_team_unit_t     localid,
-  dart_global_unit_t * globalid) DART_NOTHROW;
+    dart_team_t         teamid,
+    dart_team_unit_t    localid,
+    dart_global_unit_t *globalid) DART_NOTHROW;
 
 /**
  * Convert from a global to a local unit ID
@@ -518,9 +517,9 @@ dart_ret_t dart_team_unit_l2g(
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_unit_g2l(
-  dart_team_t          team,
-  dart_global_unit_t   globalid,
-  dart_team_unit_t   * localid) DART_NOTHROW;
+    dart_team_t        teamid,
+    dart_global_unit_t globalid,
+    dart_team_unit_t * localid) DART_NOTHROW;
 
 /** \} */
 

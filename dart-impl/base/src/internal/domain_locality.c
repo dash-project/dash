@@ -7,30 +7,30 @@
  *
  * \see dash/dart/base/locality.h
  */
-#include <dash/dart/base/macro.h>
-#include <dash/dart/base/logging.h>
-#include <dash/dart/base/locality.h>
 #include <dash/dart/base/assert.h>
 #include <dash/dart/base/hwinfo.h>
+#include <dash/dart/base/locality.h>
+#include <dash/dart/base/logging.h>
+#include <dash/dart/base/macro.h>
 
-#include <dash/dart/base/string.h>
 #include <dash/dart/base/array.h>
-#include <dash/dart/base/math.h>
+#include <dash/dart/base/internal/compiler_tweaks.h>
+#include <dash/dart/base/internal/domain_locality.h>
 #include <dash/dart/base/internal/host_topology.h>
 #include <dash/dart/base/internal/unit_locality.h>
-#include <dash/dart/base/internal/domain_locality.h>
-#include <dash/dart/base/internal/compiler_tweaks.h>
+#include <dash/dart/base/math.h>
+#include <dash/dart/base/string.h>
 
-#include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
 #include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_types.h>
 
 #include <inttypes.h>
+#include <limits.h>
+#include <sched.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdio.h>
-#include <sched.h>
-#include <limits.h>
 
 /* ================================================================== *
  * Private Functions: Declarations                                    *
@@ -101,7 +101,7 @@ dart_ret_t dart__base__locality__domain__destruct(
                    domain->num_domains, domain->domain_tag);
     return DART_ERR_INVAL;
   }
-  else if (domain->num_domains == 0 && NULL != domain->children) {
+  if (domain->num_domains == 0 && NULL != domain->children) {
     DART_LOG_ERROR("dart__base__locality__domain__destruct ! "
                    "domain.domains expected to be NULL for "
                    "domain.num_domains = %d in %s",
@@ -237,7 +237,7 @@ dart_ret_t dart__base__locality__domain__copy(
 dart_ret_t dart__base__locality__domain__update_subdomains(
   dart_domain_locality_t           * domain)
 {
-  int is_unit_scope = ((int)domain->scope >= (int)DART_LOCALITY_SCOPE_CORE);
+  int is_unit_scope = ((int)domain->scope >= DART_LOCALITY_SCOPE_CORE);
   DART_LOG_TRACE("dart__base__locality__domain__update_subdomains() "
                  "domain: %s, scope: %d, subdomains: %d, units: %d, "
                  "in unit scope: %s",
@@ -434,8 +434,7 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
 //
   dart_ret_t ret    = DART_OK;
 
-  int is_unit_scope = ((int)domain->scope >=
-                       (int)DART_LOCALITY_SCOPE_CORE);
+  int is_unit_scope = ((int)domain->scope >= DART_LOCALITY_SCOPE_CORE);
   int matched       = 0;
   int unit_idx      = 0;
   int subdomain_idx = 0;

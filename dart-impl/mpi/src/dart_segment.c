@@ -1,11 +1,11 @@
-#include <string.h>
-#include <stdlib.h>
 #include <inttypes.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
-#include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_globmem.h>
+#include <dash/dart/if/dart_team_group.h>
 
 #include <dash/dart/mpi/dart_segment.h>
 #include <dash/dart/mpi/dart_team_private.h>

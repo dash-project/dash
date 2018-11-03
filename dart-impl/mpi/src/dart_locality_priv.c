@@ -5,14 +5,13 @@
 
 #include <dash/dart/mpi/dart_locality_priv.h>
 
-#include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_locality.h>
 #include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_types.h>
 
-#include <dash/dart/base/logging.h>
 #include <dash/dart/base/locality.h>
-
+#include <dash/dart/base/logging.h>
 
 dart_ret_t dart__mpi__locality_init()
 {

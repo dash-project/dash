@@ -2,19 +2,19 @@
  * \file dash/dart/base/internal/unit_locality.c
  */
 
-#include <dash/dart/base/macro.h>
 #include <dash/dart/base/locality.h>
+#include <dash/dart/base/macro.h>
 
-#include <dash/dart/if/dart_types.h>
-#include <dash/dart/if/dart_locality.h>
 #include <dash/dart/if/dart_communication.h>
+#include <dash/dart/if/dart_locality.h>
 #include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_types.h>
 
-#include <unistd.h>
 #include <inttypes.h>
-#include <stdio.h>
 #include <sched.h>
+#include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #ifdef DART_ENABLE_LIKWID
 #  include <likwid.h>
@@ -30,16 +30,16 @@
 #endif
 
 #ifdef DART_ENABLE_NUMA
-#  include <utmpx.h>
 #  include <numa.h>
+#include <utmpx.h>
 #endif
 
-#include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
 #include <dash/dart/base/hwinfo.h>
+#include <dash/dart/base/logging.h>
 
-#include <dash/dart/base/internal/unit_locality.h>
 #include <dash/dart/base/internal/host_topology.h>
+#include <dash/dart/base/internal/unit_locality.h>
 
 /**
  * Functions for exchanging and collecting locality information of units
@@ -55,8 +55,7 @@ dart_ret_t dart__base__unit_locality__init(
   dart_unit_locality_t  * loc);
 
 dart_ret_t dart__base__unit_locality__local_unit_new(
-  dart_team_t             team,
-  dart_unit_locality_t  * loc);
+    dart_team_t team, dart_unit_locality_t *uloc);
 
 /* ======================================================================== *
  * Init / Finalize                                                          *

@@ -9,8 +9,7 @@
 /**
  * Initializes hwinfo object with uninitialized defaults.
  */
-dart_ret_t dart_hwinfo_init(
-  dart_hwinfo_t * hwinfo);
+dart_ret_t dart_hwinfo_init(dart_hwinfo_t* hw);
 
 /**
  * Resolves the current unit's hardware locality information.

@@ -2,10 +2,10 @@
  *  @date 25 Aug 2014
  *  @brief Implementations for the operations on teamlist.
  */
-#include <stdio.h>
-#include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_types.h>
 #include <dash/dart/mpi/dart_team_private.h>
+#include <stdio.h>
 
 #define DART_TEAM_HASH_SIZE (256)
 

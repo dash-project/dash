@@ -7,23 +7,23 @@
  * one-sided runtime system.
  */
 
-#include <dash/dart/base/logging.h>
-#include <dash/dart/base/atomic.h>
 #include <dash/dart/base/assert.h>
+#include <dash/dart/base/atomic.h>
+#include <dash/dart/base/logging.h>
 
-#include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_types.h>
 
 #include <dash/dart/mpi/dart_communication_priv.h>
-#include <dash/dart/mpi/dart_mpi_util.h>
-#include <dash/dart/mpi/dart_mem.h>
-#include <dash/dart/mpi/dart_team_private.h>
-#include <dash/dart/mpi/dart_segment.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
+#include <dash/dart/mpi/dart_mem.h>
+#include <dash/dart/mpi/dart_mpi_util.h>
+#include <dash/dart/mpi/dart_segment.h>
+#include <dash/dart/mpi/dart_team_private.h>
 
-#include <stdio.h>
 #include <mpi.h>
+#include <stdio.h>
 
 /* For PRIu64, uint64_t in printf */
 #define __STDC_FORMAT_MACROS
