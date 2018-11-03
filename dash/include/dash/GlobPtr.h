@@ -517,19 +517,17 @@ std::ostream &operator<<(std::ostream &os, const GlobPtr<T, MemSpaceT> &gptr)
 }
 
 /**
- * Specialization of \c dash::distance for \c dash::GlobPtr as default
- * definition of pointer distance in global memory spaces.
+ *
+ * Returns the number of hops from gbegin to gend.
  *
  * Equivalent to \c (gend - gbegin).
  *
  * \note
- * Defined with independent value types T1 and T2 to allow calculation
- * of distance between \c GlobPtr<T> and \c GlobPtr<const T>.
- * The pointer value types must have identical size.
+ * The distance is calculate by considering the memory traits of the
+ * underlying global memory distances.
  *
  *
- * \return  Number of elements in the range between the first and second
- *          global pointer
+ * \return  The number of increments to go from gbegin to gend
  *
  * \concept{DashMemorySpaceConcept}
  */
@@ -559,6 +557,20 @@ dash::gptrdiff_t distance(
       typename memory_space_traits::memory_space_layout_tag{});
 }
 
+/**
+ * Returns the begin of the local memory portion within a global memory
+ * segment.
+ *
+ * @param     global_begin The pointer which identifies the global memory
+ *            segment
+ * @param     unit The unit_id whose local memory portion is required. This
+ *            must be a unit which is running locally, i.e. the local memory
+ *            portion must be reachable with a native pointer (void*)
+ * \return    returns the local memory portion identified by a global memory
+ *            segment.
+ *
+ * \concept{DashMemorySpaceConcept}
+ */
 template <class T, class MemSpaceT>
 DASH_CONSTEXPR inline typename std::enable_if<
     std::is_same<
