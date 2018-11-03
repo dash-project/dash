@@ -5,7 +5,7 @@
 
 namespace dash {
 
-template<class Allocator>
+template <class Allocator>
 class DefaultDeleter;
 
 template <class Allocator>
@@ -21,11 +21,12 @@ public:
 
   template <class Allocator_>
   friend constexpr bool operator==(
-      DefaultDeleter<Allocator_> const &, DefaultDeleter<Allocator_> const &) noexcept;
+      DefaultDeleter<Allocator_> const &,
+      DefaultDeleter<Allocator_> const &) noexcept;
 
   constexpr DefaultDeleter() = default;
 
-  DefaultDeleter(const Allocator& alloc, std::size_t nels)
+  DefaultDeleter(const Allocator &alloc, std::size_t nels)
     : m_alloc(alloc)
     , m_nels(nels)
   {
@@ -56,7 +57,7 @@ template <
     class AllocatorT,
     /// The deleter to use for destruction
     template <class> class Deleter = dash::DefaultDeleter>
-auto allocate_unique(const AllocatorT& alloc, std::size_t n)
+auto allocate_unique(const AllocatorT &alloc, std::size_t n)
 {
   using allocator =
       typename std::allocator_traits<AllocatorT>::template rebind_alloc<T>;
