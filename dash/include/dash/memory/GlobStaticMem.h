@@ -293,7 +293,7 @@ inline typename GlobStaticMem<LMemSpace>::void_pointer
 GlobStaticMem<LMemSpace>::do_allocate(size_type nbytes, size_type alignment)
 {
   global_allocation_strategy strategy{};
-  auto                       alloc_rec = strategy.allocate_segment(
+  auto                       gptr = strategy.allocate_segment(
       m_team->dart_id(),
       static_cast<LocalMemorySpaceBase<
           typename memory_traits::memory_space_type_category>*>(
@@ -301,10 +301,10 @@ GlobStaticMem<LMemSpace>::do_allocate(size_type nbytes, size_type alignment)
       nbytes,
       alignment);
 
-  DASH_ASSERT(!DART_GPTR_ISNULL(alloc_rec.second));
+  DASH_ASSERT(!DART_GPTR_ISNULL(gptr));
   DASH_ASSERT_EQ(m_team->size(), m_local_sizes.size(), "invalid setting");
 
-  m_begin = static_cast<void_pointer>(alloc_rec.second);
+  m_begin = static_cast<void_pointer>(gptr);
 
   DASH_ASSERT_RETURNS(
       dart_allgather(
@@ -320,7 +320,7 @@ GlobStaticMem<LMemSpace>::do_allocate(size_type nbytes, size_type alignment)
           m_team->dart_id()),
       DART_OK);
 
-  return void_pointer(alloc_rec.second);
+  return void_pointer(gptr);
 }
 
 template <class LMemSpace>

@@ -29,11 +29,11 @@ class GlobLocalMemoryPool : public MemorySpace<
 
   static constexpr size_t max_align = alignof(dash::max_align_t);
 
-  using local_memory_traits = dash::memory_space_traits<LMemSpace>;
+  using memory_traits = dash::memory_space_traits<LMemSpace>;
 
   using base_t = MemorySpace<
       memory_domain_global,
-      typename local_memory_traits::memory_space_type_category>;
+      typename memory_traits::memory_space_type_category>;
 
   using pointer       = dash::GlobPtr<void, GlobLocalMemoryPool>;
   using const_pointer = dash::GlobPtr<const void, GlobLocalMemoryPool>;
@@ -49,7 +49,7 @@ public:
   using difference_type = index_type;
 
   using memory_space_allocation_policy      = allocation_static;
-  using memory_space_synchronization_policy = synchronization_independent;
+  using memory_space_synchronization_policy = synchronization_single;
   using memory_space_layout_tag             = memory_space_noncontiguous;
 
   // We use a polymorhic allocator to obtain memory from the
@@ -60,6 +60,12 @@ public:
   using const_void_pointer       = const_pointer;
   using local_void_pointer       = void*;
   using const_local_void_pointer = void*;
+
+private:
+  using global_allocation_strategy = dash::allocator::GlobalAllocationPolicy<
+      allocation_static,
+      synchronization_single,
+      typename memory_traits::memory_space_type_category>;
 
 public:
   GlobLocalMemoryPool() = delete;
@@ -196,7 +202,7 @@ inline GlobLocalMemoryPool<LMemSpace>::GlobLocalMemoryPool(
         r ? r
           : get_default_memory_space<
                 memory_domain_local,
-                typename local_memory_traits::memory_space_type_category>())
+                typename memory_traits::memory_space_type_category>())
 {
   DASH_LOG_DEBUG("MemorySpace.MemorySpace >");
 }
@@ -248,26 +254,23 @@ GlobLocalMemoryPool<LMemSpace>::do_allocate(
     throw std::bad_alloc{};
   }
 
-  dart_gptr_t gptr;
+  global_allocation_strategy strategy{};
 
-  if (nbytes > 0) {
-    dash::dart_storage<uint8_t> ds(nbytes);
-    auto const ret = dart_memalloc(ds.nelem, ds.dtype, &gptr);
-    if (ret != DART_OK) {
-      DASH_LOG_ERROR(
-          "LocalAllocationPolicy.do_global_allocate",
-          "cannot allocate local memory",
-          ret);
-      throw std::bad_alloc{};
-    }
-    DASH_LOG_DEBUG_VAR("LocalAllocator.allocate >", gptr);
+  auto gptr = strategy.allocate_segment(
+      static_cast<LocalMemorySpaceBase<
+          typename memory_traits::memory_space_type_category>*>(
+          m_allocator.resource()),
+      nbytes,
+      max_align);
 
+  if (!DART_GPTR_ISNULL(gptr)) {
     m_segments.emplace_back(std::make_pair(pointer{gptr}, nbytes));
     m_size += nbytes;
     return m_segments.back().first;
   }
-
-  return pointer{DART_GPTR_NULL};
+  else {
+    return pointer{DART_GPTR_NULL};
+  }
 }
 
 template <class LMemSpace>
@@ -319,9 +322,25 @@ inline void GlobLocalMemoryPool<LMemSpace>::do_segment_free(
       !(it_erase->first)) {
     return;
   }
+  auto gptr = it_erase->first.dart_gptr();
 
-  auto const dart_gptr = it_erase->first.dart_gptr();
-  DASH_ASSERT_RETURNS(dart_memfree(dart_gptr), DART_OK);
+  DASH_ASSERT_EQ(
+      gptr.teamid,
+      dash::Team::All().dart_id(),
+      "local memory allocation works only with dash::Team::All()");
+
+  global_allocation_strategy strategy{};
+
+  strategy.deallocate_segment(
+      gptr,
+      static_cast<LocalMemorySpaceBase<
+          typename memory_traits::memory_space_type_category>*>(
+          m_allocator.resource()),
+      //We do not care about this parameter since local memory allocation
+      //happens only in DART and we do never free this memory in DASH
+      nullptr,
+      it_erase->second,
+      max_align);
 }
 
 }  // namespace dash
