@@ -998,7 +998,7 @@ private:
   {
     DASH_LOG_TRACE_VAR("GlobViewIter.coords()", glob_index);
     // Global cartesian coords of current iterator position:
-    std::array<IndexType, NumDimensions> glob_coords;
+    std::array<IndexType, NumDimensions> glob_coords{};
     if (_viewspec != nullptr) {
       DASH_LOG_TRACE_VAR("GlobViewIter.coords", *_viewspec);
       // Create cartesian index space from extents of view projection:

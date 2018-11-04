@@ -126,7 +126,7 @@ TEST_F(DARTCollectiveTest, CustomReduction) {
 
 template<typename T>
 struct value_at{
-  T value;
+  T value{};
   dash::global_unit_t unit;
 };
 

@@ -278,7 +278,7 @@ public:
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
     team_unit_t                            unit;
-    IndexType                             index;
+    IndexType                             index{};
   } local_index_t;
   typedef struct {
     team_unit_t                            unit;

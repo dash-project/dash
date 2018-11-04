@@ -100,7 +100,7 @@ public:
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
     team_unit_t unit;
-    IndexType   index;
+    IndexType   index{};
   } local_index_t;
   typedef struct {
     team_unit_t unit;
@@ -449,7 +449,7 @@ public:
   team_unit_t unit_at(
     const std::array<IndexType, NumDimensions> & coords) const
   {
-    std::array<IndexType, NumDimensions> unit_coords;
+    std::array<IndexType, NumDimensions> unit_coords{};
     // Coord to block coord to unit coord:
     for (auto d = 0; d < NumDimensions; ++d) {
       unit_coords[d] = (coords[d] / _blocksize_spec.extent(d))
@@ -657,7 +657,7 @@ public:
   std::array<IndexType, NumDimensions> local_coords(
     const std::array<IndexType, NumDimensions> & global_coords) const
   {
-    std::array<IndexType, NumDimensions> local_coords;
+    std::array<IndexType, NumDimensions> local_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto block_size_d     = _blocksize_spec.extent(d);
       auto b_offset_d       = global_coords[d] % block_size_d;
@@ -719,7 +719,7 @@ public:
     std::array<IndexType, NumDimensions> unit_ts_coord =
       _teamspec.coords(unit);
     // Index of the element:
-    std::array<IndexType, NumDimensions> glob_index;
+    std::array<IndexType, NumDimensions> glob_index{};
     for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
       auto num_units_d          = _teamspec.extent(d);
@@ -805,7 +805,7 @@ public:
                    "view coords:",view_coords,
                    "view:",       viewspec);
     // Global coordinates of the element referenced in the view:
-    std::array<IndexType, NumDimensions> global_coords;
+    std::array<IndexType, NumDimensions> global_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       global_coords[d] = view_coords[d] + viewspec.offset(d);
     }
@@ -1008,7 +1008,7 @@ public:
     /// Global coordinates of element
     const std::array<index_type, NumDimensions> & g_coords) const
   {
-    std::array<index_type, NumDimensions> block_coords;
+    std::array<index_type, NumDimensions> block_coords{};
     // Coord to block coord to unit coord:
     for (auto d = 0; d < NumDimensions; ++d) {
       block_coords[d] = g_coords[d] / _blocksize_spec.extent(d);
@@ -1032,8 +1032,8 @@ public:
   {
     local_index_t l_pos;
 
-    std::array<IndexType, NumDimensions> l_block_coords;
-    std::array<IndexType, NumDimensions> unit_ts_coords;
+    std::array<IndexType, NumDimensions> l_block_coords{};
+    std::array<IndexType, NumDimensions> unit_ts_coords{};
     for (dim_t d = 0; d < NumDimensions; ++d) {
       auto nunits_d      = _teamspec.extent(d);
       auto blocksize_d   = _blocksize_spec.extent(d);
@@ -1060,8 +1060,8 @@ public:
   {
     // block index -> block coords -> offset
     auto block_coords = _blockspec.coords(global_block_index);
-    std::array<index_type, NumDimensions> offsets;
-    std::array<size_type, NumDimensions>  extents;
+    std::array<index_type, NumDimensions> offsets{};
+    std::array<size_type, NumDimensions>  extents{};
 
     for (auto d = 0; d < NumDimensions; ++d) {
       auto num_blocks_d = _blockspec.extent(d);
@@ -1394,7 +1394,7 @@ private:
       return BlockSizeSpec_t();
     }
     // Extents of a single block:
-    std::array<SizeType, NumDimensions> s_blocks;
+    std::array<SizeType, NumDimensions> s_blocks{};
     for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = distspec[d];
       SizeType max_blocksize_d  = dist.max_blocksize_in_range(
@@ -1418,7 +1418,7 @@ private:
       return BlockSpec_t();
     }
     // Number of blocks in all dimensions:
-    std::array<SizeType, NumDimensions> n_blocks;
+    std::array<SizeType, NumDimensions> n_blocks{};
     for (auto d = 0; d < NumDimensions; ++d) {
       DASH_LOG_TRACE_VAR("BlockPattern.init_blockspec", distspec[d].type);
       SizeType max_blocksize_d  = blocksizespec.extent(d);
@@ -1521,7 +1521,7 @@ private:
     // Coordinates of local unit id in team spec:
     auto unit_ts_coords = _teamspec.coords(unit);
     DASH_LOG_TRACE_VAR("BlockPattern.init_local_extents", unit_ts_coords);
-    ::std::array<SizeType, NumDimensions> l_extents;
+    ::std::array<SizeType, NumDimensions> l_extents{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto num_elem_d         = _memory_layout.extent(d);
       // Number of units in dimension:

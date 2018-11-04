@@ -24,8 +24,8 @@ public:
   typedef typename timer_t::timestamp_t
     timestamp_t;
   typedef struct {
-    timestamp_t start;
-    timestamp_t end;
+    timestamp_t start{};
+    timestamp_t end{};
     state_t     state;
   } state_timespan_t;
   typedef std::vector<state_timespan_t>

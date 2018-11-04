@@ -44,10 +44,18 @@ private:
   test_func_t    _test_func;
   /// Function called upon destruction of the future
   destroy_func_t _destroy_func;
+<<<<<<< HEAD
   /// The value to be returned byt the future
   ResultT        _value;
   /// Whether or not the value is available
   bool           _ready{false};
+||||||| merged common ancestors
+  ResultT        _value;
+  bool           _ready = false;
+=======
+  ResultT        _value{};
+  bool           _ready = false;
+>>>>>>> clang-tidy cppcoreguidelines
 
 public:
   // For ostream output

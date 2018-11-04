@@ -160,7 +160,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
     EXPECT_EQ(local_extent_x, pat_blocked_row.local_extents(u)[0]);
     EXPECT_EQ(local_extent_x, pat_blocked_col.local_extents(u)[0]);
   }
-  std::array<index_t, 1> expected_coords;
+  std::array<index_t, 1> expected_coords{};
   for (int x = 0; x < _num_elem; ++x) {
     dash::team_unit_t expected_unit_id(x / block_size);
     int expected_offset  = x % block_size;
@@ -228,7 +228,7 @@ TEST_F(BlockPatternTest, Distribute1DimCyclic)
   EXPECT_EQ(pat_cyclic_col.capacity(), _num_elem);
   EXPECT_EQ(pat_cyclic_col.blocksize(0), 1);
   EXPECT_EQ(pat_cyclic_col.local_capacity(), local_cap);
-  std::array<index_t, 1> expected_coords;
+  std::array<index_t, 1> expected_coords{};
   for (int x = 0; x < _num_elem; ++x) {
     dash::team_unit_t expected_unit_id(x % team_size);
     int expected_offset  = x / team_size;
@@ -296,7 +296,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlockcyclic)
   EXPECT_EQ(pat_blockcyclic_col.local_capacity(), local_cap);
   LOG_MESSAGE("num elem: %d, block size: %lu, num blocks: %lu",
     _num_elem, block_size, num_blocks);
-  std::array<index_t, 1> expected_coords;
+  std::array<index_t, 1> expected_coords{};
   for (int x = 0; x < _num_elem; ++x) {
     dash::team_unit_t unit_id((x / block_size) % team_size);
     int block_index       = x / block_size;

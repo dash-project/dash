@@ -51,9 +51,9 @@ TEST_F(AutobalanceTest, Factorize)
 
 TEST_F(AutobalanceTest, BalanceExtents)
 {
-  std::array<int, 2> org_extents;
-  std::array<int, 2> bal_extents;
-  std::array<int, 2> exp_extents;
+  std::array<int, 2> org_extents{};
+  std::array<int, 2> bal_extents{};
+  std::array<int, 2> exp_extents{};
   std::set<int>      blocking;
 
   int size = 2 * 5 * 5 * 11 * 19;

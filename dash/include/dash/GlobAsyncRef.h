@@ -71,7 +71,7 @@ public:
 
 private:
   /// Pointer to referenced element in global memory
-  dart_gptr_t  _gptr;
+  dart_gptr_t  _gptr{};
   /// Temporary value required for non-blocking put
   mutable nonconst_value_type _value;
   /// DART handle for asynchronous transfers

@@ -417,7 +417,7 @@ public:
   }
 
 private:
-  dart_gptr_t _gptr;
+  dart_gptr_t _gptr{};
 };
 
 template<typename T>

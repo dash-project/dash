@@ -52,7 +52,7 @@ public:
 
 
 private:
-  dart_gptr_t _gptr;
+  dart_gptr_t _gptr{};
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global

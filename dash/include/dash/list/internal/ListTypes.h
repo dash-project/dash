@@ -13,7 +13,7 @@ private:
   typedef ListNode<ElementType> self_t;
 
 public:
-  ElementType  value;
+  ElementType  value{};
   self_t     * lprev = nullptr;
   self_t     * lnext = nullptr;
   dart_gptr_t  gprev = DART_GPTR_NULL;

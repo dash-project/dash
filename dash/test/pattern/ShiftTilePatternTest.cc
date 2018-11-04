@@ -40,7 +40,7 @@ TEST_F(ShiftTilePatternTest, Distribute1DimTile)
   EXPECT_EQ(pat_tile_col.blocksize(0), block_size);
   EXPECT_EQ(pat_tile_col.local_capacity(), local_cap);
 
-  std::array<index_t, 1> expected_coord;
+  std::array<index_t, 1> expected_coord{};
   for (int x = 0; x < static_cast<int>(extent); ++x) {
     expected_coord[0]         = x;
     dash::team_unit_t expected_unit_id((x / block_size) % team_size);

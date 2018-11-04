@@ -94,7 +94,7 @@ public:
 
   typedef struct {
     team_unit_t unit;
-    index_type  index;
+    index_type  index{};
   } local_index;
 
 public:

@@ -111,7 +111,7 @@ public:
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
     team_unit_t unit;
-    IndexType   index;
+    IndexType   index{};
   } local_index_t;
   typedef struct {
     team_unit_t unit;
@@ -472,7 +472,7 @@ public:
   {
     DASH_LOG_TRACE("SeqTilePattern.unit_at()",
                    "coords:",   coords);
-    std::array<IndexType, NumDimensions> block_coords;
+    std::array<IndexType, NumDimensions> block_coords{};
     // Unit id from diagonals in cartesian index space,
     // e.g (x + y + z) % nunits
     for (auto d = 0; d < NumDimensions; ++d) {
@@ -606,9 +606,9 @@ public:
                    "view:",         viewspec,
                    "local blocks:", _local_blockspec.extents());
     // Phase coordinates of element:
-    std::array<IndexType, NumDimensions> phase_coords;
+    std::array<IndexType, NumDimensions> phase_coords{};
     // Coordinates of the local block containing the element:
-    std::array<IndexType, NumDimensions> block_coords_l;
+    std::array<IndexType, NumDimensions> block_coords_l{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto vs_offset_d  = viewspec.offset(d);
       auto vs_coord_d   = local_coords[d] + vs_offset_d;
@@ -724,7 +724,7 @@ public:
   std::array<IndexType, NumDimensions> local_coords(
     const std::array<IndexType, NumDimensions> & global_coords) const
   {
-    std::array<IndexType, NumDimensions> local_coords;
+    std::array<IndexType, NumDimensions> local_coords{};
     for (dim_t d = 0; d < NumDimensions; ++d) {
       auto nunits_d        = _teamspec.extent(d);
       auto blocksize_d     = _blocksize_spec.extent(d);
@@ -747,11 +747,11 @@ public:
     DASH_LOG_TRACE_VAR("SeqTilePattern.local_index()", global_coords);
     // Global coordinates to unit and local offset:
     // Phase coordinates of element:
-    std::array<IndexType, NumDimensions> phase_coords;
+    std::array<IndexType, NumDimensions> phase_coords{};
     // Coordinates of the block containing the element:
-    std::array<IndexType, NumDimensions> block_coords;
+    std::array<IndexType, NumDimensions> block_coords{};
     // Local coordinates of the block containing the element:
-    std::array<IndexType, NumDimensions> l_block_coords;
+    std::array<IndexType, NumDimensions> l_block_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto vs_coord     = global_coords[d];
       phase_coords[d]   = vs_coord % _blocksize_spec.extent(d);
@@ -799,7 +799,7 @@ public:
                    "g_block_index:",  g_block_index,
                    "g_block_coords:", g_block_coords);
     // Global coordinate of local element:
-    std::array<IndexType, NumDimensions> global_coords;
+    std::array<IndexType, NumDimensions> global_coords{};
     for (dim_t d = 0; d < NumDimensions; ++d) {
       auto blocksize_d     = _blocksize_spec.extent(d);
       auto phase           = local_coords[d] % blocksize_d;
@@ -848,7 +848,7 @@ public:
                    "local block coords:", l_block_coord,
                    "phase coords:",       phase_coord);
     // Coordinate of element in local memory:
-    std::array<IndexType, NumDimensions> l_coords;
+    std::array<IndexType, NumDimensions> l_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       l_coords[d] = l_block_coord[d] * _blocksize_spec.extent(d) +
                     phase_coord[d];
@@ -904,9 +904,9 @@ public:
                    "gcoords:",  global_coords,
                    "viewspec:", viewspec);
     // Phase coordinates of element:
-    std::array<IndexType, NumDimensions> phase_coords;
+    std::array<IndexType, NumDimensions> phase_coords{};
     // Coordinates of the block containing the element:
-    std::array<IndexType, NumDimensions> block_coords;
+    std::array<IndexType, NumDimensions> block_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto vs_coord   = global_coords[d] + viewspec.offset(d);
       phase_coords[d] = vs_coord % _blocksize_spec.extent(d);
@@ -1023,11 +1023,11 @@ public:
     DASH_LOG_TRACE("SeqTilePattern.at()",
                    "gcoords:",  global_coords);
     // Phase coordinates of element:
-    std::array<IndexType, NumDimensions> phase_coords;
+    std::array<IndexType, NumDimensions> phase_coords{};
     // Coordinates of the block containing the element:
-    std::array<IndexType, NumDimensions> block_coords;
+    std::array<IndexType, NumDimensions> block_coords{};
     // Local coordinates of the block containing the element:
-    std::array<IndexType, NumDimensions> l_block_coords;
+    std::array<IndexType, NumDimensions> l_block_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto vs_coord     = global_coords[d];
       phase_coords[d]   = vs_coord % _blocksize_spec.extent(d);
@@ -1172,8 +1172,8 @@ public:
     auto g_block_coords = _blockspec.coords(global_block_index);
     DASH_LOG_TRACE_VAR("SeqTilePattern.block", g_block_coords);
     DASH_LOG_TRACE_VAR("SeqTilePattern.block", _blocksize_spec.extents());
-    std::array<index_type, NumDimensions> offsets;
-    std::array<size_type, NumDimensions>  extents;
+    std::array<index_type, NumDimensions> offsets{};
+    std::array<size_type, NumDimensions>  extents{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto blocksize_d = _blocksize_spec.extent(d);
       extents[d] = blocksize_d;
@@ -1216,8 +1216,8 @@ public:
     auto g_block_coords = _blockspec.coords(g_block_index);
 
     DASH_LOG_TRACE_VAR("SeqTilePattern.local_block", g_block_coords);
-    std::array<index_type, NumDimensions> offsets;
-    std::array<size_type, NumDimensions>  extents;
+    std::array<index_type, NumDimensions> offsets{};
+    std::array<size_type, NumDimensions>  extents{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto blocksize_d = _blocksize_spec.extent(d);
       offsets[d] = g_block_coords[d] * blocksize_d;
@@ -1240,7 +1240,7 @@ public:
     DASH_LOG_TRACE_VAR("SeqTilePattern.local_block_local()",
                        local_block_index);
     // Initialize viewspec result with block extents:
-    std::array<index_type, NumDimensions> offsets;
+    std::array<index_type, NumDimensions> offsets{};
     std::array<size_type, NumDimensions>  extents =
       _blocksize_spec.extents();
     // Local block index to local block coords:
@@ -1486,7 +1486,7 @@ private:
     const TeamSpec_t         & teamspec) const {
     DASH_LOG_TRACE("SeqTilePattern.init_blocksizespec()");
     // Extents of a single block:
-    std::array<SizeType, NumDimensions> s_blocks;
+    std::array<SizeType, NumDimensions> s_blocks{};
     for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = distspec[d];
       DASH_LOG_TRACE("SeqTilePattern.init_blocksizespec d",
@@ -1515,7 +1515,7 @@ private:
                    "block size:",   blocksizespec.extents(),
                    "team size:",    teamspec.extents());
     // Number of blocks in all dimensions:
-    std::array<SizeType, NumDimensions> n_blocks;
+    std::array<SizeType, NumDimensions> n_blocks{};
     for (auto d = 0; d < NumDimensions; ++d) {
       SizeType max_blocksize_d = blocksizespec.extent(d);
       SizeType max_blocks_d    = dash::math::div_ceil(
@@ -1547,7 +1547,7 @@ private:
     // Number of blocks in total:
     auto num_blocks_total = blockspec.size();
     // Number of local blocks in all dimensions:
-    std::array<SizeType, NumDimensions> l_blocks;
+    std::array<SizeType, NumDimensions> l_blocks{};
     auto min_local_blocks = num_blocks_total / _nunits;
     l_blocks[0] = min_local_blocks;
     if (unit_id < num_blocks_total % _nunits) {
@@ -1609,7 +1609,7 @@ private:
 
     DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()",
                        l_blockspec.extents());
-    ::std::array<SizeType, NumDimensions> l_extents;
+    ::std::array<SizeType, NumDimensions> l_extents{};
     for (auto d = 0; d < NumDimensions; ++d) {
       l_extents[d] = _blocksize_spec.extent(d) * l_blockspec.extent(d);
     }
