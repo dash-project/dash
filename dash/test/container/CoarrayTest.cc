@@ -262,7 +262,7 @@ TEST_F(CoarrayTest, Iterators)
 TEST_F(CoarrayTest, CoFutures)
 {
   dash::Coarray<int> x;
-  int i = static_cast<int>(this_image());
+  auto               i = static_cast<int>(this_image());
   x = i;
   x.barrier();
 
@@ -272,7 +272,7 @@ TEST_F(CoarrayTest, CoFutures)
 
 TEST_F(CoarrayTest, MemoryModel)
 {
-  int i = static_cast<int>(this_image());
+  auto i = static_cast<int>(this_image());
   {
     // scalar case
     using Coarray_t = dash::Coarray<dash::Atomic<int>>;
@@ -414,7 +414,7 @@ dash::Coarray<int> delay_alloc_arr;
 
 TEST_F(CoarrayTest, DelayedAllocation)
 {
-  int i = static_cast<int>(this_image());
+  auto i = static_cast<int>(this_image());
   EXPECT_EQ_U(delay_alloc_arr.size(), 0);
   dash::barrier();
 
@@ -436,7 +436,7 @@ TEST_F(CoarrayTest, StructType)
   struct value_t {double a; int b;};
   dash::Coarray<value_t> x;
   double a_exp = static_cast<double>(this_image()) + 0.1;
-  int    b_exp = static_cast<int>(this_image());
+  auto                   b_exp = static_cast<int>(this_image());
 
   x.member(&value_t::a) = a_exp;
   x.member(&value_t::b) = b_exp;

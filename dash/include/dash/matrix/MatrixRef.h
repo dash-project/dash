@@ -151,9 +151,7 @@ private:
   MatrixRefView<ElementT, NumDimensions, PatternT> _refview;
 
 public:
-
-  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>()
-  { }
+  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>() = default;
 
   template <class T_>
   MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>(

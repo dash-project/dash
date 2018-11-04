@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iomanip>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace dash {
@@ -108,8 +109,8 @@ public:
   Trace() : Trace("global")
   { }
 
-  Trace(const std::string & context)
-  : _context(context)
+  Trace(std::string context)
+    : _context(std::move(context))
   {
     if (!TraceStore::enabled()) {
       return;

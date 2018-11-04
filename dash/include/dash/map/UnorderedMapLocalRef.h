@@ -485,7 +485,7 @@ private:
     if (lptr_value != nullptr) {
         if (std::is_standard_layout<value_type>::value) {
         // Convert to char pointer for byte-wise increment:
-        char * b_lptr_mapped = reinterpret_cast<char *>(lptr_value);
+        auto *b_lptr_mapped = reinterpret_cast<char *>(lptr_value);
         b_lptr_mapped       += mapped_offs;
         // Convert to mapped type pointer:
         lptr_mapped          = reinterpret_cast<mapped_type *>(b_lptr_mapped);

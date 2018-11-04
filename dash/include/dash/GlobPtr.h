@@ -465,7 +465,7 @@ public:
    *           is not local to the calling unit.
    */
   value_type * local() {
-    void *addr = 0;
+    void *addr = nullptr;
     if (dart_gptr_getaddr(_rbegin_gptr, &addr) == DART_OK) {
       return static_cast<value_type*>(addr);
     }
@@ -480,7 +480,7 @@ public:
    *           is not local to the calling unit.
    */
   const value_type * local() const {
-    void *addr = 0;
+    void *addr = nullptr;
     if (dart_gptr_getaddr(_rbegin_gptr, &addr) == DART_OK) {
       return static_cast<const value_type*>(addr);
     }

@@ -76,12 +76,12 @@ public:
 
   inline iterator begin()
   {
-    return iterator(0);
+    return {0};
   }
 
   inline iterator end()
   {
-    return iterator(size());
+    return {static_cast<int>(size())};
   }
 
 public:

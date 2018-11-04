@@ -43,10 +43,9 @@ public:
    * Default constructor.
    */
   HashLocal()
-  : _team(nullptr),
-    _nunits(0),
-    _myid(DART_UNDEFINED_UNIT_ID)
-  { }
+    : _myid(DART_UNDEFINED_UNIT_ID)
+  {
+  }
 
   /**
    * Constructor.
@@ -515,8 +514,7 @@ public:
                                 .first;
     DASH_LOG_TRACE_VAR("UnorderedMap.[]", git_value);
     dart_gptr_t   gptr_mapped = git_value.dart_gptr();
-    value_type  * lptr_value  = static_cast<value_type *>(
-                                  git_value.local());
+    auto *        lptr_value  = static_cast<value_type *>(git_value.local());
     mapped_type * lptr_mapped = nullptr;
 
     _lptr_value_to_mapped(lptr_value, gptr_mapped, lptr_mapped);
@@ -539,8 +537,7 @@ public:
     }
     dart_gptr_t gptr_mapped   = iterator(this, found.pos()).dart_gptr();
 
-    value_type  * lptr_value  = static_cast<value_type *>(
-                                  found.local());
+    auto *        lptr_value  = static_cast<value_type *>(found.local());
     mapped_type * lptr_mapped = nullptr;
 
     _lptr_value_to_mapped(lptr_value, gptr_mapped, lptr_mapped);
@@ -730,7 +727,7 @@ private:
    * Using `std::declval()` instead (to generate a compile-time
    * pseudo-instance for member resolution) only works if Key and Mapped
    * are default-constructible.
-   * 
+   *
    * Finally, the distance obtained from
    *
    *   &(lptr_value->second) - lptr_value
@@ -762,7 +759,7 @@ private:
     if (lptr_value != nullptr) {
         if (std::is_standard_layout<value_type>::value) {
         // Convert to char pointer for byte-wise increment:
-        char * b_lptr_mapped = reinterpret_cast<char *>(lptr_value);
+        auto *b_lptr_mapped = reinterpret_cast<char *>(lptr_value);
         b_lptr_mapped       += mapped_offs;
         // Convert to mapped type pointer:
         lptr_mapped          = reinterpret_cast<mapped_type *>(b_lptr_mapped);

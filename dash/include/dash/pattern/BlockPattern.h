@@ -17,7 +17,7 @@
 #include <functional>
 #include <array>
 #include <type_traits>
-
+#include <utility>
 
 namespace dash {
 
@@ -222,37 +222,27 @@ public:
    * \endcode
    */
   BlockPattern(
-    /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         & sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions.
-    const DistributionSpec_t & dist,
-    /// Cartesian arrangement of units within the team
-    const TeamSpec_t         & teamspec,
-    /// Team containing units to which this pattern maps its elements
-    dash::Team               & team     = dash::Team::All())
-  : _distspec(dist),
-    _team(&team),
-    _teamspec(
-      teamspec,
-      _distspec,
-      *_team),
-    _nunits(_teamspec.size()),
-    _memory_layout(sizespec.extents()),
-    _blocksize_spec(initialize_blocksizespec(
-        sizespec,
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        sizespec,
-        _distspec,
-        _blocksize_spec)),
-    _local_memory_layout(
-        initialize_local_extents(_team->myid())),
-    _local_blockspec(initialize_local_blockspec(
-        _blocksize_spec,
-        _local_memory_layout)),
-    _local_capacity(initialize_local_capacity())
+      /// Pattern size (extent, number of elements) in every dimension
+      const SizeSpec_t &sizespec,
+      /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
+      /// all dimensions.
+      DistributionSpec_t dist,
+      /// Cartesian arrangement of units within the team
+      const TeamSpec_t &teamspec,
+      /// Team containing units to which this pattern maps its elements
+      dash::Team &team = dash::Team::All())
+    : _distspec(std::move(dist))
+    , _team(&team)
+    , _teamspec(teamspec, _distspec, *_team)
+    , _nunits(_teamspec.size())
+    , _memory_layout(sizespec.extents())
+    , _blocksize_spec(
+          initialize_blocksizespec(sizespec, _distspec, _teamspec))
+    , _blockspec(initialize_blockspec(sizespec, _distspec, _blocksize_spec))
+    , _local_memory_layout(initialize_local_extents(_team->myid()))
+    , _local_blockspec(
+          initialize_local_blockspec(_blocksize_spec, _local_memory_layout))
+    , _local_capacity(initialize_local_capacity())
   {
     DASH_LOG_TRACE("BlockPattern()", "(sizespec, dist, teamspec, team)");
     initialize_local_range();
@@ -294,33 +284,26 @@ public:
    * \endcode
    */
   BlockPattern(
-    /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         & sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
-    const DistributionSpec_t & dist = DistributionSpec_t(),
-    /// Team containing units to which this pattern maps its elements
-    Team                     & team = dash::Team::All())
-  : _distspec(dist),
-    _team(&team),
-    _teamspec(_distspec, *_team),
-    _nunits(_teamspec.size()),
-    _memory_layout(sizespec.extents()),
-    _blocksize_spec(initialize_blocksizespec(
-        sizespec,
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        sizespec,
-        _distspec,
-        _blocksize_spec)),
-    _local_memory_layout(
-        initialize_local_extents(_team->myid())),
-    _local_blockspec(initialize_local_blockspec(
-        _blocksize_spec,
-        _local_memory_layout)),
-    _local_capacity(initialize_local_capacity())
+      /// Pattern size (extent, number of elements) in every dimension
+      const SizeSpec_t &sizespec,
+      /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
+      /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
+      /// dimensions
+      DistributionSpec_t dist = DistributionSpec_t(),
+      /// Team containing units to which this pattern maps its elements
+      Team &team = dash::Team::All())
+    : _distspec(std::move(dist))
+    , _team(&team)
+    , _teamspec(_distspec, *_team)
+    , _nunits(_teamspec.size())
+    , _memory_layout(sizespec.extents())
+    , _blocksize_spec(
+          initialize_blocksizespec(sizespec, _distspec, _teamspec))
+    , _blockspec(initialize_blockspec(sizespec, _distspec, _blocksize_spec))
+    , _local_memory_layout(initialize_local_extents(_team->myid()))
+    , _local_blockspec(
+          initialize_local_blockspec(_blocksize_spec, _local_memory_layout))
+    , _local_capacity(initialize_local_capacity())
   {
     DASH_LOG_TRACE("BlockPattern()", "(sizespec, dist, team)");
     initialize_local_range();
@@ -1567,8 +1550,8 @@ private:
         l_extents[d] = num_elem_d;
       } else {
         // Number of additional blocks for this unit, if any:
-        IndexType num_add_blocks = static_cast<IndexType>(
-                                     num_blocks_d % num_units_d);
+        auto num_add_blocks =
+            static_cast<IndexType>(num_blocks_d % num_units_d);
         // Unit id assigned to the last block in dimension:
         team_unit_t last_block_unit_d((num_blocks_d % num_units_d == 0)
                                         ? num_units_d - 1

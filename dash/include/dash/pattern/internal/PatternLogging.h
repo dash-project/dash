@@ -80,19 +80,19 @@ print_pattern_mapping(
   std::string pattern_name = PatternT::PatternName;
 
   std::vector<std::string> entries;
-  entries.push_back("[");
+  entries.emplace_back("[");
   team_unit_t last_unit = pattern.unit_at(0);
   for (index_t i = 0; i < pattern.extent(0); ++i) {
     std::ostringstream ss;
     team_unit_t entry_unit = pattern.unit_at(i);
     if (entry_unit != last_unit) {
-      entries.push_back("|");
+      entries.emplace_back("|");
       last_unit = entry_unit;
     }
     ss << std::setw(field_width) << callback(pattern, i) << " ";
     entries.push_back(ss.str());
   }
-  entries.push_back("]");
+  entries.emplace_back("]");
 
   DASH_LOG_DEBUG("print_pattern_mapping", name, pattern_name);
   std::ostringstream ss;
@@ -135,12 +135,12 @@ print_pattern_mapping(
                        (n_blocks_col * 2) - 1;
   std::string block_row_separator(row_char_w, '-');
   std::vector<std::string> block_row_separator_entry;
-  block_row_separator_entry.push_back(" ");
+  block_row_separator_entry.emplace_back(" ");
   block_row_separator_entry.push_back(block_row_separator);
   units.push_back(block_row_separator_entry);
   for (auto row = 0; row < pattern.extent(0); ++row) {
     std::vector<std::string> row_units;
-    row_units.push_back("|");
+    row_units.emplace_back("|");
     for (auto col = 0; col < pattern.extent(1); ++col) {
       std::ostringstream ss;
       ss << std::setw(field_width + 1) << callback(pattern, row, col);

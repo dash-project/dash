@@ -846,7 +846,7 @@ public:
   {
     DASH_LOG_TRACE_VAR("LoadBalancePattern.block_at()", g_coords);
 
-    index_type block_idx = static_cast<index_type>(unit_at(g_coords[0]));
+    auto block_idx = static_cast<index_type>(unit_at(g_coords[0]));
 
     DASH_LOG_TRACE_VAR("LoadBalancePattern.block_at >", block_idx);
     return block_idx;

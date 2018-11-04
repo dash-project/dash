@@ -256,7 +256,7 @@ TEST_F(AtomicTest, ArrayElements)
   value_t expect_init_acc = (dash::size() * (dash::size() + 1)) / 2;
   if (dash::myid() == 0) {
     // Create local copy for logging:
-    value_t *            l_copy = new value_t[array.size()];
+    auto*                l_copy = new value_t[array.size()];
     std::vector<value_t> v_copy(array.size());
     dash::copy(array.begin(), array.end(), l_copy);
     std::copy(l_copy, l_copy + array.size(), v_copy.begin());
@@ -300,7 +300,7 @@ TEST_F(AtomicTest, ArrayElements)
 
   if (dash::myid() == 0) {
     // Create local copy for logging:
-    value_t *            l_copy = new value_t[array.size()];
+    auto*                l_copy = new value_t[array.size()];
     std::vector<value_t> v_copy(array.size());
     dash::copy(array.begin(), array.end(), l_copy);
     std::copy(l_copy, l_copy + array.size(), v_copy.begin());

@@ -1,12 +1,12 @@
 #ifndef DASH__SHIFT_TILE_PATTERN_H_
 #define DASH__SHIFT_TILE_PATTERN_H_
 
-#include <assert.h>
+#include <cassert>
 #include <functional>
 #include <cstring>
 #include <array>
 #include <type_traits>
-
+#include <utility>
 #include <dash/Types.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>
@@ -233,43 +233,38 @@ public:
    * \endcode
    */
   ShiftTilePattern(
-    /// ShiftTilePattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         & sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions.
-    const DistributionSpec_t & dist,
-    /// Cartesian arrangement of units within the team
-    const TeamSpec_t         & teamspec,
-    /// Team containing units to which this pattern maps its elements
-    dash::Team               & team     = dash::Team::All())
-  : _distspec(dist),
-    _team(&team),
+      /// ShiftTilePattern size (extent, number of elements) in every
+      /// dimension
+      const SizeSpec_t &sizespec,
+      /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
+      /// all dimensions.
+      DistributionSpec_t dist,
+      /// Cartesian arrangement of units within the team
+      TeamSpec_t teamspec,
+      /// Team containing units to which this pattern maps its elements
+      dash::Team &team = dash::Team::All())
+    : _distspec(std::move(dist))
+    , _team(&team)
+    ,
     // Degrading to 1-dimensional team spec for now:
-//  _teamspec(_distspec, *_team),
-//  _teamspec(
-//    teamspec,
-//    _distspec,
-//    *_team),
-    _teamspec(teamspec),
-    _memory_layout(sizespec.extents()),
-    _nunits(_teamspec.size()),
-    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
-    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions),
-    _blocksize_spec(initialize_blocksizespec(
-        sizespec,
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        sizespec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _major_tiled_dim,
-        _nunits)),
-    _local_memory_layout(
-        initialize_local_extents(_team->myid())),
-    _local_capacity(initialize_local_capacity()) {
+    //  _teamspec(_distspec, *_team),
+    //  _teamspec(
+    //    teamspec,
+    //    _distspec,
+    //    *_team),
+    _teamspec(std::move(teamspec))
+    , _memory_layout(sizespec.extents())
+    , _nunits(_teamspec.size())
+    , _major_tiled_dim(initialize_major_tiled_dim(_distspec))
+    , _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions)
+    , _blocksize_spec(
+          initialize_blocksizespec(sizespec, _distspec, _teamspec))
+    , _blockspec(initialize_blockspec(sizespec, _blocksize_spec, _teamspec))
+    , _local_blockspec(
+          initialize_local_blockspec(_blockspec, _major_tiled_dim, _nunits))
+    , _local_memory_layout(initialize_local_extents(_team->myid()))
+    , _local_capacity(initialize_local_capacity())
+  {
     DASH_LOG_TRACE("ShiftTilePattern()", "(sizespec, dist, teamspec, team)");
     initialize_local_range();
   }
@@ -308,36 +303,30 @@ public:
    * \endcode
    */
   ShiftTilePattern(
-    /// ShiftTilePattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         & sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
-    const DistributionSpec_t & dist = DistributionSpec_t(),
-    /// Team containing units to which this pattern maps its elements
-    Team                     & team = dash::Team::All())
-  : _distspec(dist),
-    _team(&team),
-    _teamspec(_distspec, *_team),
-    _memory_layout(sizespec.extents()),
-    _nunits(_teamspec.size()),
-    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
-    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions),
-    _blocksize_spec(initialize_blocksizespec(
-        sizespec,
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        sizespec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _major_tiled_dim,
-        _nunits)),
-    _local_memory_layout(
-        initialize_local_extents(_team->myid())),
-    _local_capacity(initialize_local_capacity()) {
+      /// ShiftTilePattern size (extent, number of elements) in every
+      /// dimension
+      const SizeSpec_t &sizespec,
+      /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
+      /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
+      /// dimensions
+      DistributionSpec_t dist = DistributionSpec_t(),
+      /// Team containing units to which this pattern maps its elements
+      Team &team = dash::Team::All())
+    : _distspec(std::move(dist))
+    , _team(&team)
+    , _teamspec(_distspec, *_team)
+    , _memory_layout(sizespec.extents())
+    , _nunits(_teamspec.size())
+    , _major_tiled_dim(initialize_major_tiled_dim(_distspec))
+    , _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions)
+    , _blocksize_spec(
+          initialize_blocksizespec(sizespec, _distspec, _teamspec))
+    , _blockspec(initialize_blockspec(sizespec, _blocksize_spec, _teamspec))
+    , _local_blockspec(
+          initialize_local_blockspec(_blockspec, _major_tiled_dim, _nunits))
+    , _local_memory_layout(initialize_local_extents(_team->myid()))
+    , _local_capacity(initialize_local_capacity())
+  {
     DASH_LOG_TRACE("ShiftTilePattern()", "(sizespec, dist, team)");
     initialize_local_range();
   }

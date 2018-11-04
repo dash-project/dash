@@ -22,7 +22,7 @@ TEST_F(SharedTest, SingleWriteMultiRead)
     shared.set(shared_value_1);
   }
   dash::barrier();
-  value_t actual_1 = static_cast<value_t>(shared.get());
+  auto actual_1 = static_cast<value_t>(shared.get());
   LOG_MESSAGE("read first shared value: %d", actual_1);
   EXPECT_EQ_U(shared_value_1, actual_1);
   // Wait for validation at all units
@@ -38,7 +38,7 @@ TEST_F(SharedTest, SingleWriteMultiRead)
     shared.set(shared_value_2);
   }
   dash::barrier();
-  value_t actual_2 = static_cast<value_t>(shared.get());
+  auto actual_2 = static_cast<value_t>(shared.get());
   LOG_MESSAGE("read second shared value: %d", actual_2);
   EXPECT_EQ_U(shared_value_2, actual_2);
 }
@@ -74,10 +74,10 @@ TEST_F(SharedTest, SpecifyOwner)
                  "with", value_b_init);
   shared_t shared_at_b(value_b_init, l_owner_b);
 
-  value_t get_a_init = static_cast<value_t>(shared_at_a.get());
+  auto get_a_init = static_cast<value_t>(shared_at_a.get());
   DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                  "shared value at unit", owner_a, " (a):", get_a_init);
-  value_t get_b_init = static_cast<value_t>(shared_at_b.get());
+  auto get_b_init = static_cast<value_t>(shared_at_b.get());
   DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                  "shared value at unit", owner_b, " (b):", get_b_init);
   EXPECT_EQ_U(value_a_init, get_a_init);
@@ -104,10 +104,10 @@ TEST_F(SharedTest, SpecifyOwner)
   shared_at_a.barrier();
   shared_at_b.barrier();
 
-  value_t get_a = static_cast<value_t>(shared_at_a.get());
+  auto get_a = static_cast<value_t>(shared_at_a.get());
   DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                  "shared value at unit", owner_a, " (a):", get_a);
-  value_t get_b = static_cast<value_t>(shared_at_b.get());
+  auto get_b = static_cast<value_t>(shared_at_b.get());
   DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                  "shared value at unit", owner_b, " (b):", get_b);
   EXPECT_EQ_U(value_a, get_a);
@@ -134,10 +134,10 @@ TEST_F(SharedTest, SpecifyOwner)
   shared_at_a.barrier();
   shared_at_b.barrier();
 
-  value_t new_a = static_cast<value_t>(shared_at_a.get());
+  auto new_a = static_cast<value_t>(shared_at_a.get());
   DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                  "shared value at unit", owner_a, " (a):", new_a);
-  value_t new_b = static_cast<value_t>(shared_at_b.get());
+  auto new_b = static_cast<value_t>(shared_at_b.get());
   DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                  "shared value at unit", owner_b, " (b):", new_b);
   EXPECT_EQ_U(value_b, new_a);

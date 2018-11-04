@@ -401,7 +401,7 @@ public:
   member(
     const MEMTYPE P::*mem) const {
     // TODO: Thaaaat ... looks hacky.
-    size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
+    auto offs = (size_t) & (reinterpret_cast<P*>(0)->*mem);
     return member<typename internal::add_const_from_type<T, MEMTYPE>::type>(offs);
   }
 
@@ -411,7 +411,7 @@ public:
   inline void swap(dash::GlobRef<T> & b) const{
     static_assert(std::is_same<value_type, nonconst_value_type>::value,
                   "Cannot modify value referenced by GlobRef<const T>!");
-    T tmp = static_cast<T>(*this);
+    auto tmp = static_cast<T>(*this);
     *this = b;
     b = tmp;
   }

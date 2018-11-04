@@ -1,14 +1,14 @@
 #ifndef DASH__SEQ_TILE_PATTERN_H_
 #define DASH__SEQ_TILE_PATTERN_H_
 
-#include <assert.h>
+#include <cassert>
 #include <functional>
 #include <cstring>
 #include <array>
 #include <type_traits>
 #include <iostream>
 #include <sstream>
-
+#include <utility>
 #include <dash/Types.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>
@@ -236,39 +236,29 @@ public:
    * \endcode
    */
   SeqTilePattern(
-    /// SeqTilePattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         & sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
-    const DistributionSpec_t & dist,
-    /// Cartesian arrangement of units within the team
-    const TeamSpec_t         & teamspec,
-    /// Team containing units to which this pattern maps its elements
-    dash::Team               & team     = dash::Team::All())
-  : _distspec(dist),
-    _team(&team),
-    _myid(_team->myid()),
-    _teamspec(
-      teamspec,
-      _distspec,
-      *_team),
-    _memory_layout(sizespec.extents()),
-    _nunits(_teamspec.size()),
-    _blocksize_spec(initialize_blocksizespec(
-        sizespec,
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        sizespec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_blockspec(initialize_local_blockspec(
-        _blockspec)),
-    _local_memory_layout(
-        initialize_local_extents(_myid)),
-    _local_capacity(
-        initialize_local_capacity(_local_memory_layout)) {
+      /// SeqTilePattern size (extent, number of elements) in every dimension
+      const SizeSpec_t &sizespec,
+      /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
+      /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
+      /// dimensions
+      DistributionSpec_t dist,
+      /// Cartesian arrangement of units within the team
+      const TeamSpec_t &teamspec,
+      /// Team containing units to which this pattern maps its elements
+      dash::Team &team = dash::Team::All())
+    : _distspec(std::move(dist))
+    , _team(&team)
+    , _myid(_team->myid())
+    , _teamspec(teamspec, _distspec, *_team)
+    , _memory_layout(sizespec.extents())
+    , _nunits(_teamspec.size())
+    , _blocksize_spec(
+          initialize_blocksizespec(sizespec, _distspec, _teamspec))
+    , _blockspec(initialize_blockspec(sizespec, _blocksize_spec, _teamspec))
+    , _local_blockspec(initialize_local_blockspec(_blockspec))
+    , _local_memory_layout(initialize_local_extents(_myid))
+    , _local_capacity(initialize_local_capacity(_local_memory_layout))
+  {
     DASH_LOG_TRACE("SeqTilePattern()", "(sizespec, dist, teamspec, team)");
     initialize_local_range();
   }

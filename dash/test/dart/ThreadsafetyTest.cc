@@ -208,8 +208,8 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
       team->barrier();
 
-      for (size_t j = 0; j < elem_per_thread; ++j) {
-        ASSERT_EQ_U(check[j], thread_id);
+      for (int& j : check) {
+        ASSERT_EQ_U(j, thread_id);
       }
       team->barrier();
 
@@ -313,7 +313,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAlgorithm) {
     std::cout << "Thread " << thread_id << " has team " << team->dart_id() << std::endl;
     size_t num_elem = team->size() * elem_per_thread;
     array_t arr(num_elem, *team);
-    elem_t *vals = new elem_t[num_elem];
+    auto*   vals = new elem_t[num_elem];
     for (int i = 0; i < thread_iterations; ++i) {
 #pragma omp barrier
       dash::fill(arr.begin(), arr.end(), thread_id);

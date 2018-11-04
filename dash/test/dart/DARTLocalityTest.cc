@@ -226,7 +226,7 @@ TEST_F(DARTLocalityTest, ScopeDomains)
     DART_LOCALITY_SCOPE_CORE
   };
 
-  for (int si = 0; si < 2; si++) {
+  for (auto& scope : scopes) {
     int                       num_scope_domains;
     dart_domain_locality_t ** scope_domains;
 
@@ -235,10 +235,7 @@ TEST_F(DARTLocalityTest, ScopeDomains)
                 dart_domain_team_locality(DART_TEAM_ALL, ".", &dl));
 
     dart_ret_t ret = dart_domain_scope_domains(
-                       dl,
-                       scopes[si],
-                       &num_scope_domains,
-                       &scope_domains);
+        dl, scope, &num_scope_domains, &scope_domains);
     if (ret == DART_ERR_NOTFOUND) {
       continue;
     }
@@ -249,7 +246,7 @@ TEST_F(DARTLocalityTest, ScopeDomains)
       dart_domain_locality_t * scope_dom = scope_domains[sd];
       DASH_LOG_TRACE_VAR("DARTLocalityTest.ScopeDomains",
                          scope_dom->domain_tag);
-      EXPECT_EQ_U(scopes[si], scope_dom->scope);
+      EXPECT_EQ_U(scope, scope_dom->scope);
     }
     free(scope_domains);
   }

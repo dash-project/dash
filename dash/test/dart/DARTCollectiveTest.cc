@@ -82,8 +82,8 @@ static void reduce_max_fn(
         void   *user_data)
 {
   const T *cutoff = static_cast<T*>(user_data);
-  const T *invec = static_cast<const T*>(invec_);
-  T *inoutvec    = static_cast<T*>(inoutvec_);
+  const auto *invec    = static_cast<const T *>(invec_);
+  auto *      inoutvec = static_cast<T *>(inoutvec_);
   for (size_t i = 0; i < len; ++i) {
     if (inoutvec[i] > *cutoff) {
       inoutvec[i] = *cutoff;
@@ -138,8 +138,8 @@ static void max_value_at_fn(
         void   *)
 {
   using value_at_t = struct value_at<T>;
-  const value_at_t *invec = static_cast<const value_at_t*>(invec_);
-  value_at_t *inoutvec    = static_cast<value_at_t*>(inoutvec_);
+  const auto *invec    = static_cast<const value_at_t *>(invec_);
+  auto *      inoutvec = static_cast<value_at_t *>(inoutvec_);
   ASSERT_EQ_U(1, len);
   if (invec->value > inoutvec->value) {
     inoutvec->value = invec->value;
@@ -158,10 +158,9 @@ TEST_F(DARTCollectiveTest, MaxElementAt) {
 
   dart_operation_t new_op;
   ASSERT_EQ_U(
-    DART_OK,
-    dart_op_create(
-      &max_value_at_fn<elem_t>, NULL, true, new_type, false, &new_op)
-  );
+      DART_OK,
+      dart_op_create(
+          &max_value_at_fn<elem_t>, nullptr, true, new_type, false, &new_op));
   value_at_t lmax = {value, dash::myid()};
   value_at_t gmax;
   ASSERT_NE_U(new_op, DART_OP_UNDEFINED);

@@ -5,7 +5,7 @@
 #include <functional>
 #include <sstream>
 #include <iostream>
-
+#include <utility>
 #include <dash/Exception.h>
 #include <dash/internal/Logging.h>
 
@@ -47,7 +47,7 @@ private:
   /// The value to be returned byt the future
   ResultT        _value;
   /// Whether or not the value is available
-  bool           _ready = false;
+  bool           _ready{false};
 
 public:
   // For ostream output
@@ -63,8 +63,7 @@ public:
    *
    * \see dash::Future::valid
    */
-  Future() noexcept
-  { }
+  Future() noexcept = default;
 
   /**
    * Create a future from an already available value.
@@ -109,12 +108,10 @@ public:
    * \param destroy_func Function called upon destruction of the future.
    */
   Future(
-    const get_func_t     & get_func,
-    const test_func_t    & test_func,
-    const destroy_func_t & destroy_func)
-  : _get_func(get_func),
-    _test_func(test_func),
-    _destroy_func(destroy_func)
+      get_func_t get_func, test_func_t test_func, destroy_func_t destroy_func)
+    : _get_func(std::move(get_func))
+    , _test_func(std::move(test_func))
+    , _destroy_func(std::move(destroy_func))
   { }
 
   /**
@@ -250,7 +247,7 @@ private:
   /// Function called upon destruction of the future
   destroy_func_t _destroy_func;
   /// Whether or not the value is available
-  bool           _ready = false;
+  bool           _ready{false};
 
 public:
   // For ostream output

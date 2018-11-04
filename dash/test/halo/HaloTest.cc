@@ -214,7 +214,7 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
 
   long sum_check = 0;
   if(myid == 0) {
-    long** matrix_check = new long*[ext_per_dim];
+    auto** matrix_check = new long*[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long[ext_per_dim];
       for(auto j = 0; j < ext_per_dim; ++j) {
@@ -471,7 +471,7 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
   unsigned long sum_check = 0;
 
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim];
+    auto*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long*[ext_per_dim];
       for(auto j = 0; j < ext_per_dim; ++j) {
@@ -569,7 +569,7 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
   auto ext_per_dim_check = ext_per_dim + 2;
   unsigned long sum_check = 0;
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim_check];
+    auto*** matrix_check = new long**[ext_per_dim_check];
     for(auto i = 0; i < ext_per_dim_check; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
       for(auto j = 0; j < ext_per_dim_check; ++j) {
@@ -668,7 +668,7 @@ TEST_F(HaloTest, HaloMatrixWrapperCustom3D)
   auto ext_per_dim_check = ext_per_dim + 2;
   unsigned long sum_check = 0;
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim_check];
+    auto*** matrix_check = new long**[ext_per_dim_check];
     for(auto i = 0; i < ext_per_dim_check; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
       for(auto j = 0; j < ext_per_dim_check; ++j) {
@@ -766,7 +766,7 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
   auto ext_per_dim_check = ext_per_dim + 2;
   unsigned long sum_check = 0;
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim];
+    auto*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
       for(auto j = 0; j < ext_per_dim_check; ++j) {
@@ -885,7 +885,7 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
   auto ext_per_dim_check = ext_per_dim + 6;
   unsigned long sum_check = 0;
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim];
+    auto*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
       for(auto j = 0; j < ext_per_dim_check; ++j) {
@@ -1024,7 +1024,7 @@ TEST_F(HaloTest, HaloMatrixWrapperMultiStencil3D)
 
   auto ext_per_dim_check = ext_per_dim + 2;
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim];
+    auto*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
       for(auto j = 0; j < ext_per_dim_check; ++j) {
@@ -1167,7 +1167,7 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMultiStencil)
 
   auto ext_per_dim_check = ext_per_dim + 6;
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim];
+    auto*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
       for(auto j = 0; j < ext_per_dim_check; ++j) {

@@ -204,7 +204,7 @@ public:
   GlobAsyncRef<typename internal::add_const_from_type<T, MEMTYPE>::type>
   member(
     const MEMTYPE P::*mem) const {
-    size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
+    auto offs = (size_t) & (reinterpret_cast<P*>(0)->*mem);
     return member<typename internal::add_const_from_type<T, MEMTYPE>::type>(offs);
   }
 
