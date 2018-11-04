@@ -11,7 +11,7 @@
 
 
 void print_locality_domain(
-  std::string                        context,
+  const std::string&                        context,
   const dash::util::LocalityDomain & ld)
 {
   if (dash::myid() != 0) {
@@ -300,10 +300,12 @@ TEST_F(TeamLocalityTest, SplitGroups)
     group_2_units.push_back(u);
   }
 
-  for (dash::global_unit_t u : group_1_units) {
+  group_1_tags.reserve(group_1_units.size());
+for (dash::global_unit_t u : group_1_units) {
     group_1_tags.push_back(tloc.unit_locality(u).domain_tag());
   }
-  for (dash::global_unit_t u : group_2_units) {
+  group_2_tags.reserve(group_2_units.size());
+for (dash::global_unit_t u : group_2_units) {
     group_2_tags.push_back(tloc.unit_locality(u).domain_tag());
   }
 

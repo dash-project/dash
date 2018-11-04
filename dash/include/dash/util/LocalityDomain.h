@@ -494,7 +494,7 @@ private:
     const std::vector<std::string> & group_domain_tags)
   {
     _groups.clear();
-    for (auto gdt : group_domain_tags) {
+    for (const auto& gdt : group_domain_tags) {
       _groups.push_back(find(gdt));
     }
   }

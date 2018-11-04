@@ -16,6 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <type_traits>
+#include <utility>
 
 
 namespace dash {
@@ -288,7 +289,7 @@ public:
     Deallocator::dealloc_function dealloc)
   {
     DASH_LOG_DEBUG_VAR("Team.register_deallocator()", object);
-    _deallocs.push_back(Deallocator { object, dealloc });
+    _deallocs.push_back(Deallocator { object, std::move(dealloc) });
   }
 
   /**
@@ -303,7 +304,7 @@ public:
     Deallocator::dealloc_function dealloc)
   {
     DASH_LOG_DEBUG_VAR("Team.unregister_deallocator()", object);
-    _deallocs.remove(Deallocator { object, dealloc });
+    _deallocs.remove(Deallocator { object, std::move(dealloc) });
   }
 
   /**

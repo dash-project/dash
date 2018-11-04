@@ -96,7 +96,7 @@ print_pattern_mapping(
 
   DASH_LOG_DEBUG("print_pattern_mapping", name, pattern_name);
   std::ostringstream ss;
-  for (auto entry : entries) {
+  for (const auto& entry : entries) {
     ss << entry;
   }
   DASH_LOG_DEBUG("print_pattern_mapping", name, ss.str());
@@ -157,7 +157,7 @@ print_pattern_mapping(
   DASH_LOG_DEBUG("print_pattern_mapping", name);
   for (auto row_fmt : units) {
     std::ostringstream ss;
-    for (auto entry : row_fmt) {
+    for (const auto& entry : row_fmt) {
       ss << entry;
     }
     DASH_LOG_DEBUG("print_pattern_mapping", name, ss.str());
