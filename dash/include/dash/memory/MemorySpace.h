@@ -78,6 +78,15 @@ void memfree(
 
   mspace->deallocate(gptr, nels * sizeof(T), alignof(T));
 }
+
+/**
+ * Convenience Wrapper to retrieve easily the type allocated by
+ * dash::memalloc<T>
+ *
+ */
+template <class T>
+using GlobMemAllocPtr = decltype(dash::memalloc<T>(size_t{}));
+
 }  // namespace dash
 
 #endif

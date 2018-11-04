@@ -13,7 +13,7 @@ using std::cout;
 using std::cin;
 using std::endl;
 
-using memalloc_ptr_t = decltype(dash::memalloc<int>(size_t{}));
+using memalloc_ptr_t = dash::GlobMemAllocPtr<int>;
 
 struct node_t {
   /// 1-based
