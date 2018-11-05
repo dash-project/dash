@@ -10,14 +10,16 @@
 
 typedef int (*dart_domain_predicate_t)(dart_domain_locality_t * domain);
 
-dart_ret_t dart__base__locality__domain__init(dart_domain_locality_t* loc);
+
+dart_ret_t dart__base__locality__domain__init(
+  dart_domain_locality_t       * domain);
 
 dart_ret_t dart__base__locality__domain__destruct(
   dart_domain_locality_t       * domain);
 
 dart_ret_t dart__base__locality__domain__copy(
-    const dart_domain_locality_t* domain_src,
-    dart_domain_locality_t*       domain_dst);
+  const dart_domain_locality_t * domain_in,
+  dart_domain_locality_t       * domain_out);
 
 dart_ret_t dart__base__locality__domain__update_subdomains(
   dart_domain_locality_t       * domain);
@@ -28,10 +30,10 @@ dart_ret_t dart__base__locality__domain__child(
   dart_domain_locality_t       ** subdomain_out);
 
 dart_ret_t dart__base__locality__domain__parent(
-    const dart_domain_locality_t* domain_in,
-    const char**                  subdomain_tags,
-    int                           num_subdomain_tags,
-    dart_domain_locality_t**      domain_out);
+  const dart_domain_locality_t  * domain,
+  const char                   ** subdomain_tags,
+  int                             num_subdomain_tags,
+  dart_domain_locality_t       ** domain_out);
 
 dart_ret_t dart__base__locality__domain__filter_subdomains(
   dart_domain_locality_t       * domain,
@@ -58,8 +60,9 @@ dart_ret_t dart__base__locality__domain__move_subdomain(
   int                            new_subdomain_rel_id);
 
 dart_ret_t dart__base__locality__domain__create_subdomains(
-    dart_domain_locality_t* global_domain,
-    dart_host_topology_t*   host_topology,
-    dart_unit_mapping_t*    unit_mapping);
+  dart_domain_locality_t       * domain,
+  dart_host_topology_t         * host_topology,
+  dart_unit_mapping_t          * unit_mapping);
+
 
 #endif /* DART__BASE__INTERNAL__DOMAIN_LOCALITY_H__ */

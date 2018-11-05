@@ -43,7 +43,8 @@ extern "C" {
  * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
-dart_ret_t dart_barrier(dart_team_t teamid) DART_NOTHROW;
+dart_ret_t dart_barrier(
+  dart_team_t team) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI broadcast.
@@ -61,11 +62,11 @@ dart_ret_t dart_barrier(dart_team_t teamid) DART_NOTHROW;
  * \ingroup DartCommunication
  */
 dart_ret_t dart_bcast(
-    void*            buf,
-    size_t           nelem,
-    dart_datatype_t  dtype,
-    dart_team_unit_t root,
-    dart_team_t      teamid) DART_NOTHROW;
+  void              * buf,
+  size_t              nelem,
+  dart_datatype_t     dtype,
+  dart_team_unit_t    root,
+  dart_team_t         team) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI scatter.
@@ -84,12 +85,12 @@ dart_ret_t dart_bcast(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_scatter(
-    const void*      sendbuf,
-    void*            recvbuf,
-    size_t           nelem,
-    dart_datatype_t  dtype,
-    dart_team_unit_t root,
-    dart_team_t      teamid) DART_NOTHROW;
+  const void         * sendbuf,
+  void               * recvbuf,
+  size_t               nelem,
+  dart_datatype_t      dtype,
+  dart_team_unit_t     root,
+  dart_team_t          team) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI gather.
@@ -108,12 +109,12 @@ dart_ret_t dart_scatter(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_gather(
-    const void*      sendbuf,
-    void*            recvbuf,
-    size_t           nelem,
-    dart_datatype_t  dtype,
-    dart_team_unit_t root,
-    dart_team_t      teamid) DART_NOTHROW;
+  const void        * sendbuf,
+  void              * recvbuf,
+  size_t              nelem,
+  dart_datatype_t     dtype,
+  dart_team_unit_t    root,
+  dart_team_t         team) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI allgather.
@@ -131,11 +132,11 @@ dart_ret_t dart_gather(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgather(
-    const void*     sendbuf,
-    void*           recvbuf,
-    size_t          nelem,
-    dart_datatype_t dtype,
-    dart_team_t     teamid) DART_NOTHROW;
+  const void      * sendbuf,
+  void            * recvbuf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+	dart_team_t       team) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI allgatherv.
@@ -156,13 +157,13 @@ dart_ret_t dart_allgather(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgatherv(
-    const void*     sendbuf,
-    size_t          nsendelem,
-    dart_datatype_t dtype,
-    void*           recvbuf,
-    const size_t*   nrecvcounts,
-    const size_t*   recvdispls,
-    dart_team_t     teamid) DART_NOTHROW;
+  const void      * sendbuf,
+  size_t            nsendelem,
+  dart_datatype_t   dtype,
+  void            * recvbuf,
+  const size_t    * nrecvelem,
+  const size_t    * recvdispls,
+  dart_team_t       teamid) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI allreduce.
@@ -203,11 +204,11 @@ dart_ret_t dart_allreduce(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_alltoall(
-    const void*     sendbuf,
-    void*           recvbuf,
-    size_t          nelem,
-    dart_datatype_t dtype,
-    dart_team_t     teamid) DART_NOTHROW;
+  const void     * sendbuf,
+  void           * recvbuf,
+  size_t           nelem,
+  dart_datatype_t  dtype,
+  dart_team_t      team) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI_Reduce.
@@ -533,12 +534,12 @@ typedef struct dart_handle_struct * dart_handle_t;
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get_handle(
-    void*           dest,
-    dart_gptr_t     gptr,
-    size_t          nelem,
-    dart_datatype_t src_type,
-    dart_datatype_t dst_type,
-    dart_handle_t*  handleptr) DART_NOTHROW;
+  void            * dest,
+  dart_gptr_t       gptr,
+  size_t            nelem,
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type,
+  dart_handle_t   * handle) DART_NOTHROW;
 
 /**
  * 'HANDLE' variant of dart_put.
@@ -561,12 +562,12 @@ dart_ret_t dart_get_handle(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put_handle(
-    dart_gptr_t     gptr,
-    const void*     src,
-    size_t          nelem,
-    dart_datatype_t src_type,
-    dart_datatype_t dst_type,
-    dart_handle_t*  handleptr) DART_NOTHROW;
+  dart_gptr_t       gptr,
+  const void      * src,
+  size_t            nelem,
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type,
+  dart_handle_t   * handle) DART_NOTHROW;
 
 /**
  * Wait for the local and remote completion of an operation.
@@ -579,7 +580,8 @@ dart_ret_t dart_put_handle(
  * \ingroup DartCommunication
  */
 
-dart_ret_t dart_wait(dart_handle_t* handleptr) DART_NOTHROW;
+dart_ret_t dart_wait(
+  dart_handle_t * handle) DART_NOTHROW;
 /**
  * Wait for the local and remote completion of operations.
  * Upon success, the handle is invalidated and may not be used in another
@@ -609,7 +611,8 @@ dart_ret_t dart_waitall(
  * \threadsafe
  * \ingroup DartCommunication
  */
-dart_ret_t dart_wait_local(dart_handle_t* handleptr) DART_NOTHROW;
+dart_ret_t dart_wait_local(
+  dart_handle_t * handle) DART_NOTHROW;
 
 /**
  * Wait for the local completion of operations.
@@ -624,8 +627,9 @@ dart_ret_t dart_wait_local(dart_handle_t* handleptr) DART_NOTHROW;
  * \threadsafe
  * \ingroup DartCommunication
  */
-dart_ret_t dart_waitall_local(dart_handle_t handles[], size_t num_handles)
-    DART_NOTHROW;
+dart_ret_t dart_waitall_local(
+  dart_handle_t handles[],
+  size_t        n) DART_NOTHROW;
 
 /**
  * Test for the local completion of an operation.
@@ -640,8 +644,9 @@ dart_ret_t dart_waitall_local(dart_handle_t handles[], size_t num_handles)
  * \threadsafe
  * \ingroup DartCommunication
  */
-dart_ret_t dart_test_local(dart_handle_t* handleptr, int32_t* is_finished)
-    DART_NOTHROW;
+dart_ret_t dart_test_local(
+  dart_handle_t * handle,
+  int32_t       * result) DART_NOTHROW;
 
 /**
  * Test for the completion of an operation and ensure remote completion.
@@ -675,7 +680,9 @@ dart_ret_t dart_test(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_testall_local(
-    dart_handle_t handles[], size_t n, int32_t* is_finished) DART_NOTHROW;
+  dart_handle_t   handles[],
+  size_t          n,
+  int32_t       * result) DART_NOTHROW;
 
 /**
  * Test for the completion of operations and ensure remote completion.
@@ -704,7 +711,8 @@ dart_ret_t dart_testall(
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  */
-dart_ret_t dart_handle_free(dart_handle_t* handleptr) DART_NOTHROW;
+dart_ret_t dart_handle_free(
+  dart_handle_t * handle) DART_NOTHROW;
 
 /** \} */
 

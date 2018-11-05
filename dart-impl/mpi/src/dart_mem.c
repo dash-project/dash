@@ -10,9 +10,9 @@
  *
  */
 
-#include <dash/dart/base/assert.h>
-#include <dash/dart/base/mutex.h>
 #include <dash/dart/mpi/dart_mem.h>
+#include <dash/dart/base/mutex.h>
+#include <dash/dart/base/assert.h>
 
 /* For PRIu64, uint64_t in printf */
 #define __STDC_FORMAT_MACROS
@@ -92,9 +92,8 @@ dart_buddy_delete(struct dart_buddy * self) {
 
 static inline size_t
 next_pow_of_2(size_t x) {
-  if (is_pow_of_2(x)) {
+  if (is_pow_of_2(x))
     return x;
-  }
   x |= x >> 1;
   x |= x >> 2;
   x |= x >> 4;
@@ -133,9 +132,7 @@ ssize_t
 dart_buddy_alloc(struct dart_buddy * self, size_t s) {
   // honor the alignment
   size_t size = (s >> DART_MEM_ALIGN_BITS);
-  if ((size << DART_MEM_ALIGN_BITS) < s) {
-    ++size;
-  }
+  if ((size<<DART_MEM_ALIGN_BITS) < s) ++size;
   size = (int)next_pow_of_2(size);
   size_t length = 1 << self->level;
 

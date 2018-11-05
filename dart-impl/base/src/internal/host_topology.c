@@ -3,20 +3,20 @@
  *
  */
 
-#include <limits.h>
 #include <string.h>
+#include <limits.h>
 
-#include <dash/dart/if/dart_communication.h>
-#include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_communication.h>
 
 #include <dash/dart/base/internal/host_topology.h>
-#include <dash/dart/base/internal/hwloc.h>
 #include <dash/dart/base/internal/unit_locality.h>
+#include <dash/dart/base/internal/hwloc.h>
 
-#include <dash/dart/base/assert.h>
-#include <dash/dart/base/logging.h>
 #include <dash/dart/base/string.h>
+#include <dash/dart/base/logging.h>
+#include <dash/dart/base/assert.h>
 
 #ifdef DART_ENABLE_HWLOC
 #  include <hwloc.h>

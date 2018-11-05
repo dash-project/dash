@@ -2,12 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
+#include <time.h>
 
+#include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_config.h>
 #include <dash/dart/if/dart_team_group.h>
-#include <dash/dart/if/dart_types.h>
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/mutex.h>

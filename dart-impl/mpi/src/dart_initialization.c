@@ -3,22 +3,22 @@
  *
  *  Implementations of the dart init and exit operations.
  */
-#include <mpi.h>
-#include <stdbool.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
+#include <mpi.h>
 
+#include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_team_group.h>
-#include <dash/dart/if/dart_types.h>
 
-#include <dash/dart/mpi/dart_communication_priv.h>
-#include <dash/dart/mpi/dart_globmem_priv.h>
-#include <dash/dart/mpi/dart_locality_priv.h>
-#include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_mpi_util.h>
-#include <dash/dart/mpi/dart_segment.h>
+#include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_team_private.h>
+#include <dash/dart/mpi/dart_globmem_priv.h>
+#include <dash/dart/mpi/dart_communication_priv.h>
+#include <dash/dart/mpi/dart_locality_priv.h>
+#include <dash/dart/mpi/dart_segment.h>
 
 #define DART_LOCAL_ALLOC_SIZE (1024UL*1024*16)
 

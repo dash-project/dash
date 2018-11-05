@@ -6,9 +6,10 @@
 #include <dash/dart/base/string.h>
 
 #include <limits.h>
+#include <string.h>
 #include <memory.h>
 #include <stdlib.h>
-#include <string.h>
+
 
 int dart__base__strcnt(
   const char * haystack,
@@ -76,11 +77,12 @@ int dart__base__strcommonprefix(
     }
     if (string_a[i] != string_b[i]) {
       break;
-    }
-    if (prefix_out != NULL) {
-      prefix_out[prefix_len] = string_a[i];
+    } else {
+      if (prefix_out != NULL) {
+        prefix_out[prefix_len] = string_a[i];
       }
       prefix_len++;
+    }
   }
   if (prefix_out != NULL) {
     prefix_out[prefix_len] = '\0';

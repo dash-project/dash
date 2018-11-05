@@ -6,19 +6,19 @@
 
 #include <mpi.h>
 
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_locality.h>
-#include <dash/dart/if/dart_team_group.h>
-#include <dash/dart/if/dart_types.h>
 
-#include <dash/dart/base/assert.h>
-#include <dash/dart/base/locality.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/macro.h>
+#include <dash/dart/base/assert.h>
+#include <dash/dart/base/locality.h>
 
+#include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_group_priv.h>
 #include <dash/dart/mpi/dart_synchronization_priv.h>
-#include <dash/dart/mpi/dart_team_private.h>
 
 #include <limits.h>
 

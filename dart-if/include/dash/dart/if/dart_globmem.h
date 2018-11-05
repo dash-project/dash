@@ -481,11 +481,11 @@ dart_ret_t dart_team_memregister_aligned(
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memregister(
-    dart_team_t     teamid,
-    size_t          nelem,
-    dart_datatype_t dtype,
-    void*           addr,
-    dart_gptr_t*    gptr) DART_NOTHROW;
+  dart_team_t       teamid,
+  size_t            nlelem,
+  dart_datatype_t   dtype,
+  void            * addr,
+  dart_gptr_t     * gptr) DART_NOTHROW;
 
 /**
  * Collective function similar to dart_team_memfree() but on previously

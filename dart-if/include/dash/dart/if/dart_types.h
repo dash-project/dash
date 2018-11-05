@@ -698,11 +698,13 @@ dart_config_t;
  *
  * \ingroup DartTypes
  */
-dart_ret_t dart_type_create_strided(
-    dart_datatype_t  basetype_id,
-    size_t           stride,
-    size_t           blocklen,
-    dart_datatype_t *newtype);
+dart_ret_t
+dart_type_create_strided(
+  dart_datatype_t   basetype,
+  size_t            stride,
+  size_t            blocklen,
+  dart_datatype_t * newtype);
+
 
 /**
  * Create an indexed data type using \c count blocks of size \c blocklen[i]
@@ -758,7 +760,8 @@ dart_type_create_custom(
  *
  * \ingroup DartTypes
  */
-dart_ret_t dart_type_destroy(dart_datatype_t *dart_type_ptr);
+dart_ret_t
+dart_type_destroy(dart_datatype_t *dart_type);
 
 /**
  * The operator called from a reduction operation.
@@ -792,13 +795,14 @@ typedef void (*dart_operator_t)(
  * \sa dart_op_destroy
  * \sa dart_operator_t
  */
-dart_ret_t dart_op_create(
-    dart_operator_t   op,
-    void *            user_data,
-    bool              commute,
-    dart_datatype_t   dt,
-    bool              dtype_is_tmp,
-    dart_operation_t *new_op);
+dart_ret_t
+dart_op_create(
+  dart_operator_t    op,
+  void             * userdata,
+  bool               commute,
+  dart_datatype_t    dtype,
+  bool               dtype_is_tmp,
+  dart_operation_t * new_op);
 
 /**
  * Destroy a operation object created through \ref dart_op_create and set

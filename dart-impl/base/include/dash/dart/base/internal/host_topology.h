@@ -46,7 +46,8 @@ dart_host_topology_t;
  * in the array contains the host name of unit j.
  */
 dart_ret_t dart__base__host_topology__create(
-    dart_unit_mapping_t* unit_mapping, dart_host_topology_t** host_topology);
+  dart_unit_mapping_t   * unit_mapping,
+  dart_host_topology_t ** topo);
 
 dart_ret_t dart__base__host_topology__destruct(
   dart_host_topology_t  * topo);
@@ -79,10 +80,10 @@ dart_ret_t dart__base__host_topology__node_module(
  *       this function and must be deallocated by the caller.
  */
 dart_ret_t dart__base__host_topology__node_units(
-    dart_host_topology_t* topo,
-    const char*           hostname,
-    dart_global_unit_t**  units,
-    int*                  num_units);
+  dart_host_topology_t  * topo,
+  const char            * node_hostname,
+  dart_global_unit_t   ** units,
+  int                   * num_units);
 
 /* Queries domain data for host exactly matching the specified host
  * name, so units from module domains are not included.

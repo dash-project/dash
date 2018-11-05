@@ -2,30 +2,32 @@
  * \file dash/dart/base/locality.c
  */
 
-#include <inttypes.h>
-#include <limits.h>
-#include <sched.h>
-#include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <sched.h>
+#include <limits.h>
 
+#include <dash/dart/base/locality.h>
+#include <dash/dart/base/macro.h>
+#include <dash/dart/base/logging.h>
+#include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
 #include <dash/dart/base/hwinfo.h>
-#include <dash/dart/base/locality.h>
-#include <dash/dart/base/logging.h>
-#include <dash/dart/base/macro.h>
 
-#include <dash/dart/base/internal/compiler_tweaks.h>
-#include <dash/dart/base/internal/domain_locality.h>
 #include <dash/dart/base/internal/host_topology.h>
 #include <dash/dart/base/internal/unit_locality.h>
+#include <dash/dart/base/internal/domain_locality.h>
+#include <dash/dart/base/internal/compiler_tweaks.h>
 
 #include <dash/dart/base/string.h>
 
-#include <dash/dart/if/dart_communication.h>
-#include <dash/dart/if/dart_locality.h>
-#include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_locality.h>
+#include <dash/dart/if/dart_communication.h>
+#include <dash/dart/if/dart_team_group.h>
+
 
 /* ====================================================================== *
  * Private Data                                                           *

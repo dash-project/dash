@@ -128,7 +128,9 @@ dart_ret_t dart_segment_get_baseptr(
 #endif
 
 dart_ret_t dart_segment_get_selfbaseptr(
-    dart_segmentdata_t *segdata, int16_t segid, char **baseptr) DART_INTERNAL;
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  char              ** baseptr) DART_INTERNAL;
 
 /**
  * Query the address of the memory location of the specified rel_unit in
@@ -141,10 +143,10 @@ dart_ret_t dart_segment_get_selfbaseptr(
  * \retval ditto
  */
 dart_ret_t dart_segment_get_disp(
-    dart_segmentdata_t *segdata,
-    int16_t             segid,
-    dart_team_unit_t    rel_unitid,
-    MPI_Aint *          disp_s) DART_INTERNAL;
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  dart_team_unit_t     rel_unitid,
+  MPI_Aint           * disp_s) DART_INTERNAL;
 
 /**
  * Query the length of the global memory block indicated by the
@@ -153,15 +155,19 @@ dart_ret_t dart_segment_get_disp(
  * \retval ditto
  */
 dart_ret_t dart_segment_get_size(
-    dart_segmentdata_t *segdata, int16_t segid, size_t *size) DART_INTERNAL;
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  size_t             * size) DART_INTERNAL;
 
 dart_ret_t dart_segment_get_flags(
-    dart_segmentdata_t *segdata,
-    int16_t             segid,
-    uint16_t *          flags) DART_INTERNAL;
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  uint16_t           * flags) DART_INTERNAL;
 
 dart_ret_t dart_segment_set_flags(
-    dart_segmentdata_t *segdata, int16_t segid, uint16_t flags) DART_INTERNAL;
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  uint16_t             flags) DART_INTERNAL;
 
 /**
  * Deallocates the segment identified by the segment ID.

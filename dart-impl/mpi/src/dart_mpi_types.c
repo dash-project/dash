@@ -6,14 +6,14 @@
  * Currently implemented: strided types based on basic types.
  */
 
-#include <dash/dart/base/logging.h>
-#include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_initialization.h>
+#include <dash/dart/base/logging.h>
 #include <dash/dart/mpi/dart_communication_priv.h>
 
+#include <stdlib.h>
 #include <limits.h>
 #include <mpi.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define DART_TYPE_NAMELEN 256

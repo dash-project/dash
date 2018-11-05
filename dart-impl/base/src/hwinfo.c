@@ -4,26 +4,27 @@
 #  define _GNU_SOURCE
 #  include <sched.h>
 #endif
-#include <dash/dart/base/assert.h>
+#include <dash/dart/base/macro.h>
+#include <dash/dart/base/logging.h>
 #include <dash/dart/base/locality.h>
 #include <dash/dart/base/logging.h>
-#include <dash/dart/base/macro.h>
+#include <dash/dart/base/assert.h>
 
-#include <dash/dart/base/internal/hwloc.h>
 #include <dash/dart/base/internal/papi.h>
+#include <dash/dart/base/internal/hwloc.h>
 #include <dash/dart/base/internal/unit_locality.h>
 
 #include <dash/dart/base/hwinfo.h>
 
-#include <dash/dart/if/dart_locality.h>
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_locality.h>
 
 #include <inttypes.h>
-#include <limits.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
 
 #ifdef DART_ENABLE_LIKWID
 #  include <likwid.h>
@@ -39,8 +40,8 @@
 #endif
 
 #ifdef DART_ENABLE_NUMA
+#  include <utmpx.h>
 #  include <numa.h>
-#include <utmpx.h>
 #endif
 
 static const int BYTES_PER_MB = (1024 * 1024);
@@ -110,7 +111,7 @@ dart_ret_t dart_hwinfo(
 
   char * max_shmem_mbps_str = getenv("DASH_MAX_SHMEM_MBPS");
   if (NULL != max_shmem_mbps_str) {
-    hw.max_shmem_mbps = (atoi(max_shmem_mbps_str));
+    hw.max_shmem_mbps = (int)(atoi(max_shmem_mbps_str));
     DART_LOG_TRACE("dart_hwinfo: DASH_MAX_SHMEM_MBPS set: %d",
                    hw.max_shmem_mbps);
   } else {

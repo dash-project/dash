@@ -2,23 +2,23 @@
  * \file dart_locality.c
  *
  */
-#include <dash/dart/base/assert.h>
 #include <dash/dart/base/config.h>
-#include <dash/dart/base/internal/compiler_tweaks.h>
-#include <dash/dart/base/internal/unit_locality.h>
-#include <dash/dart/base/locality.h>
-#include <dash/dart/base/logging.h>
 #include <dash/dart/base/macro.h>
+#include <dash/dart/base/assert.h>
+#include <dash/dart/base/logging.h>
+#include <dash/dart/base/locality.h>
+#include <dash/dart/base/internal/unit_locality.h>
+#include <dash/dart/base/internal/compiler_tweaks.h>
 
-#include <dash/dart/if/dart_locality.h>
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_locality.h>
 
 #include <mpi.h>
 
-#include <sched.h>
-#include <stdio.h>
-#include <string.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <sched.h>
+#include <string.h>
 
 /* ==================================================================== *
  * Domain Locality                                                      *
