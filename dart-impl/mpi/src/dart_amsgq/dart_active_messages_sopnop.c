@@ -38,9 +38,9 @@ struct dart_amsg_header {
   dart_task_action_t fn;
   dart_global_unit_t remote;
   uint32_t           data_size;
-#ifdef DART_DEBUG
+#ifdef DART_ENABLE_LOGGING
   uint32_t           msgid;
-#endif // DART_DEBUG
+#endif // DART_ENABLE_LOGGING
 };
 
 struct cached_message_s
