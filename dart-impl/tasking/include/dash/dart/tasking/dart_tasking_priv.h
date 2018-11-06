@@ -1,5 +1,5 @@
-#ifndef DART__BASE__INTERNAL__TASKING_H__
-#define DART__BASE__INTERNAL__TASKING_H__
+#ifndef DART__INTERNAL__TASKING_H__
+#define DART__INTERNAL__TASKING_H__
 
 #include <stdbool.h>
 #include <pthread.h>
@@ -234,4 +234,4 @@ dart__tasking__is_root_task(dart_task_t *task)
   return task->state == DART_TASK_ROOT;
 }
 
-#endif /* DART__BASE__INTERNAL__TASKING_H__ */
+#endif /* DART__INTERNAL__TASKING_H__ */
