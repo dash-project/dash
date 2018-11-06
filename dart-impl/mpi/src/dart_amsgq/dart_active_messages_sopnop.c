@@ -469,40 +469,41 @@ static
 dart_ret_t
 dart_amsg_sopnop_flush_buffer(struct dart_amsgq_impl_data * amsgq)
 {
-  dart__base__mutex_lock(&amsgq->send_mutex);
   int comm_size;
   MPI_Comm_size(amsgq->comm, &comm_size);
+
+  uint8_t msgbuf[MSGCACHE_SIZE];
+
   for (int target = 0; target < comm_size; ++target) {
-    if (amsgq->message_cache[target] != NULL) {
-      message_cache_t *cache = amsgq->message_cache[target];
+    message_cache_t *cache = amsgq->message_cache[target];
+    if (cache != NULL && cache->pos > 0) {
       dart__base__mutex_lock(&cache->mutex);
 
       if (cache->pos == 0) {
+        // mpf, some else processed that cache already
         dart__base__mutex_unlock(&cache->mutex);
-        // nothing to be done
         continue;
       }
+
+      // copy the messages out of the buffer and process them without holding
+      // the lock
+      uint32_t pos = cache->pos;
+      memcpy(msgbuf, cache->buffer, pos);
+      cache->pos = 0;
+      dart__base__mutex_unlock(&cache->mutex);
 
       dart_ret_t ret;
       do {
         dart_team_unit_t t = {target};
-        ret = dart_amsg_sopnop_sendbuf(t, amsgq, cache->buffer, cache->pos);
-        if (DART_ERR_AGAIN == ret) {
-          // try to process our messages while waiting for the other side
-          amsg_sopnop_process_internal(amsgq, false);
-        } else if (ret != DART_OK) {
-          dart__base__mutex_unlock(&amsgq->send_mutex);
+        ret = dart_amsg_sopnop_sendbuf(t, amsgq, msgbuf, pos);
+        if (ret != DART_OK && DART_ERR_AGAIN != ret) {
           DART_LOG_ERROR("Failed to flush message cache!");
-          return ret;
+          dart_abort(DART_EXIT_ASSERT);
         }
       } while (ret != DART_OK);
 
-      cache->pos = 0;
-
-      dart__base__mutex_unlock(&cache->mutex);
     }
   }
-  dart__base__mutex_unlock(&amsgq->send_mutex);
 
   return DART_OK;
 }
@@ -521,7 +522,7 @@ dart_amsg_sopnop_process_blocking(
   // keep processing until all incoming messages have been dealt with
   MPI_Ibarrier(amsgq->comm, &req);
   do {
-    amsg_sopnop_process_internal(amsgq, true);
+    amsg_sopnop_process_internal(amsgq, false);
     MPI_Test(&req, &flag, MPI_STATUSES_IGNORE);
   } while (!flag);
   amsg_sopnop_process_internal(amsgq, true);
@@ -538,16 +539,20 @@ dart_amsg_sopnop_bsend(
   const void                  * data,
   size_t                        data_size)
 {
+  message_cache_t *cache = NULL;
   if (amsgq->message_cache[target.id] == NULL) {
     dart__base__mutex_lock(&amsgq->send_mutex);
     if (amsgq->message_cache[target.id] == NULL) {
-      amsgq->message_cache[target.id] = malloc(sizeof(message_cache_t) + MSGCACHE_SIZE);
-      amsgq->message_cache[target.id]->pos = 0;
-      dart__base__mutex_init(&amsgq->message_cache[target.id]->mutex);
+      cache = malloc(sizeof(message_cache_t) + MSGCACHE_SIZE);
+      cache->pos = 0;
+      dart__base__mutex_init(&cache->mutex);
+      amsgq->message_cache[target.id] = cache;
     }
     dart__base__mutex_unlock(&amsgq->send_mutex);
   }
-  message_cache_t *cache = amsgq->message_cache[target.id];
+  if (cache == NULL) {
+    cache = amsgq->message_cache[target.id];
+  }
   dart__base__mutex_lock(&cache->mutex);
   if ((cache->pos + sizeof(cached_message_t) + data_size) > MSGCACHE_SIZE) {
     dart_ret_t ret;
