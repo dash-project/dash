@@ -77,4 +77,20 @@
  */
 #define DART_THREAD_IDLE_SLEEP_ENVSTR  "DART_TASK_IDLE_THREAD_SLEEP"
 
+/**
+ * Name of the environment variable specifying whether the runtime should launch
+ * a progress thread to handle inter-scheduler communication.
+ *
+ * Type: Boolean value.
+ */
+#define DART_THREAD_PROGRESS_ENVSTR    "DART_THREAD_PROGRESS"
+
+/**
+ * Name of the environment variable specifying whether the runtime should launch
+ * a progress thread to handle inter-scheduler communication.
+ *
+ * Type: Boolean value.
+ */
+#define DART_THREAD_PROGRESS_INTERVAL_ENVSTR    "DART_THREAD_PROGRESS_INTERVAL"
+
 #endif // DART__BASE__INTERNAL__TASKING_ENVSTR_H__
