@@ -348,8 +348,8 @@ TEST_F(GlobStaticMemTest, CopyGlobPtr)
   auto gmem = alloc.allocate(n_ptr);
 
   // Copy pointer of local memalloc segment to neighbor
-  auto neigh = (dash::myid() + 1) % dash::size();
-  gmem[neigh] = gptr_memalloc;
+  auto right_neigh = (dash::myid() + 1) % dash::size();
+  gmem[right_neigh] = gptr_memalloc;
 
   dash::barrier();
 
@@ -361,7 +361,8 @@ TEST_F(GlobStaticMemTest, CopyGlobPtr)
 
   // verify...
   std::vector<value_t> exp(nlelem);
-  std::iota(std::begin(exp), std::end(exp), neigh * nlelem);
+  auto left_neigh = (dash::myid() + dash::size() - 1) % dash::size();
+  std::iota(std::begin(exp), std::end(exp), left_neigh * nlelem);
 
   for (std::size_t idx = 0; idx < nlelem; ++idx, gmem_lbegin_ptrmemalloc++) {
     auto value = static_cast<value_t>(*gmem_lbegin_ptrmemalloc);
