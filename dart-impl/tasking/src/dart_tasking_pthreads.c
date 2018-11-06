@@ -67,7 +67,7 @@ static volatile bool worker_poll_remote = false;
 static int num_threads;
 
 // thread-private data
-static pthread_key_t tpd_key;
+static _Thread_local dart_thread_t* __tpd = NULL;
 
 // mutex and conditional variable to wait for tasks to get ready
 static pthread_cond_t  task_avail_cond   = PTHREAD_COND_INITIALIZER;
@@ -451,7 +451,7 @@ static int determine_num_threads()
 static inline
 dart_thread_t * get_current_thread()
 {
-  return (dart_thread_t*)pthread_getspecific(tpd_key);
+  return __tpd;
 }
 
 static inline
@@ -752,7 +752,7 @@ void* thread_main(void *data)
   tid = NULL;
 
   // set thread-private data
-  pthread_setspecific(tpd_key, thread);
+  __tpd = thread;
   // make thread available to other threads
   thread_pool[threadid] = thread;
 
@@ -830,7 +830,7 @@ void* thread_main(void *data)
   DART_LOG_INFO("Thread %i exiting", dart__tasking__thread_num());
 
   // unset thread-private data
-  pthread_setspecific(tpd_key, NULL);
+  __tpd = NULL;
 
   return NULL;
 }
@@ -937,15 +937,13 @@ dart__tasking__init()
   // set up the active message queue
   dart_tasking_datadeps_init();
 
-  pthread_key_create(&tpd_key, NULL);
-
   bind_threads = dart__base__env__bool(DART_THREAD_AFFINITY_ENVSTR, false);
 
   // initialize all task threads before creating them
   init_threadpool(num_threads);
 
   // set master thread private data
-  pthread_setspecific(tpd_key, thread_pool[0]);
+  __tpd = thread_pool[0];
 
   set_current_task(&root_task);
 
@@ -1443,7 +1441,7 @@ destroy_threadpool(bool print_stats)
 #endif // DART_ENABLE_LOGGING
 
   // unset thread-private data
-  pthread_setspecific(tpd_key, NULL);
+  __tpd = NULL;
 
   for (int i = 0; i < num_threads; ++i) {
     free(thread_pool[i]);
