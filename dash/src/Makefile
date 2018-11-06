@@ -60,6 +60,7 @@ $(STATIC_CONFIG_H) : $(STATIC_CONFIG_H_IN)
 	sed "s/@CONF_AVAIL_BLAS@/false/"          | \
 	sed "s/@CONF_AVAIL_LAPACK@/false/"        | \
 	sed "s/@CONF_AVAIL_ALGO_SUMMA@/false/"    | \
+	sed "s/@CONF_AVAIL_MEMKIND@/false/"    | \
 	sed "s/@CONF_AVAIL_SCALAPACK@/false/"  > $(STATIC_CONFIG_H)
 
 
