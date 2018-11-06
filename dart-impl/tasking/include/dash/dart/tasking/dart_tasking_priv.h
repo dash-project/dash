@@ -234,4 +234,9 @@ dart__tasking__is_root_task(dart_task_t *task)
   return task->state == DART_TASK_ROOT;
 }
 
+void dart__tasking__utility_thread(
+  void (*fn) (void *),
+  void  *data
+) DART_INTERNAL;
+
 #endif /* DART__BASE__INTERNAL__TASKING_H__ */

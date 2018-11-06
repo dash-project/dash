@@ -169,6 +169,8 @@ void requeue_task(dart_task_t *task)
 {
 #ifdef DART_TASK_THREADLOCAL_Q
   dart_thread_t *thread = get_current_thread();
+  // fall-back in case we are called from the progress thread
+  if (thread == NULL) thread = thread_pool[0];
   dart_taskqueue_t *q = &thread->queue;
 #else
   dart_taskqueue_t *q = &task_queue;
@@ -859,6 +861,7 @@ start_threads(int num_threads)
   uint64_t thread_idle_sleeptime_us =
                       dart__base__env__us(DART_THREAD_IDLE_SLEEP_ENVSTR,
                                           IDLE_THREAD_DEFAULT_USLEEP);
+
   if (thread_idle_method == DART_THREAD_IDLE_USLEEP) {
     thread_idle_sleeptime.tv_sec  = thread_idle_sleeptime_us / (1000*1000);
     thread_idle_sleeptime.tv_nsec =
@@ -1033,12 +1036,17 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
 
     dart_thread_t *thread = get_current_thread();
 #ifdef DART_TASK_THREADLOCAL_Q
-    dart_taskqueue_t *q = &thread->queue;
+    dart_taskqueue_t *q;
+    if (thread == NULL) {
+      q = &thread_pool[0]->queue;
+    } else {
+      q = &thread->queue;
+    }
 #else
     dart_taskqueue_t *q = &task_queue;
 #endif // DART_TASK_THREADLOCAL_Q
 
-    if (thread->is_releasing_deps) {
+    if (thread && thread->is_releasing_deps) {
       // short-cut and avoid enqueuing the task
       // NOTE: we take the last available task as this is likely the task that
       //       is next in the chain (the list is a stack)
@@ -1324,8 +1332,11 @@ dart__tasking__task_wait(dart_taskref_t *tr)
 
     dart_thread_t *thread = get_current_thread();
 
-    dart_tasking_remote_progress();
     dart_task_t *task = next_task(thread);
+    if (task == NULL) {
+      remote_progress(thread, true);
+      task = next_task(thread);
+    }
     handle_task(task, thread);
 
     // lock the task for the check in the while header
@@ -1362,8 +1373,9 @@ dart__tasking__task_test(dart_taskref_t *tr, int *flag)
   // if this is the only available thread we have to execute at least one task
   if (num_threads == 1 && state != DART_TASK_FINISHED) {
     dart_thread_t *thread = get_current_thread();
-    dart_tasking_remote_progress();
     dart_task_t *task = next_task(thread);
+    remote_progress(thread, task == NULL);
+    if (task == NULL) task = next_task(thread);
     handle_task(task, thread);
 
     // check if this was our task
@@ -1506,4 +1518,43 @@ dart__tasking__fini()
   return DART_OK;
 }
 
+/**
+ * Utility thread functions
+ */
 
+typedef struct utility_thread {
+  void     (*fn) (void *);
+  void      *data;
+  pthread_t  pthread;
+} utility_thread_t;
+
+static void* utility_thread_main(void *data)
+{
+  utility_thread_t *ut = (utility_thread_t*)data;
+  void     (*fn) (void *) = ut->fn;
+  void      *fn_data      = ut->data;
+  free(ut);
+  ut = NULL;
+  // TODO: find a sensical thread binding for utility threads
+
+  printf("Launching utility thread\n");
+  // invoke the utility function
+  fn(fn_data);
+
+  // at some point we get back here and exit the thread
+  return NULL;
+}
+
+void dart__tasking__utility_thread(
+  void (*fn) (void *),
+  void  *data)
+{
+  // will be free'd by the thread
+  utility_thread_t *ut = malloc(sizeof(*ut));
+  ut->fn = fn;
+  ut->data = data;
+  int ret = pthread_create(&ut->pthread, NULL, &utility_thread_main, ut);
+  if (ret != 0) {
+    DART_LOG_ERROR("Failed to create utility thread!");
+  }
+}
