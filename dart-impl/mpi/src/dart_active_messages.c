@@ -213,7 +213,7 @@ dart_amsg_buffered_send(
 }
 
 dart_ret_t
-dart_amsg_nolock_flush_buffer(dart_amsgq_t amsgq)
+dart_amsg_flush_buffer(dart_amsgq_t amsgq)
 {
   // not all implementations have to offer buffered send
   if (amsgq_impl.flush) {
