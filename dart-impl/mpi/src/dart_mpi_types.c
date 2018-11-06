@@ -277,7 +277,7 @@ dart_type_create_indexed(
   *newtype = (dart_datatype_t)new_struct;
 
   DART_LOG_TRACE("Created new indexed data type %p (mpi_type %p) with %zu elements",
-                 (const void *) new_struct, (const void *)(uintptr_t)new_mpi_dtype, num_elem);
+                 new_struct, new_mpi_dtype, num_elem);
 
   return DART_OK;
 }
@@ -316,7 +316,7 @@ dart_type_create_custom(
 
   *newtype = (dart_datatype_t)new_struct;
   DART_LOG_TRACE("Created new custom data type %p (mpi_type %p) with %zu bytes`",
-                 (const void *) new_struct, (const void *)(uintptr_t)new_mpi_dtype, num_bytes);
+                 new_struct, new_mpi_dtype, num_bytes);
 
   return DART_OK;
 }

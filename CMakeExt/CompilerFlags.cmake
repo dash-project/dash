@@ -64,6 +64,12 @@ if (ENABLE_DEV_COMPILER_WARNINGS
           "${DASH_DEVELOPER_CXX_FLAGS} -Wall -pedantic -Werror")
       set (DASH_DEVELOPER_CC_FLAGS
           "${DASH_DEVELOPER_CC_FLAGS} -Wall -pedantic -Werror")
+
+      if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+          set (DASH_DEVELOPER_CC_FLAGS
+              "${DASH_DEVELOPER_CC_FLAGS} -Wno-format")
+
+      endif()
    endif()
       # else()
     set (DASH_DEVELOPER_CCXX_FLAGS
@@ -78,7 +84,7 @@ if (ENABLE_DEV_COMPILER_WARNINGS
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-qual")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wdisabled-optimization -Wformat")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wdisabled-optimization")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Winit-self")
   set (DASH_DEVELOPER_CCXX_FLAGS

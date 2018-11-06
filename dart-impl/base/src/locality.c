@@ -489,7 +489,7 @@ dart_ret_t dart__base__locality__domain_group(
   for (int sd = 0; sd < group_size; sd++) {
     DART_LOG_TRACE("dart__base__locality__domain_group: "
                    "group_subdomain_tags[%d]: %p = %s",
-                   sd, (const void *)(group_subdomain_tags[sd]),
+                   sd, (group_subdomain_tags[sd]),
                    group_subdomain_tags[sd]);
   }
 #endif

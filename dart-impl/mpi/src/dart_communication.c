@@ -248,7 +248,7 @@ dart__mpi__get_basic(
 
   if (nchunks > 0) {
     DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %zu)",
-        (const void *)dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+        dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     CHECK_MPI_RET(
         dart__mpi__get(dest_ptr, nchunks,
           dart__mpi__datatype_maxtype(dtype),
@@ -264,7 +264,7 @@ dart__mpi__get_basic(
 
   if (remainder > 0) {
     DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %zu)",
-        (const void *)dest_ptr, remainder);
+        dest_ptr, remainder);
     CHECK_MPI_RET(
         dart__mpi__get(dest_ptr,
           remainder,
@@ -312,7 +312,7 @@ dart__mpi__get_complex(
     dst_num_elem = src_num_elem;
   }
 
-  DART_LOG_TRACE("dart_get:  MPI_Rget (dest %p, size %zu)", (const void *)dest_ptr, nelem);
+  DART_LOG_TRACE("dart_get:  MPI_Rget (dest %p, size %zu)", dest_ptr, nelem);
   CHECK_MPI_RET(
       dart__mpi__get(dest_ptr,
         dst_num_elem,
@@ -384,7 +384,7 @@ dart__mpi__put_basic(
 
   if (nchunks > 0) {
     DART_LOG_TRACE("dart_put:  MPI_Rput (src %p, size %zu)",
-        (const void *)src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+        src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     CHECK_MPI_RET(
         dart__mpi__put(src_ptr,
           nchunks,
@@ -401,7 +401,7 @@ dart__mpi__put_basic(
   }
 
   if (remainder > 0) {
-    DART_LOG_TRACE("dart_put:  MPI_Put (src %p, size %zu)", (const void *)src_ptr, remainder);
+    DART_LOG_TRACE("dart_put:  MPI_Put (src %p, size %zu)", src_ptr, remainder);
 
     CHECK_MPI_RET(
         dart__mpi__put(src_ptr,
@@ -456,7 +456,7 @@ dart__mpi__put_complex(
 
   DART_LOG_TRACE(
       "dart_put:  MPI_Put (src %p, size %zu, src_type %p, dst_type %p)",
-      (const void *)src_ptr, nelem, (const void*)src_type, (const void *) dst_type);
+      src_ptr, nelem, (const void*)src_type,  dst_type);
 
   CHECK_MPI_RET(
       dart__mpi__put(src_ptr,
@@ -631,7 +631,7 @@ dart_ret_t dart_accumulate(
 
   if (nchunks > 0) {
     DART_LOG_TRACE("dart_accumulate:  MPI_Accumulate (src %p, size %zu)",
-        (const void *) src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+        src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     CHECK_MPI_RET(
         MPI_Accumulate(
           src_ptr,
@@ -650,7 +650,7 @@ dart_ret_t dart_accumulate(
 
   if (remainder > 0) {
     DART_LOG_TRACE("dart_accumulate:  MPI_Accumulate (src %p, size %zu)",
-        (const void *)src_ptr, remainder);
+        src_ptr, remainder);
 
     MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
     CHECK_MPI_RET(
@@ -725,7 +725,7 @@ dart_ret_t dart_accumulate_blocking_local(
 
   if (nchunks > 0) {
     DART_LOG_TRACE("dart_accumulate:  MPI_Raccumulate (src %p, size %zu)",
-        (const void *)src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+        src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     CHECK_MPI_RET(
         MPI_Raccumulate(
           src_ptr,
@@ -745,7 +745,7 @@ dart_ret_t dart_accumulate_blocking_local(
 
   if (remainder > 0) {
     DART_LOG_TRACE("dart_accumulate:  MPI_Raccumulate (src %p, size %zu)",
-        (const void *)src_ptr, remainder);
+        src_ptr, remainder);
 
     MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
     CHECK_MPI_RET(
@@ -1357,7 +1357,7 @@ dart_ret_t dart_wait_local(
   if (handleptr != NULL && *handleptr != DART_HANDLE_NULL) {
     dart_handle_t handle = *handleptr;
     DART_LOG_TRACE("dart_wait_local:     handle: %p",
-                  (const void *) handle);
+                   handle);
     DART_LOG_TRACE("dart_wait_local:     handle->dest: %d",
                    handle->dest);
     DART_LOG_TRACE("dart_wait_local:     handle->win:  %p",
@@ -1386,7 +1386,7 @@ dart_ret_t dart_wait(
   if (handleptr != NULL && *handleptr != DART_HANDLE_NULL) {
     dart_handle_t handle = *handleptr;
     DART_LOG_TRACE("dart_wait:     handle: %p",
-                   (const void *)handle);
+                   handle);
     DART_LOG_TRACE("dart_wait:     handle->dest: %d",
                    handle->dest);
     DART_LOG_TRACE("dart_wait:     handle->win:  %"PRIu64"",

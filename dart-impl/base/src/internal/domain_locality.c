@@ -145,7 +145,7 @@ dart_ret_t dart__base__locality__domain__copy(
   dart_domain_locality_t           * domain_dst)
 {
   DART_LOG_TRACE("dart__base__locality__domain__copy() %s (%p -> %p)",
-                 domain_src->domain_tag, (const void *)domain_src, (const void *)domain_dst);
+                 domain_src->domain_tag, domain_src, domain_dst);
   dart_ret_t ret = DART_ERR_OTHER;
 
   dart__base__locality__domain__init(domain_dst);

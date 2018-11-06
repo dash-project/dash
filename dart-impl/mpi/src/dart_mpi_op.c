@@ -135,7 +135,7 @@ static void dart__mpi__op_invoke_custom(
 {
   struct dart_operation_struct *dart_op = get_op(*dptr_);
   DART_LOG_TRACE("Invoking custom operation %p (op=%p, ud=%p)",
-                 (const void *)dart_op, (const void *)(uintptr_t)dart_op->op, dart_op->user_data);
+                 dart_op, dart_op->op, dart_op->user_data);
   // forward to the user operator
   dart_op->op(lhs_, rhs_, *len_, dart_op->user_data);
 }
@@ -180,8 +180,8 @@ dart_op_create(
 
   DART_LOG_DEBUG(
     "Created custom operation %p (op=%p, ud=%p, mpi_type=%p, mpi_op=%p)",
-    (const void *)dart_op, (const void *)(uintptr_t)dart_op->op, dart_op->user_data, (const void*)(uintptr_t)dart_op->mpi_type_op,
-    (const void*)(uintptr_t)dart_op->mpi_op);
+    dart_op, dart_op->op, dart_op->user_data, dart_op->mpi_type_op,
+    dart_op->mpi_op);
 
   register_op(dart_op);
   struct dart_operation_struct **new_op_ptr;
@@ -241,7 +241,7 @@ static struct dart_operation_struct * get_op(MPI_Datatype mpi_type)
 
   if (elem == NULL) {
     DART_LOG_ERROR("Unknown MPI datatype %p for custom operation detected!",
-                   (const void*)(uintptr_t)mpi_type);
+                   mpi_type);
   }
   dart__base__mutex_unlock(&hash_mtx);
 
