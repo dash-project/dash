@@ -1,4 +1,5 @@
 #include "GlobStaticMemTest.h"
+#include <dash/GlobRef.h>
 #include <dash/allocator/GlobalAllocator.h>
 #include <dash/memory/UniquePtr.h>
 
@@ -294,11 +295,11 @@ TEST_F(GlobStaticMemTest, MakeUniqueMoveSemantics)
 
 TEST_F(GlobStaticMemTest, HBWSpaceTest)
 {
-  using value_t  = int;
-  using memory_t = dash::GlobStaticMem<dash::HBWSpace>;
+  using value_t     = int;
+  using memory_t    = dash::GlobStaticMem<dash::HBWSpace>;
   using allocator_t = dash::GlobalAllocator<value_t, memory_t>;
 
-  memory_t memory{dash::Team::All()};
+  memory_t    memory{dash::Team::All()};
   allocator_t alloc{&memory};
 
   auto const gptr = alloc.allocate(10);
@@ -313,4 +314,59 @@ TEST_F(GlobStaticMemTest, HBWSpaceTest)
   ASSERT_EQ_U(*lbegin, dash::myid());
 
   alloc.deallocate(gptr, 10);
+}
+
+TEST_F(GlobStaticMemTest, CopyGlobPtr)
+{
+  using value_t   = int;
+  using pointer_t = dash::GlobMemAllocPtr<value_t>;
+
+  using memory_t    = dash::GlobStaticMem<dash::HostSpace>;
+  using allocator_t = dash::GlobalAllocator<pointer_t, memory_t>;
+
+  memory_t    memory{dash::Team::All()};
+  allocator_t alloc{&memory};
+
+  constexpr size_t nlelem = 10;
+
+  // allocate from DART Buddy allocator
+  auto gptr_memalloc = dash::memalloc<value_t>(nlelem);
+
+  // initialize local memory allocated by dash::memalloc
+  auto *lbegin = gptr_memalloc.local();
+  EXPECT_TRUE_U(lbegin);
+  std::iota(lbegin, std::next(lbegin, nlelem), dash::myid() * nlelem);
+
+  /**
+   *  Symmetric allocation of an array of pointers:
+   *
+   *  Each units stores allocates space for a single global pointer
+   */
+
+  // Note: implicit barrier
+  constexpr size_t n_ptr = 1;
+  auto gmem = alloc.allocate(n_ptr);
+
+  // Copy pointer of local memalloc segment to neighbor
+  auto neigh = (dash::myid() + 1) % dash::size();
+  gmem[neigh] = gptr_memalloc;
+
+  dash::barrier();
+
+
+  //Obtain the first local element of the array
+  auto *gmem_lbegin = dash::local_begin(gmem, dash::Team::All().myid());
+  EXPECT_TRUE_U(gmem_lbegin);
+  auto gmem_lbegin_ptrmemalloc = *gmem_lbegin;
+
+  // verify...
+  std::vector<value_t> exp(nlelem);
+  std::iota(std::begin(exp), std::end(exp), neigh * nlelem);
+
+  for (std::size_t idx = 0; idx < nlelem; ++idx, gmem_lbegin_ptrmemalloc++) {
+    auto value = static_cast<value_t>(*gmem_lbegin_ptrmemalloc);
+    EXPECT_EQ_U(exp[idx], value);
+  }
+
+  dash::barrier();
 }
