@@ -173,7 +173,7 @@ namespace internal {
     InputIter end,
     RangeFunc f)
   {
-    internal::taskloop(begin, end, dash::tasks::num_chunks{dart_task_num_threads()}, f);
+    internal::taskloop(begin, end, dash::tasks::num_chunks{dash::tasks::numthreads()}, f);
   }
 
   template<
@@ -189,7 +189,7 @@ namespace internal {
   ->  typename
       std::enable_if<!internal::is_chunk_definition<RangeFunc>::value, void>::type
   {
-    internal::taskloop(begin, end, dash::tasks::num_chunks{dart_task_num_threads()},
+    internal::taskloop(begin, end, dash::tasks::num_chunks{dash::tasks::numthreads()},
                        f, dependency_generator);
   }
 
@@ -239,7 +239,7 @@ namespace internal {
     RangeFunc   f)
   {
     internal::taskloop(begin, end,
-                       dash::tasks::num_chunks{dart_task_num_threads()}, f, name);
+                       dash::tasks::num_chunks{dash::tasks::numthreads()}, f, name);
   }
 
   template<
@@ -257,7 +257,7 @@ namespace internal {
       std::enable_if<!internal::is_chunk_definition<RangeFunc>::value, void>::type
   {
     internal::taskloop(begin, end,
-                       dash::tasks::num_chunks{dart_task_num_threads()},
+                       dash::tasks::num_chunks{dash::tasks::numthreads()},
                        f, dependency_generator, name);
   }
 

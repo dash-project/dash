@@ -1,5 +1,5 @@
-#ifndef DART__BASE__INTERNAL__TASKING_H__
-#define DART__BASE__INTERNAL__TASKING_H__
+#ifndef DART__INTERNAL__TASKING_H__
+#define DART__INTERNAL__TASKING_H__
 
 #include <stdbool.h>
 #include <pthread.h>
@@ -11,6 +11,7 @@
 #include <dash/dart/tasking/dart_tasking_context.h>
 #include <dash/dart/tasking/dart_tasking_phase.h>
 #include <dash/dart/tasking/dart_tasking_envstr.h>
+#include <dash/dart/tasking/dart_tasking_tasklock.h>
 
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;
@@ -82,7 +83,7 @@ struct dart_task_data {
   struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
   dart_wait_handle_t        *wait_handle;
   const char                *descr;           // the description of the task
-  dart_mutex_t               mutex;
+  dart_tasklock_t            lock;
   dart_taskphase_t           phase;
   int                        delay;           // delay in case this task yields
   int                        num_children;
@@ -239,4 +240,4 @@ void dart__tasking__utility_thread(
   void  *data
 ) DART_INTERNAL;
 
-#endif /* DART__BASE__INTERNAL__TASKING_H__ */
+#endif /* DART__INTERNAL__TASKING_H__ */
