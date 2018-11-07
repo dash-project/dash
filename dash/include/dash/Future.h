@@ -269,7 +269,7 @@ public:
 #if defined(__clang__) && (__clang_major__ < 6)
   {}
 #else
-	  = default;
+	 noexcept = default;
 #endif
 
   /**
