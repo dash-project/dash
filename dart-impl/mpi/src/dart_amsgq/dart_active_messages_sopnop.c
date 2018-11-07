@@ -25,7 +25,7 @@ typedef struct message_cache_s  message_cache_t;
 
 struct dart_amsgq_impl_data {
   MPI_Win           queue_win;
-  void             *queue_ptr;
+  int64_t          *queue_ptr;
   uint64_t          queue_size;
   MPI_Comm          comm;
   dart_mutex_t      send_mutex;
