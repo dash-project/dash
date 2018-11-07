@@ -1129,11 +1129,11 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent)
       dash::TILE(blocksize[1])),
     teamspec_2d,
     dash::Team::All());
-  
+
   for(int i=0; i<pattern_t::ndim(); ++i){
     EXPECT_EQ(pattern.teamspec().extent(i), 2);
     EXPECT_EQ(pattern.blocksize(i), blocksize[i]);
-    
+
     // check extent of last block
     // assuming that each unit only has a single local block
     int local_extent_expected = 0;
@@ -1143,18 +1143,18 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent)
                 ((i == 0) ?  0 : underfill[i]); break;
       case 2: local_extent_expected = blocksize[i] -
                 ((i != 0) ?  0 : underfill[i]); break;
-      case 3: local_extent_expected = blocksize[i] - underfill[i];
+      default: local_extent_expected = blocksize[i] - underfill[i];
     }
     EXPECT_EQ(pattern.local_extent(i), local_extent_expected);
     EXPECT_EQ(pattern.local_block(0).extent(i), local_extent_expected);
-    
+
     auto num_blocks_dim = pattern.blockspec().extent(i);
     std::array<index_t,2> coords = {};
     coords[i] = num_blocks_dim - 1;
     auto index   = pattern.blockspec().at(coords);
     auto extent  = pattern.block(index).extent(i);
     auto desired = blocksize[i] - underfill[i];
-    
+
     EXPECT_EQ_U(extent, desired);
   }
 }
@@ -1173,7 +1173,7 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent1Dim)
   index_t blocksize = 10;
   index_t underfill = 3;
   index_t extent    = blocksize * team_size - underfill;
-  
+
   auto size_spec    = dash::SizeSpec<1>(extent);
 
   // Check TilePattern
@@ -1183,7 +1183,7 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent1Dim)
       dash::TILE(blocksize)),
     teamspec_1d,
     dash::Team::All());
-  
+
   EXPECT_EQ(pattern.blocksize(0), blocksize);
 
   // check extent of last block
@@ -1193,7 +1193,7 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent1Dim)
     case 0:
     case 1:
     case 2: local_extent_expected = blocksize; break;
-    case 3: local_extent_expected = blocksize - underfill;
+    default: local_extent_expected = blocksize - underfill;
   }
   EXPECT_EQ(pattern.local_extent(0), local_extent_expected);
   EXPECT_EQ(pattern.local_block(0).extent(0), local_extent_expected);
