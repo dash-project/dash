@@ -63,7 +63,7 @@ public:
    *
    * \see dash::Future::valid
    */
-  Future() noexcept = default;
+  Future() noexcept(std::is_nothrow_constructible<ResultT>::value) = default;
 
   /**
    * Create a future from an already available value.
