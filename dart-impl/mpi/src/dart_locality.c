@@ -111,7 +111,7 @@ dart_ret_t dart_domain_find(
   dart_domain_locality_t       ** subdomain_out)
 {
   DART_LOG_DEBUG("dart_domain_find() domain_in(%p) domain_tag(%s)",
-                 (const void*)domain_in, domain_tag);
+                 domain_in, domain_tag);
   dart_ret_t ret = dart__base__locality__domain(
                      domain_in, domain_tag, subdomain_out);
   DART_LOG_DEBUG("dart_domain_find > %d", ret);

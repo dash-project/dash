@@ -456,7 +456,7 @@ dart__mpi__put_complex(
 
   DART_LOG_TRACE(
       "dart_put:  MPI_Put (src %p, size %zu, src_type %p, dst_type %p)",
-      src_ptr, nelem, (const void*)src_type,  dst_type);
+      src_ptr, nelem, src_type,  dst_type);
 
   CHECK_MPI_RET(
       dart__mpi__put(src_ptr,

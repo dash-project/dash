@@ -175,7 +175,7 @@ dart_type_create_strided(
 
   *newtype = (dart_datatype_t)new_struct;
 
-  DART_LOG_TRACE("Created new strided data type %p", (const void*)new_struct);
+  DART_LOG_TRACE("Created new strided data type %p", new_struct);
 
   return DART_OK;
 }

@@ -367,7 +367,7 @@ dart_team_memalloc_aligned_dynamic(
   DART_LOG_DEBUG(
     "dart_team_memalloc_aligned_dynamic: bytes:%lu gptr_unitid:%d "
     "baseptr:%p segid:%i across team %d",
-    nbytes, gptr_unitid, (const void*)sub_mem, segment->segid, teamid);
+    nbytes, gptr_unitid, sub_mem, segment->segid, teamid);
 
   return DART_OK;
 }
