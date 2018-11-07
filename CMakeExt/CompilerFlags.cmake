@@ -130,12 +130,12 @@ if (ENABLE_DEV_COMPILER_WARNINGS
         set (DASH_DEVELOPER_CC_FLAGS
             "${DASH_DEVELOPER_CC_FLAGS}  -Wpointer-sign")
 
-        # if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
-        #     set (DASH_DEVELOPER_CC_FLAGS
-        #         "${DASH_DEVELOPER_CC_FLAGS} -diag-disable=10006")
-        #     set (DASH_DEVELOPER_CXX_FLAGS
-        #         "${DASH_DEVELOPER_CXX_FLAGS} -diag-disable=10006")
-        # endif()
+         if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
+             # This disables unknown compiler options for Intel
+             # including a lot of warnings from above
+             set (DASH_DEVELOPER_CXX_FLAGS
+                 "${DASH_DEVELOPER_CXX_FLAGS} -diag-disable=10006")
+         endif()
     endif()
 endif()
 
