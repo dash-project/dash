@@ -124,7 +124,7 @@ public:
 
 private:
   _storage_type  _mutexes;
-  Team         * _team;
+  Team         * _team{};
   bool           _is_initialized = false;
 };
 

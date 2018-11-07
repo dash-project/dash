@@ -450,7 +450,7 @@ private:
   struct Data {
     const Region_t&                     region;
     std::function<void(dart_handle_t&)> get_halos;
-    dart_handle_t                       handle;
+    dart_handle_t                       handle{};
   };
 
   void update_halo_intern(Data& data) {

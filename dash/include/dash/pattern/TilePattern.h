@@ -7,7 +7,7 @@
 #include <type_traits>
 #include <iostream>
 #include <sstream>
-
+#include <utility>
 #include <dash/Types.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>
@@ -105,11 +105,11 @@ public:
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
     team_unit_t unit;
-    IndexType   index;
+    IndexType   index{};
   } local_index_t;
   typedef struct {
     team_unit_t unit;
-    std::array<index_type, NumDimensions> coords;
+    std::array<index_type, NumDimensions> coords{};
   } local_coords_t;
 
 private:
@@ -230,40 +230,28 @@ public:
    * \endcode
    */
   TilePattern(
-    /// TilePattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         & sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions.
-    const DistributionSpec_t & dist,
-    /// Cartesian arrangement of units within the team
-    const TeamSpec_t         & teamspec,
-    /// Team containing units to which this pattern maps its elements
-    dash::Team               & team     = dash::Team::All())
-  : _distspec(dist),
-    _team(&team),
-    _myid(_team->myid()),
-    _teamspec(
-      teamspec,
-      _distspec,
-      *_team),
-    _memory_layout(sizespec.extents()),
-    _nunits(_teamspec.size()),
-    _blocksize_spec(initialize_blocksizespec(
-        sizespec,
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        sizespec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_memory_layout(
-        initialize_local_extents(_myid)),
-    _local_capacity(
-        initialize_local_capacity(_local_memory_layout))
+      /// TilePattern size (extent, number of elements) in every dimension
+      const SizeSpec_t &sizespec,
+      /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
+      /// all dimensions.
+      DistributionSpec_t dist,
+      /// Cartesian arrangement of units within the team
+      const TeamSpec_t &teamspec,
+      /// Team containing units to which this pattern maps its elements
+      dash::Team &team = dash::Team::All())
+    : _distspec(std::move(dist))
+    , _team(&team)
+    , _myid(_team->myid())
+    , _teamspec(teamspec, _distspec, *_team)
+    , _memory_layout(sizespec.extents())
+    , _nunits(_teamspec.size())
+    , _blocksize_spec(
+          initialize_blocksizespec(sizespec, _distspec, _teamspec))
+    , _blockspec(initialize_blockspec(sizespec, _blocksize_spec, _teamspec))
+    , _local_blockspec(
+          initialize_local_blockspec(_blockspec, _blocksize_spec, _teamspec))
+    , _local_memory_layout(initialize_local_extents(_myid))
+    , _local_capacity(initialize_local_capacity(_local_memory_layout))
   {
     DASH_LOG_TRACE("TilePattern()", "(sizespec, dist, teamspec, team)");
     initialize_local_range();
@@ -303,36 +291,27 @@ public:
    * \endcode
    */
   TilePattern(
-    /// TilePattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         & sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
-    const DistributionSpec_t & dist = DistributionSpec_t(),
-    /// Team containing units to which this pattern maps its elements
-    Team                     & team = dash::Team::All())
-  : _distspec(dist),
-    _team(&team),
-    _myid(_team->myid()),
-    _teamspec(_distspec, *_team),
-    _memory_layout(sizespec.extents()),
-    _nunits(_teamspec.size()),
-    _blocksize_spec(initialize_blocksizespec(
-        sizespec,
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        sizespec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_memory_layout(
-        initialize_local_extents(_myid)),
-    _local_capacity(
-        initialize_local_capacity(_local_memory_layout))
+      /// TilePattern size (extent, number of elements) in every dimension
+      const SizeSpec_t &sizespec,
+      /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
+      /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
+      /// dimensions
+      DistributionSpec_t dist = DistributionSpec_t(),
+      /// Team containing units to which this pattern maps its elements
+      Team &team = dash::Team::All())
+    : _distspec(std::move(dist))
+    , _team(&team)
+    , _myid(_team->myid())
+    , _teamspec(_distspec, *_team)
+    , _memory_layout(sizespec.extents())
+    , _nunits(_teamspec.size())
+    , _blocksize_spec(
+          initialize_blocksizespec(sizespec, _distspec, _teamspec))
+    , _blockspec(initialize_blockspec(sizespec, _blocksize_spec, _teamspec))
+    , _local_blockspec(
+          initialize_local_blockspec(_blockspec, _blocksize_spec, _teamspec))
+    , _local_memory_layout(initialize_local_extents(_myid))
+    , _local_capacity(initialize_local_capacity(_local_memory_layout))
   {
     DASH_LOG_TRACE("TilePattern()", "(sizespec, dist, team)");
     initialize_local_range();
@@ -424,8 +403,8 @@ public:
     DASH_LOG_TRACE("TilePattern.unit_at()",
                    "coords:",   coords,
                    "viewspec:", viewspec);
-    std::array<IndexType, NumDimensions> unit_ts_coords;
-    std::array<IndexType, NumDimensions> block_coords;
+    std::array<IndexType, NumDimensions> unit_ts_coords{};
+    std::array<IndexType, NumDimensions> block_coords{};
     // Unit id from diagonals in cartesian index space,
     // e.g (x + y + z) % nunits
     for (auto d = 0; d < NumDimensions; ++d) {
@@ -451,8 +430,8 @@ public:
   {
     DASH_LOG_TRACE("TilePattern.unit_at()",
                    "coords:",   coords);
-    std::array<IndexType, NumDimensions> unit_ts_coords;
-    std::array<IndexType, NumDimensions> block_coords;
+    std::array<IndexType, NumDimensions> unit_ts_coords{};
+    std::array<IndexType, NumDimensions> block_coords{};
     // Unit id from diagonals in cartesian index space,
     // e.g (x + y + z) % nunits
     for (auto d = 0; d < NumDimensions; ++d) {
@@ -583,9 +562,9 @@ public:
                    "view:",         viewspec,
                    "local blocks:", _local_blockspec.extents());
     // Phase coordinates of element:
-    std::array<IndexType, NumDimensions> phase_coords;
+    std::array<IndexType, NumDimensions> phase_coords{};
     // Coordinates of the local block containing the element:
-    std::array<IndexType, NumDimensions> block_coords_l;
+    std::array<IndexType, NumDimensions> block_coords_l{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto vs_offset_d  = viewspec.offset(d);
       auto vs_coord_d   = local_coords[d] + vs_offset_d;
@@ -627,9 +606,9 @@ public:
                    "local coords:", local_coords,
                    "local blocks:", _local_blockspec.extents());
     // Phase coordinates of element:
-    std::array<IndexType, NumDimensions> phase_coords;
+    std::array<IndexType, NumDimensions> phase_coords{};
     // Coordinates of the local block containing the element:
-    std::array<IndexType, NumDimensions> block_coords_l;
+    std::array<IndexType, NumDimensions> block_coords_l{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto gcoord_d     = local_coords[d];
       auto block_size_d = _blocksize_spec.extent(d);
@@ -661,8 +640,8 @@ public:
     const std::array<IndexType, NumDimensions> & global_coords) const
   {
     local_coords_t l_coords;
-    std::array<IndexType, NumDimensions> local_coords;
-    std::array<IndexType, NumDimensions> unit_ts_coords;
+    std::array<IndexType, NumDimensions> local_coords{};
+    std::array<IndexType, NumDimensions> unit_ts_coords{};
     for (dim_t d = 0; d < NumDimensions; ++d) {
       auto nunits_d        = _teamspec.extent(d);
       auto blocksize_d     = _blocksize_spec.extent(d);
@@ -702,7 +681,7 @@ public:
   std::array<IndexType, NumDimensions> local_coords(
     const std::array<IndexType, NumDimensions> & global_coords) const
   {
-    std::array<IndexType, NumDimensions> local_coords;
+    std::array<IndexType, NumDimensions> local_coords{};
     for (dim_t d = 0; d < NumDimensions; ++d) {
       auto nunits_d        = _teamspec.extent(d);
       auto blocksize_d     = _blocksize_spec.extent(d);
@@ -742,9 +721,9 @@ public:
                                   unit);
 
       // Phase coordinates of element:
-      std::array<IndexType, NumDimensions> phase_coords;
+      std::array<IndexType, NumDimensions> phase_coords{};
       // Coordinates of the local block containing the element:
-      std::array<IndexType, NumDimensions> block_coords_l;
+      std::array<IndexType, NumDimensions> block_coords_l{};
       for (auto d = 0; d < NumDimensions; ++d) {
         auto gcoord_d     = l_coords[d];
         auto block_size_d = _blocksize_spec.extent(d);
@@ -784,7 +763,7 @@ public:
                    "unit:",    unit,
                    "lcoords:", local_coords);
     // Global coordinate of local element:
-    std::array<IndexType, NumDimensions> global_coords;
+    std::array<IndexType, NumDimensions> global_coords{};
     std::array<IndexType, NumDimensions> unit_ts_coords = _teamspec.coords(
                                                             unit);
     for (dim_t d = 0; d < NumDimensions; ++d) {
@@ -836,7 +815,7 @@ public:
                    "local block coords:", l_block_coord,
                    "phase coords:",       phase_coord);
     // Coordinate of element in local memory:
-    std::array<IndexType, NumDimensions> l_coords;
+    std::array<IndexType, NumDimensions> l_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       l_coords[d] = l_block_coord[d] * _blocksize_spec.extent(d) +
                     phase_coord[d];
@@ -892,9 +871,9 @@ public:
                    "gcoords:",  global_coords,
                    "viewspec:", viewspec);
     // Phase coordinates of element:
-    std::array<IndexType, NumDimensions> phase_coords;
+    std::array<IndexType, NumDimensions> phase_coords{};
     // Coordinates of the block containing the element:
-    std::array<IndexType, NumDimensions> block_coords;
+    std::array<IndexType, NumDimensions> block_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto vs_coord     = global_coords[d] + viewspec.offset(d);
       phase_coords[d]   = vs_coord % _blocksize_spec.extent(d);
@@ -1011,11 +990,11 @@ public:
   {
     DASH_LOG_TRACE("TilePattern.at()", "gcoords:",  global_coords);
     // Phase coordinates of element:
-    std::array<IndexType, NumDimensions> phase_coords;
+    std::array<IndexType, NumDimensions> phase_coords{};
     // Coordinates of the block containing the element:
-    std::array<IndexType, NumDimensions> block_coords;
+    std::array<IndexType, NumDimensions> block_coords{};
     // Local coordinates of the block containing the element:
-    std::array<IndexType, NumDimensions> l_block_coords;
+    std::array<IndexType, NumDimensions> l_block_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto nunits_d     = _teamspec.extent(d);
       auto gcoord_d     = global_coords[d];
@@ -1134,7 +1113,7 @@ public:
     /// Global coordinates of element
     const std::array<index_type, NumDimensions> & g_coords) const
   {
-    std::array<index_type, NumDimensions> block_coords;
+    std::array<index_type, NumDimensions> block_coords{};
     // Coord to block coord to unit coord:
     for (auto d = 0; d < NumDimensions; ++d) {
       block_coords[d] = g_coords[d] / _blocksize_spec.extent(d);
@@ -1158,8 +1137,8 @@ public:
   {
     local_index_t l_pos;
 
-    std::array<IndexType, NumDimensions> l_block_coords;
-    std::array<IndexType, NumDimensions> unit_ts_coords;
+    std::array<IndexType, NumDimensions> l_block_coords{};
+    std::array<IndexType, NumDimensions> unit_ts_coords{};
     for (dim_t d = 0; d < NumDimensions; ++d) {
       auto nunits_d      = _teamspec.extent(d);
       auto blocksize_d   = _blocksize_spec.extent(d);
@@ -1191,8 +1170,8 @@ public:
     auto block_coords = _blockspec.coords(global_block_index);
     DASH_LOG_TRACE_VAR("TilePattern.block", block_coords);
     DASH_LOG_TRACE_VAR("TilePattern.block", _blocksize_spec.extents());
-    std::array<index_type, NumDimensions> offsets;
-    std::array<size_type, NumDimensions>  extents;
+    std::array<index_type, NumDimensions> offsets{};
+    std::array<size_type, NumDimensions>  extents{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto blocksize_d = _blocksize_spec.extent(d);
       extents[d] = blocksize_d;
@@ -1263,8 +1242,8 @@ public:
     auto l_block_coords = _local_blockspec.coords(local_block_index);
     auto unit_ts_coords = _teamspec.coords(unit);
     DASH_LOG_TRACE_VAR("TilePattern.local_block", l_block_coords);
-    std::array<index_type, NumDimensions> offsets;
-    std::array<size_type, NumDimensions>  extents;
+    std::array<index_type, NumDimensions> offsets{};
+    std::array<size_type, NumDimensions>  extents{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto blocksize_d = _blocksize_spec.extent(d);
       auto nunits_d    = _teamspec.extent(d);
@@ -1290,7 +1269,7 @@ public:
     DASH_LOG_TRACE_VAR("TilePattern.local_block_local()",
                        local_block_index);
     // Initialize viewspec result with block extents:
-    std::array<index_type, NumDimensions> offsets;
+    std::array<index_type, NumDimensions> offsets{};
     std::array<size_type, NumDimensions>  extents =
       _blocksize_spec.extents();
     // Local block index to local block coords:
@@ -1531,7 +1510,7 @@ private:
                    "distspec:", distspec.values(),
                    "teamspec:", teamspec.extents());
     // Extents of a single block:
-    std::array<SizeType, NumDimensions> s_blocks;
+    std::array<SizeType, NumDimensions> s_blocks{};
     if (sizespec.size() == 0 || teamspec.size() == 0) {
       DASH_LOG_TRACE("TilePattern.init_blocksizespec >",
                      "sizespec or teamspec uninitialized",
@@ -1581,7 +1560,7 @@ private:
                          empty_blockspec.extents());
       return empty_blockspec;
     }
-    std::array<SizeType, NumDimensions> n_blocks;
+    std::array<SizeType, NumDimensions> n_blocks{};
     for (auto d = 0; d < NumDimensions; ++d) {
       SizeType max_blocksize_d = blocksizespec.extent(d);
       SizeType max_blocks_d    = dash::math::div_ceil(
@@ -1691,7 +1670,7 @@ private:
     }
     auto unit_ts_coords = _teamspec.coords(unit);
     DASH_LOG_TRACE_VAR("TilePattern.init_local_extents", unit_ts_coords);
-    ::std::array<SizeType, NumDimensions> l_extents;
+    ::std::array<SizeType, NumDimensions> l_extents{};
     for (auto d = 0; d < NumDimensions; ++d) {
       // Number of units in dimension:
       auto num_units_d        = _teamspec.extent(d);

@@ -4,6 +4,7 @@
 #include <dash/dart/if/dart.h>
 #include <dash/Types.h>
 
+#include <dash/Exception.h>
 #include <dash/internal/Logging.h>
 
 #include <dash/Exception.h>
@@ -85,8 +86,8 @@ public:
     _bucket_last(bucket_last),
     _idx(position),
     _bucket_it(bucket_it),
-    _bucket_phase(bucket_phase),
-    _is_nullptr(false)
+    _bucket_phase(bucket_phase)
+
   { }
 
   template<typename BucketIter>
@@ -98,8 +99,8 @@ public:
     _bucket_last(bucket_last),
     _idx(position),
     _bucket_it(bucket_first),
-    _bucket_phase(0),
-    _is_nullptr(false)
+    _bucket_phase(0)
+
   {
     DASH_LOG_TRACE_VAR("GlobHeapLocalPtr(idx)", position);
 #ifdef DASH_ENABLE_TRACE_LOGGING
@@ -490,7 +491,7 @@ std::ostream & operator<<(
           ElementType, IndexType, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  ElementType * lptr = static_cast<ElementType *>(it);
+  auto *             lptr = static_cast<ElementType *>(it);
   ss << "dash::GlobHeapLocalPtr<"
      << typeid(ElementType).name() << ">"
      << "("

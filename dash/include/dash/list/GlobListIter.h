@@ -219,7 +219,7 @@ private:
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobMemType          * _globmem;
+  GlobMemType          * _globmem{};
   /// The node element referenced at the iterator's position.
   node_type            * _node     = nullptr;
   /// Unit id of the active unit

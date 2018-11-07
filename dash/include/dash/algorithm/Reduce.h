@@ -26,8 +26,8 @@ namespace internal {
           void *userdata)
   {
     using local_result_t = struct local_result<ValueType>;
-    const local_result_t* in    = static_cast<const local_result_t*>(invec);
-          local_result_t* inout = static_cast<local_result_t*>(inoutvec);
+    const auto* in       = static_cast<const local_result_t*>(invec);
+    auto*       inout    = static_cast<local_result_t*>(inoutvec);
     F& fn = *static_cast<F*>(userdata);
     if (in->valid) {
       if (inout->valid) {

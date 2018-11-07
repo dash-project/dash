@@ -58,20 +58,33 @@ if (ENABLE_DEV_COMPILER_WARNINGS
   OR ENABLE_EXT_COMPILER_WARNINGS
   AND NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
 
-  set (DASH_DEVELOPER_CCXX_FLAGS
+
+  if (ENABLE_EXT_COMPILER_WARNINGS)
+      set (DASH_DEVELOPER_CXX_FLAGS
+          "${DASH_DEVELOPER_CXX_FLAGS} -Wall -pedantic -Werror")
+      set (DASH_DEVELOPER_CC_FLAGS
+          "${DASH_DEVELOPER_CC_FLAGS} -Wall -pedantic -Werror")
+
+      if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+          set (DASH_DEVELOPER_CC_FLAGS
+              "${DASH_DEVELOPER_CC_FLAGS} -Wno-format")
+
+      endif()
+   endif()
+      # else()
+    set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
 
    if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" AND OPENMP_FOUND)
     set (DASH_DEVELOPER_CCXX_FLAGS
          "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
-  endif()
 
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-qual")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wdisabled-optimization -Wformat")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wdisabled-optimization")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Winit-self")
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -85,32 +98,20 @@ if (ENABLE_DEV_COMPILER_WARNINGS
 
   # C++-only warning flags
 
-  set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
+  set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CXX_FLAGS} ${DASH_DEVELOPER_CCXX_FLAGS}")
 
   set (DASH_DEVELOPER_CXX_FLAGS
          "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy")
 
-  if (ENABLE_EXT_COMPILER_WARNINGS)
-    # this flag causes warnings on DASH_ASSERT_RETURNS
-    set (DASH_DEVELOPER_CXX_FLAGS
-         "${DASH_DEVELOPER_CXX_FLAGS} -Wsign-promo")
-    # this flag might help spot overflows in index computation but is too
-    # verbose in general
-    set (DASH_DEVELOPER_CXX_FLAGS
-         "${DASH_DEVELOPER_CXX_FLAGS} -Wstrict-overflow=2")
-    # some good hints, but too style-related to be used in general
-    set (DASH_DEVELOPER_CXX_FLAGS
-      "${DASH_DEVELOPER_CXX_FLAGS} -Weffc++ -Wno-error=effc++")
-  endif()
-
   set (DASH_DEVELOPER_CXX_FLAGS
        "${DASH_DEVELOPER_CXX_FLAGS} -Wreorder -Wnon-virtual-dtor")
+
   set (DASH_DEVELOPER_CXX_FLAGS
        "${DASH_DEVELOPER_CXX_FLAGS} -Woverloaded-virtual")
 
   # C-only warning flags
 
-  set (DASH_DEVELOPER_CC_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
+  set (DASH_DEVELOPER_CC_FLAGS "${DASH_DEVELOPER_CC_FLAGS} ${DASH_DEVELOPER_CCXX_FLAGS}")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast")
   set (DASH_DEVELOPER_CC_FLAGS
@@ -123,8 +124,8 @@ if (ENABLE_DEV_COMPILER_WARNINGS
 
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wpointer-sign")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
+   #set (DASH_DEVELOPER_CC_FLAGS
+   #s    "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
 
   if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
     set (DASH_DEVELOPER_CC_FLAGS
@@ -133,17 +134,19 @@ if (ENABLE_DEV_COMPILER_WARNINGS
          "${DASH_DEVELOPER_CXX_FLAGS} -diag-disable=10006")
   endif()
 
+  endif()
 endif()
 
 # disable warnings on unknown warning flags
 
-set (CC_WARN_FLAG  "${CC_WARN_FLAG}  -Wall -Wextra -Wpedantic")
-set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wall -Wextra -Wpedantic")
+set (CC_WARN_FLAG " ${CC_WARN_FLAG} ${DASH_DEVELOPER_CC_FLAGS}")
+set (CXX_WARN_FLAG "${CXX_WARN_FLAG} ${DASH_DEVELOPER_CXX_FLAGS}")
 
-set (CC_WARN_FLAG  "${DASH_DEVELOPER_CC_FLAGS}")
-set (CXX_WARN_FLAG "${DASH_DEVELOPER_CXX_FLAGS}")
+# disabled
+set (CC_WARN_FLAG "${CC_WARN_FLAG} -Wno-format-pedantic")
+set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-sign-compare -Wno-unused-function")
 
-if (ENABLE_DEV_COMPILER_WARNINGS)
+if (ENABLE_DEV_COMPILER_WARNINGS AND NOT ENABLE_EXT_COMPILER_WARNINGS)
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
     # Flags for C and C++:
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-function")
@@ -165,7 +168,7 @@ if(OPENMP_FOUND)
 endif()
 
 
-# See https://en.cppreference.com/w/cpp/compiler_support for 
+# See https://en.cppreference.com/w/cpp/compiler_support for
 # minimum versions
 # Set C++ compiler flags:
 

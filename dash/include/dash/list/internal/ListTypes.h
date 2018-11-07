@@ -14,7 +14,7 @@ private:
   typedef ListNode<ElementType> self_t;
 
 public:
-  ElementType  value;
+  ElementType  value{};
   //TODO: this should be a global node pointer
   self_t     * lprev = nullptr;
   self_t     * lnext = nullptr;

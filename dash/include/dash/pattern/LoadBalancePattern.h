@@ -153,7 +153,8 @@ public:
     double avg_bytes_per_cycle =
       static_cast<double>(total_bytes_per_cycle) / tloc.global_units().size();
 
-    for (auto unit_bps : unit_bytes_per_cycle) {
+    unit_mem_perc.reserve(unit_bytes_per_cycle.size());
+for (auto unit_bps : unit_bytes_per_cycle) {
       unit_mem_perc.push_back(unit_bps / avg_bytes_per_cycle);
     }
     return unit_mem_perc;
@@ -278,7 +279,7 @@ public:
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
     team_unit_t                            unit;
-    IndexType                             index;
+    IndexType                             index{};
   } local_index_t;
   typedef struct {
     team_unit_t                            unit;
@@ -846,7 +847,7 @@ public:
   {
     DASH_LOG_TRACE_VAR("LoadBalancePattern.block_at()", g_coords);
 
-    index_type block_idx = static_cast<index_type>(unit_at(g_coords[0]));
+    auto block_idx = static_cast<index_type>(unit_at(g_coords[0]));
 
     DASH_LOG_TRACE_VAR("LoadBalancePattern.block_at >", block_idx);
     return block_idx;

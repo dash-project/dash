@@ -4,7 +4,7 @@
 #include <dash/util/UniversalMember.h>
 
 #include <memory>
-
+#include <utility>
 using namespace dash;
 
 
@@ -14,7 +14,9 @@ class MovableType {
 public:
   MovableType() = delete;
 
-  explicit MovableType(const T & v) : _value(v) {
+  explicit MovableType(T v)
+    : _value(std::move(v))
+  {
     DASH_LOG_TRACE("MovableType", "MovableType(T)");
   }
 
@@ -46,7 +48,9 @@ class ImmovableType {
 public:
   ImmovableType() = delete;
 
-  explicit ImmovableType(const T & v) : _value(v) {
+  explicit ImmovableType(T v)
+    : _value(std::move(v))
+  {
     DASH_LOG_TRACE("ImmovableType", "ImmovableType(T)");
   }
 

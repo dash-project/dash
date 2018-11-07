@@ -275,7 +275,7 @@ inline void LogWrapper(
   std::ostringstream msg;
   // Extract file name from path
   const char * filebase = strrchr(filepath, '/');
-  const char * filename = (filebase != 0) ? filebase + 1 : filepath;
+  const char*  filename = (filebase != nullptr) ? filebase + 1 : filepath;
   Log_Recursive(
     level,
     filename,
@@ -303,7 +303,7 @@ inline void LogVarWrapper(
   msg << "|- " << var_name << ": " << var_value;
   // Extract file name from path
   const char * filebase = strrchr(filepath, '/');
-  const char * filename = (filebase != 0) ? filebase + 1 : filepath;
+  const char*  filename = (filebase != nullptr) ? filebase + 1 : filepath;
   Log_Recursive(
     level,
     filename,

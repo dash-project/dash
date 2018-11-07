@@ -94,7 +94,7 @@ dart_segment_alloc(dart_segmentdata_t *segdata, dart_segment_type type)
   DART_LOG_DEBUG("dart_segment_alloc() team_id:%d",
                  segdata->team_id);
 
-  int16_t segid;
+  int16_t segid = INT16_MAX;
   dart_seghash_elem_t *elem = NULL;
   if (type == DART_SEGMENT_LOCAL_ALLOC) {
     // no need to check for overflow

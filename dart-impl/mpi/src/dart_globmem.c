@@ -460,7 +460,7 @@ dart_ret_t dart_team_memfree(
   dart_gptr_t gptr)
 {
   int16_t segid = gptr.segid;
-  char  * sub_mem;
+  char  * sub_mem = NULL;
   dart_team_t teamid = gptr.teamid;
 
   if (DART_GPTR_ISNULL(gptr)) {

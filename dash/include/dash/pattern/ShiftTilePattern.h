@@ -1,12 +1,12 @@
 #ifndef DASH__SHIFT_TILE_PATTERN_H_
 #define DASH__SHIFT_TILE_PATTERN_H_
 
-#include <assert.h>
+#include <cassert>
 #include <functional>
 #include <cstring>
 #include <array>
 #include <type_traits>
-
+#include <utility>
 #include <dash/Types.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>
@@ -105,7 +105,7 @@ public:
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
     team_unit_t unit;
-    IndexType   index;
+    IndexType   index{};
   } local_index_t;
   typedef struct {
     team_unit_t unit;
@@ -128,10 +128,10 @@ private:
   SizeType                    _nunits          = dash::Team::All().size();
   /// Major tiled dimension, i.e. lowest tiled dimension in row-major,
   /// highest tiled dimension in column-major order
-  dim_t                       _major_tiled_dim;
+  dim_t                       _major_tiled_dim{};
   /// Minor tiled dimension, i.e. any dimension different from major tiled
   /// dimension
-  dim_t                       _minor_tiled_dim;
+  dim_t                       _minor_tiled_dim{};
   /// Maximum extents of a block in this pattern
   BlockSizeSpec_t             _blocksize_spec;
   /// Arrangement of blocks in all dimensions
@@ -233,43 +233,38 @@ public:
    * \endcode
    */
   ShiftTilePattern(
-    /// ShiftTilePattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         & sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions.
-    const DistributionSpec_t & dist,
-    /// Cartesian arrangement of units within the team
-    const TeamSpec_t         & teamspec,
-    /// Team containing units to which this pattern maps its elements
-    dash::Team               & team     = dash::Team::All())
-  : _distspec(dist),
-    _team(&team),
+      /// ShiftTilePattern size (extent, number of elements) in every
+      /// dimension
+      const SizeSpec_t &sizespec,
+      /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
+      /// all dimensions.
+      DistributionSpec_t dist,
+      /// Cartesian arrangement of units within the team
+      TeamSpec_t teamspec,
+      /// Team containing units to which this pattern maps its elements
+      dash::Team &team = dash::Team::All())
+    : _distspec(std::move(dist))
+    , _team(&team)
+    ,
     // Degrading to 1-dimensional team spec for now:
-//  _teamspec(_distspec, *_team),
-//  _teamspec(
-//    teamspec,
-//    _distspec,
-//    *_team),
-    _teamspec(teamspec),
-    _memory_layout(sizespec.extents()),
-    _nunits(_teamspec.size()),
-    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
-    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions),
-    _blocksize_spec(initialize_blocksizespec(
-        sizespec,
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        sizespec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _major_tiled_dim,
-        _nunits)),
-    _local_memory_layout(
-        initialize_local_extents(_team->myid())),
-    _local_capacity(initialize_local_capacity()) {
+    //  _teamspec(_distspec, *_team),
+    //  _teamspec(
+    //    teamspec,
+    //    _distspec,
+    //    *_team),
+    _teamspec(std::move(teamspec))
+    , _memory_layout(sizespec.extents())
+    , _nunits(_teamspec.size())
+    , _major_tiled_dim(initialize_major_tiled_dim(_distspec))
+    , _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions)
+    , _blocksize_spec(
+          initialize_blocksizespec(sizespec, _distspec, _teamspec))
+    , _blockspec(initialize_blockspec(sizespec, _blocksize_spec, _teamspec))
+    , _local_blockspec(
+          initialize_local_blockspec(_blockspec, _major_tiled_dim, _nunits))
+    , _local_memory_layout(initialize_local_extents(_team->myid()))
+    , _local_capacity(initialize_local_capacity())
+  {
     DASH_LOG_TRACE("ShiftTilePattern()", "(sizespec, dist, teamspec, team)");
     initialize_local_range();
   }
@@ -308,36 +303,30 @@ public:
    * \endcode
    */
   ShiftTilePattern(
-    /// ShiftTilePattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         & sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
-    const DistributionSpec_t & dist = DistributionSpec_t(),
-    /// Team containing units to which this pattern maps its elements
-    Team                     & team = dash::Team::All())
-  : _distspec(dist),
-    _team(&team),
-    _teamspec(_distspec, *_team),
-    _memory_layout(sizespec.extents()),
-    _nunits(_teamspec.size()),
-    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
-    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions),
-    _blocksize_spec(initialize_blocksizespec(
-        sizespec,
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        sizespec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _major_tiled_dim,
-        _nunits)),
-    _local_memory_layout(
-        initialize_local_extents(_team->myid())),
-    _local_capacity(initialize_local_capacity()) {
+      /// ShiftTilePattern size (extent, number of elements) in every
+      /// dimension
+      const SizeSpec_t &sizespec,
+      /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
+      /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
+      /// dimensions
+      DistributionSpec_t dist = DistributionSpec_t(),
+      /// Team containing units to which this pattern maps its elements
+      Team &team = dash::Team::All())
+    : _distspec(std::move(dist))
+    , _team(&team)
+    , _teamspec(_distspec, *_team)
+    , _memory_layout(sizespec.extents())
+    , _nunits(_teamspec.size())
+    , _major_tiled_dim(initialize_major_tiled_dim(_distspec))
+    , _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions)
+    , _blocksize_spec(
+          initialize_blocksizespec(sizespec, _distspec, _teamspec))
+    , _blockspec(initialize_blockspec(sizespec, _blocksize_spec, _teamspec))
+    , _local_blockspec(
+          initialize_local_blockspec(_blockspec, _major_tiled_dim, _nunits))
+    , _local_memory_layout(initialize_local_extents(_team->myid()))
+    , _local_capacity(initialize_local_capacity())
+  {
     DASH_LOG_TRACE("ShiftTilePattern()", "(sizespec, dist, team)");
     initialize_local_range();
   }
@@ -611,9 +600,9 @@ public:
                    "view:",         viewspec,
                    "local blocks:", _local_blockspec.extents());
     // Phase coordinates of element:
-    std::array<IndexType, NumDimensions> phase_coords;
+    std::array<IndexType, NumDimensions> phase_coords{};
     // Coordinates of the local block containing the element:
-    std::array<IndexType, NumDimensions> block_coords_l;
+    std::array<IndexType, NumDimensions> block_coords_l{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto vs_offset_d  = viewspec.offset(d);
       auto vs_coord_d   = local_coords[d] + vs_offset_d;
@@ -645,9 +634,9 @@ public:
     DASH_LOG_TRACE("ShiftTilePattern.local_at()", local_coords,
                    "local blocks:", _local_blockspec.extents());
     // Phase coordinates of element:
-    std::array<IndexType, NumDimensions> phase_coords;
+    std::array<IndexType, NumDimensions> phase_coords{};
     // Coordinates of the local block containing the element:
-    std::array<IndexType, NumDimensions> block_coords_l;
+    std::array<IndexType, NumDimensions> block_coords_l{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto vs_coord_d   = local_coords[d];
       auto block_size_d = _blocksize_spec.extent(d);
@@ -828,7 +817,7 @@ public:
                    "local block coords:", l_block_coord,
                    "phase coords:",       phase_coord);
     // Coordinate of element in local memory:
-    std::array<IndexType, NumDimensions> l_coords;
+    std::array<IndexType, NumDimensions> l_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       l_coords[d] = l_block_coord[d] * _blocksize_spec.extent(d) +
                     phase_coord[d];
@@ -884,9 +873,9 @@ public:
                    "gcoords:",  global_coords,
                    "viewspec:", viewspec);
     // Phase coordinates of element:
-    std::array<IndexType, NumDimensions> phase_coords;
+    std::array<IndexType, NumDimensions> phase_coords{};
     // Coordinates of the block containing the element:
-    std::array<IndexType, NumDimensions> block_coords;
+    std::array<IndexType, NumDimensions> block_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto vs_coord     = global_coords[d] + viewspec.offset(d);
       phase_coords[d]   = vs_coord % _blocksize_spec.extent(d);
@@ -1011,9 +1000,9 @@ public:
     // to ensure the balanced property.
     DASH_LOG_TRACE_VAR("ShiftTilePattern.at()", global_coords);
     // Phase coordinates of element:
-    std::array<IndexType, NumDimensions> phase_coords;
+    std::array<IndexType, NumDimensions> phase_coords{};
     // Coordinates of the block containing the element:
-    std::array<IndexType, NumDimensions> block_coords;
+    std::array<IndexType, NumDimensions> block_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto coord      = global_coords[d];
       phase_coords[d] = coord % _blocksize_spec.extent(d);
@@ -1171,8 +1160,8 @@ public:
     auto block_coords = _blockspec.coords(global_block_index);
     DASH_LOG_TRACE_VAR("ShiftTilePattern.block", block_coords);
     DASH_LOG_TRACE_VAR("ShiftTilePattern.block", _blocksize_spec.extents());
-    std::array<index_type, NumDimensions> offsets;
-    std::array<size_type, NumDimensions>  extents;
+    std::array<index_type, NumDimensions> offsets{};
+    std::array<size_type, NumDimensions>  extents{};
     for (auto d = 0; d < NumDimensions; ++d) {
       extents[d] = _blocksize_spec.extent(d);
       offsets[d] = block_coords[d] * extents[d];
@@ -1195,7 +1184,7 @@ public:
     // Local block index to local block coords:
     auto l_block_coords = _local_blockspec.coords(local_block_index);
     DASH_LOG_TRACE_VAR("ShiftTilePattern.local_block()", l_block_coords);
-    std::array<index_type, NumDimensions> l_elem_coords;
+    std::array<index_type, NumDimensions> l_elem_coords{};
     // TODO: This is convenient but less efficient:
     // Translate local coordinates of first element in local block to global
     // coordinates:
@@ -1207,8 +1196,8 @@ public:
     // Global coordinates of first element in block:
     auto g_elem_coords = global(l_elem_coords);
     DASH_LOG_TRACE_VAR("ShiftTilePattern.local_block()", g_elem_coords);
-    std::array<index_type, NumDimensions> offsets;
-    std::array<size_type, NumDimensions>  extents;
+    std::array<index_type, NumDimensions> offsets{};
+    std::array<size_type, NumDimensions>  extents{};
     for (auto d = 0; d < NumDimensions; ++d) {
       offsets[d] = g_elem_coords[d];
       extents[d] = _blocksize_spec.extent(d);
@@ -1241,7 +1230,7 @@ public:
     index_type local_block_index) const {
     DASH_LOG_TRACE_VAR("ShiftTilePattern.local_block_local()", local_block_index);
     // Initialize viewspec result with block extents:
-    std::array<index_type, NumDimensions> offsets;
+    std::array<index_type, NumDimensions> offsets{};
     std::array<size_type, NumDimensions>  extents =
       _blocksize_spec.extents();
     // Local block index to local block coords:
@@ -1475,7 +1464,7 @@ private:
     const TeamSpec_t         & teamspec) const {
     DASH_LOG_TRACE("ShiftTilePattern.init_blocksizespec()");
     // Extents of a single block:
-    std::array<SizeType, NumDimensions> s_blocks;
+    std::array<SizeType, NumDimensions> s_blocks{};
     for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = distspec[d];
       DASH_LOG_TRACE("ShiftTilePattern.init_blocksizespec d",
@@ -1504,7 +1493,7 @@ private:
                    "block size:",   blocksizespec.extents(),
                    "team size:",    teamspec.extents());
     // Number of blocks in all dimensions:
-    std::array<SizeType, NumDimensions> n_blocks;
+    std::array<SizeType, NumDimensions> n_blocks{};
     for (auto d = 0; d < NumDimensions; ++d) {
       SizeType max_blocksize_d = blocksizespec.extent(d);
       SizeType max_blocks_d    = dash::math::div_ceil(
@@ -1616,7 +1605,7 @@ private:
     DASH_LOG_DEBUG_VAR("ShiftTilePattern._local_extents()", unit);
     DASH_LOG_TRACE_VAR("ShiftTilePattern._local_extents", unit_ts_coords);
 #endif
-    ::std::array<SizeType, NumDimensions> l_extents;
+    ::std::array<SizeType, NumDimensions> l_extents{};
     for (auto d = 0; d < NumDimensions; ++d) {
       // Number of units in dimension:
       auto num_units_d        = _teamspec.extent(d);
