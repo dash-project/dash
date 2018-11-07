@@ -118,6 +118,9 @@ dart_amsg_sopnop_openq(
 
   memset(res->queue_ptr, 0, win_size);
 
+  // properly initialize the writecnt of the second queue
+  *(int64_t*)(((intptr_t)res->queue_ptr) + OFFSET_WRITECNT(1)) = INT32_MIN;
+
   MPI_Win_lock_all(0, res->queue_win);
 
   res->message_cache = calloc(team_data->size, sizeof(message_cache_t*));
@@ -297,6 +300,48 @@ dart_amsg_sopnop_trysend(
   return dart_amsg_sopnop_sendbuf(target, amsgq, msg, msg_size);
 }
 
+static void
+process_queue(
+  struct dart_amsgq_impl_data * amsgq,
+  int64_t queuenum,
+  int64_t tailpos)
+{
+
+  // process the messages by invoking the functions on the data supplied
+  int64_t  pos      = 0;
+  int      num_msg  = 0;
+  uint8_t *dbuf     = (void*)((intptr_t)amsgq->queue_ptr +
+                                  OFFSET_DATA(queuenum, amsgq->queue_size));
+
+  while (pos < tailpos) {
+#ifdef DART_ENABLE_LOGGING
+    int64_t startpos = pos;
+#endif
+    // unpack the message
+    struct dart_amsg_header *header =
+                                (struct dart_amsg_header *)(dbuf + pos);
+    pos += sizeof(struct dart_amsg_header);
+    void *data     = dbuf + pos;
+    pos += header->data_size;
+
+    DART_ASSERT_MSG(pos <= tailpos,
+                    "Message out of bounds (expected %ld but saw %lu)\n",
+                      tailpos, pos);
+
+    // invoke the message
+    DART_LOG_INFO("Invoking active message %p id=%d from %i on data %p of "
+                  "size %i starting from tailpos %ld",
+                  header->fn,
+                  header->msgid,
+                  header->remote.id,
+                  data,
+                  header->data_size,
+                  startpos);
+    header->fn(data);
+    num_msg++;
+  }
+}
+
 static dart_ret_t
 amsg_sopnop_process_internal(
   struct dart_amsgq_impl_data * amsgq,
@@ -351,7 +396,7 @@ amsg_sopnop_process_internal(
       const int64_t processing_signal     = INT32_MIN;
       const int64_t neg_processing_signal = -processing_signal;
 
-      // swap the queue number
+      // swap the queue number and reset writecnt
       MPI_Fetch_and_op(
         &queue_swap_sum,
         &tmp,
@@ -360,8 +405,19 @@ amsg_sopnop_process_internal(
         OFFSET_QUEUENUM,
         MPI_SUM,
         amsgq->queue_win);
+
+      MPI_Fetch_and_op(
+        &neg_processing_signal,
+        &writecnt,
+        MPI_INT64_T,
+        unitid,
+        OFFSET_WRITECNT(newqueue),
+        MPI_SUM,
+        amsgq->queue_win);
+
       MPI_Win_flush(unitid, amsgq->queue_win);
       DART_ASSERT(tmp == queuenum);
+      DART_ASSERT(writecnt >= processing_signal);
 
       // wait for all writers to finish
       MPI_Fetch_and_op(
@@ -406,52 +462,8 @@ amsg_sopnop_process_internal(
       DART_LOG_TRACE("Starting processing queue %ld: tailpos %ld",
                      queuenum, tailpos);
 
-      // process the messages by invoking the functions on the data supplied
-      int64_t  pos      = 0;
-      int      num_msg  = 0;
-      uint8_t *dbuf     = (void*)((intptr_t)amsgq->queue_ptr +
-                                      OFFSET_DATA(queuenum, amsgq->queue_size));
+      process_queue(amsgq, queuenum, tailpos);
 
-      while (pos < tailpos) {
-  #ifdef DART_ENABLE_LOGGING
-        int64_t startpos = pos;
-  #endif
-        // unpack the message
-        struct dart_amsg_header *header =
-                                    (struct dart_amsg_header *)(dbuf + pos);
-        pos += sizeof(struct dart_amsg_header);
-        void *data     = dbuf + pos;
-        pos += header->data_size;
-
-        DART_ASSERT_MSG(pos <= tailpos,
-                        "Message out of bounds (expected %ld but saw %lu)\n",
-                         tailpos, pos);
-
-        // invoke the message
-        DART_LOG_INFO("Invoking active message %p id=%d from %i on data %p of "
-                      "size %i starting from tailpos %ld",
-                      header->fn,
-                      header->msgid,
-                      header->remote.id,
-                      data,
-                      header->data_size,
-                      startpos);
-        header->fn(data);
-        num_msg++;
-      }
-
-      // reset writecnt
-      MPI_Fetch_and_op(
-        &neg_processing_signal,
-        &writecnt,
-        MPI_INT64_T,
-        unitid,
-        OFFSET_WRITECNT(queuenum),
-        MPI_SUM,
-        amsgq->queue_win);
-
-      MPI_Win_flush(unitid, amsgq->queue_win);
-      DART_ASSERT(writecnt >= processing_signal);
     }
   } while (blocking && tailpos > 0);
   dart__base__mutex_unlock(&amsgq->processing_mutex);
