@@ -21,6 +21,7 @@
 typedef struct cached_message_s cached_message_t;
 typedef struct message_cache_s  message_cache_t;
 
+#define PROCESSING_SIGNAL ((int64_t)INT32_MIN)
 #define MSGCACHE_SIZE (4*1024)
 
 struct dart_amsgq_impl_data {
@@ -119,7 +120,7 @@ dart_amsg_sopnop_openq(
   memset(res->queue_ptr, 0, win_size);
 
   // properly initialize the writecnt of the second queue
-  *(int64_t*)(((intptr_t)res->queue_ptr) + OFFSET_WRITECNT(1)) = INT32_MIN;
+  *(int64_t*)(((intptr_t)res->queue_ptr) + OFFSET_WRITECNT(1)) = PROCESSING_SIGNAL;
 
   MPI_Win_lock_all(0, res->queue_win);
 
@@ -196,7 +197,7 @@ dart_amsg_sopnop_sendbuf(
         OFFSET_TAILPOS(queuenum),
         MPI_SUM,
         amsgq->queue_win);
-      MPI_Win_flush_local(target.id, amsgq->queue_win);
+      MPI_Win_flush(target.id, amsgq->queue_win);
 
       if (offset >= 0 && (offset + msg_size) <= amsgq->queue_size) break;
 
@@ -261,8 +262,8 @@ dart_amsg_sopnop_sendbuf(
   MPI_Win_flush(target.id, amsgq->queue_win);
 
   DART_LOG_INFO("Sent message of size %zu with payload %zu to unit "
-                "%d starting at offset %ld",
-                msg_size, data_size, target.id, offset);
+                "%d starting at offset %ld (writecnt=%ld)",
+                msg_size, data_size, target.id, offset, writecnt-1);
 
   return DART_OK;
 }
@@ -393,8 +394,8 @@ amsg_sopnop_process_internal(
       int64_t newqueue = (queuenum == 0) ? 1 : 0;
       int64_t queue_swap_sum = (queuenum == 0) ? 1 : -1;
 
-      const int64_t processing_signal     = INT32_MIN;
-      const int64_t neg_processing_signal = -processing_signal;
+      const int64_t processing_signal     = PROCESSING_SIGNAL;
+      const int64_t neg_processing_signal = -PROCESSING_SIGNAL;
 
       // swap the queue number and reset writecnt
       MPI_Fetch_and_op(
@@ -431,7 +432,8 @@ amsg_sopnop_process_internal(
       MPI_Win_flush(unitid, amsgq->queue_win);
 
       if (writecnt > 0) {
-        DART_LOG_TRACE("Waiting for writecnt=%ld writers to finish", writecnt);
+        DART_LOG_TRACE("Waiting for writecnt=%ld writers on queue %ld to finish",
+                       writecnt, queuenum);
 
         do {
           MPI_Fetch_and_op(
@@ -442,9 +444,11 @@ amsg_sopnop_process_internal(
             OFFSET_WRITECNT(queuenum),
             MPI_NO_OP,
             amsgq->queue_win);
-          MPI_Win_flush_local(unitid, amsgq->queue_win);
+          MPI_Win_flush(unitid, amsgq->queue_win);
         } while (writecnt > processing_signal);
+        DART_LOG_TRACE("Done waiting for writers on queue %ld", queuenum);
       }
+
 
       // reset tailpos
       // NOTE: using MPI_REPLACE here is valid as no-one else will write to it
