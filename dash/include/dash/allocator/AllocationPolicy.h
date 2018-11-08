@@ -15,7 +15,7 @@ std::ostream& operator<<(std::ostream& os, const dart_gptr_t& dartptr);
 namespace dash {
 
 enum class global_allocation_policy : uint8_t {
-  /// All units allocate the same amount of memory
+  /// All units collectively allocate global memory
   collective,
 
   /// only one unit allocates in global memory
