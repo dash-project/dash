@@ -76,6 +76,12 @@ if (ENABLE_DEV_COMPILER_WARNINGS
                 "${DASH_DEVELOPER_CC_FLAGS} -Wno-format-pedantic")
         endif()
 
+        # Prevent Clang from suggesting braces
+        if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+            set (DASH_DEVELOPER_CXX_FLAGS
+                "${DASH_DEVELOPER_CXX_FLAGS} -Wno-missing-braces")
+        endif()
+
         # Also ignore signed/unsigned comparison
         set (DASH_DEVELOPER_CXX_FLAGS
             "${DASH_DEVELOPER_CXX_FLAGS} -Wno-sign-compare")
