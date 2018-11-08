@@ -277,8 +277,8 @@ private:
   /// The view's offset and extent within the referenced list.
   ViewSpec_t        _viewspec;
 
-  dart_gptr_t       _gprev;
-  dart_gptr_t       _gnext;
+  dart_gptr_t       _gprev{};
+  dart_gptr_t       _gnext{};
 };
 
 } // namespace dash

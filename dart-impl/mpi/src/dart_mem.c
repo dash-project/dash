@@ -51,7 +51,7 @@ num_level(size_t size)
   if(size > ((size_t)1 << (sizeof(size_t)*8 - 1))) {
     return 0xFFFFFFFF;
   }
-  
+
   while (shifter < size) {
     shifter <<= 1;
     level++;
@@ -131,13 +131,13 @@ _mark_parent(struct dart_buddy * self, int index) {
 ssize_t
 dart_buddy_alloc(struct dart_buddy * self, size_t s) {
   // honor the alignment
-  int size = (s >> DART_MEM_ALIGN_BITS);
+  size_t size = (s >> DART_MEM_ALIGN_BITS);
   if ((size<<DART_MEM_ALIGN_BITS) < s) ++size;
   size = (int)next_pow_of_2(size);
-  int length = 1 << self->level;
+  size_t length = 1 << self->level;
 
   if (size > length) {
-    DART_LOG_ERROR("Allocation size larger than total allocator size (%zu > %d)",
+    DART_LOG_ERROR("Allocation size larger than total allocator size (%zu > %zu)",
                    s, length<<DART_MEM_ALIGN_BITS);
     return -1;
   }

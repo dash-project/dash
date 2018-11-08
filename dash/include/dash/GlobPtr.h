@@ -30,7 +30,7 @@ bool operator!=(
 namespace dash {
 
 namespace internal {
-  static bool is_local(dart_gptr_t gptr) {
+  static inline bool is_local(dart_gptr_t gptr) {
     dart_team_unit_t luid;
     DASH_ASSERT_RETURNS(
       dart_team_myid(gptr.teamid, &luid),
@@ -465,7 +465,7 @@ public:
    *           is not local to the calling unit.
    */
   value_type * local() {
-    void *addr = 0;
+    void *addr = nullptr;
     if (dart_gptr_getaddr(_rbegin_gptr, &addr) == DART_OK) {
       return static_cast<value_type*>(addr);
     }
@@ -480,7 +480,7 @@ public:
    *           is not local to the calling unit.
    */
   const value_type * local() const {
-    void *addr = 0;
+    void *addr = nullptr;
     if (dart_gptr_getaddr(_rbegin_gptr, &addr) == DART_OK) {
       return static_cast<const value_type*>(addr);
     }

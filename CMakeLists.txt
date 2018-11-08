@@ -110,7 +110,7 @@ if (ENABLE_THREADSUPPORT)
 endif()
 
 if (ENABLE_COMPTIME_RED)
-  include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
+    #include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
 endif()
 
 # Load build modules to locate libraries after environment setup

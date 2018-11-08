@@ -189,7 +189,9 @@ void BenchmarkParams::print_pinning()
       << std::setw( 5)     << "core"
       << std::setw( 5)     << "CPU"
       << '\n';
-  for (global_unit_t unit{0}; unit < dash::size(); ++unit) {
+  for (global_unit_t unit{0};
+       unit < static_cast<dash::global_unit_t>(dash::size());
+       ++unit) {
     auto uloc = dash::util::UnitLocality(unit);
     oss << std::left         << "--   "
         << std::setw( 5)     << uloc.unit_id()
@@ -231,4 +233,3 @@ void BenchmarkParams::print_section_end() const
 
 } // namespace util
 } // namespace dash
-

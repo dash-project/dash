@@ -22,7 +22,7 @@
 /* Width of line number field in log messages in number of characters */
 #define LINE_WIDTH 4
 /* Maximum length of a single log message in number of characters */
-#define MAX_MESSAGE_LENGTH 256;
+#define MAX_MESSAGE_LENGTH 256
 
 
 static dart_mutex_t logmutex = DART_MUTEX_INITIALIZER;
@@ -115,9 +115,8 @@ dart__base__log_message(
   }
   va_list argp;
   va_start(argp, format);
-  const int maxlen = MAX_MESSAGE_LENGTH;
-  char      msg_buf[maxlen];
-  vsnprintf(msg_buf, maxlen, format, argp);
+  char      msg_buf[MAX_MESSAGE_LENGTH];
+  vsnprintf(msg_buf, MAX_MESSAGE_LENGTH, format, argp);
 //  if (sn_ret < 0 || sn_ret >= maxlen) {
 //    break;
 //  }

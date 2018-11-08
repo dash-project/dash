@@ -11,8 +11,8 @@
 
 #ifdef __GNUC__
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <execinfo.h>
 #include <cxxabi.h>
 

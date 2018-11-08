@@ -31,7 +31,7 @@ dart_allocator_new(
   ret = dart_team_memalloc_aligned(team, pool_size, DART_TYPE_BYTE, &base_gptr);
 
   if (ret != DART_OK) {
-    DART_LOG_ERROR("%s: Failed to allocate global memory pool!", __FUNCTION__);
+    DART_LOG_ERROR("%s: Failed to allocate global memory pool!", __func__);
     dart_buddy_delete(buddy_allocator);
     return ret;
   }

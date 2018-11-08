@@ -91,7 +91,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
     return;
   }
   // Array to store local copy:
-  int * local_array = new int[num_elem_copy];
+  auto *local_array = new int[num_elem_copy];
   // Array of handles, one for each dart_get_handle:
   std::vector<dart_handle_t> handles;
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
@@ -163,7 +163,7 @@ TEST_F(DARTOnesidedTest, StridedGetSimple) {
   }
 
   dash::barrier();
-  int *buf = new int[num_elem_per_unit];
+  auto *buf = new int[num_elem_per_unit];
 
   dart_unit_t neighbor = (dash::myid() + 1) % dash::size();
   gptr.unitid = neighbor;
@@ -227,7 +227,7 @@ TEST_F(DARTOnesidedTest, StridedPutSimple) {
   dart_unit_t neighbor = (dash::myid() + 1) % dash::size();
   gptr.unitid = neighbor;
 
-  int *buf = new int[num_elem_per_unit];
+  auto *buf = new int[num_elem_per_unit];
   for (int i = 0; i < num_elem_per_unit; ++i) {
     buf[i] = i;
   }
@@ -299,7 +299,7 @@ TEST_F(DARTOnesidedTest, BlockedStridedToStrided) {
   dash::barrier();
 
   // global-to-local strided-to-contig
-  int *buf = new int[num_elem_per_unit];
+  auto *buf = new int[num_elem_per_unit];
   memset(buf, 0, sizeof(int)*num_elem_per_unit);
 
   dart_datatype_t to_type;
@@ -375,7 +375,7 @@ TEST_F(DARTOnesidedTest, IndexedGetSimple) {
 
   dash::barrier();
 
-  int *buf = new int[num_elem_per_unit];
+  auto *buf = new int[num_elem_per_unit];
   memset(buf, 0, sizeof(int)*num_elem_per_unit);
 
   // indexed-to-contig
@@ -447,7 +447,7 @@ TEST_F(DARTOnesidedTest, IndexedPutSimple) {
 
   dash::barrier();
 
-  int *buf = new int[num_elem_per_unit];
+  auto *buf = new int[num_elem_per_unit];
   for (int i = 0; i < num_elem_per_unit; ++i) {
     buf[i] = i;
   }
@@ -549,13 +549,13 @@ TEST_F(DARTOnesidedTest, IndexedToIndexedGet) {
 
   dash::barrier();
 
-  int *buf = new int[num_elem_per_unit];
+  auto *buf = new int[num_elem_per_unit];
   memset(buf, 0, sizeof(int)*num_elem_per_unit);
 
-  int *index_map_to = new int[num_elem_per_unit];
+  auto *index_map_to = new int[num_elem_per_unit];
   memset(index_map_to, 0, sizeof(int)*num_elem_per_unit);
 
-  int *index_map_from = new int[num_elem_per_unit];
+  auto *index_map_from = new int[num_elem_per_unit];
   memset(index_map_from, 0, sizeof(int)*num_elem_per_unit);
 
   // populate the flat list of indices to copy from

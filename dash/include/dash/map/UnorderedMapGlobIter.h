@@ -94,7 +94,7 @@ public:
 
   typedef struct {
     team_unit_t unit;
-    index_type  index;
+    index_type  index{};
   } local_index;
 
 public:
@@ -165,12 +165,10 @@ public:
    * Null-pointer constructor.
    */
   UnorderedMapGlobIter(std::nullptr_t)
-  : _map(nullptr),
-    _idx(-1),
-    _myid(DART_UNDEFINED_UNIT_ID),
-    _idx_unit_id(DART_UNDEFINED_UNIT_ID),
-    _idx_local_idx(-1),
-    _is_nullptr(true)
+    : _map(nullptr)
+    , _myid(DART_UNDEFINED_UNIT_ID)
+    , _idx_unit_id(DART_UNDEFINED_UNIT_ID)
+    , _is_nullptr(true)
   {
     DASH_LOG_TRACE("UnorderedMapGlobIter(nullptr)");
   }

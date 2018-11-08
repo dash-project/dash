@@ -102,7 +102,7 @@ TEST_F(CSRPatternTest, CopyGlobalToLocal) {
   dash::barrier();
 
   if (dash::myid() == 0) {
-    value_t *buf = new value_t[sum];
+    auto *buf = new value_t[sum];
     dash::copy(array.begin(), array.end(), buf);
 
     size_t idx = 0;

@@ -7,38 +7,34 @@
 namespace dash {
 
 template <typename T, dim_t NumDim, class PatternT>
-MatrixRefView<T, NumDim, PatternT>
-::MatrixRefView()
-: _dim(0), _mat(NULL)
+MatrixRefView<T, NumDim, PatternT>::MatrixRefView()
+  : _mat(nullptr)
 {
   DASH_LOG_TRACE("MatrixRefView()");
 }
 
 template <typename T, dim_t NumDim, class PatternT>
 template <class T_>
-MatrixRefView<T, NumDim, PatternT>
-::MatrixRefView(
-  const MatrixRefView<T_, NumDim, PatternT> & other)
-: _dim(other._dim)
+MatrixRefView<T, NumDim, PatternT>::MatrixRefView(
+    const MatrixRefView<T_, NumDim, PatternT>& other)
+  : _dim(other._dim)
   // cast from Matrix<T, ...> * to Matrix<const T, ...> *
-, _mat(reinterpret_cast< Matrix<T, NumDim, index_type, PatternT> * >(
-         other._mat))
-, _coord(other._coord)
-, _viewspec(other._viewspec)
-, _l_viewspec(other._l_viewspec)
+  , _mat(reinterpret_cast<Matrix<T, NumDim, index_type, PatternT>*>(
+        other._mat))
+  , _coord(other._coord)
+  , _viewspec(other._viewspec)
+  , _l_viewspec(other._l_viewspec)
 {
   DASH_LOG_TRACE("MatrixRefView(other)");
 }
 
 template <typename T, dim_t NumDim, class PatternT>
 template <class T_>
-MatrixRefView<T, NumDim, PatternT>
-::MatrixRefView(
-  Matrix<T_, NumDim, index_type, PatternT> * matrix)
-: _dim(0)
-, _mat(matrix)
-, _viewspec(matrix->extents())
-, _l_viewspec()
+MatrixRefView<T, NumDim, PatternT>::MatrixRefView(
+    Matrix<T_, NumDim, index_type, PatternT>* matrix)
+  : _mat(matrix)
+  , _viewspec(matrix->extents())
+  , _l_viewspec()
 {
   // TODO: Check if initializing local viewspec with default viewspec
   //       is okay.

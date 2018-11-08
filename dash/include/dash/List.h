@@ -283,8 +283,7 @@ public:
     Team & team = dash::Team::Null())
   : local(this),
     _team(&team),
-    _myid(team.myid()),
-    _remote_size(0)
+    _myid(team.myid())
   {
     DASH_LOG_TRACE("List() >", "default constructor");
   }
@@ -298,8 +297,7 @@ public:
     Team      & team  = dash::Team::All())
   : local(this),
     _team(&team),
-    _myid(team.myid()),
-    _remote_size(0)
+    _myid(team.myid())
   {
     DASH_LOG_TRACE("List(nelem,team)", "nelem:", nelem);
     if (_team->size() > 0) {
@@ -315,15 +313,11 @@ public:
    * Constructor, creates a new constainer instance with the specified
    * initial global container capacity and associated units.
    */
-  List(
-    size_type   nelem,
-    size_type   nlbuf,
-    Team      & team   = dash::Team::All())
-  : local(this),
-    _team(&team),
-    _myid(team.myid()),
-    _remote_size(0),
-    _local_buffer_size(nlbuf)
+  List(size_type nelem, size_type nlbuf, Team& team = dash::Team::All())
+    : local(this)
+    , _team(&team)
+    , _myid(team.myid())
+    , _local_buffer_size(nlbuf)
   {
     DASH_LOG_TRACE("List(nelem,nlbuf,team)",
                    "nelem:", nelem, "nlbuf:", nlbuf);
