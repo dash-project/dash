@@ -126,12 +126,16 @@ my @files;
 	  # DASH scripts
 	  #
 	  "dash/scripts/*.sh",
-          "dash/scripts/dashcc/*.in",
-          #
+	  "dash/scripts/dashcc/*.in",
+	  #
 	  # Documentation
 	  #
 	  "doc/config/*.dox",
-	  "doc/config/*.in"
+	  "doc/config/*.in",
+	  #
+	  # GoogleTest
+	  #
+	  "vendor/googletest/*"
         );
 
 
@@ -149,7 +153,7 @@ foreach my $path (@files)
 	if( $file =~ /\.(c|h|cc|cpp)$/ && -e "LICENSE" ) {
 	    system("cat ./LICENSE $file > $base/$file");
 	} else {
-	    system("cp $file $dirname");
+	    system("cp -r $file $dirname");
 	}
     }
 }
