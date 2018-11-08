@@ -196,7 +196,7 @@ std::ostream& operator<<(
  * The iterator provides element access via stencil points and for boundary
  * elements halo element access.
  */
-template <typename ElementT, typename PatternT, typename StencilSpecT,
+template <typename ElementT, typename PatternT, typename GlobMemT, typename StencilSpecT,
           StencilViewScope Scope>
 class StencilIterator {
 private:
@@ -206,11 +206,11 @@ private:
   static constexpr auto FastestDimension =
     MemoryArrange == ROW_MAJOR ? NumDimensions - 1 : 0;
 
-  using Self_t     = StencilIterator<ElementT, PatternT, StencilSpecT, Scope>;
+  using Self_t     = StencilIterator<ElementT, PatternT, GlobMemT, StencilSpecT, Scope>;
   using ViewSpec_t = typename PatternT::viewspec_type;
   using pattern_size_t        = typename PatternT::size_type;
   using RegionCoords_t        = RegionCoords<NumDimensions>;
-  using HaloBlock_t           = HaloBlock<ElementT, PatternT>;
+  using HaloBlock_t           = HaloBlock<ElementT, PatternT, GlobMemT>;
 
 public:
   // Iterator traits

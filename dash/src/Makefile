@@ -26,7 +26,7 @@ ifeq ($(DASH_ENABLE_ASSERTIONS),1)
 endif
 
 CXXFLAGS+=-DDASH_ENABLE_DEFAULT_INDEX_TYPE_LONG
-CXXFLAGS+=-std=c++11
+CXXFLAGS+=-std=c++14
 
 #CXXFLAGS+=-DDASH_DEBUG
 #CFLAGS+=-D_SVID_SOURCE
@@ -60,6 +60,7 @@ $(STATIC_CONFIG_H) : $(STATIC_CONFIG_H_IN)
 	sed "s/@CONF_AVAIL_BLAS@/false/"          | \
 	sed "s/@CONF_AVAIL_LAPACK@/false/"        | \
 	sed "s/@CONF_AVAIL_ALGO_SUMMA@/false/"    | \
+	sed "s/@CONF_AVAIL_MEMKIND@/false/"    | \
 	sed "s/@CONF_AVAIL_SCALAPACK@/false/"  > $(STATIC_CONFIG_H)
 
 

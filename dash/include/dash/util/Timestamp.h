@@ -2,7 +2,7 @@
 #define DASH__UTIL__TIMESTAMP_H_
 
 #include <dash/internal/Config.h>
-#include <limits.h>
+#include <climits>
 
 // OS X
 #if defined(DASH__PLATFORM__OSX)
@@ -37,14 +37,15 @@ class Timestamp {
   typedef unsigned long long counter_t;
 
  public:
-  virtual ~Timestamp() { };
-  virtual const counter_t & Value() const = 0;
+   virtual ~Timestamp() = default;
+   virtual const counter_t& Value() const = 0;
 
-  static double FrequencyScaling();
-  static double FrequencyPrescale();
-  static const char * VariantName();
-  inline static counter_t TimestampInfinity() {
-    return LLONG_MAX;
+   static double           FrequencyScaling();
+   static double           FrequencyPrescale();
+   static const char*      VariantName();
+   inline static counter_t TimestampInfinity()
+   {
+     return LLONG_MAX;
   }
   inline static counter_t TimestampNegInfinity() {
     return 0;

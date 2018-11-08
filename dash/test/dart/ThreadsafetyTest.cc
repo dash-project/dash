@@ -10,6 +10,7 @@
 #include <dash/Algorithm.h>
 #include <dash/Dimensional.h>
 #include <dash/allocator/EpochSynchronizedAllocator.h>
+#include <dash/memory/MemorySpace.h>
 #include <dash/util/TeamLocality.h>
 
 #include <mpi.h>
@@ -165,7 +166,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAlloc) {
 TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
   using elem_t = int;
-  using allocator_t = dash::allocator::EpochSynchronizedAllocator<elem_t>;
+  using allocator_t = dash::EpochSynchronizedAllocator<elem_t>;
 
   if (!dash::is_multithreaded()) {
     SKIP_TEST_MSG("requires support for multi-threading");
@@ -191,15 +192,15 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
     for (int i = 0; i < thread_iterations; ++i) {
 #pragma omp barrier
       allocator_t allocator(*team);
-      elem_t *vals = allocator.allocate_local(elem_per_thread);
+      auto vals = allocator.allocate_local(elem_per_thread);
       for (size_t j = 0; j < elem_per_thread; ++j) {
         vals[j] = thread_id;
       }
       dart_gptr_t gptr = allocator.attach(vals, elem_per_thread);
-      ASSERT_NE_U(DART_GPTR_NULL, gptr);
-      ASSERT_LT_U(gptr.segid, 0); // attached memory has segment ID < 0
+      ASSERT_FALSE_U(DART_GPTR_ISNULL(gptr));
+      auto gptr_r = gptr;
+      ASSERT_LT_U(gptr_r.segid, 0); // attached memory has segment ID < 0
       elem_t check[elem_per_thread];
-      dart_gptr_t gptr_r = gptr;
       gptr_r.unitid = (team->myid() + 1) % team->size();
       dash::dart_storage<elem_t> ds(elem_per_thread);
       ASSERT_EQ_U(
@@ -208,12 +209,12 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
       team->barrier();
 
-      for (size_t j = 0; j < elem_per_thread; ++j) {
-        ASSERT_EQ_U(check[j], thread_id);
+      for (int& j : check) {
+        ASSERT_EQ_U(j, thread_id);
       }
       team->barrier();
 
-      allocator.deallocate(gptr);
+      allocator.deallocate(gptr, elem_per_thread);
     }
 #pragma omp barrier
   }
@@ -222,9 +223,8 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
 
 TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
-
   using elem_t    = int;
-  using pointer_t = dash::GlobPtr< elem_t, dash::GlobUnitMem<elem_t> >;
+  using pointer_t   = dash::GlobMemAllocPtr<elem_t>;
 
   if (!dash::is_multithreaded()) {
     SKIP_TEST_MSG("requires support for multi-threading");
@@ -246,7 +246,7 @@ TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
   ASSERT_GT_U(team_all.size(), 0);
   ASSERT_GT_U(team_split.size(), 0);
 
-  pointer_t ptr[_num_threads];
+  std::vector<pointer_t> ptr(_num_threads);
 
 #pragma omp parallel num_threads(2)
   {
@@ -274,7 +274,7 @@ TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
       arr.barrier();
       ASSERT_EQ_U(static_cast<elem_t>(ptr[thread_id][0]), thread_id);
       arr.barrier();
-      dash::memfree(ptr[thread_id]);
+      dash::memfree(ptr[thread_id], elem_per_thread);
     }
   }
 #endif //!defined(DASH_ENABLE_OPENMP)
@@ -313,7 +313,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAlgorithm) {
     std::cout << "Thread " << thread_id << " has team " << team->dart_id() << std::endl;
     size_t num_elem = team->size() * elem_per_thread;
     array_t arr(num_elem, *team);
-    elem_t *vals = new elem_t[num_elem];
+    auto*   vals = new elem_t[num_elem];
     for (int i = 0; i < thread_iterations; ++i) {
 #pragma omp barrier
       dash::fill(arr.begin(), arr.end(), thread_id);

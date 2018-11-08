@@ -123,7 +123,7 @@ broadcast(
 template <class ValueType>
 ValueType broadcast(dash::Shared<ValueType>& shared)
 {
-  ValueType res;
+  ValueType res{};
   auto& team  = shared.team();
   auto  owner = shared.owner();
   ValueType *ptr = (team.myid() == owner) ? shared.local() : std::addressof(res);

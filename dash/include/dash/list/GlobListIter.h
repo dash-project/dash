@@ -20,7 +20,7 @@ namespace dash {
 template<
   typename ElementType,
   class    GlobMemType,
-  class    PointerType   = GlobPtr<ElementType>,
+  class    PointerType   = GlobPtr<ElementType, GlobMemType>,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobListIter
 : public std::iterator<
@@ -219,7 +219,7 @@ private:
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobMemType          * _globmem;
+  GlobMemType          * _globmem{};
   /// The node element referenced at the iterator's position.
   node_type            * _node     = nullptr;
   /// Unit id of the active unit

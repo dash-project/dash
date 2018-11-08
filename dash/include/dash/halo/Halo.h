@@ -2,7 +2,6 @@
 #define DASH__HALO__HALO_H__
 
 #include <dash/iterator/GlobIter.h>
-#include <dash/memory/GlobStaticMem.h>
 
 #include <dash/internal/Logging.h>
 #include <dash/util/FunctionalExpr.h>
@@ -804,12 +803,16 @@ std::ostream& operator<<(std::ostream& os, const HaloSpec<NumDimensions>& hs) {
 /**
  * Iterator to iterate over all region elements defined by \ref Region
  */
-template <typename ElementT, typename PatternT,
-          typename PointerT   = GlobPtr<ElementT, PatternT>,
-          typename ReferenceT = GlobRef<ElementT>>
+template <
+    typename ElementT,
+    typename PatternT,
+    typename GlobMemT,
+    typename PointerT =
+        typename GlobMemT::void_pointer::template rebind<ElementT>,
+    typename ReferenceT = GlobRef<ElementT>>
 class RegionIter {
 private:
-  using Self_t = RegionIter<ElementT, PatternT, PointerT, ReferenceT>;
+  using Self_t = RegionIter<ElementT, PatternT, GlobMemT, PointerT, ReferenceT>;
 
   static const auto NumDimensions = PatternT::ndim();
 
@@ -819,13 +822,14 @@ public:
   using value_type        = ElementT;
   using difference_type   = typename PatternT::index_type;
   using pointer           = PointerT;
+  using local_pointer     = typename pointer::local_type;
   using reference         = ReferenceT;
 
   using const_reference = const reference;
   using const_pointer   = const pointer;
 
-  using GlobMem_t =
-    GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
+  using GlobMem_t       = GlobMemT;
+
   using ViewSpec_t      = typename PatternT::viewspec_type;
   using pattern_index_t = typename PatternT::index_type;
   using pattern_size_t  = typename PatternT::size_type;
@@ -834,12 +838,22 @@ public:
   /**
    * Constructor, creates a region iterator.
    */
-  RegionIter(GlobMem_t* globmem, const PatternT* pattern,
-             const ViewSpec_t& _region_view, pattern_index_t pos,
-             pattern_size_t size)
-  : _globmem(globmem), _pattern(pattern), _region_view(_region_view), _idx(pos),
-    _max_idx(size - 1), _myid(pattern->team().myid()),
-    _lbegin(globmem->lbegin()) {}
+  RegionIter(
+      GlobMem_t*        globmem,
+      const PatternT*   pattern,
+      const ViewSpec_t& _region_view,
+      pattern_index_t   pos,
+      pattern_size_t    size)
+    : _globmem(globmem)
+    , _pattern(pattern)
+    , _region_view(_region_view)
+    , _idx(pos)
+    , _max_idx(size - 1)
+    , _myid(pattern->team().myid())
+    , _lbegin(dash::local_begin(
+          static_cast<pointer>(globmem->begin()), pattern->team().myid()))
+  {
+  }
 
   /**
    * Copy constructor.
@@ -887,7 +901,11 @@ public:
     auto coords    = glob_coords(_idx + n);
     auto local_pos = _pattern->local_index(coords);
 
-    return reference(_globmem->at(local_pos.unit, local_pos.index).dart_gptr());
+    auto p = static_cast<pointer>(_globmem->begin());
+    p.set_unit(local_pos.unit);
+    p += local_pos.index;
+    return *p;
+
   }
 
   dart_gptr_t dart_gptr() const { return operator[](_idx).dart_gptr(); }
@@ -898,9 +916,9 @@ public:
    */
   bool is_local() const { return (_myid == lpos().unit); }
 
-  GlobIter<ElementT, PatternT> global() const {
+  GlobIter<ElementT, PatternT, GlobMemT> global() const {
     auto g_idx = gpos();
-    return GlobIter<ElementT, PatternT>(_globmem, *_pattern, g_idx);
+    return GlobIter<ElementT, PatternT, GlobMemT>(_globmem, *_pattern, g_idx);
   }
 
   ElementT* local() const {
@@ -1083,7 +1101,7 @@ private:
   /// Unit id of the active unit
   team_unit_t _myid;
 
-  ElementT* _lbegin;
+  local_pointer _lbegin;
 
 };  // class HaloBlockIter
 
@@ -1113,17 +1131,16 @@ auto distance(
  * Provides \ref RegionIter and some region metadata like \ref RegionSpec,
  * size etc.
  */
-template <typename ElementT, typename PatternT>
+template <typename ElementT, typename PatternT, typename GlobMemT>
 class Region {
 private:
   static constexpr auto NumDimensions = PatternT::ndim();
 
 public:
-  using iterator       = RegionIter<ElementT, PatternT>;
+  using iterator       = RegionIter<ElementT, PatternT, GlobMemT>;
   using const_iterator = const iterator;
   using RegionSpec_t   = RegionSpec<NumDimensions>;
-  using GlobMem_t =
-    GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
+  using GlobMem_t      = GlobMemT;
   using ViewSpec_t     = typename PatternT::viewspec_type;
   using Border_t       = std::array<bool, NumDimensions>;
   using region_index_t = typename RegionSpec_t::region_index_t;
@@ -1171,9 +1188,9 @@ private:
   iterator           _end;
 };  // Region
 
-template <typename ElementT, typename PatternT>
+template <typename ElementT, typename PatternT, typename GlobMemT>
 std::ostream& operator<<(std::ostream&                     os,
-                         const Region<ElementT, PatternT>& region) {
+                         const Region<ElementT, PatternT, GlobMemT>& region) {
   os << "dash::halo::Region<" << typeid(ElementT).name() << ">"
      << "( view: " << region.view() << "; region spec: " << region.spec()
      << "; border regions: {";
@@ -1197,23 +1214,22 @@ std::ostream& operator<<(std::ostream&                     os,
  * Takes the local part of the NArray and builds halo and
  * boundary regions.
  */
-template <typename ElementT, typename PatternT>
+template <typename ElementT, typename PatternT, typename GlobMemT>
 class HaloBlock {
 private:
   static constexpr auto NumDimensions = PatternT::ndim();
 
-  using Self_t          = HaloBlock<ElementT, PatternT>;
+  using Self_t          = HaloBlock<ElementT, PatternT, GlobMemT>;
   using pattern_index_t = typename PatternT::index_type;
   using RegionSpec_t    = RegionSpec<NumDimensions>;
-  using Region_t        = Region<ElementT, PatternT>;
+  using Region_t        = Region<ElementT, PatternT, GlobMemT>;
   using RegionCoords_t  = RegionCoords<NumDimensions>;
   using region_extent_t = typename RegionSpec_t::region_extent_t;
 
 public:
   using Element_t = ElementT;
   using Pattern_t = PatternT;
-  using GlobMem_t =
-    GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
+  using GlobMem_t = GlobMemT;
   using GlobBoundSpec_t = GlobalBoundarySpec<NumDimensions>;
   using pattern_size_t  = typename PatternT::size_type;
   using ViewSpec_t      = typename PatternT::viewspec_type;
@@ -1579,9 +1595,9 @@ private:
   HaloExtsMax_t _halo_extents_max{};
 };  // class HaloBlock
 
-template <typename ElementT, typename PatternT>
+template <typename ElementT, typename PatternT, typename GlobMemT>
 std::ostream& operator<<(std::ostream&                        os,
-                         const HaloBlock<ElementT, PatternT>& haloblock) {
+                         const HaloBlock<ElementT, PatternT, GlobMemT>& haloblock) {
   bool begin = true;
   os << "dash::halo::HaloBlock<" << typeid(ElementT).name() << ">("
      << "view global: " << haloblock.view()

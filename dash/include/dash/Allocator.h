@@ -1,9 +1,14 @@
 #ifndef DASH__ALLOCATOR_H__INCLUDED
 #define DASH__ALLOCATOR_H__INCLUDED
 
-#include <dash/allocator/LocalAllocator.h>
-#include <dash/allocator/SymmetricAllocator.h>
+#include <dash/allocator/AllocatorTraits.h>
+#include <dash/allocator/GlobalAllocator.h>
+
 #include <dash/allocator/EpochSynchronizedAllocator.h>
+
+#include <dash/memory/MemorySpace.h>
+
+#include <dash/memory/SimpleMemoryPoolResource.h>
 
 namespace dash {
 

@@ -5,7 +5,7 @@
 #include <functional>
 #include <sstream>
 #include <iostream>
-
+#include <utility>
 #include <dash/Exception.h>
 #include <dash/internal/Logging.h>
 
@@ -45,9 +45,9 @@ private:
   /// Function called upon destruction of the future
   destroy_func_t _destroy_func;
   /// The value to be returned byt the future
-  ResultT        _value;
+  ResultT        _value{};
   /// Whether or not the value is available
-  bool           _ready = false;
+  bool           _ready{false};
 
 public:
   // For ostream output
@@ -63,14 +63,13 @@ public:
    *
    * \see dash::Future::valid
    */
-  Future() noexcept
-  { }
+  Future() noexcept(std::is_nothrow_constructible<ResultT>::value) = default;
 
   /**
    * Create a future from an already available value.
    */
-  Future(const ResultT & result)
-  : _value(result),
+  Future(ResultT  result) noexcept(std::is_nothrow_move_constructible<ResultT>::value)
+  : _value(std::move(result)),
     _ready(true)
   { }
 
@@ -79,9 +78,10 @@ public:
    *
    * \param get_func Function returning the result value.
    */
-  Future(const get_func_t & get_func)
-  : _get_func(get_func)
-  { }
+  Future(get_func_t get_func) noexcept
+    : _get_func(std::move(get_func))
+  {
+  }
 
   /**
    * Create a future using a function that returns the value and a function
@@ -91,12 +91,11 @@ public:
    * \param test_func Function returning \c true and assigning the result value
    *                  to the pointer passed to it if the value is available.
    */
-  Future(
-    const get_func_t     & get_func,
-    const test_func_t    & test_func)
-  : _get_func(get_func),
-    _test_func(test_func)
-  { }
+  Future(get_func_t get_func, test_func_t test_func) noexcept
+    : _get_func(std::move(get_func))
+    , _test_func(std::move(test_func))
+  {
+  }
 
   /**
    * Create a future using a function that returns the value and a function
@@ -109,13 +108,12 @@ public:
    * \param destroy_func Function called upon destruction of the future.
    */
   Future(
-    const get_func_t     & get_func,
-    const test_func_t    & test_func,
-    const destroy_func_t & destroy_func)
-  : _get_func(get_func),
-    _test_func(test_func),
-    _destroy_func(destroy_func)
-  { }
+      get_func_t get_func, test_func_t test_func, destroy_func_t destroy_func) noexcept
+    : _get_func(std::move(get_func))
+    , _test_func(std::move(test_func))
+    , _destroy_func(std::move(destroy_func))
+  {
+  }
 
   /**
    * Copy construction is not permited.
@@ -123,9 +121,13 @@ public:
   Future(const self_t& other) = delete;
 
   /**
-   * Default move constructor.
+   * Move constructor.
    */
-  Future(self_t&& other)      = default;
+  Future(self_t&& other) noexcept(
+      std::is_nothrow_move_assignable<Future>::value)
+  {
+    *this = std::move(other);
+  }
 
   /**
    * Destructor. Calls the \c destroy_func passed to the constructor,
@@ -143,10 +145,18 @@ public:
   self_t & operator=(const self_t& other) = delete;
 
   /**
-   * Move assignment is defaulted.
+   * Move assignment
    */
-  self_t & operator=(self_t&& other)      = default;
-
+  self_t& operator=(self_t&& other) noexcept(
+      std::is_nothrow_move_assignable<ResultT>::value)
+  {
+    _get_func     = std::move(other._get_func);
+    _test_func    = std::move(other._test_func);
+    _destroy_func = std::move(other._destroy_func);
+    _value        = std::move(other._value);
+    _ready        = other._ready;
+    return *this;
+  }
 
   /**
    * Wait for the value to become available. It is safe to call \ref get
@@ -250,7 +260,7 @@ private:
   /// Function called upon destruction of the future
   destroy_func_t _destroy_func;
   /// Whether or not the value is available
-  bool           _ready = false;
+  bool           _ready{false};
 
 public:
   // For ostream output
@@ -260,23 +270,29 @@ public:
       const Future<ResultT_> & future);
 
 public:
-
   /**
    * Default constructor, creates a future that invalid.
    *
    * \see dash::Future::valid
    */
-  Future() noexcept
-  { }
+  Future()
+// This commit fixes the issue:
+// https://lists.llvm.org/pipermail/cfe-commits/Week-of-Mon-20161121/177858.html
+#if defined(__clang__) && (__clang_major__ < 6)
+  {}
+#else
+	 noexcept = default;
+#endif
 
   /**
    * Create a future using a function that returns the value.
    *
    * \param get_func  Function blocking until the operation is complete.
    */
-  Future(const get_func_t & get_func)
-  : _get_func(get_func)
-  { }
+  Future(get_func_t get_func) noexcept
+    : _get_func(std::move(get_func))
+  {
+  }
 
   /**
    * Create a future using a function that returns the value and a function
@@ -285,12 +301,11 @@ public:
    * \param get_func  Function blocking until the operation is complete.
    * \param test_func Function returning \c true if the value is available.
    */
-  Future(
-    const get_func_t     & get_func,
-    const test_func_t    & test_func)
-  : _get_func(get_func),
-    _test_func(test_func)
-  { }
+  Future(get_func_t get_func, test_func_t test_func) noexcept
+    : _get_func(std::move(get_func))
+    , _test_func(std::move(test_func))
+  {
+  }
 
   /**
    * Create a future using a function to wait for completion and a function
@@ -302,12 +317,12 @@ public:
    * \param destroy_func Function called upon destruction of the future.
    */
   Future(
-    const get_func_t     & get_func,
-    const test_func_t    & test_func,
-    const destroy_func_t & destroy_func)
-  : _get_func(get_func),
-    _test_func(test_func),
-    _destroy_func(destroy_func)
+    get_func_t      get_func,
+    test_func_t     test_func,
+    destroy_func_t  destroy_func) noexcept
+  : _get_func(std::move(get_func)),
+    _test_func(std::move(test_func)),
+    _destroy_func(std::move(destroy_func))
   { }
 
   /**
@@ -316,9 +331,12 @@ public:
   Future(const self_t& other) = delete;
 
   /**
-   * Default move constructor.
+   * Move constructor.
    */
-  Future(self_t&& other)      = default;
+  Future(self_t&& other) noexcept
+  {
+    *this = std::move(other);
+  }
 
   /**
    * Destructor. Calls the \c destroy_func passed to the constructor,
@@ -336,10 +354,16 @@ public:
   self_t& operator=(const self_t& other) = delete;
 
   /**
-   * Move assignment is defaulted.
+   * Move assignment
    */
-  self_t & operator=(self_t&& other)      = default;
-
+  self_t& operator=(self_t&& other) noexcept
+  {
+    _get_func = std::move(other._get_func);
+    _test_func = std::move(other._test_func);
+    _destroy_func = std::move(other._destroy_func);
+    _ready = other._ready;
+    return *this;
+  }
 
   /**
    * Wait for the value to become available. It is safe to call \ref get
