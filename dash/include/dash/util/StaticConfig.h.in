@@ -24,6 +24,7 @@ namespace util {
     bool avail_blas            = @CONF_AVAIL_BLAS@;
     bool avail_lapack          = @CONF_AVAIL_LAPACK@;
     bool avail_scalapack       = @CONF_AVAIL_SCALAPACK@;
+    bool avail_memkind         = @CONF_AVAIL_MEMKIND@;
     /* Available Algorithms */
     bool avail_algo_summa      = @CONF_AVAIL_ALGO_SUMMA@;
   } DashConfig;

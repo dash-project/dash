@@ -68,8 +68,8 @@ public:
   /**
    * Create a future from an already available value.
    */
-  Future(ResultT  result)
-  : _value(result),
+  Future(ResultT  result) noexcept(std::is_nothrow_move_constructible<ResultT>::value)
+  : _value(std::move(result)),
     _ready(true)
   { }
 
@@ -78,7 +78,7 @@ public:
    *
    * \param get_func Function returning the result value.
    */
-  Future(get_func_t get_func)
+  Future(get_func_t get_func) noexcept
     : _get_func(std::move(get_func))
   {
   }
@@ -91,7 +91,7 @@ public:
    * \param test_func Function returning \c true and assigning the result value
    *                  to the pointer passed to it if the value is available.
    */
-  Future(get_func_t get_func, test_func_t test_func)
+  Future(get_func_t get_func, test_func_t test_func) noexcept
     : _get_func(std::move(get_func))
     , _test_func(std::move(test_func))
   {
@@ -108,7 +108,7 @@ public:
    * \param destroy_func Function called upon destruction of the future.
    */
   Future(
-      get_func_t get_func, test_func_t test_func, destroy_func_t destroy_func)
+      get_func_t get_func, test_func_t test_func, destroy_func_t destroy_func) noexcept
     : _get_func(std::move(get_func))
     , _test_func(std::move(test_func))
     , _destroy_func(std::move(destroy_func))
@@ -121,9 +121,13 @@ public:
   Future(const self_t& other) = delete;
 
   /**
-   * Default move constructor.
+   * Move constructor.
    */
-  Future(self_t&& other)      = default;
+  Future(self_t&& other) noexcept(
+      std::is_nothrow_move_assignable<Future>::value)
+  {
+    *this = std::move(other);
+  }
 
   /**
    * Destructor. Calls the \c destroy_func passed to the constructor,
@@ -141,10 +145,18 @@ public:
   self_t & operator=(const self_t& other) = delete;
 
   /**
-   * Move assignment is defaulted.
+   * Move assignment
    */
-  self_t & operator=(self_t&& other)      = default;
-
+  self_t& operator=(self_t&& other) noexcept(
+      std::is_nothrow_move_assignable<ResultT>::value)
+  {
+    _get_func     = std::move(other._get_func);
+    _test_func    = std::move(other._test_func);
+    _destroy_func = std::move(other._destroy_func);
+    _value        = std::move(other._value);
+    _ready        = other._ready;
+    return *this;
+  }
 
   /**
    * Wait for the value to become available. It is safe to call \ref get
@@ -277,7 +289,7 @@ public:
    *
    * \param get_func  Function blocking until the operation is complete.
    */
-  Future(get_func_t get_func)
+  Future(get_func_t get_func) noexcept
     : _get_func(std::move(get_func))
   {
   }
@@ -289,7 +301,7 @@ public:
    * \param get_func  Function blocking until the operation is complete.
    * \param test_func Function returning \c true if the value is available.
    */
-  Future(get_func_t get_func, test_func_t test_func)
+  Future(get_func_t get_func, test_func_t test_func) noexcept
     : _get_func(std::move(get_func))
     , _test_func(std::move(test_func))
   {
@@ -307,7 +319,7 @@ public:
   Future(
     get_func_t      get_func,
     test_func_t     test_func,
-    destroy_func_t  destroy_func)
+    destroy_func_t  destroy_func) noexcept
   : _get_func(std::move(get_func)),
     _test_func(std::move(test_func)),
     _destroy_func(std::move(destroy_func))
@@ -319,9 +331,12 @@ public:
   Future(const self_t& other) = delete;
 
   /**
-   * Default move constructor.
+   * Move constructor.
    */
-  Future(self_t&& other)      = default;
+  Future(self_t&& other) noexcept
+  {
+    *this = std::move(other);
+  }
 
   /**
    * Destructor. Calls the \c destroy_func passed to the constructor,
@@ -339,10 +354,16 @@ public:
   self_t& operator=(const self_t& other) = delete;
 
   /**
-   * Move assignment is defaulted.
+   * Move assignment
    */
-  self_t & operator=(self_t&& other)      = default;
-
+  self_t& operator=(self_t&& other) noexcept
+  {
+    _get_func = std::move(other._get_func);
+    _test_func = std::move(other._test_func);
+    _destroy_func = std::move(other._destroy_func);
+    _ready = other._ready;
+    return *this;
+  }
 
   /**
    * Wait for the value to become available. It is safe to call \ref get

@@ -28,7 +28,7 @@ template<
   typename Mapped,
   typename Hash,
   typename Pred,
-  typename Alloc >
+  typename LMemSpace >
 class UnorderedMap;
 
 template<
@@ -36,7 +36,7 @@ template<
   typename Mapped,
   typename Hash,
   typename Pred,
-  typename Alloc >
+  typename LMemSpace >
 class UnorderedMapLocalIter
 : public std::iterator<
            std::random_access_iterator_tag,
@@ -45,16 +45,16 @@ class UnorderedMapLocalIter
            std::pair<const Key, Mapped> *,
            std::pair<const Key, Mapped> &>
 {
-  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+  template<typename K_, typename M_, typename H_, typename P_, typename LM_>
   friend std::ostream & dash::operator<<(
     std::ostream & os,
-    const dash::UnorderedMapLocalIter<K_, M_, H_, P_, A_> & it);
+    const dash::UnorderedMapLocalIter<K_, M_, H_, P_, LM_> & it);
 
 private:
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LMemSpace>
     self_t;
 
-  typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMap<Key, Mapped, Hash, Pred, LMemSpace>
     map_t;
 
 public:
@@ -393,11 +393,11 @@ template<
   typename Mapped,
   typename Hash,
   typename Pred,
-  typename Alloc >
+  typename LMemSpace >
 std::ostream & operator<<(
   std::ostream & os,
   const dash::UnorderedMapLocalIter<
-          Key, Mapped, Hash, Pred, Alloc> & it)
+          Key, Mapped, Hash, Pred, LMemSpace> & it)
 {
   std::ostringstream ss;
   ss << "dash::UnorderedMapLocalIter<"

@@ -186,7 +186,6 @@ TEST_F(SharedTest, CompositeValue)
                       static_cast<short>(1 + dash::myid()) };
   value_t  exp_val  { 'a', 'b', 'c', 'd',
                       static_cast<short>(dash::size()) };
-
   shared = shared_t(init_val);
   shared.barrier();
 
@@ -302,4 +301,23 @@ TEST_F(SharedTest, DelayedAllocation)
 
   val = shared_delayed.get();
   EXPECT_EQ_U(1000, val);
+
+  dash::Shared<int32_t> anotherShared{42};
+  anotherShared.barrier();
+
+  dash::swap(shared_delayed, anotherShared);
+
+  shared_delayed.barrier();
+
+  EXPECT_EQ_U(42, static_cast<int32_t>(shared_delayed.get()));
+
+
+  /* if these two shared variables are in two different teams we have to wait for
+  this team as well to be ready */
+
+  //anotherShared.barrier();
+  EXPECT_EQ_U(1000, static_cast<int32_t>(anotherShared.get()));
+
+  shared_delayed.barrier();
+  anotherShared.barrier();
 }

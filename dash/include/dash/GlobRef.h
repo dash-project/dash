@@ -22,8 +22,7 @@ class GlobRef
     std::ostream & os,
     const GlobRef<U> & gref);
 
-  template <
-    typename ElementT >
+  template <typename ElementT>
   friend class GlobRef;
 
 public:
@@ -55,35 +54,13 @@ private:
   : GlobRef(gptr.dart_gptr())
   { }
 
-  /**
-   * PRIVATE: Constructor, creates an GlobRef object referencing an element in global
-   * memory.
-   */
-  template<class ElementT>
-  explicit constexpr GlobRef(
-    /// Pointer to referenced object in global memory
-    const GlobConstPtr<ElementT> & gptr)
-  : GlobRef(gptr.dart_gptr())
-  { }
-
-  /**
-   * PRIVATE: Constructor, creates an GlobRef object referencing an element in global
-   * memory.
-   */
-  template<class ElementT>
-  explicit constexpr GlobRef(
-    /// Pointer to referenced object in global memory
-    GlobConstPtr<ElementT> & gptr)
-  : GlobRef(gptr.dart_gptr())
-  { }
-
-
-
 public:
   /**
    * Reference semantics forbid declaration without definition.
    */
   GlobRef() = delete;
+
+  GlobRef(const GlobRef & other) = delete;
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global
@@ -158,6 +135,9 @@ public:
    */
   const self_t & operator=(const self_t & other) const
   {
+    if (DART_GPTR_EQUAL(_gptr, other._gptr)) {
+      return *this;
+    }
     set(static_cast<T>(other));
     return *this;
   }
@@ -441,8 +421,17 @@ std::ostream & operator<<(
  * specialization for unqualified calls to swap
  */
 template<typename T>
-void swap(dash::GlobRef<T> && a, dash::GlobRef<T> && b){
+inline void swap(dash::GlobRef<T> && a, dash::GlobRef<T> && b){
   a.swap(b);
+}
+
+/**
+ * specialization for unqualified calls to swap
+ */
+template <class MemSpaceT, class T>
+inline auto addressof(dash::GlobRef<T> const & ref)
+{
+  return dash::GlobPtr<T, MemSpaceT>(ref.dart_gptr());
 }
 
 } // namespace dash

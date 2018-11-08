@@ -276,8 +276,8 @@ dart_type_create_indexed(
 
   *newtype = (dart_datatype_t)new_struct;
 
-  DART_LOG_TRACE("Created new indexed data type %p (mpi_type %p) with %zu elements",
-                 new_struct, new_mpi_dtype, num_elem);
+  DART_LOG_TRACE("Created new indexed data type %p with %zu elements",
+                 new_struct, num_elem);
 
   return DART_OK;
 }
@@ -315,8 +315,8 @@ dart_type_create_custom(
   new_struct->contiguous.max_type = DART_MPI_TYPE_UNDEFINED;
 
   *newtype = (dart_datatype_t)new_struct;
-  DART_LOG_TRACE("Created new custom data type %p (mpi_type %p) with %zu bytes`",
-                 new_struct, new_mpi_dtype, num_bytes);
+  DART_LOG_TRACE("Created new custom data type %p with %zu bytes`",
+                 new_struct, num_bytes);
 
   return DART_OK;
 }

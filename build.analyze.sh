@@ -122,6 +122,7 @@ mkdir -p $BUILD_DIR/$REPORT_DIR
                         -DENABLE_SCALAPACK=ON \
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
+                        -DENABLE_MEMKIND=ON \
                         \
                         -DBUILD_EXAMPLES=OFF \
                         -DBUILD_TESTS=OFF \

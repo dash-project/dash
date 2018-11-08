@@ -50,17 +50,18 @@ GlobIter find(
    auto g_begin_index = pattern.global(l_begin_index);
 
     // Pointer to first element in local memory:
-    const ElementType * lbegin        = first.globmem().lbegin();
-    // Pointers to first / final element in local range:
-    const ElementType * l_range_begin = lbegin + l_begin_index;
-    const ElementType * l_range_end   = lbegin + l_end_index;
+   auto const* lbegin = dash::local_begin(
+       static_cast<typename GlobIter::pointer>(first), team.myid());
+   // Pointers to first / final element in local range:
+   const auto l_range_begin = lbegin + l_begin_index;
+   const auto l_range_end   = lbegin + l_end_index;
 
-    DASH_LOG_DEBUG("local index range", l_begin_index, l_end_index);
+   DASH_LOG_DEBUG("local index range", l_begin_index, l_end_index);
 
-    auto l_result = std::find(l_range_begin, l_range_end, value);
-    if(l_result == l_range_end){
-      DASH_LOG_DEBUG("Not found in local range");
-      g_index = std::numeric_limits<p_index_t>::max();
+   auto l_result = std::find(l_range_begin, l_range_end, value);
+   if (l_result == l_range_end) {
+     DASH_LOG_DEBUG("Not found in local range");
+     g_index = std::numeric_limits<p_index_t>::max();
     } else {
       auto l_hit_index = l_result - lbegin;
       g_index = pattern.global(l_hit_index);

@@ -7,6 +7,7 @@
 #include <dash/Exception.h>
 #include <dash/internal/Logging.h>
 
+#include <dash/Exception.h>
 #include <dash/memory/internal/GlobHeapMemTypes.h>
 
 #include <type_traits>
