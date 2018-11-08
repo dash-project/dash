@@ -60,17 +60,25 @@ if (ENABLE_DEV_COMPILER_WARNINGS
         set (DASH_DEVELOPER_CC_FLAGS
             "${DASH_DEVELOPER_CC_FLAGS} -Werror")
 
+        # Remove pedantic from Werror to allow unnamed union
+        set (DASH_DEVELOPER_CC_FLAGS
+            "${DASH_DEVELOPER_CC_FLAGS} -Wno-error=pedantic")
+
         # We ignore unused functions
         set (DASH_DEVELOPER_CXX_FLAGS
             "${DASH_DEVELOPER_CXX_FLAGS} -Wno-unused-function")
-        # We further igore format-errors due to logging
+        # We further ignore format-errors due to logging
         set (DASH_DEVELOPER_CC_FLAGS
             "${DASH_DEVELOPER_CC_FLAGS} -Wno-format")
 
-        if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+        if("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
             set (DASH_DEVELOPER_CC_FLAGS
                 "${DASH_DEVELOPER_CC_FLAGS} -Wno-format-pedantic")
         endif()
+
+        # Also ignore signed/unsigned comparison
+        set (DASH_DEVELOPER_CXX_FLAGS
+            "${DASH_DEVELOPER_CXX_FLAGS} -Wno-sign-compare")
     endif()
 
 
