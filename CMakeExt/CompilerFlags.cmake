@@ -104,15 +104,12 @@ if (ENABLE_DEV_COMPILER_WARNINGS
         set (DASH_DEVELOPER_CCXX_FLAGS
             "${DASH_DEVELOPER_CCXX_FLAGS} -Wdisabled-optimization")
         set (DASH_DEVELOPER_CCXX_FLAGS
-            "${DASH_DEVELOPER_CCXX_FLAGS} -Winit-self")
-        set (DASH_DEVELOPER_CCXX_FLAGS
             "${DASH_DEVELOPER_CCXX_FLAGS} -Wmissing-include-dirs -Wenum-compare")
+        # Enable all unused warnings
         set (DASH_DEVELOPER_CCXX_FLAGS
-            "${DASH_DEVELOPER_CCXX_FLAGS} -Wswitch")
+            "${DASH_DEVELOPER_CCXX_FLAGS} -Wunused")
         set (DASH_DEVELOPER_CCXX_FLAGS
-            "${DASH_DEVELOPER_CCXX_FLAGS} -Wunused -Wtrigraphs")
-        set (DASH_DEVELOPER_CCXX_FLAGS
-            "${DASH_DEVELOPER_CCXX_FLAGS} -Wdeprecated -Wno-float-equal")
+            "${DASH_DEVELOPER_CCXX_FLAGS} -Wdeprecated")
 
         # C-only warning flags
 
@@ -122,7 +119,7 @@ if (ENABLE_DEV_COMPILER_WARNINGS
         set (DASH_DEVELOPER_CC_FLAGS
             "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
 
-        if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+        if (NOT "${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
             set (DASH_DEVELOPER_CC_FLAGS
                 "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type")
         endif()
@@ -130,19 +127,6 @@ if (ENABLE_DEV_COMPILER_WARNINGS
         # C++-only warning flags
 
         set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CXX_FLAGS} ${DASH_DEVELOPER_CCXX_FLAGS}")
-
-        set (DASH_DEVELOPER_CXX_FLAGS
-            "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy")
-
-        set (DASH_DEVELOPER_CXX_FLAGS
-            "${DASH_DEVELOPER_CXX_FLAGS} -Wreorder -Wnon-virtual-dtor")
-
-        set (DASH_DEVELOPER_CXX_FLAGS
-            "${DASH_DEVELOPER_CXX_FLAGS} -Woverloaded-virtual")
-
-
-        set (DASH_DEVELOPER_CC_FLAGS
-            "${DASH_DEVELOPER_CC_FLAGS}  -Wpointer-sign")
 
          if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
              # This disables unknown compiler options for Intel
