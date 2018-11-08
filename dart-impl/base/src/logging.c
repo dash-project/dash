@@ -109,7 +109,7 @@ dart__base__log_message(
   ...
 )
 {
-  if ((enum dart__base__logging_loglevel)level > env_loglevel() ||
+  if (level > env_loglevel() ||
       level > DART_LOGLEVEL_TRACE) {
     return;
   }

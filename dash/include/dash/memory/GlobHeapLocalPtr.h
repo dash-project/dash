@@ -86,7 +86,6 @@ public:
     _idx(position),
     _bucket_it(bucket_it),
     _bucket_phase(bucket_phase)
-
   { }
 
   template<typename BucketIter>
@@ -99,7 +98,6 @@ public:
     _idx(position),
     _bucket_it(bucket_first),
     _bucket_phase(0)
-
   {
     DASH_LOG_TRACE_VAR("GlobHeapLocalPtr(idx)", position);
 #ifdef DASH_ENABLE_TRACE_LOGGING

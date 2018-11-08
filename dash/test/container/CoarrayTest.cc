@@ -436,7 +436,7 @@ TEST_F(CoarrayTest, StructType)
   struct value_t {double a; int b;};
   dash::Coarray<value_t> x;
   double a_exp = static_cast<double>(this_image()) + 0.1;
-  auto                   b_exp = static_cast<int>(this_image());
+  auto   b_exp = static_cast<int>(this_image());
 
   x.member(&value_t::a) = a_exp;
   x.member(&value_t::b) = b_exp;
