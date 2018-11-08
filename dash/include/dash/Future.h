@@ -124,7 +124,7 @@ public:
    * Default move constructor.
    */
   Future(self_t&& other) noexcept(
-      std::is_nothrow_move_assignable<ResultT>::value) = default;
+      std::is_nothrow_move_constructible<ResultT>::value) = default;
 
   /**
    * Destructor. Calls the \c destroy_func passed to the constructor,
@@ -144,8 +144,8 @@ public:
   /**
    * Move assignment is defaulted.
    */
-  self_t & operator=(self_t&& other)      = default;
-
+  self_t& operator=(self_t&& other) noexcept(
+      std::is_nothrow_move_assignable<ResultT>::value) = default;
 
   /**
    * Wait for the value to become available. It is safe to call \ref get
@@ -342,8 +342,7 @@ public:
   /**
    * Move assignment is defaulted.
    */
-  self_t & operator=(self_t&& other)      = default;
-
+  self_t& operator=(self_t&& other) noexcept = default;
 
   /**
    * Wait for the value to become available. It is safe to call \ref get
