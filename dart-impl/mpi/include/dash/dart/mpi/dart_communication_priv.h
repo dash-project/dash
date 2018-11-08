@@ -257,7 +257,7 @@ char* dart__mpi__datatype_name(dart_datatype_t dart_type) DART_INTERNAL;
       char *name = dart__mpi__datatype_name(_dtype);                          \
       DART_LOG_ERROR(                                                         \
                  "%s ! Only basic types allowed in this operation (%s given)",\
-                 __FUNCTION__, name);                                         \
+                 __func__, name);                                         \
       free(name);                                                             \
       return DART_ERR_INVAL;                                                  \
     }                                                                         \
@@ -269,7 +269,7 @@ char* dart__mpi__datatype_name(dart_datatype_t dart_type) DART_INTERNAL;
       char *name = dart__mpi__datatype_name(_dtype);                          \
       DART_LOG_ERROR(                                                         \
                  "%s ! Only contiguous types allowed in this operation (%s given)",\
-                 __FUNCTION__, name);                                         \
+                 __func__, name);                                         \
       free(name);                                                             \
       return DART_ERR_INVAL;                                                  \
     }                                                                         \

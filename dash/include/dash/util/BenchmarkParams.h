@@ -68,7 +68,7 @@ public:
 
   void print(
     std::stringstream & lines,
-    std::string         prefix = "") const
+    const std::string&         prefix = "") const
   {
     std::ostringstream oss;
     std::string line;

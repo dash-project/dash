@@ -654,7 +654,7 @@ public:
     int __valuetype_rank = _valuetype_rank::value,
     typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline MEMTYPE & member(size_t offs) {
-    char * s_begin = reinterpret_cast<char *>(_storage.lbegin());
+    auto *s_begin = reinterpret_cast<char *>(_storage.lbegin());
     s_begin += offs;
     return *(reinterpret_cast<MEMTYPE*>(s_begin));
   }
@@ -673,7 +673,7 @@ public:
     int __valuetype_rank = _valuetype_rank::value,
     typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline MEMTYPE & member(const MEMTYPE P::*mem) {
-    size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
+    auto offs = (size_t) & (reinterpret_cast<P *>(0)->*mem);
     return member<MEMTYPE>(offs);
   }
 

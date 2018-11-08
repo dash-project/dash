@@ -43,7 +43,7 @@ make_team_spec(
   const dim_t ndim  = SizeSpecType::ndim::value;
 
   // Default team spec:
-  std::array<extent_t, ndim> team_extents;
+  std::array<extent_t, ndim> team_extents{};
   team_extents.fill(1);
   team_extents[1] = n_units;
   dash::TeamSpec<ndim, index_t> teamspec(team_extents);

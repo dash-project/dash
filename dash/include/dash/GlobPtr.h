@@ -25,7 +25,7 @@ bool operator!=(const dart_gptr_t &lhs, const dart_gptr_t &rhs);
 
 namespace dash {
 
-// Forward-declarations
+  // Forward-declarations
 template <typename T>
 class GlobRef;
 
@@ -395,7 +395,7 @@ public:
    */
   value_type *local()
   {
-    void *addr = 0;
+    void *addr = nullptr;
     if (dart_gptr_getaddr(m_dart_pointer, &addr) == DART_OK) {
       return static_cast<value_type *>(addr);
     }
@@ -409,9 +409,8 @@ public:
    *           GlobPtr instance, or \c nullptr if the referenced element
    *           is not local to the calling unit.
    */
-  const value_type *local() const
-  {
-    void *addr = 0;
+  const value_type * local() const {
+    void *addr = nullptr;
     if (dart_gptr_getaddr(m_dart_pointer, &addr) == DART_OK) {
       return static_cast<const value_type *>(addr);
     }

@@ -482,7 +482,7 @@ public:
   IndexType at(
     const std::array<OffsetType, NumDimensions> & point,
     const ViewSpec_t & viewspec) const {
-    std::array<OffsetType, NumDimensions> coords;
+    std::array<OffsetType, NumDimensions> coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
       coords[d] = point[d] + viewspec.offset(d);
     }
@@ -502,7 +502,7 @@ public:
       0, index, static_cast<IndexType>(_size-1),
       "Given index for CartesianIndexSpace::coords() is out of bounds");
 
-    ::std::array<IndexType, NumDimensions> pos;
+    ::std::array<IndexType, NumDimensions> pos{};
     if (CoordArrangement == ROW_MAJOR) {
       for(auto i = 0; i < NumDimensions; ++i) {
         pos[i] = index / _offset_row_major[i];
@@ -527,7 +527,7 @@ public:
     IndexType          index,
     const ViewSpec_t & viewspec) const
   {
-    std::array<IndexType, NumDimensions> pos;
+    std::array<IndexType, NumDimensions> pos{};
     extents_type offset;
     if (CoordArrangement == ROW_MAJOR)
     {

@@ -151,9 +151,9 @@ template <class _Ms>
 using memspace_traits_is_local =
     is_local_memory_space<typename _Ms::memory_space_domain_category>;
 
-DASH__META__DEFINE_TRAIT__HAS_TYPE(void_pointer);
-DASH__META__DEFINE_TRAIT__HAS_TYPE(const_void_pointer);
-DASH__META__DEFINE_TRAIT__HAS_TYPE(memory_space_layout_tag);
+DASH__META__DEFINE_TRAIT__HAS_TYPE(void_pointer)
+DASH__META__DEFINE_TRAIT__HAS_TYPE(const_void_pointer)
+DASH__META__DEFINE_TRAIT__HAS_TYPE(memory_space_layout_tag)
 
 template <class _Ms, bool = has_type_void_pointer<_Ms>::value>
 struct memspace_traits_void_pointer_type {

@@ -4,7 +4,7 @@
 #include <dash/util/Timer.h>
 #include <dash/util/Timestamp.h>
 
-#include <stdint.h>
+#include <cstdint>
 #include <iostream>
 
 #include <dash/internal/Config.h>
@@ -118,7 +118,7 @@ public:
     return *this;
   }
 
-  inline const counter_t & Value() const
+  inline const counter_t& Value() const override
   {
     return value;
   }

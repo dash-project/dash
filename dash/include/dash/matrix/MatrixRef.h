@@ -160,9 +160,8 @@ private:
   MatrixRefView<ElementT, NumDimensions, PatternT, LocalMemT> _refview;
 
 public:
-
-  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT, LocalMemT>()
-  { }
+  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT, LocalMemT>() =
+      default;
 
   template <class T_>
   MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT, LocalMemT>(
