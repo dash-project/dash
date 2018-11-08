@@ -34,11 +34,14 @@ CXXFLAGS+=-std=c++14
 LIBDASH = libdash.a
 
 FILES = Distribution GlobPtr Init Logging Math Mutex StreamConversion	\
-	Team TypeInfo algorithm/SUMMA exception/StackTrace io/IOStream		\
-	util/BenchmarkParams util/Config util/Locality						\
-	util/LocalityDomain util/LocalityJSONPrinter util/TeamLocality		\
-	util/Timer util/TimestampClockPosix util/TimestampCounterPosix		\
-	util/TimestampPAPI util/Trace
+	Team TypeInfo algorithm/SUMMA allocator/internal/Types		\
+	cpp17/polymorphic_allocator exception/StackTrace io/IOStream	\
+	memory/HBWSpace memory/HostSpace				\
+	memory/internal/MemorySpaceRegistry memory/MemorySpace		\
+	util/BenchmarkParams util/Config util/Locality			\
+	util/LocalityDomain util/LocalityJSONPrinter			\
+	util/TeamLocality util/Timer util/TimestampClockPosix		\
+	util/TimestampCounterPosix util/TimestampPAPI util/Trace
 
 OBJS = $(addsuffix .o, $(FILES))
 
@@ -68,9 +71,14 @@ clean :
 	rm -f *~
 	rm -f *.o
 	rm -f algorithm/*.o
+	rm -f allocator/*.o
+	rm -f allocator/internal/*.o
+	rm -f cpp17/*.o
 	rm -f exception/*.o
-	rm -f util/*.o
 	rm -f io/*.o
+	rm -f memory/*.o
+	rm -f memory/internal/*.o
+	rm -f util/*.o
 	rm -f $(LIBDASH)
 	rm -f $(STATIC_CONFIG_H)
 
