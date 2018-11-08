@@ -16,18 +16,6 @@
 namespace dash {
 namespace math {
 
-template <unsigned Modulus, typename Integer>
-constexpr Integer RoundDown(Integer i)
-{
-  return i - (i % Modulus);
-}
-
-template <unsigned Modulus, typename Integer>
-constexpr Integer RoundUp(Integer i)
-{
-  return RoundDown<Modulus>(i + Modulus - 1);
-}
-
 /**
  * Given an unsigned integer \c v, find the next power of 2.
  *
