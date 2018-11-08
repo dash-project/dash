@@ -135,18 +135,16 @@ dart_ret_t dart__base__locality__create(
   dart__base__locality__global_domain_[team] =
     team_global_domain;
 
+  DART_ASSERT_RETURNS(
+    dart__base__locality__domain__init(
+      team_global_domain),
+    DART_OK);
+
   /* Initialize the global domain as the root entry in the locality
    * hierarchy:
    */
   team_global_domain->scope          = DART_LOCALITY_SCOPE_GLOBAL;
-  team_global_domain->level          = 0;
-  team_global_domain->relative_index = 0;
   team_global_domain->team           = team;
-  team_global_domain->parent         = NULL;
-  team_global_domain->num_domains    = 0;
-  team_global_domain->children       = NULL;
-  team_global_domain->num_units      = 0;
-  team_global_domain->host[0]        = '\0';
   team_global_domain->domain_tag[0]  = '.';
   team_global_domain->domain_tag[1]  = '\0';
 

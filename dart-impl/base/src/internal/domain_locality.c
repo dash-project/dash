@@ -561,6 +561,7 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
         DART_ASSERT(subdomain_idx <= domain->num_domains);
         for (int sd = domain->num_domains; sd < subdomain_idx; sd++) {
           domain->children[sd] = malloc(sizeof(dart_domain_locality_t));
+          /* No dart__base__locality__domain__init(domain->children[sd])? */
         }
       } else {
         /* delete subdomains at rel. index > new number of subdomains:
