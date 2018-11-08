@@ -295,7 +295,7 @@ TEST_F(ShiftTilePatternTest, Tile2DimTeam1Dim)
   for (int y = 0; y < static_cast<int>(extent_y); ++y) {
     std::vector<dart_unit_t> row_units;
     row_units.reserve(static_cast<int>(extent_x));
-for (int x = 0; x < static_cast<int>(extent_x); ++x) {
+    for (int x = 0; x < static_cast<int>(extent_x); ++x) {
       row_units.push_back(pattern.unit_at(std::array<index_t, 2> { x, y }));
     }
     pattern_units.push_back(row_units);

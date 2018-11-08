@@ -63,7 +63,7 @@ public:
    *
    * \see dash::Future::valid
    */
-  Future() noexcept = default;
+  Future() noexcept(std::is_nothrow_constructible<ResultT>::value) = default;
 
   /**
    * Create a future from an already available value.
@@ -258,13 +258,19 @@ public:
       const Future<ResultT_> & future);
 
 public:
-
   /**
    * Default constructor, creates a future that invalid.
    *
    * \see dash::Future::valid
    */
-  Future() noexcept = default;
+  Future()
+// This commit fixes the issue:
+// https://lists.llvm.org/pipermail/cfe-commits/Week-of-Mon-20161121/177858.html
+#if defined(__clang__) && (__clang_major__ < 6)
+  {}
+#else
+	 noexcept = default;
+#endif
 
   /**
    * Create a future using a function that returns the value.

@@ -7,6 +7,7 @@
 #include <array>
 #include <type_traits>
 #include <utility>
+
 #include <dash/Types.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>

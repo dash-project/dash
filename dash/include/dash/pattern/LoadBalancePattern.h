@@ -154,7 +154,7 @@ public:
       static_cast<double>(total_bytes_per_cycle) / tloc.global_units().size();
 
     unit_mem_perc.reserve(unit_bytes_per_cycle.size());
-for (auto unit_bps : unit_bytes_per_cycle) {
+    for (auto unit_bps : unit_bytes_per_cycle) {
       unit_mem_perc.push_back(unit_bps / avg_bytes_per_cycle);
     }
     return unit_mem_perc;
