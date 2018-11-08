@@ -137,6 +137,13 @@ if (ENABLE_DEV_COMPILER_WARNINGS
     endif()
 endif()
 
+if (NOT (ENABLE_DEV_COMPILER_WARNINGS
+       OR ENABLE_EXT_COMPILER_WARNINGS)
+    AND NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} -Wno-format")
+endif()
+
 set (CXX_GDB_FLAG "-g"
     CACHE STRING "C++ compiler (clang++) debug symbols flag")
 if(OPENMP_FOUND)
