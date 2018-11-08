@@ -128,12 +128,12 @@ if (ENABLE_DEV_COMPILER_WARNINGS
 
         set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CXX_FLAGS} ${DASH_DEVELOPER_CCXX_FLAGS}")
 
-         if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
-             # This disables unknown compiler options for Intel
-             # including a lot of warnings from above
-             set (DASH_DEVELOPER_CXX_FLAGS
-                 "${DASH_DEVELOPER_CXX_FLAGS} -diag-disable=10006")
-         endif()
+        if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
+            # This disables unknown compiler options for Intel
+            # including a lot of warnings from above
+            set (DASH_DEVELOPER_CXX_FLAGS
+                "${DASH_DEVELOPER_CXX_FLAGS} -diag-disable=10006")
+        endif()
     endif()
 endif()
 
@@ -228,13 +228,13 @@ elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Cray")
         CACHE STRING "C compiler std flag")
 endif()
 
-#if(${CMAKE_VERSION} VERSION_LESS 3.0.0 )
-# CMake does not add compiler flags correctly, so use this workaround
-set(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} ${CXX_STD_FLAG}")
-set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} ${CC_STD_FLAG}")
-#endif()
+if(${CMAKE_VERSION} VERSION_LESS 3.0.0 )
+    # CMake does not add compiler flags correctly, so use this workaround
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} ${CXX_STD_FLAG}")
+    set(CMAKE_C_FLAGS
+        "${CMAKE_C_FLAGS} ${CC_STD_FLAG}")
+endif()
 
 set(CMAKE_C_FLAGS
     "${CMAKE_C_FLAGS} ${CC_ENV_SETUP_FLAGS}")
