@@ -121,10 +121,13 @@ public:
   Future(const self_t& other) = delete;
 
   /**
-   * Default move constructor.
+   * Move constructor.
    */
   Future(self_t&& other) noexcept(
-      std::is_nothrow_move_constructible<ResultT>::value) = default;
+      std::is_nothrow_move_assignable<Future>::value)
+  {
+    *this = std::move(other);
+  }
 
   /**
    * Destructor. Calls the \c destroy_func passed to the constructor,
@@ -142,10 +145,18 @@ public:
   self_t & operator=(const self_t& other) = delete;
 
   /**
-   * Move assignment is defaulted.
+   * Move assignment
    */
   self_t& operator=(self_t&& other) noexcept(
-      std::is_nothrow_move_assignable<ResultT>::value) = default;
+      std::is_nothrow_move_assignable<ResultT>::value)
+  {
+    _get_func     = std::move(other._get_func);
+    _test_func    = std::move(other._test_func);
+    _destroy_func = std::move(other._destroy_func);
+    _value        = std::move(other._value);
+    _ready        = other._ready;
+    return *this;
+  }
 
   /**
    * Wait for the value to become available. It is safe to call \ref get
@@ -320,9 +331,12 @@ public:
   Future(const self_t& other) = delete;
 
   /**
-   * Default move constructor.
+   * Move constructor.
    */
-  Future(self_t&& other) noexcept = default;
+  Future(self_t&& other) noexcept
+  {
+    *this = std::move(other);
+  }
 
   /**
    * Destructor. Calls the \c destroy_func passed to the constructor,
@@ -340,9 +354,16 @@ public:
   self_t& operator=(const self_t& other) = delete;
 
   /**
-   * Move assignment is defaulted.
+   * Move assignment
    */
-  self_t& operator=(self_t&& other) noexcept = default;
+  self_t& operator=(self_t&& other) noexcept
+  {
+    _get_func = std::move(other._get_func);
+    _test_func = std::move(other._test_func);
+    _destroy_func = std::move(other._destroy_func);
+    _ready = other._ready;
+    return *this;
+  }
 
   /**
    * Wait for the value to become available. It is safe to call \ref get
