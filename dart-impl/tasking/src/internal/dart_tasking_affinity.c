@@ -114,6 +114,7 @@ dart__tasking__affinity_set_utility(pthread_t pthread, int dart_thread_id)
         if (last_cpu != -1) {
           // bind the thread to the last thread on that socket
           entry = last_cpu;
+          break;
         } else {
           DART_LOG_INFO_ALWAYS("Numa node %d has no allowed CPUs", i);
         }
