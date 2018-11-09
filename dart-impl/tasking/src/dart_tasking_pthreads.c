@@ -518,7 +518,6 @@ static
 dart_task_t * allocate_task()
 {
   dart_task_t *task = malloc(sizeof(dart_task_t));
-  //dart__base__mutex_init(&task->mutex);
   TASKLOCK_INIT(task);
 
   return task;
@@ -890,7 +889,6 @@ start_threads(int num_threads)
 static void
 init_threadpool(int num_threads)
 {
-  dart__tasking__affinity_init();
   // bind the master thread before allocating meta-data objects
   if (bind_threads) {
     dart__tasking__affinity_set(pthread_self(), 0);
@@ -935,6 +933,9 @@ dart__tasking__init()
 
   // keep threads running
   parallel = true;
+
+  // initialize thread affinity
+  dart__tasking__affinity_init();
 
   // set up the active message queue
   dart_tasking_datadeps_init();
@@ -1530,9 +1531,13 @@ static void* utility_thread_main(void *data)
   utility_thread_t *ut = (utility_thread_t*)data;
   void     (*fn) (void *) = ut->fn;
   void      *fn_data      = ut->data;
+
+  if (bind_threads) {
+    dart__tasking__affinity_set_utility(ut->pthread, -1);
+  }
+
   free(ut);
   ut = NULL;
-  // TODO: find a sensical thread binding for utility threads
 
   printf("Launching utility thread\n");
   // invoke the utility function
