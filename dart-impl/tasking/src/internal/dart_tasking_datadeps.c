@@ -480,6 +480,7 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
                      "task %p from origin %i",
                      candidate, rdep->task.remote, origin.id);
       DART_STACK_PUSH(candidate->remote_successor, rdep);
+      candidate->prio = DART_PRIO_HIGH;
       UNLOCK_TASK(candidate);
     } else {
       // the remote dependency cannot be served --> send release
@@ -548,6 +549,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
     dummy_task->remote_task = rdep->task.remote; // use the data pointer to store the remote task
     dummy_task->origin      = rdep->origin;
     dummy_task->descr       = "DUMMY (OUTDEP)";
+    dummy_task->prio        = DART_PRIO_HIGH;
     TASKLOCK_INIT(dummy_task);
     DART_LOG_TRACE(
       "Allocated dummy task %p (ph:%d) for remote out dep on %p from task %p at unit %d",
@@ -567,6 +569,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
                        dummy_task, local_task, local->taskdep.phase);
         LOCK_TASK(local_task);
         dart_tasking_tasklist_prepend(&(local_task->successor), dummy_task);
+        local_task->prio = DART_PRIO_HIGH;
         UNLOCK_TASK(local_task);
         // ... and stop on the first output dependency
         if (rdep->taskdep.type == DART_DEP_OUT) break;
@@ -722,6 +725,7 @@ dart_tasking_datadeps_handle_copyin(
             // lock the task here to avoid race condition
             LOCK_TASK(elem_task);
             dart_tasking_tasklist_prepend(&(elem_task->successor), task);
+            if (elem_task->prio < task->prio) elem_task->prio = task->prio;
             UNLOCK_TASK(elem_task);
 
             // add this task to the hash table
@@ -824,6 +828,7 @@ dart_tasking_datadeps_match_local_datadep(
                           elem_task->successor,
                           elem_task->state, unresolved_deps);
             dart_tasking_tasklist_prepend(&(elem_task->successor), task);
+            if (elem_task->prio < task->prio) elem_task->prio = task->prio;
             instrument_task_dependency(elem_task, task, elem->taskdep.gptr);
           }
         }
@@ -903,6 +908,7 @@ dart_tasking_datadeps_match_delayed_local_datadep(
                         elem_task->state, unresolved_deps);
 
           dart_tasking_tasklist_prepend(&(elem_task->successor), task);
+          if (elem_task->prio < task->prio) elem_task->prio = task->prio;
           instrument_task_dependency(elem_task, task, elem->taskdep.gptr);
         }
         UNLOCK_TASK(elem_task);
@@ -921,6 +927,7 @@ dart_tasking_datadeps_match_delayed_local_datadep(
                         next_out_task->successor,
                         next_out_task->state, unresolved_deps);
           dart_tasking_tasklist_prepend(&(task->successor), next_out_task);
+          if (task->prio < next_out_task->prio) task->prio = next_out_task->prio;
           instrument_task_dependency(elem_task, task, elem->taskdep.gptr);
           UNLOCK_TASK(next_out_task);
           // no need to add this dependency to the hash table
@@ -1096,6 +1103,7 @@ dart_ret_t dart_tasking_datadeps_handle_remote_direct(
     if (IS_ACTIVE_TASK(local_task)) {
       dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task, origin);
       DART_STACK_PUSH(local_task->remote_successor, rs);
+      local_task->prio = DART_PRIO_HIGH;
       enqueued = true;
     }
     UNLOCK_TASK(local_task);
@@ -1124,6 +1132,7 @@ dart_ret_t dart_tasking_datadeps_release_remote_outdep(
   dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task, origin);
   // no need for locking here as remote dependencies are never processed in parallel
   DART_STACK_PUSH(local_task->remote_successor, rs);
+  local_task->prio = DART_PRIO_HIGH;
 
   // release the dependency (potentially enqueuing the task)
   dart_tasking_datadeps_release_remote_dep(local_task);

@@ -211,7 +211,7 @@ dart_tasking_taskqueue_has_prio_task(
   dart_taskqueue_t *tq,
   dart_task_prio_t  prio)
 {
-  for (int i = prio; i >= DART_PRIO_HIGH; --i) {
+  for (int i = prio; i >= DART_PRIO_LOW; --i) {
     if (tq->queues[i].head != NULL) return true;
   }
   return false;
