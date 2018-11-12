@@ -655,7 +655,8 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       DART_ASSERT_MSG(prev_task->state == DART_TASK_RUNNING ||
                       prev_task->state == DART_TASK_CANCELLED,
                       "Unexpected task state: %d", prev_task->state);
-      if (!dart__tasking__cancellation_requested()) {
+      if (DART_FETCH32(&prev_task->num_children) &&
+          !dart__tasking__cancellation_requested()) {
         // Implicit wait for child tasks
         dart__tasking__task_complete();
       }
