@@ -48,10 +48,12 @@ fi
 # Configure with default release build settings:
 mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
-(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
+(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
                         -DENVIRONMENT_TYPE=default \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
-                        -DDART_IMPLEMENTATIONS=mpi \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-gaspi/ \
+                        -DGASPI_C_LIBRARIES="/opt/GPI2/lib64/libGPI2-dbg.a" \
+                        -DGASPI_INCLUDE_PATH="/opt/GPI2/include/" \
+                        -DDART_IMPLEMENTATIONS=gaspi \
                         -DENABLE_THREADSUPPORT=OFF \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
                         -DENABLE_EXT_COMPILER_WARNINGS=OFF \
@@ -63,7 +65,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=OFF \
                         \
-                        -DENABLE_LOGGING=OFF \
+                        -DENABLE_LOGGING=ON \
                         -DENABLE_TRACE_LOGGING=OFF \
                         -DENABLE_DART_LOGGING=OFF \
                         \
@@ -78,8 +80,8 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_PLASMA=OFF \
                         -DENABLE_HDF5=OFF \
                         \
-                        -DBUILD_EXAMPLES=ON \
-                        -DBUILD_TESTS=OFF \
+                        -DBUILD_EXAMPLES=OFF \
+                        -DBUILD_TESTS=ON \
                         -DBUILD_DOCS=OFF \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \

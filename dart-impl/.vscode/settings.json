@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "gaspi_utils.h": "c"
+    },
+    "python.linting.pylintEnabled": false
+}

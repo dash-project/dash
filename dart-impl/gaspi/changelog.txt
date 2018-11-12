@@ -1,0 +1,129 @@
+==CMakeLists.txt==
+added following statemant to include: 
+  ${DASH_DART_IF_INCLUDE_DIR}
+  ${DASH_DART_BASE_INCLUDE_DIR}
+  ${ADDITIONAL_INCLUDES}
+
+added following statements to depencies:
+  ${DASH_DART_BASE_LIBRARY}
+  ${ADDITIONAL_LIBRARIES}
+  ${PRELOADED_LIBRARIES}
+
+==build.minimal.sh== 
+added -DGASPI_INCLUDE_PATH= 
+added -DGASPI_C_LIBRARIES=
+
+==Source files==
+ported dart-gaspi declarations to version 3.2 (former 3.1).
+
+===dart_communitcation.c===
+line 410: added dart_allgatherv for gaspi
+line 1325: added dart_allreduce for gaspi
+line 2020: added dart_ftech_and_op 
+    TODO: Prints an "not supported" message only. Implementation is missing.
+line 2029: added dart_accumulate
+    TODO: Implementation is missing. Prints unsupported.
+
+==dart_communication_priv.h===
+
+
+==dart_communication_priv.c===
+line 2: added include gaspi_utils.h to include reduce_ops and gaspi_reduce_user (defined in gaspi.utils.c/h)
+
+===dart_group_impl.c===
+line 201: added dart_group_locality_split
+
+===gaspi_utils.h===
+line 12: added header for function dart_gaspi_datatype_sizeof()
+line 14: added header for function gaspi_reduce_user()
+line 85: added function headers for gaspi reduce operations
+line 306: added header for dart_type_create_strided
+line 309: added header for dart_type_create_indexed
+line 313: added header for dart_type_destroy
+
+
+===gaspi_utils.c===
+line 15: added function dart_gaspi_datatype_sizeof wich returns size of dart_datatype in bytes
+line 32: added gaspi_reduce_user() and comment section which describes it.
+     TODO: See comment.
+line 873: added implementation of gaspi reduce operations 
+line 1187: addded dart_type_create_strided
+       Need to be implemented
+line 1199: added dart_type_create_indexed
+       Needs to be implemented
+line 1212: added dart_type_destroy
+       Needs to be implemented
+
+== dart_globmem.c ==
+line 161: added dart_team_memderegister
+    DASH documantation says, it wont deallocate memory. In fact, gaspi only supports
+    delete with similar deallocation of the segment. Therefore it will be dealocated
+    if invoked in it's current implementation.
+line 269: added dart_team_memregister
+
+=== ex10.radixsort ===
+added #if statement because it is a mpi-only test and fails. 
+
+==TODO==
+[ ] dart_adapt_teamlist_alloc seems to be defective. Teams seem to be allocated but the id is not assigned in the array. 
+[ ] some funtions declared by DART version 3.2 are not implemented
+[ ] dart_reduce and dart_allreduce for gaspi need optimization
+[ ] all functionality around creating own dart_data_type types ar not working
+[ ] dart_type_create in gaspi_utils.c, line 1187
+[ ] dart_type_create_indexed in gaspi_utils.c, line 1199
+[ ] dart_type_destroy in gaspi_utils.c, line 1212 
+[ ] line 108 in dart_globmem.c: used DART_TYPE_BYTE to represent gaspi_segemnt_id_t. Maybe there is a better 
+    solution.
+[ ] line 323 in dart_globmem.c: used DART_TYPE_BYTE to represent gaspi_segemnt_id_t. Maybe there is a better 
+    solution.
+
+=== Examples which are currently not working ===
+[ ] 02.array-csr.gaspi
+    aborted by dash runtime 
+    >>> M: seems working fine for me. tested with 6 units
+    >>> when does logging start, on error?
+[?] 02.array-delayed.gaspi
+    Seems to be running and terminates without errors. Doesn't print anything to the console.
+    >>> M: same output with mpi impl, correct?
+[ ] 02.halo-swap.gaspi
+    crashes after SEGFAULT
+    >>> M: hangs after 3 units segfault with 6 units
+    >>> M: segfault is cause by second copy operation
+[ ] 02.matrix.halo.heta-equation.gaspi
+    Does abort because of missing 'dart_type_create'.
+    >> M: [    0 ERROR ] [ 20364 ] dart_communication.c     :1412 !!! DART: �(��
+    >> selber error wie bei halo-swap, dart_get_handle / dart_put_handle
+[ ] 02.matrix_global-access.gaspi
+    crashes
+    >>> M: runs indefinetly => no crash after 10 minutes
+[ ] 02.matrix.multiply.gaspi
+    Called fallback implementation of DGEMM 
+    >>> M: dart_get_handle error like the two before
+[?] 02.matrix_views.gaspi
+    doesnt produce console output
+    >>> M: calls dash finalize on all threads, seems functional
+[ ] 02.unordered_map.gaspi
+    aborted by dash runtime; assertion failure
+    >>> M: dart_get_handle error
+[ ] 04.memalloc.gaspi
+    aborted by dash runtime; can't find team
+    >>> M:  1.  [    1 ERROR ] [ 22947 ] Onesided.h               :70   | dash::exception::AssertionFailed 
+            2.  terminate called after throwing an instance of 'dash::exception::AssertionFailed'
+                what():  [ Unit 1 ] Assertion failed: Expected 0 /home/rodri/Desktop/gaspi/main_project/dash/dash/include/dash/Onesided.h:70
+                ERROR in gaspi_write(free_id, 0, target_unitid_abs, dest_gaspi_seg, dest_offset, nbytes, queue, GASPI_BLOCK) :
+                 /home/rodri/Desktop/gaspi/main_project/dash/dart-impl/gaspi/src/dart_communication.c on line 1506 return value 12
+
+[ ] 07.locality-group.gaspi
+    aborted by dash runtime; invalid parent domain
+[ ] 08. all
+    no hdf5 support while testing
+[ ] 10.psort.gaspi
+    seems to get stuck in a loop/wait
+    >>> M: same error as 02.matrix_global-access.gaspi?
+[?] 10.radixsort.gaspi
+    instantly terminates, no output to console
+    
+[ ] 11. all 
+    no dart_type_support implemented
+    >>> M: [    0 ERROR ] [ 24834 ] dart_communication.c     :1412 !!! DART: �(��
+    >>> problem at dart_get_handle() 
