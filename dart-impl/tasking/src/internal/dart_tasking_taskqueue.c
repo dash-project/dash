@@ -43,7 +43,7 @@ dart_ret_t task_deque_filter_runnable(struct task_deque *deque);
 void
 dart_tasking_taskqueue_init(dart_taskqueue_t *tq)
 {
-  for (dart_task_prio_t i = DART_PRIO_LOG; i < __DART_PRIO_COUNT; i++) {
+  for (dart_task_prio_t i = DART_PRIO_HIGH; i >= DART_PRIO_LOW; --i) {
     tq->queues[i].head = tq->queues[i].tail = NULL;
   }
   tq->num_elem      = 0;
@@ -70,7 +70,7 @@ dart_tasking_taskqueue_push_unsafe(
   DART_ASSERT(task->prio > DART_PRIO_PARENT && task->prio < __DART_PRIO_COUNT);
 
 #ifdef DART_ENABLE_ASSERTIONS
-  for (dart_task_prio_t i = DART_PRIO_LOW; i < __DART_PRIO_COUNT; ++i) {
+  for (dart_task_prio_t i = DART_PRIO_HIGH; i >= DART_PRIO_LOW; --i) {
     DART_ASSERT_MSG(task != tq->queues[i].head,
       "dart_tasking_taskqueue_push: task %p is already head of task queue", task);
   }
@@ -102,9 +102,10 @@ dart_tasking_taskqueue_pop_unsafe(dart_taskqueue_t *tq)
   }
   --(tq->num_elem);
   dart_task_t *task = NULL;
-  for (dart_task_prio_t i = DART_PRIO_LOW;
-                        i < __DART_PRIO_COUNT && task == NULL;
-                      ++i) {
+
+  for (dart_task_prio_t i  = DART_PRIO_HIGH;
+                        i >= DART_PRIO_LOW && task == NULL;
+                      --i) {
     task = task_deque_pop(&tq->queues[i]);
   }
   DART_ASSERT(task != NULL);
@@ -183,9 +184,9 @@ dart_tasking_taskqueue_popback_unsafe(dart_taskqueue_t *tq)
   }
   --(tq->num_elem);
   dart_task_t *task = NULL;
-  for (dart_task_prio_t i = DART_PRIO_LOW;
-                        i < __DART_PRIO_COUNT && task == NULL;
-                      ++i) {
+  for (dart_task_prio_t i  = DART_PRIO_HIGH;
+                        i >= DART_PRIO_LOW && task == NULL;
+                      --i) {
     task = task_deque_popback(&tq->queues[i]);
   }
 
@@ -217,14 +218,14 @@ dart_tasking_taskqueue_remove_unsafe(dart_taskqueue_t *tq, dart_task_t *task)
     }
     task->next = task->prev = NULL;
 
-    for (dart_task_prio_t i = DART_PRIO_LOW; i < __DART_PRIO_COUNT; ++i) {
+    for (dart_task_prio_t i  = DART_PRIO_HIGH; i >= DART_PRIO_LOW; --i) {
       if (task == tq->queues[i].head) {
         tq->queues[i].head = next;
         break;
       }
     }
 
-    for (dart_task_prio_t i = DART_PRIO_LOW; i < __DART_PRIO_COUNT; ++i) {
+    for (dart_task_prio_t i  = DART_PRIO_HIGH; i >= DART_PRIO_LOW; --i) {
       if (task == tq->queues[i].tail) {
         tq->queues[i].tail = prev;
         break;
@@ -248,7 +249,9 @@ dart_tasking_taskqueue_move(dart_taskqueue_t *dst, dart_taskqueue_t *src)
 void
 dart_tasking_taskqueue_move_unsafe(dart_taskqueue_t *dst, dart_taskqueue_t *src)
 {
-  for (dart_task_prio_t i = DART_PRIO_LOW; i < __DART_PRIO_COUNT; ++i) {
+  for (dart_task_prio_t i  = DART_PRIO_HIGH;
+                        i >= DART_PRIO_LOW;
+                      --i) {
     task_deque_move(&dst->queues[i], &src->queues[i]);
   }
   dst->num_elem += src->num_elem;
@@ -260,7 +263,7 @@ dart_tasking_taskqueue_finalize(dart_taskqueue_t *tq)
 {
   DART_ASSERT(tq->num_elem == 0);
   dart__base__mutex_destroy(&tq->mutex);
-  for (dart_task_prio_t i = DART_PRIO_LOW; i < __DART_PRIO_COUNT; ++i) {
+  for (dart_task_prio_t i = DART_PRIO_HIGH; i >= DART_PRIO_LOW; --i) {
     tq->queues[i].head  = tq->queues[i].tail  = NULL;
   }
 }
