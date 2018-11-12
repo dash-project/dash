@@ -93,8 +93,8 @@ enum dart_thread_idle_t {
 
 static struct dart_env_str2int thread_idle_env[] = {
   {"POLL",   DART_THREAD_IDLE_POLL},
-  {"USLEEP", DART_THREAD_IDLE_POLL},
-  {"WAIT",   DART_THREAD_IDLE_POLL},
+  {"USLEEP", DART_THREAD_IDLE_USLEEP},
+  {"WAIT",   DART_THREAD_IDLE_WAIT},
 };
 static enum dart_thread_idle_t thread_idle_method;
 
