@@ -339,7 +339,7 @@ dart_amsg_sendrevc_process_blocking(
   } while (!(barrier_flag && send_flag));
 #ifdef IS_ISSEND_BROKEN
   // if Issend is broken we need another round of synchronization
-  MPI_Barrier(team_data->comm);
+  MPI_Barrier(amsgq->comm);
 #endif
   amsg_sendrecv_process_internal(amsgq, true, true);
   // final synchronization
