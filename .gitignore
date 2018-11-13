@@ -9,6 +9,7 @@ build.nasty*
 build.cov*
 build.analyze*
 build-ci*
+CMakeFiles/*
 compile_commands.json
 dash/include/dash/util/StaticConfig.h
 *.o

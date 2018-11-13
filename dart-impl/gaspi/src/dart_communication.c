@@ -1789,7 +1789,7 @@ dart_ret_t dart_allreduce(
    * gaspi only supports 6. To keep DART compatible and easy to use
    * the gaspi_data_type isn't used in this case.
    */
-  gaspi_state_t reduce_state = GASPI_STATE_HEALTHY;
+  gaspi_reduce_state_t reduce_state = GASPI_STATE_HEALTHY;
   dart_ret_t ret = DART_OK;
   gaspi_group_t gaspi_group_id = dart_teams[index].id;
   switch (op) {
@@ -2138,7 +2138,7 @@ dart_ret_t dart_reduce(
    * the gaspi_data_type isn't used in this case.
    */
 
-  gaspi_state_t reduce_state = GASPI_STATE_HEALTHY;
+  gaspi_reduce_state_t reduce_state = GASPI_STATE_HEALTHY;
   dart_ret_t ret = DART_OK;
   gaspi_group_t gaspi_group_id = dart_teams[index].id;
   dart_unit_t gaspi_root_proc;

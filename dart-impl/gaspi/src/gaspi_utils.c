@@ -54,7 +54,7 @@ gaspi_return_t gaspi_reduce_user (
 	const gaspi_number_t num,
 	const gaspi_size_t element_size,
 	gaspi_reduce_operation_t const reduce_operation,
-	gaspi_state_t const reduce_state,
+	gaspi_reduce_state_t const reduce_state,
 	const gaspi_group_t group,
    gaspi_segment_id_t* segment_ids,
    const gaspi_rank_t root,
