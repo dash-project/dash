@@ -18,7 +18,6 @@ struct dart_dephash_elem;
 struct task_list;
 
 // whether to use thread-local task queues or a single queue
-// (can be set from the command line or enforced here)
 //#define DART_TASK_THREADLOCAL_Q
 
 #ifdef USE_UCONTEXT
@@ -38,6 +37,7 @@ typedef enum {
   DART_TASK_RUNNING,
   DART_TASK_SUSPENDED,     // the task is suspended but runnable
   DART_TASK_BLOCKED,       // the task is blocked waiting for a handle
+  DART_TASK_DETACHED,      // the task has been detached, will not run again
   // active task states end here
   DART_TASK_DESTROYED,
   DART_TASK_CANCELLED
@@ -50,7 +50,7 @@ typedef enum {
 
 #define IS_ACTIVE_TASK(task) \
   ((task)->state >= DART_TASK_CREATED   && \
-   (task)->state <= DART_TASK_BLOCKED)
+   (task)->state <= DART_TASK_DETACHED)
 
 
 typedef
@@ -193,10 +193,16 @@ dart_ret_t
 dart__tasking__task_test(dart_taskref_t *tr, int *flag) DART_INTERNAL;
 
 dart_ret_t
-dart__tasking__task_complete() /*DART_INTERNAL*/;
+dart__tasking__task_complete() DART_INTERNAL;
 
 dart_taskref_t
 dart__tasking__current_task() DART_INTERNAL;
+
+void
+dart__tasking__mark_detached(dart_taskref_t task) DART_INTERNAL;
+
+void
+dart__tasking__release_detached(dart_taskref_t task) DART_INTERNAL;
 
 //void
 //dart__base__tasking_print_taskgraph();

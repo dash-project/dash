@@ -18,6 +18,7 @@
 #include <dash/dart/tasking/dart_tasking_affinity.h>
 #include <dash/dart/tasking/dart_tasking_envstr.h>
 #include <dash/dart/tasking/dart_tasking_wait.h>
+#include <dash/dart/tasking/dart_tasking_copyin.h>
 #include <dash/dart/tasking/dart_tasking_extrae.h>
 #include <dash/dart/tasking/dart_tasking_craypat.h>
 
@@ -28,6 +29,7 @@
 #include <errno.h>
 #include <setjmp.h>
 #include <time.h>
+#include <stddef.h>
 
 #define EVENT_ENTER(_ev) do {\
   EXTRAE_ENTER(_ev);         \
@@ -145,6 +147,52 @@ double current_time_us() {
   return CLOCK_TIME_USEC(ts);
 }
 
+
+void
+dart__tasking__mark_detached(dart_taskref_t task)
+{
+  LOCK_TASK(task);
+  task->state = DART_TASK_DETACHED;
+  UNLOCK_TASK(task);
+}
+
+void
+dart__tasking__release_detached(dart_taskref_t task)
+{
+  DART_ASSERT(task->state == DART_TASK_DETACHED);
+
+  dart_thread_t *thread = get_current_thread();
+
+  // we need to lock the task shortly here before releasing datadeps
+  // to allow for atomic check and update
+  // of remote successors in dart_tasking_datadeps_handle_remote_task
+  LOCK_TASK(task);
+  task->state = DART_TASK_FINISHED;
+  bool has_ref = task->has_ref;
+  UNLOCK_TASK(task);
+
+  thread->is_releasing_deps = true;
+  dart_tasking_datadeps_release_local_task(task, thread);
+  thread->is_releasing_deps = false;
+
+  dart_task_t *parent = task->parent;
+
+  // clean up
+  if (!has_ref){
+    // only destroy the task if there are no references outside
+    // referenced tasks will be destroyed in task_wait/task_freeref
+    // TODO: this needs some more thoughts!
+    dart__tasking__destroy_task(task);
+  }
+
+
+  // let the parent know that we are done
+  int32_t nc = DART_DEC_AND_FETCH32(&parent->num_children);
+  DART_LOG_DEBUG("Parent %p has %i children left\n", parent, nc);
+
+
+}
+
 static void
 invoke_taskfn(dart_task_t *task)
 {
@@ -237,7 +285,6 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
     set_current_task(task);
   }
 }
-
 
 dart_ret_t
 dart__tasking__yield(int delay)
@@ -658,7 +705,14 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     DART_LOG_TRACE("Returned from invoke_task(%p, %p): prev_task=%p",
                    task, thread, prev_task);
 
-    if (prev_task->state == DART_TASK_BLOCKED) {
+    if (prev_task->state == DART_TASK_DETACHED) {
+
+      // release the context
+      dart__tasking__context_release(task->taskctx);
+      task->taskctx = NULL;
+      dart__task__wait_enqueue(prev_task);
+
+    } else if (prev_task->state == DART_TASK_BLOCKED) {
       // we came back here because there were no other tasks to yield from
       // the blocked task so we have to make sure this task is enqueued as
       // blocked (see dart__tasking__yield)
@@ -1042,6 +1096,8 @@ dart__tasking__init()
 #endif // DART_ENABLE_AYUDAME
 
   dart__task__wait_init();
+
+  dart_tasking_copyin_init();
 
   dart__tasking__cancellation_init();
 
@@ -1561,6 +1617,8 @@ dart__tasking__fini()
 #endif
 
   dart__task__wait_fini();
+
+  dart_tasking_copyin_fini();
 
   dart_tasking_tasklist_fini();
 

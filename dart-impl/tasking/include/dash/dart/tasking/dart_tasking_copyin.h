@@ -24,6 +24,12 @@
  * TODO: Add implementation for RMA-based copy-in.
  */
 
+void
+dart_tasking_copyin_init();
+
+void
+dart_tasking_copyin_fini();
+
 /**
  * Call-back called by a remote unit to create a task that
  * sends data (if required).

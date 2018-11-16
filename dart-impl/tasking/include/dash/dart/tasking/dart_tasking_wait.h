@@ -11,7 +11,14 @@ void
 dart__task__wait_fini() DART_INTERNAL;
 
 dart_ret_t
-dart__task__wait_handle(dart_handle_t *handles, size_t num_handle) DART_INTERNAL;
+dart__task__wait_handle(
+  dart_handle_t *handles,
+  size_t         num_handle) DART_INTERNAL;
+
+dart_ret_t
+dart__task__detach_handle(
+  dart_handle_t *handles,
+  size_t         num_handle) DART_INTERNAL;
 
 void
 dart__task__wait_progress() DART_INTERNAL;

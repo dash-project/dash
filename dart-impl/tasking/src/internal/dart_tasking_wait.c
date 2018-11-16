@@ -109,11 +109,17 @@ dart__task__wait_progress()
       dart_wait_handle_t *waithandle = task->wait_handle;
       dart_testall(waithandle->handle, waithandle->num_handle, &flag);
       if (flag) {
-        // all transfers finished, the task can be requeued
-        task->state       = DART_TASK_SUSPENDED;
-        task->wait_handle = NULL;
-        DART_LOG_TRACE("wait_handle: Unblocking task %p", task);
-        dart__tasking__enqueue_runnable(task);
+        if (task->state != DART_TASK_DETACHED) {
+          // all transfers finished, the task can be requeued
+          task->state       = DART_TASK_SUSPENDED;
+          task->wait_handle = NULL;
+          DART_LOG_TRACE("wait_handle: Unblocking task %p", task);
+          dart__tasking__enqueue_runnable(task);
+        } else {
+          DART_LOG_TRACE("wait_handle: Releasing detached task %p", task);
+          dart__tasking__release_detached(task);
+          task->wait_handle = NULL;
+        }
         free(waithandle);
       } else {
         // put the task into the new list for further waiting
@@ -134,4 +140,25 @@ dart__task__wait_enqueue(dart_task_t *task)
   DART_LOG_TRACE("Enqueueing blocked task %p \n", task);
   DART_ASSERT(task->wait_handle != NULL);
   dart_tasking_taskqueue_pushback(&handle_list, task);
+}
+
+
+dart_ret_t
+dart__task__detach_handle(
+  dart_handle_t *handles,
+  size_t         num_handle)
+{
+  dart_task_t *task = dart__tasking__current_task();
+
+  // mark the task as detached
+  dart__tasking__mark_detached(task);
+
+  // register the task for waiting
+  dart_wait_handle_t *waithandle = malloc(sizeof(*waithandle) +
+                                          sizeof(dart_handle_t)*num_handle);
+  memcpy(waithandle->handle, handles, sizeof(*handles)*num_handle);
+  waithandle->num_handle    = num_handle;
+  task->wait_handle = waithandle;
+
+  return DART_OK;
 }
