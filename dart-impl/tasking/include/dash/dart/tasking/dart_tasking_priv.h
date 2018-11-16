@@ -173,24 +173,14 @@ dart__tasking__epoch_bound() DART_INTERNAL;
 
 dart_ret_t
 dart__tasking__create_task(
-        void           (*fn) (void *),
-        void            *data,
-        size_t           data_size,
-  const dart_task_dep_t *deps,
-        size_t           ndeps,
-        dart_task_prio_t prio,
-  const char            *descr) DART_INTERNAL;
-
-
-dart_ret_t
-dart__tasking__create_task_handle(
-        void           (*fn) (void *),
-        void            *data,
-        size_t           data_size,
-  const dart_task_dep_t *deps,
-        size_t           ndeps,
-        dart_task_prio_t prio,
-        dart_taskref_t  *ref) DART_INTERNAL;
+        void             (*fn) (void *),
+        void              *data,
+        size_t             data_size,
+  const dart_task_dep_t   *deps,
+        size_t             ndeps,
+        dart_task_prio_t   prio,
+  const char              *descr,
+        dart_taskref_t    *taskref) DART_INTERNAL;
 
 dart_ret_t
 dart__tasking__taskref_free(dart_taskref_t *tr) DART_INTERNAL;

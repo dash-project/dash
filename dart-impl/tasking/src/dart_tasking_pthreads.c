@@ -673,6 +673,8 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
         dart__tasking__task_complete();
       }
 
+      bool has_ref;
+
       // the task may have changed once we get back here
       task = get_current_task();
 
@@ -683,6 +685,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       // of remote successors in dart_tasking_datadeps_handle_remote_task
       LOCK_TASK(task);
       task->state = DART_TASK_FINISHED;
+      has_ref = task->has_ref;
       UNLOCK_TASK(task);
 
       thread->is_releasing_deps = true;
@@ -693,7 +696,6 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       dart__tasking__context_release(task->taskctx);
       task->taskctx = NULL;
 
-      bool has_ref = task->has_ref;
       dart_task_t *parent = task->parent;
 
       // clean up
@@ -1160,11 +1162,12 @@ dart__tasking__create_task(
     const dart_task_dep_t *deps,
           size_t           ndeps,
           dart_task_prio_t prio,
-    const char            *descr)
+    const char            *descr,
+          dart_taskref_t  *ref)
 {
   if (dart__tasking__cancellation_requested()) {
-    DART_LOG_DEBUG("dart__tasking__create_task: Ignoring task creation while "
-                   "canceling tasks!");
+    DART_LOG_WARN("dart__tasking__create_task: Ignoring task creation while "
+                  "canceling tasks!");
     return DART_OK;
   }
 
@@ -1177,47 +1180,10 @@ dart__tasking__create_task(
 
   dart_task_t *task = create_task(fn, data, data_size, prio, descr);
 
-  int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
-  DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
-
-  dart_tasking_datadeps_handle_task(task, deps, ndeps);
-
-  LOCK_TASK(task);
-  task->state = DART_TASK_CREATED;
-  bool is_runnable = dart_tasking_datadeps_is_runnable(task);
-  UNLOCK_TASK(task);
-  DART_LOG_TRACE("  Task %p ('%s') created: runnable %i",
-                 task, task->descr, is_runnable);
-  if (is_runnable) {
-    dart__tasking__enqueue_runnable(task);
+  if (ref != NULL) {
+    task->has_ref = true;
+    *ref = task;
   }
-
-  return DART_OK;
-}
-
-dart_ret_t
-dart__tasking__create_task_handle(
-          void           (*fn) (void *),
-          void            *data,
-          size_t           data_size,
-    const dart_task_dep_t *deps,
-          size_t           ndeps,
-          dart_task_prio_t prio,
-          dart_taskref_t  *ref)
-{
-  if (dart__tasking__cancellation_requested()) {
-    DART_LOG_DEBUG("dart__tasking__create_task_handle: Ignoring task creation "
-                   "while canceling tasks!");
-    return DART_OK;
-  }
-
-  // start threads upon first task creation
-  if (dart__unlikely(!threads_running)) {
-    start_threads(num_threads);
-  }
-
-  dart_task_t *task = create_task(fn, data, data_size, prio, NULL);
-  task->has_ref = true;
 
   int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
   DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
@@ -1228,15 +1194,14 @@ dart__tasking__create_task_handle(
   task->state = DART_TASK_CREATED;
   bool is_runnable = dart_tasking_datadeps_is_runnable(task);
   UNLOCK_TASK(task);
+  DART_LOG_TRACE("  Task %p ('%s') created: runnable %i, prio %d",
+                 task, task->descr, is_runnable, task->prio);
   if (is_runnable) {
     dart__tasking__enqueue_runnable(task);
   }
 
-  *ref = task;
-
   return DART_OK;
 }
-
 
 void
 dart__tasking__perform_matching(dart_taskphase_t phase)
