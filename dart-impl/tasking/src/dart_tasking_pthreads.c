@@ -612,6 +612,7 @@ dart_task_t * create_task(
   task->prev          = NULL;
   task->successor     = NULL;
   task->recycle_tasks = NULL;
+  task->is_inlined    = false;
   //task->prio          = (prio == DART_PRIO_PARENT) ? task->parent->prio : prio;
   switch (prio) {
     case DART_PRIO_PARENT:
