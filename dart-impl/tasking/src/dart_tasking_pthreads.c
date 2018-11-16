@@ -787,6 +787,7 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
   }
 }
 
+
 static
 void dart_thread_init(dart_thread_t *thread, int threadnum)
 {
@@ -797,6 +798,7 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->yield_target      = DART_YIELD_TARGET_YIELD;
   thread->next_task         = NULL;
   thread->is_releasing_deps = false;
+  thread->is_utility_thread = false;
 #ifdef DART_TASK_THREADLOCAL_Q
   thread->last_steal_thread = 0;
   dart_tasking_taskqueue_init(&thread->queue);
@@ -1126,7 +1128,7 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     dart_thread_t *thread = get_current_thread();
 #ifdef DART_TASK_THREADLOCAL_Q
     dart_taskqueue_t *q;
-    if (thread == NULL) {
+    if (thread->is_utility_thread) {
       q = &thread_pool[0]->queue;
     } else {
       q = &thread->queue;
@@ -1590,12 +1592,21 @@ static void* utility_thread_main(void *data)
     dart__tasking__affinity_set_utility(ut->pthread, -1);
   }
 
+  dart_thread_t *thread = calloc(1, sizeof(*thread));
+  dart_thread_init(thread, -1);
+  thread->is_utility_thread = true;
+
+  __tpd = thread;
+
   free(ut);
   ut = NULL;
 
   printf("Launching utility thread\n");
   // invoke the utility function
   fn(fn_data);
+
+  free(thread);
+  __tpd = NULL;
 
   // at some point we get back here and exit the thread
   return NULL;

@@ -149,6 +149,7 @@ typedef struct {
   double                  last_progress_ts;  // the timestamp of the last remote progress call
   dart_task_t           * next_task;         // short-cut on the next task to execute
   bool                    is_releasing_deps; // whether the thread is currently releasing dependencies
+  bool                    is_utility_thread; // whether the thread is a worker or utility thread
 } dart_thread_t;
 
 struct dart_wait_handle_s {
