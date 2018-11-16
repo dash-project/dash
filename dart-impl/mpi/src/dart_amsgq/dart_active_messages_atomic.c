@@ -1,3 +1,19 @@
+
+
+/**
+ * NOTE: This message queue implementation is fundamentally flawed and
+ * will never work. It's left here as a warning.
+ *
+ * The problem: having only a tailpos and a readypos let's us never really know
+ * if there are still active writers because writers keep increment/decrementing
+ * the tailpos in their attempt to write. Using compare and swap might be a
+ * remedy to some degree but it might require many attempts in case there are
+ * a lot of writers. Also, writers are blocked until the queue is processed.
+ */
+
+
+#if 0
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
@@ -661,3 +677,6 @@ dart_amsg_atomic_init(dart_amsgq_impl_t* impl)
   impl->process_blocking = dart_amsg_atomic_process_blocking;
   return DART_OK;
 }
+
+
+#endif // 0
