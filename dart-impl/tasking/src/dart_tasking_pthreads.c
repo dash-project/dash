@@ -565,6 +565,18 @@ dart_task_t * create_task(
   task->prev          = NULL;
   task->successor     = NULL;
   task->recycle_tasks = NULL;
+  switch (prio) {
+    case DART_PRIO_PARENT:
+      task->prio       = task->parent->prio;
+      break;
+    case DART_PRIO_INLINE:
+      task->prio       = DART_PRIO_HIGH;
+      task->is_inlined = true;
+      break;
+    default:
+      task->prio       = prio;
+      break;
+  }
   task->prio          = (prio == DART_PRIO_PARENT) ? task->parent->prio : prio;
   task->taskctx       = NULL;
   task->unresolved_deps = 0;
@@ -695,8 +707,78 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       // let the parent know that we are done
       int32_t nc = DART_DEC_AND_FETCH32(&parent->num_children);
       DART_LOG_DEBUG("Parent %p has %i children left\n", parent, nc);
-
     }
+    // return to previous task
+    set_current_task(current_task);
+    ++(thread->taskcntr);
+  }
+}
+
+/**
+ * Execute the given inlined task.
+ * Tha task action will be called directly and no context will be created for it.
+ */
+static
+void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
+{
+  if (task != NULL)
+  {
+    DART_LOG_INFO("Thread %i executing inlined task %p ('%s')",
+                  thread->thread_id, task, task->descr);
+
+    dart_task_t *current_task = get_current_task();
+
+    // set task to running state, protected to prevent race conditions with
+    // dependency handling code
+    LOCK_TASK(task);
+    task->state = DART_TASK_RUNNING;
+    UNLOCK_TASK(task);
+
+    // start execution, change to another task in between
+    set_current_task(task);
+
+    task->fn(task->data);
+
+    // we're coming back into this task here
+
+    DART_LOG_TRACE("Returned from inlined task (%p, %p)",
+                   task, thread);
+
+    dart_task_t *parent = task->parent;
+
+    if (DART_FETCH32(&task->num_children) &&
+          !dart__tasking__cancellation_requested()) {
+      // Implicit wait for child tasks
+      dart__tasking__task_complete();
+    }
+
+    if (task->state == DART_TASK_DETACHED) {
+      dart__task__wait_enqueue(task);
+    } else {
+      // we need to lock the task shortly here before releasing datadeps
+      // to allow for atomic check and update
+      // of remote successors in dart_tasking_datadeps_handle_remote_task
+      LOCK_TASK(task);
+      task->state = DART_TASK_FINISHED;
+      bool has_ref = task->has_ref;
+      UNLOCK_TASK(task);
+
+      dart_tasking_datadeps_release_local_task(task, thread);
+
+
+      // clean up
+      if (!has_ref){
+        // only destroy the task if there are no references outside
+        // referenced tasks will be destroyed in task_wait/task_freeref
+        // TODO: this needs some more thoughts!
+        dart__tasking__destroy_task(task);
+      }
+
+      // let the parent know that we are done
+      int32_t nc = DART_DEC_AND_FETCH32(&parent->num_children);
+      DART_LOG_DEBUG("Parent %p has %i children left\n", parent, nc);
+    }
+
     // return to previous task
     set_current_task(current_task);
     ++(thread->taskcntr);
@@ -1032,6 +1114,12 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
   }
 
   if (!enqueued){
+
+    // execute inlined task directly
+    if (task->is_inlined) {
+      handle_inline_task(task, get_current_thread());
+      return;
+    }
 
     dart_thread_t *thread = get_current_thread();
 #ifdef DART_TASK_THREADLOCAL_Q

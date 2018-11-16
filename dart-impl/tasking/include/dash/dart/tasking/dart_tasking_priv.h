@@ -91,6 +91,7 @@ struct dart_task_data {
   bool                       data_allocated;  // whether the data was allocated and copied
   int8_t                     state;           // one of dart_task_state_t, single byte sufficient
   int8_t                     prio;
+  bool                       is_inlined;
 };
 
 #define DART_STACK_PUSH(_head, _elem) \
@@ -108,6 +109,14 @@ struct dart_task_data {
     }                                \
   } while (0)
 
+/*
+ * Special priority signalling to immediately execute the task when ready.
+ * The task's action will be called directly in the context of the current task.
+ * The task should not be cancelled. Currently this is used internally for
+ * copyin tasks.
+ * TODO: expose this to the user?
+ */
+#define DART_PRIO_INLINE (-2)
 
 typedef struct task_list {
   struct task_list      *next;
