@@ -612,6 +612,7 @@ dart_task_t * create_task(
   task->prev          = NULL;
   task->successor     = NULL;
   task->recycle_tasks = NULL;
+  //task->prio          = (prio == DART_PRIO_PARENT) ? task->parent->prio : prio;
   switch (prio) {
     case DART_PRIO_PARENT:
       task->prio       = task->parent->prio;
@@ -624,7 +625,6 @@ dart_task_t * create_task(
       task->prio       = prio;
       break;
   }
-  task->prio          = (prio == DART_PRIO_PARENT) ? task->parent->prio : prio;
   task->taskctx       = NULL;
   task->unresolved_deps = 0;
   task->unresolved_remote_deps = 0;

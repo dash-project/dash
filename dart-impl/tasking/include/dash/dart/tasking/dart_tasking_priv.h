@@ -116,7 +116,7 @@ struct dart_task_data {
  * copyin tasks.
  * TODO: expose this to the user?
  */
-#define DART_PRIO_INLINE (-2)
+#define DART_PRIO_INLINE (__DART_PRIO_COUNT)
 
 typedef struct task_list {
   struct task_list      *next;
