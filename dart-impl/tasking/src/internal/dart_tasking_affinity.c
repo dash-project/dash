@@ -84,14 +84,22 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
     }
   } while (cnt != dart_thread_id);
 
-  //printf("Binding thread %d to CPU %d\n", dart_thread_id, entry);
-  if (print_binding)
-  {
-    DART_LOG_INFO_ALWAYS("Binding thread %d to CPU %d", dart_thread_id, entry);
-  }
   hwloc_bitmap_set(cpuset, entry);
 
-  hwloc_set_thread_cpubind(topology, pthread, cpuset, 0);
+  if (print_binding)
+  {
+    char *bitstring;
+    hwloc_bitmap_asprintf(&bitstring, cpuset);
+    DART_LOG_INFO_ALWAYS("Binding thread %d to CPU %d [%s]",
+                         dart_thread_id, entry, bitstring);
+    free(bitstring);
+  }
+
+  if (0 != hwloc_set_thread_cpubind(topology, pthread,
+                                    cpuset, HWLOC_CPUBIND_STRICT)) {
+    // try again with no flags
+    hwloc_set_thread_cpubind(topology, pthread, cpuset, 0);
+  }
 
   hwloc_bitmap_free(cpuset);
 }
