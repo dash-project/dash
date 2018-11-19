@@ -123,7 +123,7 @@ void BenchmarkParams::print_header()
   print_section_start("DASH Configuration");
   print_param("DASH version", DASH_VERSION_STRING);
 #ifdef DASH_GIT_COMMIT
-  print_param("DASH git commit", dash__toxstr(DASH_GIT_COMMIT));
+  print_param("DASH git commit", DASH_GIT_COMMIT);
 #endif
   print_param("Compiler ID", DASH_COMPILER_ID);
 #ifdef DASH_MPI_IMPL_ID
