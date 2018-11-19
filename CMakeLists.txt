@@ -142,6 +142,8 @@ endif()
 # prepare StaticConfig.h generation
 include(${CMAKE_SOURCE_DIR}/CMakeExt/GenerateConfig.cmake)
 
+# check the git commit hash
+include (CMakeExt/Gitcommit.cmake)
 ## Version number
 set(DASH_VERSION_MAJOR 0 CACHE STRING "DASH major version number.")
 set(DASH_VERSION_MINOR 4 CACHE STRING "DASH minor version number.")
