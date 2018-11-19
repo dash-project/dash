@@ -9,6 +9,7 @@
 #include <ctime>
 
 #include <dash/util/Config.h>
+#include <dash/internal/Config.h>
 #include <dash/util/Locality.h>
 #include <dash/Array.h>
 
@@ -123,6 +124,7 @@ void BenchmarkParams::print_header()
 #ifdef DASH_GIT_COMMIT
   print_param("DASH git commit", dash__toxstr(DASH_GIT_COMMIT));
 #endif
+  print_param("Compiler ID", DASH_COMPILER_ID);
 #ifdef DASH_MPI_IMPL_ID
   print_param("MPI implementation", dash__toxstr(DASH_MPI_IMPL_ID));
 #endif
