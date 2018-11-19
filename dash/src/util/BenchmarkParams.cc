@@ -120,6 +120,9 @@ void BenchmarkParams::print_header()
   print_section_end();
 
   print_section_start("DASH Configuration");
+#ifdef DASH_GIT_COMMIT
+  print_param("DASH git commit", dash__toxstr(DASH_GIT_COMMIT));
+#endif
 #ifdef DASH_MPI_IMPL_ID
   print_param("MPI implementation", dash__toxstr(DASH_MPI_IMPL_ID));
 #endif
