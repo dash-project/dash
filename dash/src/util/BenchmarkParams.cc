@@ -12,10 +12,10 @@
 #include <dash/internal/Config.h>
 #include <dash/util/Locality.h>
 #include <dash/Array.h>
+#include <dash/Version.h>
 
 // Environment variables as array of strings, terminated by null pointer.
 extern char ** environ;
-
 
 namespace dash {
 namespace util {
@@ -121,6 +121,7 @@ void BenchmarkParams::print_header()
   print_section_end();
 
   print_section_start("DASH Configuration");
+  print_param("DASH version", DASH_VERSION_STRING);
 #ifdef DASH_GIT_COMMIT
   print_param("DASH git commit", dash__toxstr(DASH_GIT_COMMIT));
 #endif
