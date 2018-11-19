@@ -141,6 +141,20 @@ endif()
 # prepare StaticConfig.h generation
 include(${CMAKE_SOURCE_DIR}/CMakeExt/GenerateConfig.cmake)
 
+set(DASH_VERSION_MAJOR 0 CACHE STRING "DASH major version number.")
+set(DASH_VERSION_MINOR 3 CACHE STRING "DASH minor version number.")
+set(DASH_VERSION_PATCH 0 CACHE STRING "DASH patch version number.")
+mark_as_advanced(
+  DASH_VERSION_MAJOR
+  DASH_VERSION_MINOR
+  DASH_VERSION_PATCH)
+set(DASH_VERSION
+    "${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
+    CACHE STRING INTERNAL FORCE)
+set(DASH_VERSIONED_PROJECT_NAME
+    "dash-${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
+    CACHE STRING INTERNAL FORCE)
+
 # check the git commit hash
 include (CMakeExt/Gitcommit.cmake)
 
