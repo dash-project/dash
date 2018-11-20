@@ -95,7 +95,7 @@ mkdir -p $BUILD_DIR/$REPORT_DIR
                         -DENABLE_COMPTIME_RED=OFF \
                         \
                         -DDART_IF_VERSION=3.2 \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.4.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
