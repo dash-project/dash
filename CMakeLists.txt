@@ -106,6 +106,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/StdLib.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/ParallelStl.cmake)
 
 if (ENABLE_THREADSUPPORT)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/Threading.cmake)
