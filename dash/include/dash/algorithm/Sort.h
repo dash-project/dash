@@ -7,6 +7,12 @@
 #include <type_traits>
 #include <vector>
 
+#ifdef DASH_ENABLE_PSTL
+#include <pstl/execution>
+#include <pstl/algorithm>
+#endif
+
+
 #include <dash/Array.h>
 #include <dash/Exception.h>
 #include <dash/Meta.h>
@@ -19,6 +25,7 @@
 #include <dash/util/Trace.h>
 
 namespace dash {
+  //Test
 
 #ifdef DOXYGEN
 
@@ -115,9 +122,16 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     return;
   }
   if (pattern.team().size() == 1) {
-    DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
+    DASH_LOG_TRACE("Sorting on a team with only 1 unit");
     trace.enter_state("final_local_sort");
-    std::sort(begin.local(), end.local(), sort_comp);
+#ifdef DASH_ENABLE_PSTL
+      DASH_LOG_TRACE("Calling parallel sort using PSTL");
+      std::sort(pstl::execution::par_unseq, begin.local(), end.local(),
+          sort_comp);
+#else
+      DASH_LOG_TRACE("Calling std::sort");
+      std::sort(begin.local(), end.local(), sort_comp);
+#endif
     trace.exit_state("final_local_sort");
     return;
   }
@@ -149,7 +163,16 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   // initial local_sort
   trace.enter_state("1:initial_local_sort");
-  std::sort(lbegin, lend, sort_comp);
+
+#ifdef DASH_ENABLE_PSTL
+    DASH_LOG_TRACE("Calling parallel sort using PSTL");
+    std::sort(pstl::execution::par_unseq, lbegin, lend,
+          sort_comp);
+#else
+    DASH_LOG_TRACE("Calling std::sort");
+    std::sort(lbegin, lend, sort_comp);
+#endif
+
   trace.exit_state("1:initial_local_sort");
 
   trace.enter_state("2:init_temporary_global_data");
