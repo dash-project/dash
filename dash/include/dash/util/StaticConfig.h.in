@@ -27,7 +27,7 @@ namespace util {
     bool avail_memkind         = @CONF_AVAIL_MEMKIND@;
     /* Available Algorithms */
     bool avail_algo_summa      = @CONF_AVAIL_ALGO_SUMMA@;
-    bool avail_pstl            = @CONF_AVAIL_PSTL@;
+    bool avail_algo_pstl       = @CONF_AVAIL_ALGO_PSTL@;
   } DashConfig;
 
 }
