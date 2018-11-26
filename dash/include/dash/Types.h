@@ -1,11 +1,14 @@
 #ifndef DASH__TYPES_H_
 #define DASH__TYPES_H_
 
-#include <array>
-#include <type_traits>
-
 #include <dash/dart/if/dart_types.h>
 #include <dash/internal/Unit.h>
+
+#include <cpp17/cstddef.h>
+
+#include <array>
+#include <cstddef>
+#include <type_traits>
 
 
 namespace dash {
@@ -343,6 +346,8 @@ constexpr team_unit_t   UNDEFINED_TEAM_UNIT_ID{DART_UNDEFINED_UNIT_ID};
  * This is a typed version of \ref DART_UNDEFINED_UNIT_ID.
  */
 constexpr global_unit_t UNDEFINED_GLOBAL_UNIT_ID{DART_UNDEFINED_UNIT_ID};
+
+typedef typename std::max_align_t max_align_t;
 
 } // namespace dash
 

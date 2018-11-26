@@ -108,8 +108,9 @@ TEST_F(HaloTest, HaloSpecStencils)
     EXPECT_EQ(halo_spec.spec(16).coords(), RCoords_t({1,2,1}));
     EXPECT_EQ((uint32_t)halo_spec.extent(16), 2);
     for(auto i = 0; i < RCoords_t::MaxIndex; ++i) {
-      if(i != 16)
+      if (i != 16) {
         EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
+      }
     }
   }
   {
@@ -125,8 +126,9 @@ TEST_F(HaloTest, HaloSpecStencils)
     EXPECT_EQ((uint32_t)halo_spec.extent(4), 2);
     EXPECT_EQ((uint32_t)halo_spec.extent(12), 1);
     for(auto i = 0; i < RCoords_t::MaxIndex; ++i) {
-      if(i != 3 && i != 4 && i != 12)
+      if(i != 3 && i != 4 && i != 12) {
         EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
+      }
     }
   }
   {
@@ -150,8 +152,10 @@ TEST_F(HaloTest, HaloSpecStencils)
     EXPECT_EQ((uint32_t)halo_spec.extent(10), 2);
     EXPECT_EQ((uint32_t)halo_spec.extent(12), 1);
     for(auto i = 0; i < RCoords_t::MaxIndex; ++i) {
-      if(i != 0 && i != 1 && i != 3 && i != 4 && i != 9 && i != 10 && i!= 12)
+      if (i != 0 && i != 1 && i != 3 && i != 4 && i != 9 && i != 10 &&
+          i != 12) {
         EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
+      }
     }
   }
   {
@@ -175,8 +179,10 @@ TEST_F(HaloTest, HaloSpecStencils)
     EXPECT_EQ((uint32_t)halo_spec.extent(25), 3);
     EXPECT_EQ((uint32_t)halo_spec.extent(26), 3);
     for(auto i = 0; i < RCoords_t::MaxIndex; ++i) {
-      if(i != 14 && i != 16 && i != 17 && i != 22 && i != 23 && i != 25 && i!= 26)
+      if (i != 14 && i != 16 && i != 17 && i != 22 && i != 23 && i != 25 &&
+          i != 26) {
         EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
+      }
     }
   }
 }
@@ -208,7 +214,7 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
 
   long sum_check = 0;
   if(myid == 0) {
-    long** matrix_check = new long*[ext_per_dim];
+    auto** matrix_check = new long*[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long[ext_per_dim];
       for(auto j = 0; j < ext_per_dim; ++j) {
@@ -465,7 +471,7 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
   unsigned long sum_check = 0;
 
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim];
+    auto*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long*[ext_per_dim];
       for(auto j = 0; j < ext_per_dim; ++j) {
@@ -563,7 +569,7 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
   auto ext_per_dim_check = ext_per_dim + 2;
   unsigned long sum_check = 0;
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim_check];
+    auto*** matrix_check = new long**[ext_per_dim_check];
     for(auto i = 0; i < ext_per_dim_check; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
       for(auto j = 0; j < ext_per_dim_check; ++j) {
@@ -662,7 +668,7 @@ TEST_F(HaloTest, HaloMatrixWrapperCustom3D)
   auto ext_per_dim_check = ext_per_dim + 2;
   unsigned long sum_check = 0;
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim_check];
+    auto*** matrix_check = new long**[ext_per_dim_check];
     for(auto i = 0; i < ext_per_dim_check; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
       for(auto j = 0; j < ext_per_dim_check; ++j) {
@@ -725,8 +731,9 @@ TEST_F(HaloTest, HaloMatrixWrapperCustom3D)
   auto stencil_op = halo_wrapper.stencil_operator(stencil_spec);
   auto sum_halo = calc_sum_halo(halo_wrapper, stencil_op);
 
-  if(myid == 0)
+  if(myid == 0) {
     EXPECT_EQ(sum_check, sum_halo);
+  }
 
   dash::Team::All().barrier();
 }
@@ -759,7 +766,7 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
   auto ext_per_dim_check = ext_per_dim + 2;
   unsigned long sum_check = 0;
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim];
+    auto*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
       for(auto j = 0; j < ext_per_dim_check; ++j) {
@@ -838,8 +845,9 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
   auto stencil_op = halo_wrapper.stencil_operator(stencil_spec);
   auto sum_halo = calc_sum_halo(halo_wrapper, stencil_op);
 
-  if(myid == 0)
+  if(myid == 0) {
     EXPECT_EQ(sum_check, sum_halo);
+  }
 
   dash::Team::All().barrier();
 }
@@ -877,7 +885,7 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
   auto ext_per_dim_check = ext_per_dim + 6;
   unsigned long sum_check = 0;
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim];
+    auto*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
       for(auto j = 0; j < ext_per_dim_check; ++j) {
@@ -1016,7 +1024,7 @@ TEST_F(HaloTest, HaloMatrixWrapperMultiStencil3D)
 
   auto ext_per_dim_check = ext_per_dim + 2;
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim];
+    auto*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
       for(auto j = 0; j < ext_per_dim_check; ++j) {
@@ -1159,7 +1167,7 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMultiStencil)
 
   auto ext_per_dim_check = ext_per_dim + 6;
   if(myid == 0) {
-    long*** matrix_check = new long**[ext_per_dim];
+    auto*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
       for(auto j = 0; j < ext_per_dim_check; ++j) {

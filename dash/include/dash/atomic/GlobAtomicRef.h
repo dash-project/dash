@@ -46,7 +46,7 @@ public:
   using nonconst_type       = GlobRef<dash::Atomic<nonconst_value_type>>;
 
 private:
-  dart_gptr_t _gptr;
+  dart_gptr_t _gptr{};
 
 
 public:

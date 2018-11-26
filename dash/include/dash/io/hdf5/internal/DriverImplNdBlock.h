@@ -28,9 +28,9 @@ namespace hdf5 {
  * 2. fully filled middle blocks
  * 3. down right underfilled blocks
  */
-template <typename ElementT, typename PatternT, dim_t ndim, dim_t NViewDim>
+template <typename ElementT, typename PatternT, dim_t ndim, dim_t NViewDim, typename LocalMemT>
 void StoreHDF::_write_dataset_impl_nd_block(
-    dash::MatrixRef<ElementT, ndim, NViewDim, PatternT>& container,
+    dash::MatrixRef<ElementT, ndim, NViewDim, PatternT, LocalMemT>& container,
     const hid_t& h5dset, const hid_t& internal_type) {
   auto& pattern = container.pattern();
   auto local_elems = container.sub_local();

@@ -40,7 +40,7 @@ TEST_F(ShiftTilePatternTest, Distribute1DimTile)
   EXPECT_EQ(pat_tile_col.blocksize(0), block_size);
   EXPECT_EQ(pat_tile_col.local_capacity(), local_cap);
 
-  std::array<index_t, 1> expected_coord;
+  std::array<index_t, 1> expected_coord{};
   for (int x = 0; x < static_cast<int>(extent); ++x) {
     expected_coord[0]         = x;
     dash::team_unit_t expected_unit_id((x / block_size) % team_size);
@@ -294,12 +294,13 @@ TEST_F(ShiftTilePatternTest, Tile2DimTeam1Dim)
   std::vector< std::vector<dart_unit_t> > pattern_units;
   for (int y = 0; y < static_cast<int>(extent_y); ++y) {
     std::vector<dart_unit_t> row_units;
+    row_units.reserve(static_cast<int>(extent_x));
     for (int x = 0; x < static_cast<int>(extent_x); ++x) {
       row_units.push_back(pattern.unit_at(std::array<index_t, 2> { x, y }));
     }
     pattern_units.push_back(row_units);
   }
-  for (auto row_units : pattern_units) {
+  for (const auto& row_units : pattern_units) {
     DASH_LOG_DEBUG_VAR("ShiftTilePatternTest.Tile2DimTeam1Dim", row_units);
   }
 }

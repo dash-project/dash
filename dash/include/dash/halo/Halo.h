@@ -2,7 +2,6 @@
 #define DASH__HALO__HALO_H__
 
 #include <dash/iterator/GlobIter.h>
-#include <dash/memory/GlobStaticMem.h>
 
 #include <dash/internal/Logging.h>
 #include <dash/util/FunctionalExpr.h>
@@ -77,6 +76,66 @@ public:
   }
 
   /**
+   * Returns coordinates adjusted by stencil point
+   */
+  template <typename ElementCoordsT>
+  ElementCoordsT stencil_coords(ElementCoordsT& coords) const {
+    return StencilPoint<NumDimensions, CoeffT>::stencil_coords(coords, this);
+  }
+
+  /**
+   * Returns coordinates adjusted by a given stencil point
+   */
+  template <typename ElementCoordsT>
+  static ElementCoordsT stencil_coords(
+    ElementCoordsT                             coords,
+    const StencilPoint<NumDimensions, CoeffT>& stencilp) {
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      coords[d] += stencilp[d];
+    }
+
+    return coords;
+  }
+
+  /**
+   * Returns coordinates adjusted by a stencil point and a boolean to indicate
+   * a if the adjusted coordinate points to elements out of the given
+   * \ref ViewSpecpossible (inside: true, else: false).
+   */
+  template <typename ElementCoordsT, typename ViewSpecT>
+  std::pair<ElementCoordsT, bool> stencil_coords_check(
+    ElementCoordsT coords, const ViewSpecT& view) const {
+    bool halo = false;
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      coords[d] += this->_values[d];
+      if(coords[d] < 0 || coords[d] >= view.extent(d))
+        halo = true;
+    }
+
+    return std::make_pair(coords, halo);
+  }
+
+  /**
+   * Returns coordinates adjusted by a stencil point and a boolean to indicate
+   * a if the adjusted coordinate points to elements out of the given
+   * \ref ViewSpecpossible (inside: true, else: false).
+   * If one dimension points to an element outside the \ref ViewSpec this method
+   * returns immediately the unfinished adjusted coordinate and true. Otherwise
+   * the adjusted coordinate and false is returned,
+   */
+  template <typename ElementCoordsT, typename ViewSpecT>
+  std::pair<ElementCoordsT, bool> stencil_coords_check_abort(
+    ElementCoordsT coords, const ViewSpecT& view) const {
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      coords[d] += this->_values[d];
+      if(coords[d] < 0 || coords[d] >= view.extent(d))
+        return std::make_pair(coords, true);
+    }
+
+    return std::make_pair(coords, false);
+  }
+
+  /**
    * Returns the coefficient for this stencil point
    */
   CoeffT coefficient() const { return _coefficient; }
@@ -89,7 +148,7 @@ template <dim_t NumDimensions, typename CoeffT>
 std::ostream& operator<<(
   std::ostream& os, const StencilPoint<NumDimensions, CoeffT>& stencil_point) {
   os << "dash::halo::StencilPoint<" << NumDimensions << ">"
-     << "(coefficient = " << stencil_point.coefficient << " - points: ";
+     << "(coefficient = " << stencil_point.coefficient() << " - points: ";
   for(auto d = 0; d < NumDimensions; ++d) {
     if(d > 0) {
       os << ",";
@@ -744,12 +803,16 @@ std::ostream& operator<<(std::ostream& os, const HaloSpec<NumDimensions>& hs) {
 /**
  * Iterator to iterate over all region elements defined by \ref Region
  */
-template <typename ElementT, typename PatternT,
-          typename PointerT   = GlobPtr<ElementT, PatternT>,
-          typename ReferenceT = GlobRef<ElementT>>
+template <
+    typename ElementT,
+    typename PatternT,
+    typename GlobMemT,
+    typename PointerT =
+        typename GlobMemT::void_pointer::template rebind<ElementT>,
+    typename ReferenceT = GlobRef<ElementT>>
 class RegionIter {
 private:
-  using Self_t = RegionIter<ElementT, PatternT, PointerT, ReferenceT>;
+  using Self_t = RegionIter<ElementT, PatternT, GlobMemT, PointerT, ReferenceT>;
 
   static const auto NumDimensions = PatternT::ndim();
 
@@ -759,13 +822,14 @@ public:
   using value_type        = ElementT;
   using difference_type   = typename PatternT::index_type;
   using pointer           = PointerT;
+  using local_pointer     = typename pointer::local_type;
   using reference         = ReferenceT;
 
   using const_reference = const reference;
   using const_pointer   = const pointer;
 
-  using GlobMem_t =
-    GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
+  using GlobMem_t       = GlobMemT;
+
   using ViewSpec_t      = typename PatternT::viewspec_type;
   using pattern_index_t = typename PatternT::index_type;
   using pattern_size_t  = typename PatternT::size_type;
@@ -774,12 +838,22 @@ public:
   /**
    * Constructor, creates a region iterator.
    */
-  RegionIter(GlobMem_t* globmem, const PatternT* pattern,
-             const ViewSpec_t& _region_view, pattern_index_t pos,
-             pattern_size_t size)
-  : _globmem(globmem), _pattern(pattern), _region_view(_region_view), _idx(pos),
-    _max_idx(size - 1), _myid(pattern->team().myid()),
-    _lbegin(globmem->lbegin()) {}
+  RegionIter(
+      GlobMem_t*        globmem,
+      const PatternT*   pattern,
+      const ViewSpec_t& _region_view,
+      pattern_index_t   pos,
+      pattern_size_t    size)
+    : _globmem(globmem)
+    , _pattern(pattern)
+    , _region_view(_region_view)
+    , _idx(pos)
+    , _max_idx(size - 1)
+    , _myid(pattern->team().myid())
+    , _lbegin(dash::local_begin(
+          static_cast<pointer>(globmem->begin()), pattern->team().myid()))
+  {
+  }
 
   /**
    * Copy constructor.
@@ -824,8 +898,14 @@ public:
    * \see DashGlobalIteratorConcept
    */
   reference operator[](pattern_index_t n) const {
-    //TODO dhinf: verify if this is correct
-    return *GlobIter<ElementT, PatternT>(_globmem, *_pattern, gpos() + n);
+    auto coords    = glob_coords(_idx + n);
+    auto local_pos = _pattern->local_index(coords);
+
+    auto p = static_cast<pointer>(_globmem->begin());
+    p.set_unit(local_pos.unit);
+    p += local_pos.index;
+    return *p;
+
   }
 
   dart_gptr_t dart_gptr() const { return operator[](_idx).dart_gptr(); }
@@ -836,9 +916,9 @@ public:
    */
   bool is_local() const { return (_myid == lpos().unit); }
 
-  GlobIter<ElementT, PatternT> global() const {
+  GlobIter<ElementT, PatternT, GlobMemT> global() const {
     auto g_idx = gpos();
-    return GlobIter<ElementT, PatternT>(_globmem, *_pattern, g_idx);
+    return GlobIter<ElementT, PatternT, GlobMemT>(_globmem, *_pattern, g_idx);
   }
 
   ElementT* local() const {
@@ -1021,7 +1101,7 @@ private:
   /// Unit id of the active unit
   team_unit_t _myid;
 
-  ElementT* _lbegin;
+  local_pointer _lbegin;
 
 };  // class HaloBlockIter
 
@@ -1051,17 +1131,16 @@ auto distance(
  * Provides \ref RegionIter and some region metadata like \ref RegionSpec,
  * size etc.
  */
-template <typename ElementT, typename PatternT>
+template <typename ElementT, typename PatternT, typename GlobMemT>
 class Region {
 private:
   static constexpr auto NumDimensions = PatternT::ndim();
 
 public:
-  using iterator       = RegionIter<ElementT, PatternT>;
+  using iterator       = RegionIter<ElementT, PatternT, GlobMemT>;
   using const_iterator = const iterator;
   using RegionSpec_t   = RegionSpec<NumDimensions>;
-  using GlobMem_t =
-    GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
+  using GlobMem_t      = GlobMemT;
   using ViewSpec_t     = typename PatternT::viewspec_type;
   using Border_t       = std::array<bool, NumDimensions>;
   using region_index_t = typename RegionSpec_t::region_index_t;
@@ -1109,9 +1188,9 @@ private:
   iterator           _end;
 };  // Region
 
-template <typename ElementT, typename PatternT>
+template <typename ElementT, typename PatternT, typename GlobMemT>
 std::ostream& operator<<(std::ostream&                     os,
-                         const Region<ElementT, PatternT>& region) {
+                         const Region<ElementT, PatternT, GlobMemT>& region) {
   os << "dash::halo::Region<" << typeid(ElementT).name() << ">"
      << "( view: " << region.view() << "; region spec: " << region.spec()
      << "; border regions: {";
@@ -1135,23 +1214,22 @@ std::ostream& operator<<(std::ostream&                     os,
  * Takes the local part of the NArray and builds halo and
  * boundary regions.
  */
-template <typename ElementT, typename PatternT>
+template <typename ElementT, typename PatternT, typename GlobMemT>
 class HaloBlock {
 private:
   static constexpr auto NumDimensions = PatternT::ndim();
 
-  using Self_t          = HaloBlock<ElementT, PatternT>;
+  using Self_t          = HaloBlock<ElementT, PatternT, GlobMemT>;
   using pattern_index_t = typename PatternT::index_type;
   using RegionSpec_t    = RegionSpec<NumDimensions>;
-  using Region_t        = Region<ElementT, PatternT>;
+  using Region_t        = Region<ElementT, PatternT, GlobMemT>;
   using RegionCoords_t  = RegionCoords<NumDimensions>;
   using region_extent_t = typename RegionSpec_t::region_extent_t;
 
 public:
   using Element_t = ElementT;
   using Pattern_t = PatternT;
-  using GlobMem_t =
-    GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
+  using GlobMem_t = GlobMemT;
   using GlobBoundSpec_t = GlobalBoundarySpec<NumDimensions>;
   using pattern_size_t  = typename PatternT::size_type;
   using ViewSpec_t      = typename PatternT::viewspec_type;
@@ -1517,9 +1595,9 @@ private:
   HaloExtsMax_t _halo_extents_max{};
 };  // class HaloBlock
 
-template <typename ElementT, typename PatternT>
+template <typename ElementT, typename PatternT, typename GlobMemT>
 std::ostream& operator<<(std::ostream&                        os,
-                         const HaloBlock<ElementT, PatternT>& haloblock) {
+                         const HaloBlock<ElementT, PatternT, GlobMemT>& haloblock) {
   bool begin = true;
   os << "dash::halo::HaloBlock<" << typeid(ElementT).name() << ">("
      << "view global: " << haloblock.view()
@@ -1572,14 +1650,14 @@ public:
   using Element_t = typename HaloBlockT::Element_t;
   using ElementCoords_t =
     std::array<typename Pattern_t::index_type, NumDimensions>;
-  using HaloBuffer_t = std::vector<Element_t>;
+  using HaloBuffer_t   = std::vector<Element_t>;
   using region_index_t = typename RegionCoords_t::region_index_t;
   using pattern_size_t = typename Pattern_t::size_type;
 
-  using iterator = typename HaloBuffer_t::iterator;
+  using iterator       = typename HaloBuffer_t::iterator;
   using const_iterator = const iterator;
 
-  using MemRange_t = std::pair<iterator,iterator>;
+  using MemRange_t = std::pair<iterator, iterator>;
 
 public:
   /**
@@ -1614,12 +1692,13 @@ public:
   MemRange_t range_at(region_index_t index) {
     auto it = _halo_offsets[index];
     if(it == _halobuffer.end())
-      return std::make_pair(it,it);
+      return std::make_pair(it, it);
 
     auto* region = _haloblock.halo_region(index);
 
-    DASH_ASSERT_MSG(region != nullptr,
-        "HaloMemory manages memory for a region that seemed to be empty.");
+    DASH_ASSERT_MSG(
+      region != nullptr,
+      "HaloMemory manages memory for a region that seemed to be empty.");
 
     return std::make_pair(it, it + region->size());
   }
@@ -1716,8 +1795,8 @@ public:
   }
 
 private:
-  const HaloBlockT&      _haloblock;
-  HaloBuffer_t           _halobuffer;
+  const HaloBlockT&              _haloblock;
+  HaloBuffer_t                   _halobuffer;
   std::array<iterator, MaxIndex> _halo_offsets{};
 };  // class HaloMemory
 

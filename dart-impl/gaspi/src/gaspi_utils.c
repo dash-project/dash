@@ -118,7 +118,7 @@ gaspi_return_t gaspi_reduce_user (
 
    //create segment to read from for each process using one id found above
    size_t num_bytes = element_size * num;
-   //TODO segmebnt_ids knows free ids for each process. Need to resolve which process
+   //TODO segment_ids knows free ids for each process. Need to resolve which process
    //belongs to which id.
    /*int segment_index = 0;
    for(int i = 0; i < group_size; ++i){
@@ -397,6 +397,259 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
  */
 
 /*
+ *reduce MINMAX operations
+ *
+ * From cpp refrence:  
+ * A pair with the smallest value in ilist as the first element and the greatest as the second. 
+ * If several elements are equivalent to the smallest, the leftmost such element is returned. 
+ * If several elements are equivalent to the largest, the rightmost such element is returned.
+ */
+
+ // reduce DART_OP_MINMAX char
+ gaspi_return_t gaspi_op_MINMAX_char(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout)
+ {
+    if(sizeof(char) != element_size){
+      printf("Error: element_size does not match size of char!\n");
+      return GASPI_ERROR;
+    }
+    // res needs to be 2 * num -> test possible?
+    for(int i = 0; i < num; ++i){
+       if(((char*)op1)[i] < ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+       else if(((char*)op1)[i] > ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op2)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op1)[i];
+       }
+       else{
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+    }
+    return GASPI_SUCCESS;
+ }
+
+ // reduce DART_OP_MINMAX short
+ gaspi_return_t gaspi_op_MINMAX_short(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout)
+ {
+    if(sizeof(short) != element_size){
+      printf("Error: element_size does not match size of short!\n");
+      return GASPI_ERROR;
+    }
+
+    for(int i = 0; i < num; ++i){
+       if(((char*)op1)[i] < ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+       else if(((char*)op1)[i] > ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op2)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op1)[i];
+       }
+       else{
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+    }
+    return GASPI_SUCCESS;
+ }
+
+ //reduce DART_OP_MINMAX int
+ gaspi_return_t gaspi_op_MINMAX_int(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout)
+ {
+    if(sizeof(int) != element_size){
+      printf("Error: element_size does not match size of int!\n");
+      return GASPI_ERROR;
+    }
+
+    for(int i = 0; i < num; ++i){
+       if(((char*)op1)[i] < ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+       else if(((char*)op1)[i] > ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op2)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op1)[i];
+       }
+       else{
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+    }
+    return GASPI_SUCCESS;
+ }
+
+ //reduce DART_OP_MINMAX uInt
+ gaspi_return_t gaspi_op_MINMAX_uInt(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout)
+ {
+    if(sizeof(unsigned int) != element_size){
+      printf("Error: element_size does not match size of uInt!\n");
+      return GASPI_ERROR;
+    }
+
+    for(int i = 0; i < num; ++i){
+       if(((char*)op1)[i] < ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+       else if(((char*)op1)[i] > ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op2)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op1)[i];
+       }
+       else{
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+    }
+    return GASPI_SUCCESS;
+ }
+
+ // reduce DART_OP_MINMAX long
+ gaspi_return_t gaspi_op_MINMAX_long(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout)
+ {
+    if(sizeof(long) != element_size){
+      printf("Error: element_size does not match size of long!\n");
+      return GASPI_ERROR;
+    }
+
+    for(int i = 0; i < num; ++i){
+       if(((char*)op1)[i] < ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+       else if(((char*)op1)[i] > ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op2)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op1)[i];
+       }
+       else{
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+    }
+    return GASPI_SUCCESS;
+ }
+ 
+ // reduce DART_OP_MINMAX uLong
+ gaspi_return_t gaspi_op_MINMAX_uLong(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout)
+ {
+    if(sizeof(unsigned long) != element_size){
+      printf("Error: element_size does not match size of uLong!\n");
+      return GASPI_ERROR;
+    }
+
+    for(int i = 0; i < num; ++i){
+       if(((char*)op1)[i] < ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+       else if(((char*)op1)[i] > ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op2)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op1)[i];
+       }
+       else{
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+    }
+    return GASPI_SUCCESS;
+ }
+
+ //reduce DART_OP_MINMAX longLong
+ gaspi_return_t gaspi_op_MINMAX_longLong(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout)
+ {
+    if(sizeof(long long) != element_size){
+      printf("Error: element_size does not match size of longLong!\n");
+      return GASPI_ERROR;
+    }
+
+    for(int i = 0; i < num; ++i){
+       if(((char*)op1)[i] < ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+       else if(((char*)op1)[i] > ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op2)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op1)[i];
+       }
+       else{
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+    }
+    return GASPI_SUCCESS;
+ }
+
+ // reduce DART_OP_MINMAX float
+ gaspi_return_t gaspi_op_MINMAX_float(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout)
+ {
+    if(sizeof(float) != element_size){
+      printf("Error: element_size does not match size of float!\n");
+      return GASPI_ERROR;
+    }
+
+    for(int i = 0; i < num; ++i){
+       if(((char*)op1)[i] < ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+       else if(((char*)op1)[i] > ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op2)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op1)[i];
+       }
+       else{
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+    }
+    return GASPI_SUCCESS;
+ }
+
+ // reduce DART_OP_MINMAX double
+ gaspi_return_t gaspi_op_MINMAX_double(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout)
+ {
+    if(sizeof(double) != element_size){
+      printf("Error: element_size does not match size of double!\n");
+      return GASPI_ERROR;
+    }
+
+    for(int i = 0; i < num; ++i){
+       if(((char*)op1)[i] < ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+       else if(((char*)op1)[i] > ((char*)op2)[i]){
+          ((char*)res)[(i*2)]    = ((char*)op2)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op1)[i];
+       }
+       else{
+          ((char*)res)[(i*2)]    = ((char*)op1)[i];
+          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       }
+    }
+    return GASPI_SUCCESS;
+ }
+
+ 
+/*
  * reduce max operations
  */
 
@@ -481,7 +734,7 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
                         gaspi_size_t element_size, gaspi_timeout_t timeout)
  {
     if(sizeof(long) != element_size){
-      printf("Error: element_size does not match size of unsigned long!\n");
+      printf("Error: element_size does not match size of long!\n");
       return GASPI_ERROR;
     }
     for(int i = 0; i < num; ++i){
@@ -557,7 +810,7 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
                         gaspi_size_t element_size, gaspi_timeout_t timeout)
  {
     if(sizeof(double) != element_size){
-      printf("Error: element_size does not match size of float!\n");
+      printf("Error: element_size does not match size of double!\n");
       return GASPI_ERROR;
     }
     for(int i = 0; i < num; ++i){
@@ -1211,5 +1464,5 @@ dart_type_create_indexed(
 //TODO implementation
 dart_ret_t dart_type_destroy(dart_datatype_t *dart_type_ptr){
    fprintf(stderr, "dart-gaspi: %s function not supported\n", __func__);
-   return DART_ERR_NOTFOUND;
+   return DART_OK;
 }

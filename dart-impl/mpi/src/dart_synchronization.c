@@ -17,6 +17,7 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
+#include <dash/dart/mpi/dart_synchronization_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
 #include <stdio.h>
@@ -38,6 +39,10 @@ struct dart_lock_struct
    */
   dart_gptr_t  gptr_list;
   /**
+   * Pointer to the next element a the list.
+   */
+  struct dart_lock_struct *next;
+  /**
    * Local mutex to ensure mutual exclusion between threads.
    */
   dart_mutex_t mutex;
@@ -46,6 +51,8 @@ struct dart_lock_struct
   int32_t is_acquired;
 };
 
+static dart_ret_t destroy_lock_segments(dart_lock_t lock);
+
 dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
 {
   int ret;
@@ -53,7 +60,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
   dart_gptr_t gptr_list;
   dart_team_unit_t unitid;
 
-  *lock = NULL;
+  *lock = DART_LOCK_NULL;
 
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
@@ -69,7 +76,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
     int32_t *tail_ptr;
     ret = dart_memalloc(1, DART_TYPE_INT, &gptr_tail);
     if (ret != DART_OK) {
-      DART_LOG_ERROR("%s: Failed to allocate global memory!", __FUNCTION__);
+      DART_LOG_ERROR("%s: Failed to allocate global memory!", __func__);
       return ret;
     }
     DART_ASSERT_RETURNS(
@@ -86,7 +93,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
    * waiting on the lock. */
   ret = dart_team_memalloc_aligned(teamid, 1, DART_TYPE_INT, &gptr_list);
   if (ret != DART_OK) {
-    DART_LOG_ERROR("%s: Failed to allocate global memory!", __FUNCTION__);
+    DART_LOG_ERROR("%s: Failed to allocate global memory!", __func__);
     return ret;
   }
 
@@ -108,7 +115,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
     DART_TEAM_UNIT_ID(0),
     teamid);
   if (ret != DART_OK) {
-    DART_LOG_ERROR("%s: Failed to broadcast lock information!", __FUNCTION__);
+    DART_LOG_ERROR("%s: Failed to broadcast lock information!", __func__);
     return ret;
   }
 
@@ -121,6 +128,10 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
   DART_ASSERT_RETURNS(
     dart__base__mutex_init_recursive(&(*lock)->mutex),
     DART_OK);
+
+  // register the lock
+  (*lock)->next   = team_data->allocated_locks;
+  team_data->allocated_locks = (*lock);
 
   DART_LOG_DEBUG("dart_team_lock_init: INIT - done");
 
@@ -376,38 +387,94 @@ dart_ret_t dart_lock_release(dart_lock_t lock)
 
 dart_ret_t dart_team_lock_destroy(dart_lock_t* lock)
 {
-  dart_ret_t ret;
-  dart_team_unit_t unitid;
-  dart_gptr_t gptr_tail = (*lock)->gptr_tail;
-  dart_gptr_t gptr_list = (*lock)->gptr_list;
-  dart_team_t teamid    = (*lock)->teamid;
+  if (!lock || DART_LOCK_NULL == *lock) {
+    return DART_OK;
+  }
 
-  dart_team_myid(teamid, &unitid);
+  dart_team_t teamid = (*lock)->teamid;
 
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
 
-  /* Unit 0 is the process holding the gptr_tail by default. */
-  if (unitid.id == 0) {
-    ret = dart_memfree(gptr_tail);
-    if (ret != DART_OK) {
-      DART_LOG_ERROR("Failed to free global mmeory");
-      return ret;
+  if (team_data != NULL) {
+    // if the team is still alive the lock segments have not been free'd
+    struct dart_lock_struct *prev = NULL, *elem = team_data->allocated_locks;
+    while (elem != NULL) {
+      if (elem == *lock) {
+        break;
+      }
+      prev = elem;
+      elem = elem->next;
     }
+    DART_ASSERT_MSG(elem != NULL, "Unknown lock!");
+
+    if (prev == NULL) {
+      team_data->allocated_locks = team_data->allocated_locks->next;
+    } else {
+      prev->next = elem->next;
+    }
+
+    destroy_lock_segments(*lock);
   }
-  ret = dart_team_memfree(gptr_list);
-  if (ret != DART_OK) {
-    DART_LOG_ERROR("Failed to free global mmeory");
-    return ret;
-  }
-  (*lock)->gptr_tail = DART_GPTR_NULL;
-  (*lock)->gptr_list = DART_GPTR_NULL;
+
   (*lock)->teamid    = DART_TEAM_NULL;
   dart__base__mutex_destroy(&(*lock)->mutex);
   DART_LOG_DEBUG("dart_team_lock_free: done in team %d", teamid);
   free(*lock);
-  *lock = NULL;
+  *lock = DART_LOCK_NULL;
+  return DART_OK;
+}
+
+bool dart_lock_initialized(struct dart_lock_struct const * lock)
+{
+  return lock &&
+    !DART_GPTR_ISNULL(lock->gptr_tail) &&
+         !DART_GPTR_ISNULL(lock->gptr_list);
+}
+
+dart_ret_t dart__mpi__destroylocks(struct dart_lock_struct *allocated_locks)
+{
+  // Iterate over all allocated and free the segments
+  // However, do not free the lock or remove it from the list as the user might
+  // call dart_team_lock_destroy later
+  struct dart_lock_struct *lock = allocated_locks;
+  while (lock != NULL) {
+    destroy_lock_segments(lock);
+    lock = lock->next;
+  }
   return DART_OK;
 }
 
 
+static
+dart_ret_t destroy_lock_segments(dart_lock_t lock)
+{
+  dart_ret_t ret;
+  dart_team_unit_t unitid;
+  dart_gptr_t gptr_tail = lock->gptr_tail;
+  dart_gptr_t gptr_list = lock->gptr_list;
+  dart_team_t teamid    = lock->teamid;
 
+  dart_team_myid(teamid, &unitid);
 
+  /* Unit 0 is the process holding the gptr_tail by default. */
+  if (unitid.id == 0) {
+    if (!DART_GPTR_ISNULL(gptr_tail)) {
+      ret = dart_memfree(gptr_tail);
+      if (ret != DART_OK) {
+        DART_LOG_ERROR("Failed to free global mmeory");
+        return ret;
+      }
+      lock->gptr_tail = DART_GPTR_NULL;
+    }
+  }
+  if (!DART_GPTR_ISNULL(gptr_list)) {
+    ret = dart_team_memfree(gptr_list);
+    if (ret != DART_OK) {
+      DART_LOG_ERROR("Failed to free global mmeory");
+      return ret;
+    }
+    lock->gptr_list = DART_GPTR_NULL;
+  }
+
+  return DART_OK;
+}

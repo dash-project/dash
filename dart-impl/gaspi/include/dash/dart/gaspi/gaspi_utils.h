@@ -90,6 +90,43 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
 * Headers for reduce operations used for gaspi_reduce_user and gaspi_allreduce_user
 */
 
+//MINMAX operations for each supported data type
+gaspi_return_t gaspi_op_MINMAX_char(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout);
+                        
+gaspi_return_t gaspi_op_MINMAX_short(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout);
+
+gaspi_return_t gaspi_op_MINMAX_int(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout);
+
+gaspi_return_t gaspi_op_MINMAX_uInt(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout);
+
+gaspi_return_t gaspi_op_MINMAX_long(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout);
+
+gaspi_return_t gaspi_op_MINMAX_uLong(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout);
+
+gaspi_return_t gaspi_op_MINMAX_longLong(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout);
+
+gaspi_return_t gaspi_op_MINMAX_float(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout);
+
+gaspi_return_t gaspi_op_MINMAX_double(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
+                        gaspi_state_t state, gaspi_number_t num,
+                        gaspi_size_t element_size, gaspi_timeout_t timeout);                                                                                                                                                                                                                
+
 //MAX operations for each supported data type
 gaspi_return_t gaspi_op_MAX_char(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
                         gaspi_state_t state, gaspi_number_t num,

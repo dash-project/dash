@@ -3,7 +3,7 @@
 
 ## DASH Template Library
 
-### Features:
+### New Features:
 
 - Added meta-type traits and helpers
 - Added range types and range expressions
@@ -17,29 +17,19 @@
   space.
 - Global dynamic memory allocation: concepts and reference implementations
   (`dash::GlobHeapMem`, `dash::GlobStaticMem`)
-- Supporting `dash::Atomic<T>` as container element type
-- Well-defined atomic operation semantics for `dash::Shared`
-- Added load balance patterns and automatic data distribution based on
-  locality information to aid in load balancing
-- Improved pattern implementations, rewriting pattern methods as single
-  arithmetic expressions
+- Added `dash::Atomic<T>` as container element type to support atomic access
 - Introduced parallel IO concepts for DASH containers (`dash::io`),
   currently implemented based on HDF5
-- Introduced stencil iterator and halo block concepts
-- Using strict unit ID types to distinguish global and team scope
-- Using new DASH locality domain concept to provide automatic configuration
-  of OpenMP for node-level parallelization
-- New algorithms, including `dash::fill`, `dash::generate`, `dash::find`.
-- Drastic performance improvements in algorithms, e.g. `dash::min_element`,
+- Introduced Halo matrix supporting arbitrary stencils
+- New algorithms, including `dash::fill`, `dash::generate`, `dash::find`,
+  `dash::reduce`, and `dash::sort`
+- Performance improvements in algorithms, e.g. `dash::min_element`,
   `dash::transform`
-- Additional benchmark applications
-- Additional example applications, including histogram sort and radix sort
-  implementations
 - Runtime configuration interface (`dash::util::Config`)
-- Improved output format and log targets in unit tests
-- Added support for HDF5 groups
-- Relaxed restrictions on container element types
-- Support patterns with underfilled blocks in `dash::io::hdf5`
+- Restricted container element type check to `std::is_trivially_copyable`
+- Added CoArray implementation (`dash::CoArray`)
+- Made global pointers (`dash::GlobPtr`) copyable across units
+- Additional benchmark applications
 
 ### Bugfixes:
 
@@ -49,16 +39,10 @@
 - Conversions of `GlobPtr<T>`, `GlobRef<T>`, `GlobIter<T>`, ... now
   const-correct (e.g., to `GlobIter<const T>` instead of `const GlobIter<T>`)
 - Consistent usage of index- and size types
-- Numerous stability fixes and performance improvements
 - Move-semantics of allocators
+- Numerous stability fixes and performance improvements
 
 ### Known limitations:
-
-- Type trait `dash::is_container_compatible` does not check
-  `std::is_trivially_copyable` for Cray compilers and GCC <= 4.8.0
-  (issue #241)
-
-
 
 ## DART Interface and Base Library
 
@@ -68,49 +52,20 @@
   IDs (`dart_global_unit_t`) and IDs that are relative to a team
   (`dart_team_unit_t`).
 - Added function `dart_allreduce` and `dart_reduce`
-- Made global memory allocation and communication operations aware of the 
+- Made global memory allocation and communication operations aware of the
   underlying data type to improve stability and performance
-- Made DART global pointer globally unique to allow copying of global pointer 
-  between members of the team that allocated the global memory. Note that a 
-  global pointer now contains unit IDs relative to the team that allocated 
-  the memory instead of global unit IDs.
-- Extended use of `const` specifier in DART communication interface
+- Made DART global pointer globally unique to allow copying of global pointer
+  between members of the team that allocated the global memory.
+- `const`-correctness in DART communication interface
 - Added interface component `dart_locality` implementing topology discovery
   and hierarchical locality description
 
-    - New types:
-        - `dart_locality_scope_t`: enum of locality scopes (global, node,
-          module, NUMA, ...)
-        - `dart_hwinfo_t`: hardware information such as number of NUMA
-          domains and cores, CPU clock frequencies, CPU pinning, cache sizes,
-          etc.
-        - `dart_domain_locality_t`: node in a locality domain hierarchy
-          providing locality information such as the number of units in the
-          domain and their ids, sub-domains, level in topology, etc.
-        - `dart_unit_localiy_t`: locality information for a specific unit
-
-    - New functions:
-        - `dart_domain_locality`: Access hierarchical locality description of
-          a specified locality domain
-        - `dart_team_locality`: Access hierarchical locality description of a
-          specified team.
-        - `dart_unit_locality`: Access locality description of a specified
-          unit
-
-    - New base implementations: \
-      Implementations of the locality components to be usable by any DART
-      backend:
-        - `dart__base__locality__init`
-        - `dart__base__locality__finalize`
-        - `dart__base__locality__domain`
-        - `dart__base__locality__unit`
-
 ### Bugfixes:
 
-- Added clarification which DART functionality provides thread-safe access. 
+- Added clarification which DART functionality provides thread-safe access.
   DART functions can be considered thread-safe as long as they do not operate
-  on the same data structures. In particular, thread-concurrent (collective) 
-  operations on the same team are not guaranteed to be safe. 
+  on the same data structures. In particular, thread-concurrent (collective)
+  operations on the same team are not guaranteed to be safe.
 
 ### Known limitations:
 
@@ -123,16 +78,16 @@
 
 ### Bugfixes:
 
-- Fixed numerous memory leaks in dart-mpi
+- Added support for `put`/`get` operations on data `>2GB`
+- Added support for custom data-types and reduction operations
+- Fixed numerous stability issues and memory leaks in dart-mpi
 
 ### Known limitations:
 
-- Elements allocated in shared windows are not properly aligned for some 
-  versions of OpenMPI (issue #280, fixed since OpenMPI 2.0.2)
-- Thread-concurrent access may lead to failures with OpenMPI even if 
-  thread support is enabled in DART (build option `ENABLE_THREADSUPPORT`, 
-  issue #292)
-
+- Elements allocated in shared windows are not properly aligned for some
+  versions of Open MPI (issue #280)
+- Potential NUMA performance issue caused by shared memory allocation in the
+  underlying MPI windows
 
 
 ## Build System
@@ -163,9 +118,9 @@
     - `DASH__ARCH__HAS_RDTSC`: Whether the target architecture provides
       an RDTSC micro-instruction.
 
-- Added compiler wrapper dashc++ (and aliases dashcxx and dashCC) that includes 
-  DASH-specific flags compiler and linker flags. To use the wrapper, simply 
-  replace mpicxx with dashcxx when building your application.
+- Added compiler wrapper dashc++ (and aliases dashcxx and dashCC) that includes
+  DASH-specific compiler and linker flags. To use the wrapper, simply
+  replace mpicxx with dash-mpicxx when building your application.
 
 ### Bugfixes:
 

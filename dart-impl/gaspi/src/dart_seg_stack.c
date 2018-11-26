@@ -14,7 +14,7 @@ dart_ret_t seg_stack_init(seg_stack_t * stack, size_t count)
 
     stack->top  = -1;
     stack->size = count;
-    printf(">>>>> seg_stack_init with a count of: %ld <<<<<\n", count);
+    //printf(">>>>> seg_stack_init with a count of: %ld <<<<<\n", count);
     return DART_OK;
 }
 
@@ -39,7 +39,7 @@ dart_ret_t seg_stack_push(seg_stack_t * stack, gaspi_segment_id_t segid_in)
     stack->segids[++(stack->top)] = segid_in;
     // Debug
 
-    printf(">>>> seg_stack_push pushed id: %d | Size: %d <<<<<\n",segid_in , stack->top);
+    //printf(">>>> seg_stack_push pushed id: %d | Size: %d <<<<<\n",segid_in , stack->top);
 
     return DART_OK;
 }
@@ -53,7 +53,7 @@ dart_ret_t seg_stack_pop(seg_stack_t * stack, gaspi_segment_id_t * segid_out)
     *segid_out = stack->segids[(stack->top)--];
     // Debug
 
-    printf(">>>>> seg_stack_pop pops the seg_id: %d | Size: %d <<<<<\n", (*segid_out), stack->top);
+    //printf(">>>>> seg_stack_pop pops the seg_id: %d | Size: %d <<<<<\n", (*segid_out), stack->top);
     return DART_OK;
 }
 

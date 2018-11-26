@@ -59,11 +59,11 @@ public:
 
 public:
   inline Timer()
-  : timestampStart(Timer::Now())
-  { }
+    : timestampStart(Timer::Now())
+  {
+  }
 
-  inline Timer(const self_t & other) : timestampStart(other.timestampStart)
-  { }
+  inline Timer(const self_t& other) = default;
 
   inline Timer & operator=(const self_t & other)
   {
@@ -202,8 +202,7 @@ public:
   : timestampStart(Timer::Now())
   { }
 
-  inline Timer(const self_t & other) : timestampStart(other.timestampStart)
-  { }
+  inline Timer(const self_t& other) = default;
 
   inline Timer & operator=(const self_t & other)
   {

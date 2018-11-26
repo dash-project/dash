@@ -52,16 +52,16 @@ public:
 
 
 private:
-  dart_gptr_t _gptr;
+  dart_gptr_t _gptr{};
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<typename PatternT>
+  template<typename GlobMemT>
   explicit GlobAsyncRef(
     /// Pointer to referenced object in global memory
-    const GlobPtr<nonconst_atomic_t, PatternT> & gptr)
+    const GlobPtr<nonconst_atomic_t, GlobMemT> & gptr)
   : GlobAsyncRef(gptr.dart_gptr())
   { }
 
@@ -69,10 +69,10 @@ private:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<typename PatternT>
+  template<typename GlobMemT>
   explicit GlobAsyncRef(
     /// Pointer to referenced object in global memory
-    const GlobPtr<const_atomic_t, PatternT> & gptr)
+    const GlobPtr<const_atomic_t, GlobMemT> & gptr)
   : GlobAsyncRef(gptr.dart_gptr())
   {
     static_assert(std::is_same<value_type, const_value_type>::value,
@@ -178,7 +178,7 @@ public:
    * the calling unit's local memory.
    */
   bool is_local() const {
-    return GlobPtr<T>(_gptr).is_local();
+    return dash::internal::is_local(_gptr);
   }
 
   /**

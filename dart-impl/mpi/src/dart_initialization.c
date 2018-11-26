@@ -20,7 +20,7 @@
 #include <dash/dart/mpi/dart_locality_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
-#define DART_LOCAL_ALLOC_SIZE (1024*1024*16)
+#define DART_LOCAL_ALLOC_SIZE (1024UL*1024*16)
 
 /* Point to the base address of memory region for local allocation. */
 static int _init_by_dart = 0;
@@ -30,7 +30,7 @@ static
 dart_ret_t create_local_alloc(dart_team_data_t *team_data)
 {
   dart_localpool = dart_buddy_new(DART_LOCAL_ALLOC_SIZE);
-  MPI_Win dart_sharedmem_win_local_alloc;
+  MPI_Win dart_sharedmem_win_local_alloc = MPI_WIN_NULL;
   char* *dart_sharedmem_local_baseptr_set = NULL;
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -112,8 +112,12 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
   /* Start an access epoch on dart_win_local_alloc, and later
    * on all the units can access the memory region allocated
    * by the local allocation function through
-   * dart_win_local_alloc. */
-  MPI_Win_lock_all(0, dart_win_local_alloc);
+   * dart_win_local_alloc.
+   *
+   * NOTE: We use MPI_MODE_NOCHECK since there will be no
+   * conflicting locks at all
+   */
+  MPI_Win_lock_all(MPI_MODE_NOCHECK, dart_win_local_alloc);
 
 
   /* put the localalloc in the segment table */
@@ -187,8 +191,12 @@ dart_ret_t do_init()
 
   /* Start an access epoch on win, and later on all the units
    * can access the attached memory region allocated by the
-   * collective allocation function through win. */
-  MPI_Win_lock_all(0, win);
+   * collective allocation function through win.
+   *
+   * NOTE: We use MPI_MODE_NOCHECK since there will be no
+   * conflicting locks at all
+   */
+  MPI_Win_lock_all(MPI_MODE_NOCHECK, win);
 
   DART_LOG_DEBUG("dart_init: communication backend initialization finished");
 

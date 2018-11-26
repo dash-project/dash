@@ -198,38 +198,27 @@ public:
    * \endcode
    */
   ShiftTilePattern(
-    /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t &         sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE).
-    const DistributionSpec_t & dist,
-    /// Cartesian arrangement of units within the team
-    const TeamSpec_t &         teamspec,
-    /// Team containing units to which this pattern maps its elements
-    dash::Team &               team     = dash::Team::All())
-  : _size(sizespec.size()),
-    _memory_layout(std::array<SizeType, 1> { _size }),
-    _distspec(dist),
-    _team(&team),
-    _teamspec(
-      teamspec,
-      _distspec,
-      *_team),
-    _nunits(_team->size()),
-    _blocksize(initialize_blocksize(
-        _size,
-        _distspec,
-        _nunits)),
-    _nblocks(initialize_num_blocks(
-        _size,
-        _blocksize,
-        _nunits)),
-    _local_size(
-        initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
-    _nlblocks(initialize_num_local_blocks(
-        _blocksize,
-        _local_size)),
-    _local_capacity(initialize_local_capacity()) {
+      /// Pattern size (extent, number of elements) in every dimension
+      const SizeSpec_t &sizespec,
+      /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE).
+      DistributionSpec_t dist,
+      /// Cartesian arrangement of units within the team
+      const TeamSpec_t &teamspec,
+      /// Team containing units to which this pattern maps its elements
+      dash::Team &team = dash::Team::All())
+    : _size(sizespec.size())
+    , _memory_layout(std::array<SizeType, 1>{_size})
+    , _distspec(std::move(dist))
+    , _team(&team)
+    , _teamspec(teamspec, _distspec, *_team)
+    , _nunits(_team->size())
+    , _blocksize(initialize_blocksize(_size, _distspec, _nunits))
+    , _nblocks(initialize_num_blocks(_size, _blocksize, _nunits))
+    , _local_size(initialize_local_extent(_team->myid()))
+    , _local_memory_layout(std::array<SizeType, 1>{_local_size})
+    , _nlblocks(initialize_num_local_blocks(_blocksize, _local_size))
+    , _local_capacity(initialize_local_capacity())
+  {
     DASH_LOG_TRACE("ShiftTilePattern<1>()", "(sizespec, dist, teamspec, team)");
     initialize_local_range();
     DASH_LOG_TRACE("ShiftTilePattern<1>()", "ShiftTilePattern initialized");

@@ -6,7 +6,6 @@
 #include <dash/Matrix.h>
 #include <dash/Pattern.h>
 #include <dash/halo/StencilOperator.h>
-#include <dash/memory/GlobStaticMem.h>
 
 #include <type_traits>
 #include <vector>
@@ -53,13 +52,14 @@ private:
   using pattern_index_t = typename Pattern_t::index_type;
 
   static constexpr auto NumDimensions = Pattern_t::ndim();
+  using GlobMem_t = typename MatrixT::GlobMem_t;
 
 public:
   using Element_t = typename MatrixT::value_type;
 
   using ViewSpec_t      = ViewSpec<NumDimensions, pattern_index_t>;
   using GlobBoundSpec_t = GlobalBoundarySpec<NumDimensions>;
-  using HaloBlock_t     = HaloBlock<Element_t, Pattern_t>;
+  using HaloBlock_t     = HaloBlock<Element_t, Pattern_t, GlobMem_t>;
   using HaloMemory_t    = HaloMemory<HaloBlock_t>;
   using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
   using region_index_t  = typename RegionCoords<NumDimensions>::region_index_t;
@@ -70,7 +70,7 @@ private:
   using pattern_size_t        = typename Pattern_t::size_type;
   using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
   using HaloSpec_t            = HaloSpec<NumDimensions>;
-  using Region_t              = Region<Element_t, Pattern_t>;
+  using Region_t              = Region<Element_t, Pattern_t, typename MatrixT::GlobMem_t>;
 
 public:
   /**
@@ -433,7 +433,7 @@ public:
    * Asserts whether the StencilSpec fits in the provided halo regions.
    */
   template <typename StencilSpecT>
-  StencilOperator<Element_t, Pattern_t, StencilSpecT> stencil_operator(
+  StencilOperator<Element_t, Pattern_t, typename MatrixT::GlobMem_t, StencilSpecT> stencil_operator(
     const StencilSpecT& stencil_spec) {
     for(const auto& stencil : stencil_spec.specs()) {
       DASH_ASSERT_MSG(
@@ -442,7 +442,7 @@ public:
         "Stencil point extent higher than halo region extent.");
     }
 
-    return StencilOperator<Element_t, Pattern_t, StencilSpecT>(
+    return StencilOperator<Element_t, Pattern_t,  typename MatrixT::GlobMem_t, StencilSpecT>(
       &_haloblock, &_halomemory, stencil_spec, &_view_local);
   }
 
@@ -450,7 +450,7 @@ private:
   struct Data {
     const Region_t&                     region;
     std::function<void(dart_handle_t&)> get_halos;
-    dart_handle_t                       handle;
+    dart_handle_t                       handle{};
   };
 
   void update_halo_intern(Data& data) {

@@ -16,6 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <type_traits>
+#include <utility>
 
 
 namespace dash {
@@ -76,12 +77,12 @@ public:
 
   inline iterator begin()
   {
-    return iterator(0);
+    return {0};
   }
 
   inline iterator end()
   {
-    return iterator(size());
+    return {static_cast<int>(size())};
   }
 
 public:
@@ -181,8 +182,9 @@ public:
     }
 
     if (_group != DART_GROUP_NULL) {
-      dart_group_destroy(&_group);
-      _group = DART_GROUP_NULL;
+      if (DART_OK != dart_group_destroy(&_group)) {
+        DASH_LOG_ERROR("Failed to destroy DART group!");
+      }
     }
 
     if (_child) {
@@ -195,6 +197,14 @@ public:
     }
 
     free();
+
+    if (DART_TEAM_NULL != _dartid &&
+        DART_TEAM_ALL  != _dartid) {
+      if (DART_OK != dart_team_destroy(&_dartid))
+      {
+        DASH_LOG_ERROR("Failed to destroy DART group!");
+      }
+    }
   }
 
   /**
@@ -279,7 +289,7 @@ public:
     Deallocator::dealloc_function dealloc)
   {
     DASH_LOG_DEBUG_VAR("Team.register_deallocator()", object);
-    _deallocs.push_back(Deallocator { object, dealloc });
+    _deallocs.push_back(Deallocator { object, std::move(dealloc) });
   }
 
   /**
@@ -294,7 +304,7 @@ public:
     Deallocator::dealloc_function dealloc)
   {
     DASH_LOG_DEBUG_VAR("Team.unregister_deallocator()", object);
-    _deallocs.remove(Deallocator { object, dealloc });
+    _deallocs.remove(Deallocator { object, std::move(dealloc) });
   }
 
   /**

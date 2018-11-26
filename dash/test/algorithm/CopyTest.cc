@@ -763,6 +763,7 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
     // Get native pointer of local block of B as destination of copy:
     auto matrix_b_lblock   = matrix_b.local.block(lb);
     auto matrix_b_dest     = matrix_b_lblock.begin().local();
+    static_assert(std::is_same<decltype(matrix_b_dest), value_t*>::value, "must be true");
     auto lblock_b_offset_x = matrix_b_lblock.offset(0);
     auto lblock_b_offset_y = matrix_b_lblock.offset(1);
     auto lblock_b_gcoord_x = lblock_b_offset_x / tilesize_x;

@@ -1793,6 +1793,59 @@ dart_ret_t dart_allreduce(
   dart_ret_t ret = DART_OK;
   gaspi_group_t gaspi_group_id = dart_teams[index].id;
   switch (op) {
+     case DART_OP_MINMAX:
+     switch(dtype){
+        case DART_TYPE_SHORT:
+          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
+                               elem_size, gaspi_op_MINMAX_short,
+                               reduce_state, gaspi_group_id, GASPI_BLOCK);
+          break;
+        case DART_TYPE_INT:
+          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
+                               elem_size, gaspi_op_MINMAX_int,
+                               reduce_state, gaspi_group_id, GASPI_BLOCK);
+          break;
+        case DART_TYPE_BYTE:
+          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
+                               elem_size, gaspi_op_MINMAX_char,
+                               reduce_state, gaspi_group_id, GASPI_BLOCK);
+          break;
+        case DART_TYPE_UINT:
+          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
+                               elem_size, gaspi_op_MINMAX_uInt,
+                               reduce_state, gaspi_group_id, GASPI_BLOCK);
+          break;
+        case DART_TYPE_LONG:
+          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
+                               elem_size, gaspi_op_MINMAX_long,
+                               reduce_state, gaspi_group_id, GASPI_BLOCK);
+          break;
+        case DART_TYPE_ULONG:
+          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
+                               elem_size, gaspi_op_MINMAX_uLong,
+                               reduce_state, gaspi_group_id, GASPI_BLOCK);
+          break;
+        case DART_TYPE_LONGLONG:
+          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
+                               elem_size, gaspi_op_MINMAX_longLong,
+                               reduce_state, gaspi_group_id, GASPI_BLOCK);
+          break;
+        case DART_TYPE_FLOAT:
+          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
+                               elem_size, gaspi_op_MINMAX_float,
+                               reduce_state, gaspi_group_id, GASPI_BLOCK);
+          break;
+        case DART_TYPE_DOUBLE:
+          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
+                               elem_size, gaspi_op_MINMAX_double,
+                               reduce_state, gaspi_group_id, GASPI_BLOCK);
+          break;
+        default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_MINMAX!!\n");
+                 ret = DART_ERR_INVAL;
+                 break;
+          
+     }
+
      case DART_OP_MIN:
      switch(dtype){
         case DART_TYPE_SHORT:
@@ -2516,10 +2569,36 @@ dart_ret_t dart_accumulate(
   dart_datatype_t  dtype,
   dart_operation_t op)
 {
+    printf("Entering dart_accumulate (gaspi)\n");
 
-  DART_LOG_ERROR("dart_accumulate for gaspi not supported!");
-  printf("dart_accumulate for gaspi not supported!\n");
-  return DART_ERR_INVAL;
+    void *     rec_value;
+    auto teamid = gptr.teamid;
+    auto segid = gptr.segid;
+
+    dart_team_unit_t myrelid;
+    dart_global_unit_t myid;
+    dart_team_t myteamid;
+    dart_myid(&myid);
+    dart_team_myid(teamid, &myrelid);
+    // custom reduction op`s ausschließen
+
+    // check if dtype is basic type
+
+    // convert dart_op to gaspi_op 
+
+    // get team id
+
+    // get segment
+
+    // get window?
+
+    // prepare chunks -> need for maximum element value
+
+    // here mpi calls mpi_accumulate
+    dart_reduce(value, rec_value, nelem, dtype, op, myrelid, teamid);
+    //
+
+    return DART_OK;
 }
 
 dart_ret_t dart_accumulate_blocking_local(

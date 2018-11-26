@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <limits.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +39,8 @@ typedef enum
   DART_ERR_NOTFOUND =   3,
   /** DART has not been initialized */
   DART_ERR_NOTINIT  =   4,
+  /** DART has not been initialized */
+  DART_ERR_NOMEM    =   5,
   /** Unspecified error */
   DART_ERR_OTHER    = 999
 } dart_ret_t;
@@ -325,7 +328,7 @@ typedef enum
 dart_locality_scope_t;
 
 /** Maximum size of a host name string in \ref dart_hwinfo_t */
-#define DART_LOCALITY_HOST_MAX_SIZE       ((int)(30))
+#define DART_LOCALITY_HOST_MAX_SIZE        (HOST_NAME_MAX)
 /** Maximum size of a domain tag string in \ref dart_hwinfo_t */
 #define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(32))
 /** Maximum number of domain scopes in \ref dart_hwinfo_t */

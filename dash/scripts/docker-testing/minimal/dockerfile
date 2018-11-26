@@ -1,6 +1,6 @@
 # Dockerfile for the DASH project
 # This container provides an environment for our minimal system requirements
-FROM          ubuntu:14.04
+FROM          ubuntu:latest
 
 MAINTAINER    The DASH Team <team@dash-project.org>
 
@@ -10,12 +10,13 @@ RUN           apt-get update -y    \
                   build-essential  \
                   libz-dev         \
                   cmake            \
+                  gcc-5            \
                   uuid-runtime
 
 # Install PAPI from source
 WORKDIR       /tmp
 
-ADD           http://icl.utk.edu/projects/papi/downloads/papi-5.4.1.tar.gz papi.tgz
+ADD           http://icl.utk.edu/projects/papi/downloads/papi-5.5.1.tar.gz papi.tgz
 RUN           tar -xf papi.tgz
 RUN           cd papi*/src/                     \
               && ./configure --prefix=/opt/papi \
@@ -28,7 +29,7 @@ RUN           tar -xf ompi.tgz
 RUN           cd openmpi*                         \
            && ./configure --prefix=/opt/openmpi   \
                           --enable-mpi-thread-multiple \
-           && make                                \
+           && make -j 4                               \
            && make install
 ENV           PATH=${PATH}:/opt/openmpi/bin
 ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/openmpi/lib
