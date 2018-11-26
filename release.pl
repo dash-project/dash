@@ -4,7 +4,7 @@ use strict;
 use File::Basename;
 
 my $rdir    = "RELEASE";
-my $version = "0.3.0";
+my $version = "0.4.0";
 my $base    = "$rdir/dash-$version";
 
 if( -e "$base" ) {
