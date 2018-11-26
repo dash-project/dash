@@ -63,7 +63,7 @@ mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
 (cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
                         -DENVIRONMENT_TYPE=default \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-nasty \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.4.0-nasty \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
