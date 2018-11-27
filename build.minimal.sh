@@ -49,13 +49,13 @@ fi
 mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
 (cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DBUILD_GENERIC=OFF \
                         -DENVIRONMENT_TYPE=default \
-
                         -DINSTALL_PREFIX=$HOME/opt/dash-gaspi/ \
                         -DGASPI_C_LIBRARIES="/opt/GPI2/lib64/libGPI2-dbg.a" \
                         -DGASPI_INCLUDE_PATH="/opt/GPI2/include/" \
                         -DDART_IMPLEMENTATIONS=gaspi \
-
                         -DENABLE_THREADSUPPORT=OFF \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
                         -DENABLE_EXT_COMPILER_WARNINGS=OFF \
@@ -69,7 +69,7 @@ rm -Rf $BUILD_DIR/*
                         \
                         -DENABLE_LOGGING=ON \
                         -DENABLE_TRACE_LOGGING=OFF \
-                        -DENABLE_DART_LOGGING=OFF \
+                        -DENABLE_DART_LOGGING=ON \
                         \
                         -DENABLE_LIBNUMA=OFF \
                         -DENABLE_LIKWID=OFF \
@@ -95,3 +95,4 @@ rm -Rf $BUILD_DIR/*
  await_confirm && \
  make -j 4) && (cp $BUILD_DIR/compile_commands.json .) && \
 exit_message
+

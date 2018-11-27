@@ -630,9 +630,10 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
       printf("Error: element_size does not match size of double!\n");
       return GASPI_ERROR;
     }
-
+    char* op1_tmp = (char*) op1;
+    char* op2_tmp = (char*) op2;
     for(int i = 0; i < num; ++i){
-       if(((char*)op1)[i] < ((char*)op2)[i]){
+       if(op1_tmp[i] < op2_tmp[i]){
           ((char*)res)[(i*2)]    = ((char*)op1)[i];
           ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
        }

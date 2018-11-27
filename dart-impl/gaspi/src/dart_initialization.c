@@ -195,3 +195,8 @@ dart_ret_t dart_op_destroy(dart_operation_t *op)
     // needs gaspi possibility to create custom operation
     return DART_OK;
 }
+
+bool dart_initialized()
+{
+  return (_dart_initialized > 0);
+}

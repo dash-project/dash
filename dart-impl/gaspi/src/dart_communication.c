@@ -2638,3 +2638,15 @@ dart_ret_t dart_handle_free(
   }
   return DART_OK;
 }
+
+dart_ret_t dart_alltoall(
+    const void *    sendbuf,
+    void *          recvbuf,
+    size_t          nelem,
+    dart_datatype_t dtype,
+    dart_team_t     teamid)
+{
+    DART_LOG_ERROR("dart_alltoall for gaspi not supported!");
+    printf("dart_alltoall for gaspi not supported!\n");
+    return DART_ERR_INVAL;
+}
