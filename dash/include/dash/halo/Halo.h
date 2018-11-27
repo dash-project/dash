@@ -555,7 +555,7 @@ public:
     init_level();
   }
 
-  constexpr RegionSpec() = default;
+  RegionSpec() = default;
 
   /**
    * Returns the region index for a given \ref StencilPoint
