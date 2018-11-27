@@ -18,8 +18,10 @@
 
 #include <dash/Array.h>
 #include <dash/Types.h>
-
 #include <dash/internal/Logging.h>
+#include <dash/algorithm/internal/ParallelStl.h>
+
+namespace dash {
 
 namespace detail {
 
@@ -658,6 +660,19 @@ inline auto find_global_min_max(
   return std::make_pair(std::get<0>(min_max_out), std::get<1>(min_max_out));
 }
 
+template <class RAI, class Cmp>
+void local_sort(RAI first, RAI last, Cmp sort_comp)
+{
+#ifdef DASH_ENABLE_PSTL
+    DASH_LOG_TRACE("dash::sort", "local_sort", "Calling parallel sort using PSTL");
+    ::std::sort(pstl::execution::par_unseq, first, last,
+        sort_comp);
+#else
+    DASH_LOG_TRACE("dash::sort", "local_sort", "Calling std::sort");
+    ::std::sort(first, last, sort_comp);
+#endif
+}
+
 #ifdef DASH_ENABLE_TRACE_LOGGING
 
 template <
@@ -781,4 +796,5 @@ inline void trace_local_histo(
 }
 
 }  // namespace detail
+}  // namespace dash
 #endif
