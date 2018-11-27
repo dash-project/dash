@@ -16,6 +16,10 @@
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_active_messages_priv.h>
 
+/**
+ * TODO: check whether it makes sense to use atomics+shared locks for writers!
+ */
+
 //#define DART_AMSGQ_ATOMICS 1
 
 struct dart_amsgq_impl_data {
@@ -33,15 +37,6 @@ struct dart_amsgq_impl_data {
   int          my_rank;
 };
 
-struct dart_amsg_header {
-  dart_task_action_t fn;
-#ifdef DART_ENABLE_LOGGING
-  dart_global_unit_t remote;
-#endif // DART_ENABLE_LOGGING
-  int                data_size;
-};
-
-
 static
 dart_ret_t
 dart_amsg_singlewin_openq(
@@ -51,7 +46,7 @@ dart_amsg_singlewin_openq(
   struct dart_amsgq_impl_data** queue)
 {
   struct dart_amsgq_impl_data* res = calloc(1, sizeof(struct dart_amsgq_impl_data));
-  res->size = msg_count * (sizeof(struct dart_amsg_header) + msg_size);
+  res->size = msg_count * + msg_size;
   res->dbuf = malloc(res->size);
   res->size += sizeof(*(res->tailpos_ptr));
   res->team = team;
@@ -66,9 +61,19 @@ dart_amsg_singlewin_openq(
     DART_LOG_ERROR("dart_gptr_getaddr ! Unknown team %i", team);
     return DART_ERR_INVAL;
   }
-  res->comm = team_data->comm;
-//  MPI_Comm_dup(team_data->comm, &res->comm);
+  MPI_Comm_dup(team_data->comm, &res->comm);
   MPI_Comm_rank(res->comm, &res->my_rank);
+
+  // we don't need MPI to take care of the ordering since we use
+  // explicit flushes to guarantee ordering
+  MPI_Info info;
+  MPI_Info_create(&info);
+  MPI_Info_set(info, "accumulate_ordering", "none");
+  MPI_Info_set(info, "same_size"          , "true");
+  MPI_Info_set(info, "same_disp_unit"     , "true");
+  MPI_Info_set(info, "accumulate_ops"     , "same_op_no_op");
+
+
   /**
    * Allocate the queue
    * We cannot use dart_team_memalloc_aligned because it uses
@@ -77,11 +82,13 @@ dart_amsg_singlewin_openq(
   MPI_Win_allocate(
     res->size,
     1,
-    MPI_INFO_NULL,
+    info,
     res->comm,
     (void*)&(res->tailpos_ptr),
     &(res->win));
   *(res->tailpos_ptr) = 0;
+
+  MPI_Info_free(&info);
 
   MPI_Barrier(res->comm);
 
@@ -95,19 +102,13 @@ dart_ret_t
 dart_amsg_singlewin_trysend(
   dart_team_unit_t              target,
   struct dart_amsgq_impl_data * amsgq,
-  dart_task_action_t            fn,
   const void                  * data,
   size_t                        data_size)
 {
-  dart_global_unit_t unitid;
-  uint64_t msg_size = (sizeof(struct dart_amsg_header) + data_size);
+  uint64_t msg_size = data_size;
   uint64_t remote_offset = 0;
 
-  DART_ASSERT_MSG(target.id != amsgq->my_rank, "Cannot send message to self!");
-
   dart__base__mutex_lock(&amsgq->send_mutex);
-
-  dart_myid(&unitid);
 
   //lock the tailpos window
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target.id, 0, amsgq->win);
@@ -146,8 +147,8 @@ dart_amsg_singlewin_trysend(
     DART_LOG_ERROR("Received offset larger than message queue size from "
                    "unit %i (%lu but expected < %lu)",
                    target.id, remote_offset, amsgq->size);
-    dart__base__mutex_unlock(&amsgq->send_mutex);
     MPI_Win_unlock(target.id, amsgq->win);
+    dart__base__mutex_unlock(&amsgq->send_mutex);
     return DART_ERR_INVAL;
   }
 
@@ -157,7 +158,8 @@ dart_amsg_singlewin_trysend(
     static int msg_printed = 0;
     if (!msg_printed) {
       msg_printed = 1;
-      DART_LOG_WARN("Message queue at unit %d is full, please consider raising the queue size (currently %zuB)", target.id, amsgq->size);
+      DART_LOG_WARN("Message queue at unit %d is full, please consider raising "
+                    "the queue size (currently %zuB)", target.id, amsgq->size);
     }
     // if not, revert the operation and free the lock to try again.
     MPI_Fetch_and_op(
@@ -177,26 +179,8 @@ dart_amsg_singlewin_trysend(
     return DART_ERR_AGAIN;
   }
 
-  struct dart_amsg_header header;
-#ifdef DART_ENABLE_LOGGING
-  header.remote    = unitid;
-#endif //DART_ENABLE_LOGGING
-  header.fn        = fn;
-  header.data_size = data_size;
-
   // we now have a slot in the message queue
   MPI_Aint queue_disp = remote_offset + sizeof(*(amsgq->tailpos_ptr));
-  // put the header
-  MPI_Put(
-      &header,
-      sizeof(header),
-      MPI_BYTE,
-      target.id,
-      queue_disp, sizeof
-      (header),
-      MPI_BYTE,
-      amsgq->win);
-  queue_disp += sizeof(header);
   // put the payload
   MPI_Put(
     data,
@@ -231,16 +215,7 @@ amsg_singlewin_process_internal(
 {
   uint64_t         tailpos;
 
-  // trigger progress
-  // XXX: if we do not do that, the application hangs with Open MPI 3.0.0. Bug?
-  int flag;
-  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, amsgq->comm, &flag, MPI_STATUS_IGNORE);
-
   if (!blocking) {
-    // XXX: we cannot shortcut because we have to trigger the MPI progress
-    //      engine! Shortcutting will cause epic pain in the lowest circles of
-    //      the debug hell!
-    // if (*amsgq->tailpos_ptr == 0) return DART_OK;
     dart_ret_t ret = dart__base__mutex_trylock(&amsgq->processing_mutex);
     if (ret != DART_OK) {
       return DART_ERR_AGAIN;
@@ -270,7 +245,7 @@ amsg_singlewin_process_internal(
     MPI_Win_flush(amsgq->my_rank, amsgq->win);
 
     if (tailpos > 0) {
-      uint64_t   zero = 0;
+      const uint64_t zero = 0;
       DART_LOG_INFO("Checking for new active messages (tailpos=%lu)", tailpos);
       // copy the content of the queue for processing
       MPI_Get(
@@ -295,37 +270,8 @@ amsg_singlewin_process_internal(
           amsgq->win);
       MPI_Win_unlock(amsgq->my_rank, amsgq->win);
 
-      // process the messages by invoking the functions on the data supplied
-      uint64_t pos = 0;
-      while (pos < tailpos) {
-  #ifdef DART_ENABLE_LOGGING
-        int startpos = pos;
-  #endif
-        // unpack the message
-        struct dart_amsg_header *header =
-                                    (struct dart_amsg_header *)(dbuf + pos);
-        pos += sizeof(struct dart_amsg_header);
-        void *data     = dbuf + pos;
-        pos += header->data_size;
+      dart__amsgq__process_buffer(dbuf, tailpos);
 
-        if (pos > tailpos) {
-          DART_LOG_ERROR("Message out of bounds (expected %lu but saw %lu)\n",
-                         tailpos,
-                         pos);
-          dart__base__mutex_unlock(&amsgq->processing_mutex);
-          return DART_ERR_INVAL;
-        }
-
-        // invoke the message
-        DART_LOG_INFO("Invoking active message %p from %i on data %p of "
-                      "size %i starting from tailpos %i",
-                      header->fn,
-                      header->remote.id,
-                      data,
-                      header->data_size,
-                      startpos);
-        header->fn(data);
-      }
     } else {
       MPI_Win_unlock(amsgq->my_rank, amsgq->win);
     }
@@ -388,8 +334,6 @@ dart_ret_t dart_amsg_singlewin_init(dart_amsgq_impl_t* impl)
 {
   impl->openq   = dart_amsg_singlewin_openq;
   impl->closeq  = dart_amsg_singlewin_closeq;
-  impl->bsend   = NULL; // no buffered send
-  impl->flush   = NULL; // no buffered send
   impl->trysend = dart_amsg_singlewin_trysend;
   impl->process = dart_amsg_singlewin_process;
   impl->process_blocking = dart_amsg_singlewin_process_blocking;

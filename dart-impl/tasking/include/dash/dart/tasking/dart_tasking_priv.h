@@ -1,5 +1,5 @@
-#ifndef DART__BASE__INTERNAL__TASKING_H__
-#define DART__BASE__INTERNAL__TASKING_H__
+#ifndef DART__INTERNAL__TASKING_H__
+#define DART__INTERNAL__TASKING_H__
 
 #include <stdbool.h>
 #include <pthread.h>
@@ -11,13 +11,13 @@
 #include <dash/dart/tasking/dart_tasking_context.h>
 #include <dash/dart/tasking/dart_tasking_phase.h>
 #include <dash/dart/tasking/dart_tasking_envstr.h>
+#include <dash/dart/tasking/dart_tasking_tasklock.h>
 
 // forward declaration, defined in dart_tasking_datadeps.c
-struct dart_dephash_elem;
+typedef struct dart_dephash_elem dart_dephash_elem_t;
 struct task_list;
 
 // whether to use thread-local task queues or a single queue
-// (can be set from the command line or enforced here)
 //#define DART_TASK_THREADLOCAL_Q
 
 #ifdef USE_UCONTEXT
@@ -37,6 +37,7 @@ typedef enum {
   DART_TASK_RUNNING,
   DART_TASK_SUSPENDED,     // the task is suspended but runnable
   DART_TASK_BLOCKED,       // the task is blocked waiting for a handle
+  DART_TASK_DETACHED,      // the task has been detached, will not run again
   // active task states end here
   DART_TASK_DESTROYED,
   DART_TASK_CANCELLED
@@ -49,7 +50,7 @@ typedef enum {
 
 #define IS_ACTIVE_TASK(task) \
   ((task)->state >= DART_TASK_CREATED   && \
-   (task)->state <= DART_TASK_BLOCKED)
+   (task)->state <= DART_TASK_DETACHED)
 
 
 typedef
@@ -71,42 +72,64 @@ struct dart_task_data {
       void                  *data;            // the data to be passed to the action
     };
   };
-  int32_t                    unresolved_deps; // the number of unresolved task dependencies
-  int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
   struct task_list          *successor;       // the list of tasks that depend on this task
+  dart_dephash_elem_t       *remote_successor;
   struct dart_task_data     *parent;          // the task that created this task
-  struct dart_task_data     *recycle_tasks;   // list of destroyed child tasks
   // TODO: pack using pahole, move all execution-specific fields into context
   context_t                 *taskctx;         // context to start/resume task
-  struct dart_dephash_elem  *remote_successor;
-  struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
+  union {
+    // only relevant before execution, both will be zero when the task starts execution
+    struct {
+      int32_t                    unresolved_deps; // the number of unresolved task dependencies
+      int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
+    };
+    // only relevant during execution
+    dart_dephash_elem_t      **local_deps;      // hashmap containing dependencies of child tasks
+  };
+  dart_dephash_elem_t       *deps_owned;      // list of dependencies owned by this task
   dart_wait_handle_t        *wait_handle;
   const char                *descr;           // the description of the task
-  dart_mutex_t               mutex;
+  dart_tasklock_t            lock;
   dart_taskphase_t           phase;
-  int                        delay;           // delay in case this task yields
+  int                        delay;           // delay in case this task yields, TODO: move to thread!
   int                        num_children;
   bool                       has_ref;
   bool                       data_allocated;  // whether the data was allocated and copied
   int8_t                     state;           // one of dart_task_state_t, single byte sufficient
   int8_t                     prio;
+  bool                       is_inlined;
 };
 
 #define DART_STACK_PUSH(_head, _elem) \
+  DART_STACK_PUSH_MEMB(_head, _elem, next)
+
+#define DART_STACK_POP(_head, _elem) \
+  DART_STACK_POP_MEMB(_head, _elem, next)
+
+#define DART_STACK_PUSH_MEMB(_head, _elem, _memb) \
   do {                                \
-    _elem->next = _head;              \
+    _elem->_memb = _head;           \
     _head = _elem;                    \
   } while (0)
 
-#define DART_STACK_POP(_head, _elem) \
+#define DART_STACK_POP_MEMB(_head, _elem, _memb) \
   do {                               \
     _elem = _head;                   \
     if (_elem != NULL) {             \
-      _head = _elem->next;           \
-      _elem->next = NULL;            \
+      _head = _elem->_memb;        \
+      _elem->_memb = NULL;         \
     }                                \
   } while (0)
 
+
+/*
+ * Special priority signalling to immediately execute the task when ready.
+ * The task's action will be called directly in the context of the current task.
+ * The task should not be cancelled. Currently this is used internally for
+ * copyin tasks.
+ * TODO: expose this to the user?
+ */
+#define DART_PRIO_INLINE (__DART_PRIO_COUNT)
 
 typedef struct task_list {
   struct task_list      *next;
@@ -139,6 +162,7 @@ typedef struct {
   double                  last_progress_ts;  // the timestamp of the last remote progress call
   dart_task_t           * next_task;         // short-cut on the next task to execute
   bool                    is_releasing_deps; // whether the thread is currently releasing dependencies
+  bool                    is_utility_thread; // whether the thread is a worker or utility thread
 } dart_thread_t;
 
 struct dart_wait_handle_s {
@@ -163,24 +187,14 @@ dart__tasking__epoch_bound() DART_INTERNAL;
 
 dart_ret_t
 dart__tasking__create_task(
-        void           (*fn) (void *),
-        void            *data,
-        size_t           data_size,
-  const dart_task_dep_t *deps,
-        size_t           ndeps,
-        dart_task_prio_t prio,
-  const char            *descr) DART_INTERNAL;
-
-
-dart_ret_t
-dart__tasking__create_task_handle(
-        void           (*fn) (void *),
-        void            *data,
-        size_t           data_size,
-  const dart_task_dep_t *deps,
-        size_t           ndeps,
-        dart_task_prio_t prio,
-        dart_taskref_t  *ref) DART_INTERNAL;
+        void             (*fn) (void *),
+        void              *data,
+        size_t             data_size,
+  const dart_task_dep_t   *deps,
+        size_t             ndeps,
+        dart_task_prio_t   prio,
+  const char              *descr,
+        dart_taskref_t    *taskref) DART_INTERNAL;
 
 dart_ret_t
 dart__tasking__taskref_free(dart_taskref_t *tr) DART_INTERNAL;
@@ -192,10 +206,16 @@ dart_ret_t
 dart__tasking__task_test(dart_taskref_t *tr, int *flag) DART_INTERNAL;
 
 dart_ret_t
-dart__tasking__task_complete() /*DART_INTERNAL*/;
+dart__tasking__task_complete() DART_INTERNAL;
 
 dart_taskref_t
 dart__tasking__current_task() DART_INTERNAL;
+
+void
+dart__tasking__mark_detached(dart_taskref_t task) DART_INTERNAL;
+
+void
+dart__tasking__release_detached(dart_taskref_t task) DART_INTERNAL;
 
 //void
 //dart__base__tasking_print_taskgraph();
@@ -223,6 +243,9 @@ dart__tasking__destroy_task(dart_task_t *task) DART_INTERNAL;
 dart_thread_t *
 dart__tasking__current_thread() DART_INTERNAL;
 
+dart_task_t *
+dart__tasking__allocate_dummytask() DART_INTERNAL;
+
 void
 dart__tasking__perform_matching(
   dart_taskphase_t   phase) DART_INTERNAL;
@@ -234,4 +257,9 @@ dart__tasking__is_root_task(dart_task_t *task)
   return task->state == DART_TASK_ROOT;
 }
 
-#endif /* DART__BASE__INTERNAL__TASKING_H__ */
+void dart__tasking__utility_thread(
+  void (*fn) (void *),
+  void  *data
+) DART_INTERNAL;
+
+#endif /* DART__INTERNAL__TASKING_H__ */

@@ -24,6 +24,7 @@ enum dart_copyin_t {
 enum dart_copyin_wait_t {
   COPYIN_WAIT_UNDEFINED,
   COPYIN_WAIT_BLOCK,      // block the task
+  COPYIN_WAIT_DETACH,     // detach the inlined task
   COPYIN_WAIT_YIELD       // test-yield cycle
 };
 
@@ -35,10 +36,13 @@ static const struct dart_env_str2int copyin_env_vals[] = {
 
 static const struct dart_env_str2int wait_env_vals[] = {
   {"BLOCK",           COPYIN_WAIT_BLOCK},
+  {"DETACH",          COPYIN_WAIT_DETACH},
   {"YIELD",           COPYIN_WAIT_YIELD},
   {"TESTYIELD",       COPYIN_WAIT_YIELD},
   {NULL, 0}
 };
+
+static enum dart_copyin_wait_t wait_type = COPYIN_WAIT_UNDEFINED;
 
 /**
  *
@@ -64,7 +68,6 @@ struct copyin_task {
 
 static struct copyin_task *delayed_tasks = NULL;
 static dart_mutex_t delayed_tasks_mtx = DART_MUTEX_INITIALIZER;
-
 
 /**
  * A task action to prefetch data in a COPYIN dependency.
@@ -95,6 +98,18 @@ static void
 wait_for_handle(dart_handle_t *handle);
 
 
+void
+dart_tasking_copyin_init()
+{
+  wait_type = dart__base__env__str2int(DART_COPYIN_WAIT_ENVSTR, wait_env_vals,
+                                       DEFAULT_WAIT_TYPE);
+}
+
+void
+dart_tasking_copyin_fini()
+{
+  // nothing to do
+}
 
 static dart_ret_t
 dart_tasking_copyin_create_task_sendrecv(
@@ -143,8 +158,12 @@ dart_tasking_copyin_create_task_sendrecv(
 
   DART_LOG_TRACE("Copyin: creating task to recv from unit %d with tag %d in phase %d",
                  arg.unit, tag, dep->phase);
+
+  dart_task_prio_t prio = (wait_type == COPYIN_WAIT_DETACH) ? DART_PRIO_INLINE
+                                                            : DART_PRIO_HIGH;
+
   dart_task_create(&dart_tasking_copyin_recv_taskfn, &arg, sizeof(arg),
-                   &out_dep, 1, DART_PRIO_HIGH, "COPYIN (RECV)");
+                   &out_dep, 1, prio, "COPYIN (RECV)");
 
   return DART_OK;
 }
@@ -174,8 +193,12 @@ dart_tasking_copyin_create_task_get(
   arg.num_bytes = dep->copyin.size;
   arg.unit      = 0; // not needed
 
+  dart_task_prio_t prio = (wait_type == COPYIN_WAIT_DETACH) ? DART_PRIO_INLINE
+                                                            : DART_PRIO_HIGH;
+
+
   return dart_task_create(&dart_tasking_copyin_get_taskfn, &arg, sizeof(arg),
-                   deps, 2, DART_PRIO_HIGH, "COPYIN (GET)");
+                   deps, 2, prio, "COPYIN (GET)");
 }
 
 dart_ret_t
@@ -244,8 +267,11 @@ dart_tasking_copyin_create_delayed_tasks()
     DART_STACK_POP(delayed_tasks, ct);
     DART_LOG_TRACE("Copyin: creating task to send to unit %d with tag %d",
                   ct->arg.unit, ct->arg.tag);
+    dart_task_prio_t prio = (wait_type == COPYIN_WAIT_DETACH) ? DART_PRIO_INLINE
+                                                              : DART_PRIO_HIGH;
+
     dart_task_create(&dart_tasking_copyin_send_taskfn, &ct->arg, sizeof(ct->arg),
-                     &ct->in_dep, 1, DART_PRIO_HIGH, "COPYIN (SEND)");
+                     &ct->in_dep, 1, prio, "COPYIN (SEND)");
     free(ct);
   }
   dart__base__mutex_unlock(&delayed_tasks_mtx);
@@ -263,7 +289,10 @@ dart_tasking_copyin_send_taskfn(void *data)
                    td->tag, DART_GLOBAL_UNIT_ID(td->unit), &handle);
   wait_for_handle(&handle);
 
-  DART_LOG_TRACE("Copyin: Send to unit %d completed (tag %d)", td->unit, td->tag);
+  if (wait_type != COPYIN_WAIT_DETACH) {
+    DART_LOG_TRACE("Copyin: Send to unit %d completed (tag %d)",
+                   td->unit, td->tag);
+  }
 }
 
 static void
@@ -279,9 +308,10 @@ dart_tasking_copyin_recv_taskfn(void *data)
     dart_recv_handle(td->dst, td->num_bytes, DART_TYPE_BYTE,
                     td->tag, DART_GLOBAL_UNIT_ID(td->unit), &handle);
     wait_for_handle(&handle);
-    DART_LOG_TRACE("Copyin: Recv from unit %d completed (tag %d)",
-                   td->unit, td->tag);
-
+    if (wait_type != COPYIN_WAIT_DETACH) {
+      DART_LOG_TRACE("Copyin: Recv from unit %d completed (tag %d)",
+                     td->unit, td->tag);
+    }
   } else {
     DART_LOG_TRACE("Local memcpy of size %zu: %p -> %p",
                    td->num_bytes, td->src.addr_or_offs.addr, td->dst);
@@ -302,21 +332,20 @@ dart_tasking_copyin_get_taskfn(void *data)
   dart_get_handle(td->dst, td->src, td->num_bytes,
                   DART_TYPE_BYTE, DART_TYPE_BYTE, &handle);
   wait_for_handle(&handle);
-  DART_LOG_TRACE("Copyin: GET from unit %d completed (size %zu)",
-                  td->unit, td->num_bytes);
+  if (wait_type != COPYIN_WAIT_DETACH) {
+    DART_LOG_TRACE("Copyin: GET from unit %d completed (size %zu)",
+                   td->unit, td->num_bytes);
+  }
 }
 
 
 static void
 wait_for_handle(dart_handle_t *handle)
 {
-  static enum dart_copyin_wait_t wait_type = COPYIN_WAIT_UNDEFINED;
-  if (wait_type == COPYIN_WAIT_UNDEFINED) {
-    wait_type = dart__base__env__str2int(DART_COPYIN_WAIT_ENVSTR, wait_env_vals,
-                                         DEFAULT_WAIT_TYPE);
-  }
   if (wait_type == COPYIN_WAIT_BLOCK) {
     dart__task__wait_handle(handle, 1);
+  } else if (wait_type == COPYIN_WAIT_DETACH) {
+    dart__task__detach_handle(handle, 1);
   } else {
     // lower task priority to better overlap communication/computation
     dart_task_t *task = dart__tasking__current_task();

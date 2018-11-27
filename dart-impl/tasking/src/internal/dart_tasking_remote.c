@@ -2,6 +2,7 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/atomic.h>
 #include <dash/dart/base/assert.h>
+#include <dash/dart/base/env.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_team_group.h>
@@ -88,6 +89,28 @@ max_size(size_t lhs, size_t rhs)
   return (lhs > rhs) ? lhs : rhs;
 }
 
+static volatile int progress_thread = 0;
+
+static void thread_progress_main(void *data)
+{
+  printf("Progress thread starting up...\n");
+  dart__unused(data);
+  int sleep_us = dart__base__env__us(DART_THREAD_PROGRESS_INTERVAL_ENVSTR, 1000);
+  struct timespec ts;
+  ts.tv_sec  = sleep_us / 1E6;
+  ts.tv_nsec = (sleep_us - (ts.tv_sec*1E6))*1E3;
+
+  printf("Progress thread starting up (sleep_us=%d)\n", sleep_us);
+
+  while (progress_thread) {
+    //printf("Remote progress thread polling for new messages\n");
+    dart_amsg_process(amsgq);
+    dart_amsg_flush_buffer(amsgq);
+
+    nanosleep(&ts, NULL);
+  }
+  progress_thread = -1;
+}
 
 dart_ret_t dart_tasking_remote_init()
 {
@@ -101,6 +124,11 @@ dart_ret_t dart_tasking_remote_init()
       DART_OK);
     DART_ASSERT(amsgq != NULL);
     DART_LOG_INFO("Created active message queue for remote tasking (%p)", amsgq);
+    progress_thread = dart__base__env__us(DART_THREAD_PROGRESS_ENVSTR, false);
+    printf("progress_thread=%d\n", progress_thread);
+    if (progress_thread) {
+      dart__tasking__utility_thread(&thread_progress_main, NULL);
+    }
     initialized = true;
   }
   return DART_OK;
@@ -110,6 +138,11 @@ dart_ret_t dart_tasking_remote_fini()
 {
   if (initialized)
   {
+    // quit progress thread and wait for it to shut down
+    if (progress_thread) {
+      progress_thread = 0;
+      while (progress_thread != -1) {}
+    }
     dart_amsg_closeq(amsgq);
     initialized = false;
   }
@@ -166,6 +199,7 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
  * Send a release for the remote task \c rtask to \c unit,
  * potentially enqueuing rtask into the
  * runnable list on the remote side.
+ * TODO: add way to signal use of buffered send if progress thread is enabled
  */
 dart_ret_t dart_tasking_remote_release(
   dart_global_unit_t      unit,
@@ -181,12 +215,21 @@ dart_ret_t dart_tasking_remote_release(
 
   while (1) {
     dart_ret_t ret;
-    ret = dart_amsg_trysend(
-            team_unit,
-            amsgq,
-            &release_remote_dependency,
-            &response,
-            sizeof(response));
+    if (progress_thread) {
+      ret = dart_amsg_buffered_send(
+              team_unit,
+              amsgq,
+              &release_remote_dependency,
+              &response,
+              sizeof(response));
+    } else {
+      ret = dart_amsg_trysend(
+              team_unit,
+              amsgq,
+              &release_remote_dependency,
+              &response,
+              sizeof(response));
+    }
     if (ret == DART_OK) {
       // the message was successfully sent
       DART_LOG_INFO("Sent remote dependency release to unit t:%i "
@@ -318,8 +361,8 @@ dart_ret_t dart_tasking_remote_sendrequest(
 
   while (1) {
     int ret;
-    ret = dart_amsg_trysend(DART_TEAM_UNIT_ID(unit.id), amsgq,
-                            &request_send, &request, sizeof(request));
+    ret = dart_amsg_buffered_send(DART_TEAM_UNIT_ID(unit.id), amsgq,
+                                  &request_send, &request, sizeof(request));
     if (ret == DART_OK) {
       // the message was successfully sent
       break;
@@ -349,13 +392,16 @@ dart_ret_t dart_tasking_remote_bcast_cancel(dart_team_t team)
  */
 dart_ret_t dart_tasking_remote_progress()
 {
-  return dart_amsg_process(amsgq);
+  if (!progress_thread) {
+    return dart_amsg_process(amsgq);
+  }
+  return DART_OK;
 }
 
 /**
  * Check for new remote task dependency requests coming in.
  * This is similar to \ref dart_tasking_remote_progress
- * but blocks if another process is currently processing the
+ * but blocks if another thread is currently processing the
  * message queue. The call will block until no further incoming
  * messages are received.
  */

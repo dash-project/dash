@@ -38,9 +38,9 @@ typedef int32_t dart_taskphase_t;
 
 typedef enum {
   DART_PRIO_PARENT = -1, // << inherit the priority from the parent
-  DART_PRIO_HIGH = 0,    // << high priority
+  DART_PRIO_LOW    =  0, // << low priority
   DART_PRIO_DEFAULT,     // << default (medium) priority
-  DART_PRIO_LOW,         // << low priority
+  DART_PRIO_HIGH,        // << high priority
   __DART_PRIO_COUNT      // << the number of priorities, do not use as task priority!
 } dart_task_prio_t;
 

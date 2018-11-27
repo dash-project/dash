@@ -19,6 +19,7 @@ static bool             print_binding = false;
 
 static hwloc_topology_t topology;
 static hwloc_cpuset_t   ccpuset;
+static hwloc_cpuset_t   cpuset_used; // << set of used CPUS
 
 void
 dart__tasking__affinity_init()
@@ -27,6 +28,7 @@ dart__tasking__affinity_init()
   hwloc_topology_load(topology);
   ccpuset = hwloc_bitmap_alloc();
   hwloc_get_cpubind(topology, ccpuset, HWLOC_CPUBIND_PROCESS);
+  cpuset_used = hwloc_bitmap_dup(ccpuset);
 
 #ifdef DART_ENABLE_LOGGING
   // force printing of binding if logging is enabled
@@ -82,15 +84,65 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
     }
   } while (cnt != dart_thread_id);
 
-  //printf("Binding thread %d to CPU %d\n", dart_thread_id, entry);
-  if (print_binding)
-  {
-    DART_LOG_INFO_ALWAYS("Binding thread %d to CPU %d", dart_thread_id, entry);
-  }
   hwloc_bitmap_set(cpuset, entry);
 
-  hwloc_set_thread_cpubind(topology, pthread, cpuset, 0);
+  if (print_binding)
+  {
+    char *bitstring;
+    hwloc_bitmap_asprintf(&bitstring, cpuset);
+    DART_LOG_INFO_ALWAYS("Binding thread %d to CPU %d [%s]",
+                         dart_thread_id, entry, bitstring);
+    free(bitstring);
+  }
 
+  if (0 != hwloc_set_thread_cpubind(topology, pthread,
+                                    cpuset, HWLOC_CPUBIND_STRICT)) {
+    // try again with no flags
+    hwloc_set_thread_cpubind(topology, pthread, cpuset, 0);
+  }
+
+  hwloc_bitmap_free(cpuset);
+}
+
+void
+dart__tasking__affinity_set_utility(pthread_t pthread, int dart_thread_id)
+{
+  dart__unused(dart_thread_id);
+  hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
+  int nnumanodes = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NUMANODE);
+  DART_LOG_INFO_ALWAYS("Found %d numa nodes", nnumanodes);
+  int entry = -1;
+  if (nnumanodes > 0) {
+    for (int i = 0; i < nnumanodes;++i) {
+      hwloc_obj_t obj;
+      obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_NUMANODE, i);
+      if (!hwloc_bitmap_iszero(obj->allowed_cpuset)) {
+        hwloc_bitmap_and(cpuset, obj->allowed_cpuset, ccpuset);
+        int last_cpu = hwloc_bitmap_last(cpuset);
+        if (last_cpu != -1) {
+          // bind the thread to the last thread on that socket
+          entry = last_cpu;
+          break;
+        } else {
+          DART_LOG_INFO_ALWAYS("Numa node %d has no allowed CPUs", i);
+        }
+      }
+    }
+  } else if (nnumanodes == 0) {
+    entry = hwloc_bitmap_last(ccpuset);
+  } else {
+    DART_LOG_ERROR("Call to hwloc_get_nbobjs_by_type failed!");
+  }
+
+  if (entry != -1) {
+    hwloc_bitmap_only(cpuset, entry);
+    hwloc_set_thread_cpubind(topology, pthread, cpuset, 0);
+    if (print_binding)
+    {
+      DART_LOG_INFO_ALWAYS("Binding utility thread to CPU %d",
+                            entry);
+    }
+  }
   hwloc_bitmap_free(cpuset);
 }
 
@@ -178,6 +230,32 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
   pthread_setaffinity_np(pthread, sizeof(cpu_set_t), &cpuset);
 }
 
+void
+dart__tasking__affinity_set_utility(pthread_t pthread, int dart_thread_id)
+{
+  dart__unused(dart_thread_id);
+  cpu_set_t cpuset;
+  CPU_ZERO(&cpuset);
+  int num_cpus = CPU_COUNT(&set);
+  unsigned int entry = 0;
+  int count = 0;
+
+  // bind the thread to the last CPU
+  for (int i = 0; i < num_cpus; ++i) {
+    if (CPU_ISSET(i, &set)) {
+      entry = i;
+    }
+  }
+
+  if (print_binding)
+  {
+    DART_LOG_INFO_ALWAYS("Binding utility thread to CPU %d", entry);
+  }
+
+  CPU_SET(entry, &cpuset);
+
+  pthread_setaffinity_np(pthread, sizeof(cpu_set_t), &cpuset);
+}
 
 void
 dart__tasking__affinity_fini()

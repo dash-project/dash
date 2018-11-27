@@ -143,6 +143,26 @@ namespace internal {
     }
   }
 
+  template<typename FuncT>
+  void
+  invoke_task_action_void_delete(void *data)
+  {
+    try{
+      FuncT& f = *static_cast<FuncT*>(data);
+      f();
+      // we have to call the destructor on the function object, the memory
+      // will be free'd by the runtime
+      delete &f;
+    } catch (const BaseCancellationSignal& cs) {
+      // nothing to be done, the cancellation is triggered by the d'tor
+    } catch (...) {
+      DASH_LOG_ERROR(
+        "An unhandled exception is escaping one of your tasks, "
+        "your application will thus abort.");
+      throw;
+    }
+  }
+
   template<typename T>
   struct is_range
   {
@@ -788,14 +808,17 @@ namespace internal{
     DepContainer&&      deps,
     const char         *name = nullptr) {
     if (dart_task_should_abort()) abort_task();
+    /*
     if (std::is_trivially_copyable<TaskFunc>::value) {
       dart_task_create(
         &dash::tasks::internal::invoke_task_action_void<TaskFunc>,
         &f, sizeof(f), deps.data(), deps.size(), prio, name);
-    } else {
+    } else
+    */
+    {
       dart_task_create(
-        &dash::tasks::internal::invoke_task_action<void>,
-        new dash::tasks::internal::TaskData<void>(f), 0,
+        &dash::tasks::internal::invoke_task_action_void_delete<TaskFunc>,
+        new TaskFunc(std::move(f)), 0,
                       deps.data(), deps.size(), prio, name);
     }
   }
@@ -978,7 +1001,7 @@ namespace internal{
     dart_task_create_handle(
       &dash::tasks::internal::invoke_task_action<return_t>,
       new dash::tasks::internal::TaskData<return_t>(
-            dash::tasks::internal::task_action_t<return_t>(f), retval),
+            dash::tasks::internal::task_action_t<return_t>(std::move(f)), retval),
       0, deps.data(), deps.size(), prio, &handle);
     return TaskHandle<return_t>(handle, retval);
   }
