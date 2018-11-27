@@ -96,7 +96,6 @@ dart_task_num_threads() __attribute__((weak));
  * \c DART_DEP_INOUT and contain a \c dart_gptr_t that describes
  * the target of the dependency in the global address space.
  * Note that remote OUT and INOUT dependencies are currently not supported.
- *
  */
 dart_ret_t
 dart_task_create(

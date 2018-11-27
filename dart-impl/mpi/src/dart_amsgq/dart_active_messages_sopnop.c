@@ -436,10 +436,10 @@ dart_amsg_sopnop_closeq(struct dart_amsgq_impl_data* amsgq)
 
   MPI_Comm_free(&amsgq->comm);
 
-  free(amsgq);
-
   dart__base__mutex_destroy(&amsgq->send_mutex);
   dart__base__mutex_destroy(&amsgq->processing_mutex);
+
+  free(amsgq);
 
   return DART_OK;
 }
