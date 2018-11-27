@@ -77,6 +77,7 @@ struct dart_task_data {
   struct dart_task_data     *parent;          // the task that created this task
   // TODO: pack using pahole, move all execution-specific fields into context
   context_t                 *taskctx;         // context to start/resume task
+  void                      *numaptr;         // ptr used to determine the NUMA node
   union {
     // only relevant before execution, both will be zero when the task starts execution
     struct {
@@ -157,6 +158,8 @@ typedef struct {
   context_t               retctx;            // the thread-specific context to return to eventually
   context_list_t        * ctxlist;
   int                     thread_id;
+  int                     core_id;
+  int                     numa_id;
   int                     delay;             // delay in case this task yields
   dart_yield_target_t     yield_target;
   double                  last_progress_ts;  // the timestamp of the last remote progress call
@@ -256,6 +259,10 @@ dart__tasking__is_root_task(dart_task_t *task)
 {
   return task->state == DART_TASK_ROOT;
 }
+
+
+dart_taskqueue_t *
+dart__tasking__get_taskqueue() DART_INTERNAL;
 
 void dart__tasking__utility_thread(
   void (*fn) (void *),

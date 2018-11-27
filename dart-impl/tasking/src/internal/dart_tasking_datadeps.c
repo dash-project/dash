@@ -1097,6 +1097,8 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     if (dep.type == DART_DEP_DIRECT) {
       dart_tasking_datadeps_handle_local_direct(&dep, task);
     } else if (dep.type == DART_DEP_COPYIN){
+      // set the numaptr
+      if (task->numaptr == NULL) task->numaptr = dep.copyin.dest;
       dart_tasking_datadeps_handle_copyin(&dep, task);
     } else if (guid.id != myid.id) {
         if (task->parent->state == DART_TASK_ROOT) {
@@ -1123,6 +1125,9 @@ dart_ret_t dart_tasking_datadeps_handle_task(
 
       } else {
         dart_tasking_datadeps_match_local_datadep(&dep, task);
+
+        // set the numaptr
+        if (task->numaptr == NULL) task->numaptr = dep.gptr.addr_or_offs.addr;
 
         // add this task to the hash table
         dephash_add_local(&dep, task);

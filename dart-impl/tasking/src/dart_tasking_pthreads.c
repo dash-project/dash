@@ -67,6 +67,11 @@ static volatile bool worker_poll_remote = false;
 
 static int num_threads;
 
+// whether or not to respect numa placement
+static bool respect_numa = false;
+// the number of numa nodes
+static int num_numa_nodes = 1;
+
 // thread-private data
 static _Thread_local dart_thread_t* __tpd = NULL;
 
@@ -83,7 +88,7 @@ static dart_thread_t **thread_pool;
 static bool bind_threads = false;
 
 #ifndef DART_TASK_THREADLOCAL_Q
-dart_taskqueue_t task_queue;
+static dart_taskqueue_t *task_queue;
 #endif // DART_TASK_THREADLOCAL_Q
 
 enum dart_thread_idle_t {
@@ -186,8 +191,21 @@ dart__tasking__release_detached(dart_taskref_t task)
   // let the parent know that we are done
   int32_t nc = DART_DEC_AND_FETCH32(&parent->num_children);
   DART_LOG_DEBUG("Parent %p has %i children left\n", parent, nc);
+}
 
+dart_taskqueue_t *
+dart__tasking__get_taskqueue()
+{
+  dart_thread_t *thread = get_current_thread();
+#ifdef DART_TASK_THREADLOCAL_Q
+  // fall-back in case we are called from the progress thread
+  if (thread == NULL) thread = thread_pool[0];
+  dart_taskqueue_t *q = &thread->queue;
+#else
+  dart_taskqueue_t *q = &task_queue[thread->numa_id];
+#endif // DART_TASK_THREADLOCAL_Q
 
+  return q;
 }
 
 static void
@@ -212,13 +230,13 @@ invoke_taskfn(dart_task_t *task)
 static
 void requeue_task(dart_task_t *task)
 {
-#ifdef DART_TASK_THREADLOCAL_Q
   dart_thread_t *thread = get_current_thread();
+#ifdef DART_TASK_THREADLOCAL_Q
   // fall-back in case we are called from the progress thread
   if (thread == NULL) thread = thread_pool[0];
   dart_taskqueue_t *q = &thread->queue;
 #else
-  dart_taskqueue_t *q = &task_queue;
+  dart_taskqueue_t *q = &task_queue[thread->numa_id];
 #endif // DART_TASK_THREADLOCAL_Q
   int delay = thread->delay;
   if (delay == 0) {
@@ -515,15 +533,10 @@ dart_task_t * get_current_task()
 static
 dart_task_t * next_task(dart_thread_t *thread)
 {
-  // stop processing tasks if they are cancelled
   if (thread->next_task != NULL) {
     // check for high-priority tasks and execute them first
     dart_task_t *task = thread->next_task;
-#ifdef DART_TASK_THREADLOCAL_Q
-    dart_taskqueue_t *tq = &thread->task_queue;
-#else
-    dart_taskqueue_t *tq = &task_queue;
-#endif
+    dart_taskqueue_t *tq = dart__tasking__get_taskqueue();
     if (task->prio == DART_PRIO_LOW &&
         dart_tasking_taskqueue_has_prio_task(tq, DART_PRIO_HIGH)) {
       task->state = DART_TASK_CREATED;
@@ -553,7 +566,15 @@ dart_task_t * next_task(dart_thread_t *thread)
     }
   }
 #else
-  dart_task_t *task = dart_tasking_taskqueue_pop(&task_queue);
+  int i = 0;
+  dart_task_t *task = NULL;
+  // try to get a task from the taskqeue on our NUMA domain and fall-back to
+  // other domains
+  do {
+    task = dart_tasking_taskqueue_pop(
+              &task_queue[(thread->numa_id + i) % num_numa_nodes]);
+    ++i;
+  } while (task == NULL && i < num_numa_nodes);
 #endif // DART_TASK_THREADLOCAL_Q
   return task;
 }
@@ -628,7 +649,7 @@ dart_task_t * create_task(
   task->unresolved_remote_deps = 0;
   task->deps_owned    = NULL;
   task->wait_handle   = NULL;
-
+  task->numaptr       = NULL;
   // if descr is an absolute path (as with __FILE__) we only use the basename
   if (descr && descr[0] == '/') {
     const char *descr_base = strrchr(descr, '/');
@@ -858,6 +879,8 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->ctxlist           = NULL;
   thread->yield_target      = DART_YIELD_TARGET_YIELD;
   thread->next_task         = NULL;
+  thread->core_id           = 0;
+  thread->numa_id           = 0;
   thread->is_releasing_deps = false;
   thread->is_utility_thread = false;
 #ifdef DART_TASK_THREADLOCAL_Q
@@ -883,9 +906,9 @@ void* thread_main(void *data)
   struct thread_init_data* tid = (struct thread_init_data*)data;
 
   DART_LOG_INFO("Thread %d starting up", tid->threadid);
-
+  int core_id = 0;
   if (bind_threads) {
-    dart__tasking__affinity_set(tid->pthread, tid->threadid);
+    core_id = dart__tasking__affinity_set(tid->pthread, tid->threadid);
   }
 
   dart_thread_t *thread = malloc(sizeof(dart_thread_t));
@@ -896,6 +919,10 @@ void* thread_main(void *data)
   int threadid    = tid->threadid;
   dart_thread_init(thread, threadid);
   thread->pthread = tid->pthread;
+  thread->core_id = core_id;
+  thread->numa_id =
+            respect_numa ? dart__tasking__affinity_core_numa_node(core_id) : 0;
+  DART_ASSERT(thread->numa_id >= 0);
   free(tid);
   tid = NULL;
 
@@ -1038,13 +1065,17 @@ static void
 init_threadpool(int num_threads)
 {
   // bind the master thread before allocating meta-data objects
+  int core_id = 0;
   if (bind_threads) {
-    dart__tasking__affinity_set(pthread_self(), 0);
+    core_id = dart__tasking__affinity_set(pthread_self(), 0);
   }
   thread_pool = calloc(num_threads, sizeof(dart_thread_t*));
   dart_thread_t *master_thread = malloc(sizeof(dart_thread_t));
   // initialize master thread data, the other threads will do it themselves
   dart_thread_init(master_thread, 0);
+  master_thread->core_id = core_id;
+  master_thread->numa_id =
+            respect_numa ? dart__tasking__affinity_core_numa_node(core_id) : 0;
   thread_pool[0] = master_thread;
 }
 
@@ -1059,6 +1090,10 @@ dart__tasking__init()
   thread_idle_method = dart__base__env__str2int(DART_THREAD_IDLE_ENVSTR,
                                                 thread_idle_env,
                                                 DART_THREAD_IDLE_USLEEP);
+
+  respect_numa = dart__base__env__bool(DART_THREAD_PLACE_NUMA_ENVSTR, false);
+
+  printf("respect_numa: %d\n", respect_numa);
 
   num_threads = determine_num_threads();
   DART_LOG_INFO("Using %i threads", num_threads);
@@ -1075,15 +1110,21 @@ dart__tasking__init()
 
   dart__tasking__context_init();
 
+  // initialize thread affinity
+  dart__tasking__affinity_init();
+
 #ifndef DART_TASK_THREADLOCAL_Q
-  dart_tasking_taskqueue_init(&task_queue);
+  if (respect_numa) {
+    num_numa_nodes = dart__tasking__affinity_num_numa_nodes();
+  }
+  task_queue = malloc(num_numa_nodes * sizeof(task_queue[0]));
+  for (int i = 0; i < num_numa_nodes; ++i) {
+    dart_tasking_taskqueue_init(&task_queue[i]);
+  }
 #endif // DART_TASK_THREADLOCAL_Q
 
   // keep threads running
   parallel = true;
-
-  // initialize thread affinity
-  dart__tasking__affinity_init();
 
   // set up the active message queue
   dart_tasking_datadeps_init();
@@ -1189,15 +1230,17 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     }
 
     dart_thread_t *thread = get_current_thread();
+
 #ifdef DART_TASK_THREADLOCAL_Q
-    dart_taskqueue_t *q;
-    if (thread->is_utility_thread) {
-      q = &thread_pool[0]->queue;
-    } else {
-      q = &thread->queue;
-    }
+    // fall-back in case we are called from the progress thread
+    if (thread == NULL) thread = thread_pool[0];
+    dart_taskqueue_t *q = &thread->queue;
 #else
-    dart_taskqueue_t *q = &task_queue;
+    int numa_node = 0;
+    if (respect_numa && task->numaptr != NULL) {
+      numa_node = dart__tasking__affinity_ptr_numa_node(task->numaptr);
+    }
+    dart_taskqueue_t *q = &task_queue[numa_node];
 #endif // DART_TASK_THREADLOCAL_Q
 
     if (thread && thread->is_releasing_deps) {
@@ -1600,7 +1643,9 @@ dart__tasking__fini()
   destroy_threadpool(true);
 
 #ifndef DART_TASK_THREADLOCAL_Q
-  dart_tasking_taskqueue_finalize(&task_queue);
+  for (int i = 0; i < num_numa_nodes; ++i) {
+    dart_tasking_taskqueue_finalize(&task_queue[i]);
+  }
 #endif
 
   dart__task__wait_fini();

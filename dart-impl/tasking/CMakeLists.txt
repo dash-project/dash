@@ -57,6 +57,11 @@ if (AYUDAME_FOUND AND ENABLE_AYUDAME)
        ${AYUDAME_LIBRARIES})
 endif()
 
+if (NUMA_FOUND AND ENABLE_LIBNUMA)
+  set (ADDITIONAL_COMPILE_FLAGS
+       ${ADDITIONAL_COMPILE_FLAGS} -DDART_ENABLE_NUMA)
+endif()
+
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_DART_IMPL_TASKING_SOURCES "src/*.c" "src/*.h" "src/*.cc")
 file(GLOB_RECURSE DASH_DART_IMPL_TASKING_HEADERS "include/*.h")

@@ -93,4 +93,12 @@
  */
 #define DART_THREAD_PROGRESS_INTERVAL_ENVSTR    "DART_THREAD_PROGRESS_INTERVAL"
 
+/**
+ * Name of the environment variable specifying whether the runtime should
+ * consider NUMA placement when scheduling tasks.
+ *
+ * Type: Boolean value.
+ */
+#define DART_THREAD_PLACE_NUMA_ENVSTR    "DART_THREAD_PLACE_NUMA"
+
 #endif // DART__BASE__INTERNAL__TASKING_ENVSTR_H__
