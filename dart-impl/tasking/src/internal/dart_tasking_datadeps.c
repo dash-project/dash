@@ -888,7 +888,8 @@ dart_tasking_datadeps_match_local_datadep(
               (dep->type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep))) {
         // lock the task here to avoid race condition
         LOCK_TASK(elem_task);
-        DART_ASSERT(IS_ACTIVE_TASK(elem_task));
+        DART_ASSERT_MSG(IS_ACTIVE_TASK(elem_task),
+                        "Found inactive task in state %d", elem_task->state);
         // check whether this task is already in the successor list
         if (dart_tasking_tasklist_contains(elem_task->successor, task)){
           // the task is already in the list, don't add it again!

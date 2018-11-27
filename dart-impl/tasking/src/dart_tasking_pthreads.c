@@ -165,6 +165,10 @@ dart__tasking__release_detached(dart_taskref_t task)
 
   dart_thread_t *thread = get_current_thread();
 
+  thread->is_releasing_deps = true;
+  dart_tasking_datadeps_release_local_task(task, thread);
+  thread->is_releasing_deps = false;
+
   // we need to lock the task shortly here before releasing datadeps
   // to allow for atomic check and update
   // of remote successors in dart_tasking_datadeps_handle_remote_task
@@ -172,10 +176,6 @@ dart__tasking__release_detached(dart_taskref_t task)
   task->state = DART_TASK_FINISHED;
   bool has_ref = task->has_ref;
   UNLOCK_TASK(task);
-
-  thread->is_releasing_deps = true;
-  dart_tasking_datadeps_release_local_task(task, thread);
-  thread->is_releasing_deps = false;
 
   dart_task_t *parent = task->parent;
 
@@ -762,6 +762,10 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 
       DART_ASSERT(task != &root_task);
 
+      thread->is_releasing_deps = true;
+      dart_tasking_datadeps_release_local_task(task, thread);
+      thread->is_releasing_deps = false;
+
       // we need to lock the task shortly here before releasing datadeps
       // to allow for atomic check and update
       // of remote successors in dart_tasking_datadeps_handle_remote_task
@@ -769,10 +773,6 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       task->state = DART_TASK_FINISHED;
       has_ref = task->has_ref;
       UNLOCK_TASK(task);
-
-      thread->is_releasing_deps = true;
-      dart_tasking_datadeps_release_local_task(task, thread);
-      thread->is_releasing_deps = false;
 
       // release the context
       dart__tasking__context_release(task->taskctx);
@@ -839,16 +839,17 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
     if (task->state == DART_TASK_DETACHED) {
       dart__task__wait_enqueue(task);
     } else {
-      // we need to lock the task shortly here before releasing datadeps
+      // it is safe to release the task before marking it as finished
+      // as the task will be removed from the hashtable first
+      dart_tasking_datadeps_release_local_task(task, thread);
+
+      // we need to lock the task shortly
       // to allow for atomic check and update
       // of remote successors in dart_tasking_datadeps_handle_remote_task
       LOCK_TASK(task);
       task->state = DART_TASK_FINISHED;
       bool has_ref = task->has_ref;
       UNLOCK_TASK(task);
-
-      dart_tasking_datadeps_release_local_task(task, thread);
-
 
       // clean up
       if (!has_ref){
