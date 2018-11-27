@@ -91,7 +91,6 @@ struct dart_task_data {
   const char                *descr;           // the description of the task
   dart_tasklock_t            lock;
   dart_taskphase_t           phase;
-  int                        delay;           // delay in case this task yields, TODO: move to thread!
   int                        num_children;
   bool                       has_ref;
   bool                       data_allocated;  // whether the data was allocated and copied
@@ -158,6 +157,7 @@ typedef struct {
   context_t               retctx;            // the thread-specific context to return to eventually
   context_list_t        * ctxlist;
   int                     thread_id;
+  int                     delay;             // delay in case this task yields
   dart_yield_target_t     yield_target;
   double                  last_progress_ts;  // the timestamp of the last remote progress call
   dart_task_t           * next_task;         // short-cut on the next task to execute

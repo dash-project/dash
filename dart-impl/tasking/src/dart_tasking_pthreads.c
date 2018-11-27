@@ -28,7 +28,6 @@
 #include <time.h>
 #include <errno.h>
 #include <setjmp.h>
-#include <time.h>
 #include <stddef.h>
 
 #define EVENT_ENTER(_ev) do {\
@@ -221,7 +220,7 @@ void requeue_task(dart_task_t *task)
 #else
   dart_taskqueue_t *q = &task_queue;
 #endif // DART_TASK_THREADLOCAL_Q
-  int delay = task->delay;
+  int delay = thread->delay;
   if (delay == 0) {
     dart_tasking_taskqueue_push(q, task);
   } else if (delay > 0) {
@@ -344,7 +343,7 @@ dart__tasking__yield(int delay)
     }
 
     if (next) {
-      current_task->delay = delay;
+      thread->delay = delay;
 
       if (current_task == &root_task && thread->thread_id == 0) {
         // the master thread should return to the root_task on the next yield
