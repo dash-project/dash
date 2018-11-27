@@ -18,8 +18,10 @@ dart__tasking__affinity_fini() DART_INTERNAL;
 
 /**
  * Set the affinity for thread \c pthread with ID \c dart_thread_id.
+ *
+ * \return The core the thread was bound to.
  */
-void
+int
 dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id) DART_INTERNAL;
 
 /**

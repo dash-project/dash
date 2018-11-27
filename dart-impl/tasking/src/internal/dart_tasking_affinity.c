@@ -66,7 +66,7 @@ dart__tasking__affinity_fini()
   hwloc_bitmap_free(ccpuset);
 }
 
-void
+int
 dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
 {
   //hwloc_const_cpuset_t ccpuset = hwloc_topology_get_allowed_cpuset(topology);
@@ -102,6 +102,8 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
   }
 
   hwloc_bitmap_free(cpuset);
+
+  return entry;
 }
 
 void
