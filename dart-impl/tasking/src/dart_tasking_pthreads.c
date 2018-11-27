@@ -108,10 +108,8 @@ static dart_task_t root_task = {
     .prev             = NULL,
     .fn               = NULL,
     .data             = NULL,
-    .unresolved_deps  = 0,
     .successor        = NULL,
     .parent           = NULL,
-    .recycle_tasks    = NULL,
     .remote_successor = NULL,
     .local_deps       = NULL,
     .prio             = DART_PRIO_DEFAULT,
@@ -564,8 +562,20 @@ dart_task_t * next_task(dart_thread_t *thread)
 static
 dart_task_t * allocate_task()
 {
-  dart_task_t *task = malloc(sizeof(dart_task_t));
-  TASKLOCK_INIT(task);
+  dart_task_t *task = NULL;
+
+  if (task_free_list != NULL) {
+    pthread_mutex_lock(&task_free_mutex);
+    if (task_free_list != NULL) {
+      DART_STACK_POP(task_free_list, task);
+    }
+    pthread_mutex_unlock(&task_free_mutex);
+  }
+
+  if (task == NULL) {
+    task = malloc(sizeof(dart_task_t));
+    TASKLOCK_INIT(task);
+  }
 
   return task;
 }
@@ -578,18 +588,7 @@ dart_task_t * create_task(
   dart_task_prio_t  prio,
   const char       *descr)
 {
-  dart_task_t *task = NULL;
-  if (task_free_list != NULL) {
-    pthread_mutex_lock(&task_free_mutex);
-    if (task_free_list != NULL) {
-      DART_STACK_POP(task_free_list, task);
-    }
-    pthread_mutex_unlock(&task_free_mutex);
-  }
-
-  if (task == NULL) {
-    task = allocate_task();
-  }
+  dart_task_t *task = allocate_task();
 
   if (data_size) {
     task->data_allocated = true;
@@ -611,7 +610,6 @@ dart_task_t * create_task(
   task->local_deps    = NULL;
   task->prev          = NULL;
   task->successor     = NULL;
-  task->recycle_tasks = NULL;
   task->is_inlined    = false;
   //task->prio          = (prio == DART_PRIO_PARENT) ? task->parent->prio : prio;
   switch (prio) {
@@ -629,6 +627,7 @@ dart_task_t * create_task(
   task->taskctx       = NULL;
   task->unresolved_deps = 0;
   task->unresolved_remote_deps = 0;
+  task->deps_owned    = NULL;
   task->wait_handle   = NULL;
 
   // if descr is an absolute path (as with __FILE__) we only use the basename
@@ -641,20 +640,8 @@ dart_task_t * create_task(
   return task;
 }
 
-
-void remote_progress(dart_thread_t *thread, bool force)
-{
-  if (force ||
-      thread->last_progress_ts + REMOTE_PROGRESS_INTERVAL_USEC >= current_time_us())
-  {
-    dart_tasking_remote_progress();
-    thread->last_progress_ts = current_time_us();
-  }
-}
-
 void dart__tasking__destroy_task(dart_task_t *task)
 {
-  dart_task_t *parent = task->parent;
   if (task->data_allocated) {
     free(task->data);
   }
@@ -673,10 +660,30 @@ void dart__tasking__destroy_task(dart_task_t *task)
 
   dart_tasking_datadeps_reset(task);
 
-  LOCK_TASK(parent);
-  DART_STACK_PUSH(parent->recycle_tasks, task);
-  UNLOCK_TASK(parent);
+  pthread_mutex_lock(&task_free_mutex);
+  DART_STACK_PUSH(task_free_list, task);
+  pthread_mutex_unlock(&task_free_mutex);
 }
+
+dart_task_t *
+dart__tasking__allocate_dummytask()
+{
+  dart_task_t *task = allocate_task();
+  memset(task, 0, sizeof(*task));
+  task->state = DART_TASK_DUMMY;
+  return task;
+}
+
+void remote_progress(dart_thread_t *thread, bool force)
+{
+  if (force ||
+      thread->last_progress_ts + REMOTE_PROGRESS_INTERVAL_USEC >= current_time_us())
+  {
+    dart_tasking_remote_progress();
+    thread->last_progress_ts = current_time_us();
+  }
+}
+
 
 /**
  * Execute the given task.
@@ -1168,8 +1175,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
       if (task->state == DART_TASK_CREATED || task->state == DART_TASK_QUEUED) {
         task->state = DART_TASK_DEFERRED;
         dart_tasking_taskqueue_push(&local_deferred_tasks, task);
+        enqueued = true;
       }
-      enqueued = true;
     }
     UNLOCK_TASK(task);
   }
@@ -1357,26 +1364,6 @@ dart__tasking__task_complete()
   if (restore_ctx) {
     // restore context (in case we're called from within another task and switched threads)
     thread->retctx = tmpctx;
-  }
-
-  // destroyed child tasks can now be re-used
-  dart__tasking__check_cancellation(thread);
-  if (thread->current_task->recycle_tasks){
-    // recycled tasks can now be used again
-    pthread_mutex_lock(&task_free_mutex);
-    if (task_free_list == NULL) {
-      task_free_list = thread->current_task->recycle_tasks;
-    } else {
-      dart_task_t *elem = task_free_list;
-      if (elem != NULL) {
-        // walk to the end of the list
-        while (elem->next != NULL) elem = elem->next;
-      }
-      // add the recycled elements to the end of the list
-      elem->next = thread->current_task->recycle_tasks;
-    }
-    thread->current_task->recycle_tasks = NULL;
-    pthread_mutex_unlock(&task_free_mutex);
   }
 
   // 3) clean up if this was the root task and thus no other tasks are running

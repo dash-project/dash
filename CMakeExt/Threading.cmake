@@ -7,6 +7,21 @@
 
 if (ENABLE_THREADSUPPORT)
 
+    MESSAGE(STATUS "Checking for C11 128-bit atomics")
+    TRY_COMPILE(HAVE_128B_ATOMICS ${CMAKE_BINARY_DIR}
+                ${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_atomics.c
+                LINK_LIBRARIES atomic
+                C_STANDARD 11
+                OUTPUT_VARIABLE output)
+
+    if (HAVE_128B_ATOMICS)
+      message(STATUS "Found C11 128-bit atomics")
+      set(CMAKE_C_FLAGS
+          "${CMAKE_C_FLAGS} -DDART_HAVE_C11_128B_ATOMICS")
+    else ()
+      message(WARNING "Failed to find C11 128-bit atomics: ${output}")
+    endif ()
+
     MESSAGE(STATUS "Checking for builtin __sync_add_and_fetch")
     TRY_COMPILE(DART_SYNC_BUILTINS ${CMAKE_BINARY_DIR}
                 ${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_builtin_sync.c 

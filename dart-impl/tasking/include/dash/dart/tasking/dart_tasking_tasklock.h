@@ -20,14 +20,14 @@ typedef dart_mutex_t dart_tasklock_t;
 
 #define UNLOCK_TASK(__task) dart__base__mutex_unlock(&(__task)->lock)
 
-# else // USE_DART_MUTEX
+# elif defined(__STDC_NO_ATOMICS__)
 
 #include <dash/dart/base/atomic.h>
 
 typedef int32_t dart_tasklock_t;
 #define TASKLOCK_INITIALIZER ((int32_t)0)
 
-#define TASKLOCK_INIT(__task) do { \
+#define TASKLOCK_INIT(__task) do {  \
   __task->lock = TASKLOCK_INITIALIZER;\
 } while (0)
 
@@ -41,6 +41,26 @@ typedef int32_t dart_tasklock_t;
   dart_tasklock_t lck = DART_FETCH_AND_DEC32(&(__task)->lock); \
   dart__unused(lck);                                      \
   DART_ASSERT(lck == 1);                                  \
+} while(0)
+
+#else // defined(__STDC_NO_ATOMICS__)
+
+#include <stdatomic.h>
+
+typedef volatile atomic_flag dart_tasklock_t;
+
+#define TASKLOCK_INIT(__task) do {    \
+  atomic_flag_clear(&(__task)->lock); \
+} while (0)
+
+#define LOCK_TASK(__task) do {                         \
+  int cnt = 0; \
+  while (atomic_flag_test_and_set(&(__task)->lock)) \
+  { if (++cnt == 1000) { sched_yield(); cnt = 0; } } \
+} while(0)
+
+#define UNLOCK_TASK(__task) do {      \
+  atomic_flag_clear(&(__task)->lock); \
 } while(0)
 
 #endif // USE_DART_MUTEX

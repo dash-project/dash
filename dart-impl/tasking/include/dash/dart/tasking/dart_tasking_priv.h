@@ -14,7 +14,7 @@
 #include <dash/dart/tasking/dart_tasking_tasklock.h>
 
 // forward declaration, defined in dart_tasking_datadeps.c
-struct dart_dephash_elem;
+typedef struct dart_dephash_elem dart_dephash_elem_t;
 struct task_list;
 
 // whether to use thread-local task queues or a single queue
@@ -72,20 +72,26 @@ struct dart_task_data {
       void                  *data;            // the data to be passed to the action
     };
   };
-  int32_t                    unresolved_deps; // the number of unresolved task dependencies
-  int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
   struct task_list          *successor;       // the list of tasks that depend on this task
+  dart_dephash_elem_t       *remote_successor;
   struct dart_task_data     *parent;          // the task that created this task
-  struct dart_task_data     *recycle_tasks;   // list of destroyed child tasks
   // TODO: pack using pahole, move all execution-specific fields into context
   context_t                 *taskctx;         // context to start/resume task
-  struct dart_dephash_elem  *remote_successor;
-  struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
+  union {
+    // only relevant before execution, both will be zero when the task starts execution
+    struct {
+      int32_t                    unresolved_deps; // the number of unresolved task dependencies
+      int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
+    };
+    // only relevant during execution
+    dart_dephash_elem_t      **local_deps;      // hashmap containing dependencies of child tasks
+  };
+  dart_dephash_elem_t       *deps_owned;      // list of dependencies owned by this task
   dart_wait_handle_t        *wait_handle;
   const char                *descr;           // the description of the task
   dart_tasklock_t            lock;
   dart_taskphase_t           phase;
-  int                        delay;           // delay in case this task yields
+  int                        delay;           // delay in case this task yields, TODO: move to thread!
   int                        num_children;
   bool                       has_ref;
   bool                       data_allocated;  // whether the data was allocated and copied
@@ -95,19 +101,26 @@ struct dart_task_data {
 };
 
 #define DART_STACK_PUSH(_head, _elem) \
+  DART_STACK_PUSH_MEMB(_head, _elem, next)
+
+#define DART_STACK_POP(_head, _elem) \
+  DART_STACK_POP_MEMB(_head, _elem, next)
+
+#define DART_STACK_PUSH_MEMB(_head, _elem, _memb) \
   do {                                \
-    _elem->next = _head;              \
+    _elem->_memb = _head;           \
     _head = _elem;                    \
   } while (0)
 
-#define DART_STACK_POP(_head, _elem) \
+#define DART_STACK_POP_MEMB(_head, _elem, _memb) \
   do {                               \
     _elem = _head;                   \
     if (_elem != NULL) {             \
-      _head = _elem->next;           \
-      _elem->next = NULL;            \
+      _head = _elem->_memb;        \
+      _elem->_memb = NULL;         \
     }                                \
   } while (0)
+
 
 /*
  * Special priority signalling to immediately execute the task when ready.
@@ -229,6 +242,9 @@ dart__tasking__destroy_task(dart_task_t *task) DART_INTERNAL;
 
 dart_thread_t *
 dart__tasking__current_thread() DART_INTERNAL;
+
+dart_task_t *
+dart__tasking__allocate_dummytask() DART_INTERNAL;
 
 void
 dart__tasking__perform_matching(
