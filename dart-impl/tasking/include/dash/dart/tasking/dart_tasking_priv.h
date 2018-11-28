@@ -7,6 +7,7 @@
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
+#include <dash/dart/base/stack.h>
 #include <dash/dart/base/macro.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
 #include <dash/dart/tasking/dart_tasking_phase.h>
@@ -156,7 +157,8 @@ typedef struct {
   uint64_t                taskcntr;
   pthread_t               pthread;
   context_t               retctx;            // the thread-specific context to return to eventually
-  context_list_t        * ctxlist;
+  dart_stack_t            ctxlist;           // a free-list of contexts, written by all threads
+  context_list_t        * ctx_to_enter;      // the context to enter next
   int                     thread_id;
   int                     core_id;
   int                     numa_id;

@@ -877,13 +877,14 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->thread_id         = threadnum;
   thread->current_task      = &root_task;
   thread->taskcntr          = 0;
-  thread->ctxlist           = NULL;
   thread->yield_target      = DART_YIELD_TARGET_YIELD;
   thread->next_task         = NULL;
   thread->core_id           = 0;
   thread->numa_id           = 0;
   thread->is_releasing_deps = false;
   thread->is_utility_thread = false;
+  thread->ctx_to_enter      = NULL;
+  dart__base__stack_init(&thread->ctxlist);
 #ifdef DART_TASK_THREADLOCAL_Q
   thread->last_steal_thread = 0;
   dart_tasking_taskqueue_init(&thread->queue);
@@ -1017,7 +1018,6 @@ void dart_thread_finalize(dart_thread_t *thread)
   if (thread != NULL) {
     thread->thread_id = -1;
     thread->current_task = NULL;
-    thread->ctxlist = NULL;
 
 #ifdef DART_TASK_THREADLOCAL_Q
     dart_tasking_taskqueue_finalize(&thread->queue);
