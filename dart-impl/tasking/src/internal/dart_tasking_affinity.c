@@ -1,17 +1,54 @@
 #define _GNU_SOURCE
 
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/assert.h>
 
 #include <dash/dart/tasking/dart_tasking_affinity.h>
 
 #include <dash/dart/base/env.h>
 #include <dash/dart/tasking/dart_tasking_envstr.h>
+#include <dash/dart/tasking/dart_tasking_priv.h>
 
 
 #include <stdio.h>
 #include <stdlib.h>
 
 static bool             print_binding = false;
+
+#ifdef DART_ENABLE_NUMA
+
+#include <numaif.h>
+#include <errno.h>
+
+int
+dart__tasking__affinity_ptr_numa_node(const void *ptr)
+{
+  int node;
+  void *ncptr = (void*)ptr;
+  long ret = move_pages(0, 1, &ncptr, NULL, &node, MPOL_MF_MOVE);
+  if (node == -EFAULT) {
+    // the page is not allocated, schedule it for NUMA node 0
+    node = 0;
+  }
+  if (ret < 0) {
+    DART_LOG_ERROR("move_pages failed: %ld (node %d)", ret, node);
+  }
+  DART_LOG_TRACE("ptr %p is mapped to NUMA node %d", ptr, node);
+  //printf("ptr %p is mapped to NUMA node %d\n", ptr, node);
+  DART_ASSERT_MSG(node >= 0, "Failed to query page for ptr %p (ret=%d)", ptr, node);
+  return node;
+}
+
+#else
+
+int
+dart__tasking__affinity_ptr_numa_node(const void *ptr)
+{
+  dart__unused(ptr);
+  return 0;
+}
+#endif
+
 
 #ifdef DART_ENABLE_HWLOC
 #include <hwloc.h>
@@ -66,7 +103,7 @@ dart__tasking__affinity_fini()
   hwloc_bitmap_free(ccpuset);
 }
 
-void
+int
 dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
 {
   //hwloc_const_cpuset_t ccpuset = hwloc_topology_get_allowed_cpuset(topology);
@@ -102,6 +139,8 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
   }
 
   hwloc_bitmap_free(cpuset);
+
+  return entry;
 }
 
 void
@@ -144,6 +183,33 @@ dart__tasking__affinity_set_utility(pthread_t pthread, int dart_thread_id)
     }
   }
   hwloc_bitmap_free(cpuset);
+}
+
+int
+dart__tasking__affinity_num_numa_nodes()
+{
+  int nnumanodes = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NUMANODE);
+
+  if (nnumanodes < 0) {
+    DART_LOG_ERROR("Call to hwloc_get_nbobjs_by_type(HWLOC_OBJ_NUMANODE) failed!");
+  }
+
+  if (nnumanodes == 0) nnumanodes = 1;
+
+  return nnumanodes;
+}
+
+int
+dart__tasking__affinity_core_numa_node(int core_id)
+{
+  hwloc_obj_t core =  hwloc_get_obj_by_type(topology, HWLOC_OBJ_CORE, core_id);
+  hwloc_obj_t node = NULL;
+  if(NULL != core &&
+     NULL != (node = hwloc_get_ancestor_obj_by_type(topology , HWLOC_OBJ_NODE, core)) ) {
+      return node->logical_index;
+  }
+  // NUMA domain 0 is the default
+  return 0;
 }
 
 
@@ -255,6 +321,18 @@ dart__tasking__affinity_set_utility(pthread_t pthread, int dart_thread_id)
   CPU_SET(entry, &cpuset);
 
   pthread_setaffinity_np(pthread, sizeof(cpu_set_t), &cpuset);
+}
+
+int
+dart__tasking__affinity_num_numa_nodes()
+{
+  return 1;
+}
+
+int
+dart__tasking__affinity_core_numa_node(int core_id)
+{
+  return 0;
 }
 
 void

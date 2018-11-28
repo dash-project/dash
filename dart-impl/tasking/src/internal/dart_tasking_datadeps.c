@@ -888,7 +888,8 @@ dart_tasking_datadeps_match_local_datadep(
               (dep->type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep))) {
         // lock the task here to avoid race condition
         LOCK_TASK(elem_task);
-        DART_ASSERT(IS_ACTIVE_TASK(elem_task));
+        DART_ASSERT_MSG(IS_ACTIVE_TASK(elem_task),
+                        "Found inactive task in state %d", elem_task->state);
         // check whether this task is already in the successor list
         if (dart_tasking_tasklist_contains(elem_task->successor, task)){
           // the task is already in the list, don't add it again!
@@ -1097,6 +1098,8 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     if (dep.type == DART_DEP_DIRECT) {
       dart_tasking_datadeps_handle_local_direct(&dep, task);
     } else if (dep.type == DART_DEP_COPYIN){
+      // set the numaptr
+      if (task->numaptr == NULL) task->numaptr = dep.copyin.dest;
       dart_tasking_datadeps_handle_copyin(&dep, task);
     } else if (guid.id != myid.id) {
         if (task->parent->state == DART_TASK_ROOT) {
@@ -1123,6 +1126,9 @@ dart_ret_t dart_tasking_datadeps_handle_task(
 
       } else {
         dart_tasking_datadeps_match_local_datadep(&dep, task);
+
+        // set the numaptr
+        if (task->numaptr == NULL) task->numaptr = dep.gptr.addr_or_offs.addr;
 
         // add this task to the hash table
         dephash_add_local(&dep, task);

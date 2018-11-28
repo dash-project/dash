@@ -7,6 +7,7 @@
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
+#include <dash/dart/base/stack.h>
 #include <dash/dart/base/macro.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
 #include <dash/dart/tasking/dart_tasking_phase.h>
@@ -77,6 +78,7 @@ struct dart_task_data {
   struct dart_task_data     *parent;          // the task that created this task
   // TODO: pack using pahole, move all execution-specific fields into context
   context_t                 *taskctx;         // context to start/resume task
+  void                      *numaptr;         // ptr used to determine the NUMA node
   union {
     // only relevant before execution, both will be zero when the task starts execution
     struct {
@@ -91,7 +93,6 @@ struct dart_task_data {
   const char                *descr;           // the description of the task
   dart_tasklock_t            lock;
   dart_taskphase_t           phase;
-  int                        delay;           // delay in case this task yields, TODO: move to thread!
   int                        num_children;
   bool                       has_ref;
   bool                       data_allocated;  // whether the data was allocated and copied
@@ -156,8 +157,12 @@ typedef struct {
   uint64_t                taskcntr;
   pthread_t               pthread;
   context_t               retctx;            // the thread-specific context to return to eventually
-  context_list_t        * ctxlist;
+  dart_stack_t            ctxlist;           // a free-list of contexts, written by all threads
+  context_list_t        * ctx_to_enter;      // the context to enter next
   int                     thread_id;
+  int                     core_id;
+  int                     numa_id;
+  int                     delay;             // delay in case this task yields
   dart_yield_target_t     yield_target;
   double                  last_progress_ts;  // the timestamp of the last remote progress call
   dart_task_t           * next_task;         // short-cut on the next task to execute
@@ -256,6 +261,10 @@ dart__tasking__is_root_task(dart_task_t *task)
 {
   return task->state == DART_TASK_ROOT;
 }
+
+
+dart_taskqueue_t *
+dart__tasking__get_taskqueue() DART_INTERNAL;
 
 void dart__tasking__utility_thread(
   void (*fn) (void *),

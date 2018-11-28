@@ -22,6 +22,7 @@
 
 #include <dash/dart/base/env.h>
 #include <dash/dart/base/assert.h>
+#include <dash/dart/base/stack.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
 
@@ -37,10 +38,19 @@
 // the maximum number of ctx to store per thread
 #define PER_THREAD_CTX_STORE 10
 
+// we know that the stack member entry is the first element of the struct
+// so we can cast directly
+#define DART_CTX_ELEM_POP(__freelist) \
+  ((context_list_t*)((void*)dart__base__stack_pop(&__freelist)))
+
+#define DART_CTX_ELEM_PUSH(__freelist, __elem) \
+  dart__base__stack_push(&__freelist, &DART_STACK_MEMBER_GET(__elem))
+
+
 struct context_list_s {
-  struct context_list_s *next;
+  DART_STACK_MEMBER_DEF;
+  dart_thread_t         *owner;
   char                  *stack;
-  int                    length;
 #if defined(USE_MMAP)
   size_t                 size;
 #endif
@@ -87,9 +97,9 @@ void dart__tasking__context_init()
 static void
 dart__tasking__context_entry(void)
 {
-  context_list_t *ctxlist;
   dart_thread_t  *thread  = dart__tasking__current_thread();
-  DART_STACK_POP(thread->ctxlist, ctxlist);
+  context_list_t *ctxlist = thread->ctx_to_enter;
+  thread->ctx_to_enter    = NULL;
   DART_ASSERT(ctxlist != NULL);
 
   context_func_t *fn  = ctxlist->ctx.fn;
@@ -124,19 +134,19 @@ dart__tasking__context_allocate()
                                  MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK,
                                  -1, 0);
   DART_ASSERT_MSG(ctxlist != MAP_FAILED, "Failed to mmap new stack!");
-  ctxlist->size = size;
+  ctxlist->size  = size;
 #else
   context_list_t *ctxlist;
   DART_ASSERT_RETURNS(posix_memalign((void**)&ctxlist, page_size, size), 0);
 #endif
+
+  ctxlist->owner = dart__tasking__current_thread();
 
 #ifdef USE_MPROTECT
   ctxlist->stack    = ((char*)ctxlist) + meta_size + page_size;
 #else
   ctxlist->stack    = ((char*)ctxlist) + meta_size;
 #endif
-  ctxlist->next     = NULL;
-  ctxlist->length   = 0;
 
   DART_LOG_TRACE("Allocated context %p (sp:%p)",
                  &ctxlist->ctx, ctxlist->stack);
@@ -193,22 +203,20 @@ dart__tasking__context_free(context_list_t *ctxlist)
 
 context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
 {
+  dart_thread_t* thread = dart__tasking__current_thread();
+  context_list_t *ctxlist = (DART_CTX_ELEM_POP(thread->ctxlist));
   context_t* res = NULL;
 #ifdef USE_UCONTEXT
 
   // look for already allocated contexts
   // thread-local list, no locking required
-  dart_thread_t* thread = dart__tasking__current_thread();
-  if (thread->ctxlist != NULL) {
-    res = &thread->ctxlist->ctx;
-    thread->ctxlist->length = 0;
-    thread->ctxlist = thread->ctxlist->next;
+  if (ctxlist != NULL) {
+    res = &ctxlist->ctx;
     DART_LOG_TRACE("Reusing context %p (sp: %p)",
                    &res->ctx, res->ctx.uc_stack.ss_sp);
   } else  {
     // allocate a new context
     context_list_t *ctxlist = dart__tasking__context_allocate();
-    ctxlist->next = NULL;
     // initialize context and set stack
     getcontext(&ctxlist->ctx.ctx);
     ctxlist->ctx.ctx.uc_link           = NULL;
@@ -263,16 +271,9 @@ void dart__tasking__context_release(context_t* ctx)
   context_list_t *ctxlist = (context_list_t*)
                                 (((char*)ctx) - offsetof(context_list_t, ctx));
 
-  dart_thread_t* thread = dart__tasking__current_thread();
-  if (thread->ctxlist != NULL && thread->ctxlist->length > PER_THREAD_CTX_STORE)
-  {
-    // don't keep too many ctx around
-    dart__tasking__context_free(ctxlist);
-  } else {
-    ctxlist->length = (thread->ctxlist != NULL) ? thread->ctxlist->length : 0;
-    ctxlist->length++;
-    DART_STACK_PUSH(thread->ctxlist, ctxlist);
-  }
+  // push back to the thread that allocated the context
+  dart_thread_t* thread = ctxlist->owner;
+  DART_CTX_ELEM_PUSH(thread->ctxlist, ctxlist);
 #else
   free(ctx);
 #endif
@@ -286,7 +287,8 @@ void dart__tasking__context_invoke(context_t* ctx)
     dart_thread_t  *thread  = dart__tasking__current_thread();
     context_list_t *ctxlist = (context_list_t*)
                                 (((char*)ctx) - offsetof(context_list_t, ctx));
-    DART_STACK_PUSH(thread->ctxlist, ctxlist);
+    // save the context here so we can access it in dart__tasking__context_entry
+    thread->ctx_to_enter = ctxlist;
     DART_ASSERT(ctx->ctx.uc_stack.ss_sp != NULL);
   }
 
@@ -307,7 +309,8 @@ dart__tasking__context_swap(context_t* old_ctx, context_t* new_ctx)
     dart_thread_t  *thread  = dart__tasking__current_thread();
     context_list_t *ctxlist = (context_list_t*)
                              (((char*)new_ctx) - offsetof(context_list_t, ctx));
-    DART_STACK_PUSH(thread->ctxlist, ctxlist);
+    // save the context here so we can access it in dart__tasking__context_entry
+    thread->ctx_to_enter = ctxlist;
   }
 
   if (old_ctx->fn) {
@@ -335,9 +338,8 @@ void dart__tasking__context_cleanup()
 #ifdef USE_UCONTEXT
   dart_thread_t* thread = dart__tasking__current_thread();
 
-  while (thread->ctxlist) {
-    context_list_t *ctxlist;
-    DART_STACK_POP(thread->ctxlist, ctxlist);
+  context_list_t *ctxlist;
+  while (NULL != (ctxlist = DART_CTX_ELEM_POP(thread->ctxlist))) {
     dart__tasking__context_free(ctxlist);
   }
 #else
