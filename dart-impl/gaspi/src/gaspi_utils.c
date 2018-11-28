@@ -630,20 +630,42 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
       printf("Error: element_size does not match size of double!\n");
       return GASPI_ERROR;
     }
-    char* op1_tmp = (char*) op1;
-    char* op2_tmp = (char*) op2;
+    double* op1_tmp = (double*) op1;
+    double* op2_tmp = (double*) op2;
+    double* res_tmp = (double*) res;
+
     for(int i = 0; i < num; ++i){
        if(op1_tmp[i] < op2_tmp[i]){
-          ((char*)res)[(i*2)]    = ((char*)op1)[i];
-          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+          if(0 == i){
+             res_tmp[(i*2)]    = op1_tmp[i];
+             res_tmp[(i*2)+1]  = op2_tmp[i];
+          } // all further checks are against the earlier MINMAX
+          else{
+             if(op1_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op1_tmp[i];
+             if(op2_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op2_tmp[i];
+          } 
        }
-       else if(((char*)op1)[i] > ((char*)op2)[i]){
-          ((char*)res)[(i*2)]    = ((char*)op2)[i];
-          ((char*)res)[(i*2)+1]  = ((char*)op1)[i];
+       else if(op1_tmp[i] > op2_tmp[i]){
+          if(0 == i){
+             res_tmp[(i*2)]    = op2_tmp[i];
+             res_tmp[(i*2)+1]  = op1_tmp[i];
+          } // all further checks are against the earlier MINMAX
+          else{
+             if(op2_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op2_tmp[i];
+             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
+          }
+
        }
-       else{
-          ((char*)res)[(i*2)]    = ((char*)op1)[i];
-          ((char*)res)[(i*2)+1]  = ((char*)op2)[i];
+       else{ // if op1 == op2
+          if(0 == i){
+             res_tmp[(i*2)]    = op1_tmp[i];
+             res_tmp[(i*2)+1]  = op2_tmp[i]; 
+          }
+          else{
+             if(op1_tmp[i] < res_tmp[i*2]) res_tmp[i*2] = op1_tmp[i];
+             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp;
+          }
+
        }
     }
     return GASPI_SUCCESS;
