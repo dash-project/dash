@@ -76,7 +76,7 @@ TEST_F(DARTCollectiveTest, MinMax) {
 
 TEST_F(DARTCollectiveTest, MinMaxInt64t) {
 
-  using elem_t = int;
+  using elem_t = int64_t;
 
   if (dash::size() != 4) {
     SKIP_TEST_MSG("Exactly 4 units required");
@@ -97,7 +97,7 @@ TEST_F(DARTCollectiveTest, MinMaxInt64t) {
       dash::Team::All().dart_id()         // team
       );
 
-  LOG_MESSAGE("global min: %d, global max: %d", min_max_out[DART_OP_MINMAX_MIN], min_max_out[DART_OP_MINMAX_MAX]);
+  LOG_MESSAGE("global min: %ld, global max: %ld", min_max_out[DART_OP_MINMAX_MIN], min_max_out[DART_OP_MINMAX_MAX]);
 
   ASSERT_EQ_U(min_max_out[DART_OP_MINMAX_MAX], *std::max_element(std::begin(lmax), std::end(lmax)));
   ASSERT_EQ_U(min_max_out[DART_OP_MINMAX_MIN], *std::min_element(std::begin(lmin), std::end(lmin)));
