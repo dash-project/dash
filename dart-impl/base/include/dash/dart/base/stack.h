@@ -56,7 +56,11 @@ typedef struct dart_stack_elem {
 } dart_stack_elem_t;
 
 #ifdef USE_ATOMIC128_CAS
+
+#include <stdalign.h>
+
 struct dart_stack_head {
+  alignas(16)
   uintptr_t          aba;
   dart_stack_elem_t *node;
 };
