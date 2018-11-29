@@ -178,7 +178,7 @@ TEST_F(GlobStaticMemTest, MakeUniqueMoveSemantics)
   constexpr size_t lcapA = 20;
   constexpr size_t lcapB = lcapA / 2;
 
-  constexpr auto cap_in_bytes = [](size_t lcap) {
+  auto const cap_in_bytes = [](size_t lcap) {
     return lcap * sizeof(value_t);
   };
 
