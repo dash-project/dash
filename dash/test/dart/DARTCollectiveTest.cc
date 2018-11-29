@@ -74,6 +74,36 @@ TEST_F(DARTCollectiveTest, MinMax) {
 
 }
 
+TEST_F(DARTCollectiveTest, MinMaxInt64t) {
+
+  using elem_t = int64_t;
+
+  if (dash::size() != 4) {
+    SKIP_TEST_MSG("Exactly 4 units required");
+  }
+
+  std::array<elem_t, 4> lmin = {-930, -989, -951, -909};
+  std::array<elem_t, 4> lmax = {946, 933, 969, 882};
+
+  std::array<elem_t, 2> min_max_in{lmin[dash::myid()], lmax[dash::myid()]};
+
+  std::array<elem_t, 2> min_max_out{};
+  dart_allreduce(
+      &min_max_in,                        // send buffer
+      &min_max_out,                       // receive buffer
+      2,                                  // buffer size
+      dash::dart_datatype<elem_t>::value,  // data type
+      DART_OP_MINMAX,                     // operation
+      dash::Team::All().dart_id()         // team
+      );
+
+  LOG_MESSAGE("global min: %ld, global max: %ld", min_max_out[DART_OP_MINMAX_MIN], min_max_out[DART_OP_MINMAX_MAX]);
+
+  ASSERT_EQ_U(min_max_out[DART_OP_MINMAX_MAX], *std::max_element(std::begin(lmax), std::end(lmax)));
+  ASSERT_EQ_U(min_max_out[DART_OP_MINMAX_MIN], *std::min_element(std::begin(lmin), std::end(lmin)));
+
+}
+
 template<typename T>
 static void reduce_max_fn(
   const void   *invec_,

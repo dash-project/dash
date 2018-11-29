@@ -28,7 +28,7 @@ DART_DECLARE_MINMAX_OP(__name)                                             \
   (void)(dptr_);                                                           \
   const __type *lhs = (__type *)lhs_;                                      \
   int           len = *len_;                                               \
-  __type *      rhs = (__type *)rhs_;                                      \
+  __type       *rhs = (__type *)rhs_;                                      \
   DART_ASSERT_MSG(                                                         \
       (len % 2) == 0, "DART_OP_MINMAX requires multiple of two elements"); \
   for (int i = 0; i < len; i += 2, rhs += 2, lhs += 2) {                   \
@@ -43,7 +43,7 @@ DART_DEFINE_MINMAX_OP(byte,             char)
 DART_DEFINE_MINMAX_OP(short,            short int)
 DART_DEFINE_MINMAX_OP(int,              int)
 DART_DEFINE_MINMAX_OP(unsigned,         unsigned int)
-DART_DEFINE_MINMAX_OP(long,             int)
+DART_DEFINE_MINMAX_OP(long,             long)
 DART_DEFINE_MINMAX_OP(unsignedlong,     unsigned long)
 DART_DEFINE_MINMAX_OP(longlong,         long long)
 DART_DEFINE_MINMAX_OP(unsignedlonglong, unsigned long long)
