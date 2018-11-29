@@ -157,9 +157,15 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 }
 
 
-//copied from the mpi dart_synchronization.c
+//copied from the mpi dart_synchronization.c by Rodario
 dart_ret_t dart_team_lock_destroy(dart_lock_t* lock)
 {
     printf("dart_team_lock_destroy for gaspi not supported!\n");
     return DART_ERR_INVAL;
+}
+
+bool dart_lock_initialized(struct dart_lock_struct const * lock)
+{
+    printf("dart_lock_initialized not yet supportet for gaspi!\n");
+    return false;
 }
