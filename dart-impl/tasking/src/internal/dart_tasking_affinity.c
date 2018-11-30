@@ -20,18 +20,75 @@ static bool             print_binding = false;
 #include <numaif.h>
 #include <errno.h>
 
+typedef
+struct hash_elem_t{
+  void *next;
+  void *ptr;
+  int   numa_node;
+} hash_elem_t;
+
+#define HASHSIZE 1023
+
+// a cache of pages-numa-node-assignements, never free'd
+static hash_elem_t *hashmap[HASHSIZE];
+static dart_mutex_t hashmtx = DART_MUTEX_INITIALIZER;
+
+static inline
+int hashptr(const void *ptr)
+{
+  intptr_t iptr = (intptr_t) ptr;
+  // cut off the lower 4k
+  iptr = (iptr & ~(4096L - 1));
+  return iptr % HASHSIZE;
+}
+
+static
+int query_hashmap_nolock(const void *ptr)
+{
+  int hash = hashptr(ptr);
+  hash_elem_t *elem = hashmap[hash];
+  while (elem != NULL) {
+    if (elem->ptr == ptr) return elem->numa_node;
+    elem = elem->next;
+  }
+  return -1;
+}
+
+static
+void insert_hashmap(const void *ptr, int numa_node)
+{
+  dart__base__mutex_lock(&hashmtx);
+  // check whether someone else has inserted already
+  if (query_hashmap_nolock(ptr) != -1) {
+    int hash = hashptr(ptr);
+    hash_elem_t *elem = malloc(sizeof(*elem));
+    elem->ptr         = (void*)ptr;
+    elem->numa_node   = numa_node;
+    elem->next        = hashmap[hash];
+    hashmap[hash]     = elem;
+  }
+  dart__base__mutex_unlock(&hashmtx);
+}
+
 int
 dart__tasking__affinity_ptr_numa_node(const void *ptr)
 {
   int node;
   void *ncptr = (void*)ptr;
-  long ret = move_pages(0, 1, &ncptr, NULL, &node, MPOL_MF_MOVE);
-  if (node == -EFAULT) {
-    // the page is not allocated, schedule it for NUMA node 0
-    node = 0;
-  }
-  if (ret < 0) {
-    DART_LOG_ERROR("move_pages failed: %ld (node %d)", ret, node);
+  node = query_hashmap_nolock(ncptr);
+  if (node == -1) {
+    long ret = move_pages(0, 1, &ncptr, NULL, &node, MPOL_MF_MOVE);
+    if (ret < 0) {
+      DART_LOG_ERROR("move_pages failed: %ld (node %d)", ret, node);
+      node = 0;
+    } else if (node == -EFAULT) {
+      // the page is not allocated, schedule it for NUMA node 0
+      // but do not put it into the page-cache
+      node = 0;
+    } else {
+      // insert into hashmap
+      insert_hashmap(ptr, node);
+    }
   }
   DART_LOG_TRACE("ptr %p is mapped to NUMA node %d", ptr, node);
   //printf("ptr %p is mapped to NUMA node %d\n", ptr, node);
@@ -94,6 +151,8 @@ dart__tasking__affinity_init()
     DART_LOG_INFO_ALWAYS("Allocated CPU set (size %d): {%s}", num_cpus, buf);
     free(buf);
   }
+
+  memset(hashmap, 0, HASHSIZE*sizeof(hashmap[0]));
 }
 
 void
@@ -101,6 +160,17 @@ dart__tasking__affinity_fini()
 {
   hwloc_topology_destroy(topology);
   hwloc_bitmap_free(ccpuset);
+
+#ifdef DART_ENABLE_NUMA
+  for (int i = 0; i < HASHSIZE; ++i) {
+    hash_elem_t *elem = hashmap[i];
+    while (elem != NULL) {
+      hash_elem_t *next = elem->next;
+      free(elem);
+      elem = next;
+    }
+  }
+#endif // DART_ENABLE_NUMA
 }
 
 int
