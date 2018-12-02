@@ -661,12 +661,16 @@ inline auto find_global_min_max(
 }
 
 template <class RAI, class Cmp>
-void local_sort(RAI first, RAI last, Cmp sort_comp)
+void local_sort(RAI first, RAI last, Cmp sort_comp, int nthreads=1)
 {
 #ifdef DASH_ENABLE_PSTL
-    DASH_LOG_TRACE("dash::sort", "local_sort", "Calling parallel sort using PSTL");
-    ::std::sort(pstl::execution::par_unseq, first, last,
-        sort_comp);
+  if (nthreads > 1) {
+      DASH_LOG_TRACE("dash::sort", "local_sort", "Calling parallel sort using PSTL");
+      ::std::sort(pstl::execution::par_unseq, first, last,
+          sort_comp);
+  } else {
+    ::std::sort(first, last, sort_comp);
+  }
 #else
     DASH_LOG_TRACE("dash::sort", "local_sort", "Calling std::sort");
     ::std::sort(first, last, sort_comp);
