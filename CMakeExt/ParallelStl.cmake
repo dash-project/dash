@@ -32,7 +32,7 @@ endif()
 
 # Define search paths based on user input and environment variables
 set(PSTL_DEFAULT_SEARCH_DIR "/opt/intel/pstl")
-set(PSTL_SEARCH_DIR ${PSTLROOT} ${PSTL_ROOT})
+set(PSTL_SEARCH_DIR $ENV{PSTLROOT} $ENV{PSTL_ROOT})
 
 if (DEFINED ENV{INTEL_BASE})
     set(PSTL_SEARCH_DIR ${PSTL_SEARCH_DIR} "$ENV{INTEL_BASE}/linux/pstl")
