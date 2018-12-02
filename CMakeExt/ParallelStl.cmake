@@ -26,30 +26,23 @@ if(NOT TBB_FOUND)
     message(FATAL_ERROR "TBB is required for PSTL")
 endif()
 
-if (NOT PSTL_PREFIX)
-    find_path(
-        PSTL_PREFIX
-        NAMES include/pstl/algorithm
-        )
+if (PSTL_PREFIX)
+    message(STATUS "Searching for PSTL in path " ${PSTL_PREFIX})
 endif()
 
-if (NOT PSTL_PREFIX)
-    set(PSTL_PREFIX "/usr/")
+# Define search paths based on user input and environment variables
+set(PSTL_DEFAULT_SEARCH_DIR "/opt/intel/pstl")
+set(PSTL_SEARCH_DIR ${PSTLROOT} ${PSTL_ROOT})
+
+if (DEFINED ENV{INTEL_BASE})
+    set(PSTL_SEARCH_DIR ${PSTL_SEARCH_DIR} "$ENV{INTEL_BASE}/linux/pstl")
 endif()
-
-message(STATUS "Searching for PSTL in path " ${PSTL_PREFIX})
-
-set(PSTL_SEARCH_HEADER_PATH
-    ${PSTL_PREFIX}/include
-    )
 
 find_path(
-    PSTL_INCLUDE_DIRS
-    NAMES pstl/algorithm
-    PATHS ${PSTL_SEARCH_HEADER_PATH}
-    # make sure we don't accidentally pick up a different version
-    NO_DEFAULT_PATH
-    )
+    PSTL_INCLUDE_DIRS pstl/algorithm
+    HINTS ${PSTL_PREFIX} ${PSTL_SEARCH_DIR}
+    PATHS ${PSTL_DEFAULT_SEARCH_DIR}
+    PATH_SUFFIXES include)
 
 include(FindPackageHandleStandardArgs)
 
@@ -58,15 +51,9 @@ find_package_handle_standard_args(
     PSTL_INCLUDE_DIRS
     )
 
-if (PSTL_FOUND)
-    if (NOT PSTL_FIND_QUIETLY)
-        message(STATUS "PSTL includes:  " ${PSTL_INCLUDE_DIRS})
-    endif()
-else()
-    if (NOT PSTL_FIND_QUIETLY)
-        set(PSTL_ERR_MSG "Could not find the pmem libraries. Looked for headers")
-        set(PSTL_ERR_MSG "${PSTL_ERR_MSG} in ${PSTL_SEARCH_HEADER_PATH}")
-    endif()
+if (NOT PSTL_FOUND AND NOT PSTL_FIND_QUIETLY)
+    set(PSTL_ERR_MSG "Could not find the pmem libraries. Looked for headers")
+    set(PSTL_ERR_MSG "${PSTL_ERR_MSG} in ${PSTL_SEARCH_HEADER_PATH}")
 endif()
 
 mark_as_advanced(
