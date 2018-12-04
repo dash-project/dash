@@ -1783,7 +1783,6 @@ dart_ret_t dart_allreduce(
     DART_LOG_ERROR(stderr, "dart_allreduce: can't find index of given team\n");
     return DART_ERR_OTHER;
   }
-  gaspi_pointer_t send_buff_gaspi = sendbuf;
   /*
    * while DART supports 9 different datatypes when this was written
    * gaspi only supports 6. To keep DART compatible and easy to use
@@ -1843,9 +1842,9 @@ dart_ret_t dart_allreduce(
         default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_MINMAX!!\n");
                  ret = DART_ERR_INVAL;
                  break;
-          
+        
      }
-
+     break;
      case DART_OP_MIN:
      switch(dtype){
         case DART_TYPE_SHORT:

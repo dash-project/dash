@@ -395,39 +395,17 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     char* op2_tmp = (char*) op2;
     char* res_tmp = (char*) res;
 
-    for(int i = 0; i < num; ++i){
-       if(op1_tmp[i] < op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op1_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op1_tmp[i];
-             if(op2_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op2_tmp[i];
-          } 
-       }
-       else if(op1_tmp[i] > op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op2_tmp[i];
-             res_tmp[(i*2)+1]  = op1_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op2_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op2_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
-       else{ // if op1 == op2
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i]; 
-          }
-          else{
-             if(op1_tmp[i] < res_tmp[i*2]) res_tmp[i*2] = op1_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
+   for(int i = 0; i < num; i+=2){
+      if(op1_tmp[DART_OP_MINMAX_MAX] > op2_tmp[DART_OP_MINMAX_MAX]){
+          res_tmp[DART_OP_MINMAX_MAX] = op1_tmp[DART_OP_MINMAX_MAX];
+      }else{
+          res_tmp[DART_OP_MINMAX_MAX] = op2_tmp[DART_OP_MINMAX_MAX];
+      }
+      if(op1_tmp[DART_OP_MINMAX_MIN] < op2_tmp[DART_OP_MINMAX_MIN]){
+          res_tmp[DART_OP_MINMAX_MIN] = op1_tmp[DART_OP_MINMAX_MIN];
+      }else{
+          res_tmp[DART_OP_MINMAX_MIN] = op2_tmp[DART_OP_MINMAX_MIN];
+      }
     }
     return GASPI_SUCCESS;
  }
@@ -445,40 +423,18 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     short* op2_tmp = (short*) op2;
     short* res_tmp = (short*) res;
 
-    for(int i = 0; i < num; ++i){
-       if(op1_tmp[i] < op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op1_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op1_tmp[i];
-             if(op2_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op2_tmp[i];
-          } 
-       }
-       else if(op1_tmp[i] > op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op2_tmp[i];
-             res_tmp[(i*2)+1]  = op1_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op2_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op2_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
-       else{ // if op1 == op2
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i]; 
-          }
-          else{
-             if(op1_tmp[i] < res_tmp[i*2]) res_tmp[i*2] = op1_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
-    }
+   for(int i = 0; i < num; i+=2){
+      if(op1_tmp[DART_OP_MINMAX_MAX] > op2_tmp[DART_OP_MINMAX_MAX]){
+          res_tmp[DART_OP_MINMAX_MAX] = op1_tmp[DART_OP_MINMAX_MAX];
+      }else{
+          res_tmp[DART_OP_MINMAX_MAX] = op2_tmp[DART_OP_MINMAX_MAX];
+      }
+      if(op1_tmp[DART_OP_MINMAX_MIN] < op2_tmp[DART_OP_MINMAX_MIN]){
+          res_tmp[DART_OP_MINMAX_MIN] = op1_tmp[DART_OP_MINMAX_MIN];
+      }else{
+          res_tmp[DART_OP_MINMAX_MIN] = op2_tmp[DART_OP_MINMAX_MIN];
+      }
+   }
     return GASPI_SUCCESS;
  }
 
@@ -496,39 +452,17 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     int* op2_tmp = (int*) op2;
     int* res_tmp = (int*) res;
 
-    for(int i = 0; i < num; ++i){
-       if(op1_tmp[i] < op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op1_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op1_tmp[i];
-             if(op2_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op2_tmp[i];
-          } 
-       }
-       else if(op1_tmp[i] > op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op2_tmp[i];
-             res_tmp[(i*2)+1]  = op1_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op2_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op2_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
-       else{ // if op1 == op2
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i]; 
-          }
-          else{
-             if(op1_tmp[i] < res_tmp[i*2]) res_tmp[i*2] = op1_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
+   for(int i = 0; i < num; i+=2){
+      if(op1_tmp[DART_OP_MINMAX_MAX] > op2_tmp[DART_OP_MINMAX_MAX]){
+          res_tmp[DART_OP_MINMAX_MAX] = op1_tmp[DART_OP_MINMAX_MAX];
+      }else{
+          res_tmp[DART_OP_MINMAX_MAX] = op2_tmp[DART_OP_MINMAX_MAX];
+      }
+      if(op1_tmp[DART_OP_MINMAX_MIN] < op2_tmp[DART_OP_MINMAX_MIN]){
+          res_tmp[DART_OP_MINMAX_MIN] = op1_tmp[DART_OP_MINMAX_MIN];
+      }else{
+          res_tmp[DART_OP_MINMAX_MIN] = op2_tmp[DART_OP_MINMAX_MIN];
+      }
     }
     return GASPI_SUCCESS;
  }
@@ -546,39 +480,17 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     unsigned int* op2_tmp = (unsigned int*) op2;
     unsigned int* res_tmp = (unsigned int*) res;
 
-    for(int i = 0; i < num; ++i){
-       if(op1_tmp[i] < op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op1_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op1_tmp[i];
-             if(op2_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op2_tmp[i];
-          } 
-       }
-       else if(op1_tmp[i] > op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op2_tmp[i];
-             res_tmp[(i*2)+1]  = op1_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op2_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op2_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
-       else{ // if op1 == op2
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i]; 
-          }
-          else{
-             if(op1_tmp[i] < res_tmp[i*2]) res_tmp[i*2] = op1_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
+   for(int i = 0; i < num; i+=2){
+      if(op1_tmp[DART_OP_MINMAX_MAX] > op2_tmp[DART_OP_MINMAX_MAX]){
+          res_tmp[DART_OP_MINMAX_MAX] = op1_tmp[DART_OP_MINMAX_MAX];
+      }else{
+          res_tmp[DART_OP_MINMAX_MAX] = op2_tmp[DART_OP_MINMAX_MAX];
+      }
+      if(op1_tmp[DART_OP_MINMAX_MIN] < op2_tmp[DART_OP_MINMAX_MIN]){
+          res_tmp[DART_OP_MINMAX_MIN] = op1_tmp[DART_OP_MINMAX_MIN];
+      }else{
+          res_tmp[DART_OP_MINMAX_MIN] = op2_tmp[DART_OP_MINMAX_MIN];
+      }
     }
     return GASPI_SUCCESS;
  }
@@ -596,39 +508,17 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     long* op2_tmp = (long*) op2;
     long* res_tmp = (long*) res;
 
-    for(int i = 0; i < num; ++i){
-       if(op1_tmp[i] < op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op1_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op1_tmp[i];
-             if(op2_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op2_tmp[i];
-          } 
-       }
-       else if(op1_tmp[i] > op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op2_tmp[i];
-             res_tmp[(i*2)+1]  = op1_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op2_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op2_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
-       else{ // if op1 == op2
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i]; 
-          }
-          else{
-             if(op1_tmp[i] < res_tmp[i*2]) res_tmp[i*2] = op1_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
+   for(int i = 0; i < num; i+=2){
+      if(op1_tmp[DART_OP_MINMAX_MAX] > op2_tmp[DART_OP_MINMAX_MAX]){
+          res_tmp[DART_OP_MINMAX_MAX] = op1_tmp[DART_OP_MINMAX_MAX];
+      }else{
+          res_tmp[DART_OP_MINMAX_MAX] = op2_tmp[DART_OP_MINMAX_MAX];
+      }
+      if(op1_tmp[DART_OP_MINMAX_MIN] < op2_tmp[DART_OP_MINMAX_MIN]){
+          res_tmp[DART_OP_MINMAX_MIN] = op1_tmp[DART_OP_MINMAX_MIN];
+      }else{
+          res_tmp[DART_OP_MINMAX_MIN] = op2_tmp[DART_OP_MINMAX_MIN];
+      }
     }
     return GASPI_SUCCESS;
  }
@@ -646,39 +536,17 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     unsigned long* op2_tmp = (unsigned long*) op2;
     unsigned long* res_tmp = (unsigned long*) res;
 
-    for(int i = 0; i < num; ++i){
-       if(op1_tmp[i] < op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op1_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op1_tmp[i];
-             if(op2_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op2_tmp[i];
-          } 
-       }
-       else if(op1_tmp[i] > op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op2_tmp[i];
-             res_tmp[(i*2)+1]  = op1_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op2_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op2_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
-       else{ // if op1 == op2
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i]; 
-          }
-          else{
-             if(op1_tmp[i] < res_tmp[i*2]) res_tmp[i*2] = op1_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
+   for(int i = 0; i < num; i+=2){
+      if(op1_tmp[DART_OP_MINMAX_MAX] > op2_tmp[DART_OP_MINMAX_MAX]){
+          res_tmp[DART_OP_MINMAX_MAX] = op1_tmp[DART_OP_MINMAX_MAX];
+      }else{
+          res_tmp[DART_OP_MINMAX_MAX] = op2_tmp[DART_OP_MINMAX_MAX];
+      }
+      if(op1_tmp[DART_OP_MINMAX_MIN] < op2_tmp[DART_OP_MINMAX_MIN]){
+          res_tmp[DART_OP_MINMAX_MIN] = op1_tmp[DART_OP_MINMAX_MIN];
+      }else{
+          res_tmp[DART_OP_MINMAX_MIN] = op2_tmp[DART_OP_MINMAX_MIN];
+      }
     }
     return GASPI_SUCCESS;
  }
@@ -696,39 +564,17 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     long long* op2_tmp = (long long*) op2;
     long long* res_tmp = (long long*) res;
 
-    for(int i = 0; i < num; ++i){
-       if(op1_tmp[i] < op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op1_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op1_tmp[i];
-             if(op2_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op2_tmp[i];
-          } 
-       }
-       else if(op1_tmp[i] > op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op2_tmp[i];
-             res_tmp[(i*2)+1]  = op1_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op2_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op2_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
-       else{ // if op1 == op2
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i]; 
-          }
-          else{
-             if(op1_tmp[i] < res_tmp[i*2]) res_tmp[i*2] = op1_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
+   for(int i = 0; i < num; i+=2){
+      if(op1_tmp[DART_OP_MINMAX_MAX] > op2_tmp[DART_OP_MINMAX_MAX]){
+          res_tmp[DART_OP_MINMAX_MAX] = op1_tmp[DART_OP_MINMAX_MAX];
+      }else{
+          res_tmp[DART_OP_MINMAX_MAX] = op2_tmp[DART_OP_MINMAX_MAX];
+      }
+      if(op1_tmp[DART_OP_MINMAX_MIN] < op2_tmp[DART_OP_MINMAX_MIN]){
+          res_tmp[DART_OP_MINMAX_MIN] = op1_tmp[DART_OP_MINMAX_MIN];
+      }else{
+          res_tmp[DART_OP_MINMAX_MIN] = op2_tmp[DART_OP_MINMAX_MIN];
+      }
     }
     return GASPI_SUCCESS;
  }
@@ -746,39 +592,17 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     float* op2_tmp = (float*) op2;
     float* res_tmp = (float*) res;
 
-    for(int i = 0; i < num; ++i){
-       if(op1_tmp[i] < op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op1_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op1_tmp[i];
-             if(op2_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op2_tmp[i];
-          } 
-       }
-       else if(op1_tmp[i] > op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op2_tmp[i];
-             res_tmp[(i*2)+1]  = op1_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op2_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op2_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
-       else{ // if op1 == op2
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i]; 
-          }
-          else{
-             if(op1_tmp[i] < res_tmp[i*2]) res_tmp[i*2] = op1_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
+   for(int i = 0; i < num; i+=2){
+      if(op1_tmp[DART_OP_MINMAX_MAX] > op2_tmp[DART_OP_MINMAX_MAX]){
+          res_tmp[DART_OP_MINMAX_MAX] = op1_tmp[DART_OP_MINMAX_MAX];
+      }else{
+          res_tmp[DART_OP_MINMAX_MAX] = op2_tmp[DART_OP_MINMAX_MAX];
+      }
+      if(op1_tmp[DART_OP_MINMAX_MIN] < op2_tmp[DART_OP_MINMAX_MIN]){
+          res_tmp[DART_OP_MINMAX_MIN] = op1_tmp[DART_OP_MINMAX_MIN];
+      }else{
+          res_tmp[DART_OP_MINMAX_MIN] = op2_tmp[DART_OP_MINMAX_MIN];
+      }
     }
     return GASPI_SUCCESS;
  }
@@ -796,39 +620,17 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     double* op2_tmp = (double*) op2;
     double* res_tmp = (double*) res;
 
-    for(int i = 0; i < num; ++i){
-       if(op1_tmp[i] < op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op1_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op1_tmp[i];
-             if(op2_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op2_tmp[i];
-          } 
-       }
-       else if(op1_tmp[i] > op2_tmp[i]){
-          if(0 == i){
-             res_tmp[(i*2)]    = op2_tmp[i];
-             res_tmp[(i*2)+1]  = op1_tmp[i];
-          } // all further checks are against the earlier MINMAX
-          else{
-             if(op2_tmp[i] < res_tmp[(i*2)]) res_tmp[(i*2)] = op2_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
-       else{ // if op1 == op2
-          if(0 == i){
-             res_tmp[(i*2)]    = op1_tmp[i];
-             res_tmp[(i*2)+1]  = op2_tmp[i]; 
-          }
-          else{
-             if(op1_tmp[i] < res_tmp[i*2]) res_tmp[i*2] = op1_tmp[i];
-             if(op1_tmp[i] > res_tmp[(i*2)+1]) res_tmp[(i*2)+1] = op1_tmp[i];
-          }
-
-       }
+   for(int i = 0; i < num; i+=2){
+      if(op1_tmp[DART_OP_MINMAX_MAX] > op2_tmp[DART_OP_MINMAX_MAX]){
+          res_tmp[DART_OP_MINMAX_MAX] = op1_tmp[DART_OP_MINMAX_MAX];
+      }else{
+          res_tmp[DART_OP_MINMAX_MAX] = op2_tmp[DART_OP_MINMAX_MAX];
+      }
+      if(op1_tmp[DART_OP_MINMAX_MIN] < op2_tmp[DART_OP_MINMAX_MIN]){
+          res_tmp[DART_OP_MINMAX_MIN] = op1_tmp[DART_OP_MINMAX_MIN];
+      }else{
+          res_tmp[DART_OP_MINMAX_MIN] = op2_tmp[DART_OP_MINMAX_MIN];
+      }
     }
     return GASPI_SUCCESS;
  }
@@ -884,6 +686,7 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
       printf("Error: element_size does not match size of int!\n");
       return GASPI_ERROR;
     }
+
     for(int i = 0; i < num; ++i){
       if(((int*)op1)[i] > ((int*)op2)[i]){
           ((int*)res)[i] = ((int*)op1)[i];
@@ -891,6 +694,7 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
           ((int*)res)[i] = ((int*)op2)[i];
       }
     }
+
     return GASPI_SUCCESS;
  }
 

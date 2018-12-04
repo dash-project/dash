@@ -54,15 +54,16 @@ TEST_F(DARTCollectiveTest, Sendrecv) {
 
 TEST_F(DARTCollectiveTest, MinMax) {
 
-  using elem_t = int;
+  using elem_t = double;
   elem_t lmin = dash::myid();
   elem_t lmax = dash::myid() + dash::size();
 
   std::array<elem_t, 2> min_max_in{lmin, lmax};
-  std::array<elem_t, 2> min_max_out{};
+  std::array<elem_t, 2> min_max_out{0,0};
+
   dart_allreduce(
-      &min_max_in,                        // send buffer
-      &min_max_out,                       // receive buffer
+      min_max_in.data(),                        // send buffer
+      min_max_out.data(),                       // receive buffer
       2,                                  // buffer size
       dash::dart_datatype<elem_t>::value,  // data type
       DART_OP_MINMAX,                     // operation
@@ -71,6 +72,31 @@ TEST_F(DARTCollectiveTest, MinMax) {
 
   ASSERT_EQ_U(min_max_out[DART_OP_MINMAX_MAX], 2*dash::size()-1);
   ASSERT_EQ_U(min_max_out[DART_OP_MINMAX_MIN], 0);
+
+}
+
+TEST_F(DARTCollectiveTest, Max) {
+
+  using elem_t = int;
+  elem_t lmin = dash::myid();
+  elem_t lmax = dash::myid() + dash::size();
+  
+  std::array<elem_t, 5> max{lmin, lmax};
+  std::array<elem_t, 5> res{0,0};
+printf("Werte %d %d\n", max[0], max[1]);
+  dart_allreduce(
+      max.data(),                        // send buffer
+      res.data(),                       // receive buffer
+      2,                                  // buffer size
+      dash::dart_datatype<elem_t>::value,  // data type
+      DART_OP_MAX,                     // operation
+      dash::Team::All().dart_id()         // team
+      );
+  for(int i = 0; i < 2; ++i) {
+    std::cout << i << " -> " << res[i] << std::endl;
+  }
+  ASSERT_EQ_U(res[0], 0);
+  ASSERT_EQ_U(res[1], 2*dash::size()-1);
 
 }
 
