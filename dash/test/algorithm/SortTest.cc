@@ -326,7 +326,7 @@ static void perform_test(GlobIter begin, GlobIter end)
       auto const a = static_cast<const Element_t>(*(it - 1));
       auto const b = static_cast<const Element_t>(*it);
 
-      EXPECT_FALSE_U(b < a);
+      EXPECT_LE_U(a, b);
     }
   }
 
