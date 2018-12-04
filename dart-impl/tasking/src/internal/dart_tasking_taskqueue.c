@@ -4,6 +4,9 @@
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
 
+
+#define USE_VARIABLE_PRIOS
+
 /********************
  * Private method   *
  ********************/
@@ -32,9 +35,6 @@ dart_task_t * task_deque_popback(struct task_deque *deque);
 
 static
 dart_ret_t task_deque_move(struct task_deque *dst, struct task_deque *src);
-
-static
-dart_ret_t task_deque_filter_runnable(struct task_deque *deque);
 
 /********************
  * Public methods   *
@@ -67,7 +67,11 @@ dart_tasking_taskqueue_push_unsafe(
 {
   DART_ASSERT_MSG(task != NULL,
       "dart_tasking_taskqueue_push: task may not be NULL!");
+
+#ifndef USE_VARIABLE_PRIOS
+  if (task->prio > DART_PRIO_HIGH) task->prio = DART_PRIO_HIGH;
   DART_ASSERT(task->prio > DART_PRIO_PARENT && task->prio < __DART_PRIO_COUNT);
+#endif
 
 #ifdef DART_ENABLE_ASSERTIONS
   for (dart_task_prio_t i = DART_PRIO_HIGH; i >= DART_PRIO_LOW; --i) {
@@ -79,7 +83,13 @@ dart_tasking_taskqueue_push_unsafe(
   task->next = NULL;
   task->prev = NULL;
 
-  task_deque_push(&tq->queues[task->prio], task);
+#ifdef USE_VARIABLE_PRIOS
+  struct task_deque *deque = &tq->queues[0];
+#else
+  struct task_deque *deque = &tq->queues[task->prio];
+#endif // USE_VARIABLE_PRIOS
+
+  task_deque_push(deque, task);
   ++tq->num_elem;
 }
 
@@ -103,11 +113,15 @@ dart_tasking_taskqueue_pop_unsafe(dart_taskqueue_t *tq)
   --(tq->num_elem);
   dart_task_t *task = NULL;
 
+#ifdef USE_VARIABLE_PRIOS
+  task = task_deque_pop(&tq->queues[0]);
+#else
   for (dart_task_prio_t i  = DART_PRIO_HIGH;
                         i >= DART_PRIO_LOW && task == NULL;
                       --i) {
     task = task_deque_pop(&tq->queues[i]);
   }
+#endif // USE_VARIABLE_PRIOS
   DART_ASSERT(task != NULL);
   return task;
 }
@@ -133,8 +147,11 @@ dart_tasking_taskqueue_pushback_unsafe(
   task->next = NULL;
   task->prev = NULL;
 
+#ifdef USE_VARIABLE_PRIOS
+  task_deque_pushback(&tq->queues[0], task);
+#else
   task_deque_pushback(&tq->queues[task->prio], task);
-
+#endif // USE_VARIABLE_PRIOS
   ++(tq->num_elem);
 }
 
@@ -160,7 +177,11 @@ dart_tasking_taskqueue_insert_unsafe(
   task->next = NULL;
   task->prev = NULL;
 
+#ifdef USE_VARIABLE_PRIOS
+  task_deque_insert(&tq->queues[0], task, pos);
+#else
   task_deque_insert(&tq->queues[task->prio], task, pos);
+#endif
 
   ++(tq->num_elem);
 }
@@ -184,11 +205,15 @@ dart_tasking_taskqueue_popback_unsafe(dart_taskqueue_t *tq)
   }
   --(tq->num_elem);
   dart_task_t *task = NULL;
+#ifdef USE_VARIABLE_PRIOS
+  task = task_deque_popback(&tq->queues[0]);
+#else
   for (dart_task_prio_t i  = DART_PRIO_HIGH;
                         i >= DART_PRIO_LOW && task == NULL;
                       --i) {
     task = task_deque_popback(&tq->queues[i]);
   }
+#endif
 
   DART_ASSERT(task != NULL);
   return task;
@@ -312,11 +337,27 @@ void task_deque_push(struct task_deque *deque, dart_task_t *task)
     deque->head   = task;
     deque->tail   = deque->head;
   } else {
-    DART_LOG_TRACE("dart_tasking_taskqueue_push: task %p to task queue "
-        "tq:%p tq->head:%p tq->tail:%p", task, deque, deque->head, deque->tail);
-    task->next     = deque->head;
-    deque->head->prev = task;
-    deque->head       = task;
+    // skip tasks with higher priority
+    dart_task_t *elem = deque->head;
+    while (elem != NULL && elem->prio > task->prio) elem = elem->next;
+    if (elem == NULL) {
+      // insert at the end
+      task_deque_pushback(deque, task);
+    } else {
+      DART_LOG_TRACE("dart_tasking_taskqueue_push: task %p to task queue "
+          "tq:%p tq->head:%p tq->tail:%p", task, deque, deque->head, deque->tail);
+      task->next  = elem;
+      if (elem == deque->head) {
+        // insert at head of queue
+        deque->head = task;
+        task->prev  = NULL;
+      } else {
+        // insert in the middle
+        elem->prev->next = task;
+        task->prev       = elem->prev;
+      }
+      elem->prev  = task;
+    }
   }
   DART_ASSERT(deque->head != NULL && deque->tail != NULL);
 }
@@ -333,7 +374,7 @@ void task_deque_pushback(struct task_deque *deque, dart_task_t *task)
   } else {
     DART_LOG_TRACE("dart_tasking_taskqueue_pushback: task %p to task queue "
         "tq:%p tq->head:%p tq->tail:%p", task, deque, deque->head, deque->tail);
-    task->prev     = deque->tail;
+    task->prev        = deque->tail;
     deque->tail->next = task;
     deque->tail       = task;
   }
@@ -353,14 +394,18 @@ void task_deque_insert(
   }
 
   unsigned int count = 0;
-  dart_task_t *tmp = deque->head;
+  dart_task_t *elem = deque->head;
   // find the position to insert
-  while (tmp != NULL && count++ < pos) {
-    tmp = tmp->next;
+  while (elem != NULL && count++ < pos) {
+    elem = elem->next;
   }
 
+  // skip higher-prio tasks
+  while (elem != NULL && elem->prio > task->prio) elem = elem->next;
+
+
   // insert at back?
-  if (tmp == NULL || tmp->next == NULL) {
+  if (elem == NULL || elem->next == NULL) {
     task_deque_pushback(deque, task);
     return;
   }
@@ -369,10 +414,10 @@ void task_deque_insert(
   task->prev = NULL;
 
   // insert somewhere in between!
-  task->next       = tmp->next;
+  task->next       = elem->next;
   task->next->prev = task;
-  task->prev       = tmp;
-  tmp->next        = task;
+  task->prev       = elem;
+  elem->next       = task;
 
   DART_ASSERT(deque->head != NULL && deque->tail != NULL);
 }
@@ -408,51 +453,14 @@ dart_ret_t task_deque_move(struct task_deque *dst, struct task_deque *src)
 {
   if (src->head != NULL && src->tail != NULL) {
 
-    if (src->head != NULL && src->tail != NULL) {
-
-      if (dst->head != NULL) {
-        src->tail->next = dst->head;
-        dst->head->prev = src->tail;
-      } else {
-        dst->tail = src->tail;
-      }
-      dst->head = src->head;
-      src->tail = src->head = NULL;
+    if (dst->head != NULL) {
+      src->tail->next = dst->head;
+      dst->head->prev = src->tail;
+    } else {
+      dst->tail = src->tail;
     }
+    dst->head = src->head;
+    src->tail = src->head = NULL;
   }
   return DART_OK;
 }
-
-
-static
-dart_ret_t
-task_deque_filter_runnable(
-  struct task_deque *deque)
-{
-  dart_task_t *task  = deque->head;
-  // find the first head that is not filtered
-  while (task != NULL && !dart_tasking_datadeps_is_runnable(task)) {
-    deque->head = task->next;
-    if (task->next != NULL) task->next->prev = NULL;
-    task->next = NULL;
-  }
-  // walk through the rest of the list
-  task  = deque->head;
-  while (task != NULL) {
-    dart_task_t *next = task->next;
-    if (!dart_tasking_datadeps_is_runnable(task)) {
-      // unlink this task
-      if (task->prev != NULL) {
-        task->prev->next = task->next;
-      }
-      if (task->next != NULL) {
-        task->next->prev = task->prev;
-      }
-      // we just drop the task, it will come again once it's runnable
-    }
-    task->next = task->prev = NULL;
-    task = next;
-  }
-  return DART_OK;
-}
-
