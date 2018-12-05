@@ -8,8 +8,6 @@
 #define IDX_SEND_COUNT(nunits) IDX_DIST(nunits)
 #define IDX_TARGET_COUNT(nunits) IDX_SUPP(nunits)
 
-#define NLT_NLE_BLOCK 2
-
 #include <algorithm>
 #include <cstddef>
 #include <limits>
@@ -18,102 +16,106 @@
 
 #include <dash/Array.h>
 #include <dash/Types.h>
-#include <dash/internal/Logging.h>
 #include <dash/algorithm/internal/ParallelStl.h>
+#include <dash/algorithm/sort/Types.h>
+#include <dash/internal/Logging.h>
 
 namespace dash {
 
 namespace detail {
 
-struct UnitInfo {
-  std::size_t nunits;
-  // prefix sum over the number of local elements of all unit
-  std::vector<size_t>                acc_partition_count;
-  std::vector<dash::default_index_t> valid_remote_partitions;
-
-  explicit UnitInfo(std::size_t p_nunits)
-    : nunits(p_nunits)
-    , acc_partition_count(nunits + 1)
-  {
-    valid_remote_partitions.reserve(nunits - 1);
-  }
-};
-
-template <typename T>
-struct PartitionBorder {
-public:
-  // tracks if we have found a stable partition border
-  std::vector<bool> is_stable;
-  // tracks if a partition is skipped
-  std::vector<bool> is_skipped;
-  // lower bound of each partition
-  std::vector<T> lower_bound;
-  // upper bound of each partition
-  std::vector<T> upper_bound;
-  // Special case for the last iteration in finding partition borders
-  std::vector<bool> is_last_iter;
-
-  // The right unit is always right next to the border. For this reason we
-  // track  only the left unit.
-  std::vector<dash::default_index_t> left_partition;
-
-  PartitionBorder(size_t nsplitter, T _lower_bound, T _upper_bound)
-    : is_stable(nsplitter, false)
-    , is_skipped(nsplitter, false)
-    , lower_bound(nsplitter, _lower_bound)
-    , upper_bound(nsplitter, _upper_bound)
-    , is_last_iter(nsplitter, false)
-    , left_partition(
-          nsplitter, std::numeric_limits<dash::default_index_t>::min())
-  {
-  }
-};
-
-template <typename T>
-inline void psort__calc_boundaries(
-    PartitionBorder<T>& p_borders, std::vector<T>& splitters)
+#if 0
+template <typename GlobIterT>
+UnitInfo psort__find_partition_borders(
+    typename GlobIterT::pattern_type const& pattern,
+    GlobIterT const                         begin,
+    GlobIterT const                         end)
 {
-  DASH_LOG_TRACE("< psort__calc_boundaries ");
-  DASH_ASSERT_EQ(
-      p_borders.is_stable.size(),
-      splitters.size(),
-      "invalid number of partition borders");
+  DASH_LOG_TRACE("< psort__find_partition_borders");
 
-  // recalculate partition boundaries
-  for (std::size_t idx = 0; idx < splitters.size(); ++idx) {
-    DASH_ASSERT(p_borders.lower_bound[idx] <= p_borders.upper_bound[idx]);
-    // case A: partition is already stable or skipped
-    if (p_borders.is_stable[idx]) {
-      continue;
-    }
-    // case B: we have the last iteration
-    //-> test upper bound directly
-    if (p_borders.is_last_iter[idx]) {
-      splitters[idx]           = p_borders.upper_bound[idx];
-      p_borders.is_stable[idx] = true;
+  auto const nunits = pattern.team().size();
+  auto const myid   = pattern.team().myid();
+
+  dash::team_unit_t       unit{0};
+  const dash::team_unit_t last{static_cast<dart_unit_t>(nunits)};
+
+  auto const unit_first = pattern.unit_at(begin.pos());
+  auto const unit_last  = pattern.unit_at(end.pos() - 1);
+
+  // Starting offsets of all units
+  UnitInfo unit_info(nunits);
+  auto&    acc_partition_count = unit_info.acc_partition_count;
+  acc_partition_count[0]       = 0;
+
+  for (; unit < last; ++unit) {
+    // Number of elements located at current source unit:
+    auto const u_extents = pattern.local_extents(unit);
+    auto const u_size    = std::accumulate(
+        std::begin(u_extents),
+        std::end(u_extents),
+        1,
+        std::multiplies<std::size_t>());
+    // first linear global index of unit
+    auto const u_gidx_begin =
+        (unit == myid) ? pattern.lbegin() : pattern.global_index(unit, {});
+    // last global index of unit
+    auto const u_gidx_end = u_gidx_begin + u_size;
+
+    DASH_LOG_TRACE(
+        "local indexes",
+        unit,
+        ": ",
+        u_gidx_begin,
+        " ",
+        u_size,
+        " ",
+        u_gidx_end);
+
+    if (u_size == 0 || u_gidx_end - 1 < begin.pos() ||
+        u_gidx_begin >= end.pos()) {
+      // This unit does not participate...
+      acc_partition_count[unit + 1] = acc_partition_count[unit];
     }
     else {
-      // case C: ordinary iteration
+      std::size_t n_u_elements;
+      if (unit == unit_last) {
+        // The local range of this unit has the global end
+        n_u_elements = end.pos() - u_gidx_begin;
+      }
+      else if (unit == unit_first) {
+        // The local range of this unit has the global begin
+        auto const u_begin_disp = begin.pos() - u_gidx_begin;
+        n_u_elements            = u_size - u_begin_disp;
+      }
+      else {
+        // This is an inner unit
+        // TODO(kowalewski): Is this really necessary or can we assume that
+        // n_u_elements == u_size, i.e., local_pos.index == 0?
+        auto const local_pos = pattern.local(u_gidx_begin);
 
-      splitters[idx] =
-          p_borders.lower_bound[idx] +
-          ((p_borders.upper_bound[idx] - p_borders.lower_bound[idx]) / 2);
+        n_u_elements = u_size - local_pos.index;
 
-      if (splitters[idx] == p_borders.lower_bound[idx]) {
-        // if we cannot move the partition to the left
-        //-> last iteration
-        p_borders.is_last_iter[idx] = true;
+        DASH_ASSERT_EQ(local_pos.unit, unit, "units must match");
+      }
+
+      acc_partition_count[unit + 1] =
+          n_u_elements + acc_partition_count[unit];
+      if (unit != myid) {
+        unit_info.valid_remote_partitions.emplace_back(unit);
       }
     }
   }
-  DASH_LOG_TRACE("psort__calc_boundaries >");
+
+  DASH_LOG_TRACE("psort__find_partition_borders >");
+  return unit_info;
 }
+#endif
 
 template <typename Iter, typename MappedType, typename SortableHash>
 inline const std::vector<std::size_t> psort__local_histogram(
     std::vector<MappedType> const&     splitters,
     std::vector<size_t> const&         valid_partitions,
-    PartitionBorder<MappedType> const& p_borders,
+    detail::Splitter<MappedType> const& p_borders,
     Iter                               data_lbegin,
     Iter                               data_lend,
     SortableHash                       sortable_hash)
@@ -198,87 +200,6 @@ inline void psort__global_histogram(
   DASH_LOG_TRACE("psort__global_histogram >");
 }
 
-template <typename ElementType>
-inline bool psort__validate_partitions(
-    UnitInfo const&                 p_unit_info,
-    std::vector<ElementType> const& splitters,
-    std::vector<size_t> const&      valid_partitions,
-    PartitionBorder<ElementType>&   p_borders,
-    std::vector<size_t> const&      global_histo)
-{
-  DASH_LOG_TRACE("< psort__validate_partitions");
-
-  if (valid_partitions.empty()) {
-    return true;
-  }
-
-  auto const& acc_partition_count = p_unit_info.acc_partition_count;
-
-  // This validates if all partititions have been correctly determined. The
-  // example below shows 4 units where unit 1 is empty (capacity 0). Thus
-  // we have only two valid partitions, i.e. partition borders 1 and 2,
-  // respectively. Partition 0 is skipped because the bounding unit on the
-  // right-hand side is empty. For partition one, the bounding unit is unit 0,
-  // one the right hand side it is 2.
-  //
-  // The right hand side unit is always (partition index + 1), the unit on
-  // the left hand side is calculated at the beginning of dash::sort (@see
-  // psort__init_partition_borders) and stored in a vector for lookup.
-  //
-  // Given this information the validation checks the following constraints
-  //
-  // - The number of elements in the global histrogram less than the
-  //   partitition value must be smaller than the "accumulated" partition size
-  // - The "accumulated" partition size must be less than or equal the number
-  //   of elements which less than or equal the partition value
-  //
-  // If either of these two constraints cannot be satisfied we have to move
-  // the upper or lower bound of the partition value, respectively.
-
-  //                    -------|-------|-------|-------
-  //   Partition Index     u0  |  u1   |   u2  |   u3
-  //                    -------|-------|-------|-------
-  //    Partition Size     10  |  0    |   10  |   10
-  //                       ^           ^    ^
-  //                       |           |    |
-  //                       -------Partition--
-  //                       |      Border 1  |
-  //               Left Unit           |    Right Unit
-  //                       |           |    |
-  //                       |           |    |
-  //                    -------|-------|-------|-------
-  // Acc Partition Count   10  |  10   |   20  |  30
-  //
-
-  for (auto const& border_idx : valid_partitions) {
-    auto const p_left  = p_borders.left_partition[border_idx];
-    auto const nlt_idx = p_left * NLT_NLE_BLOCK;
-
-    auto const peer_idx = p_left + 1;
-
-    if (global_histo[nlt_idx] < acc_partition_count[peer_idx] &&
-        acc_partition_count[peer_idx] <= global_histo[nlt_idx + 1]) {
-      p_borders.is_stable[border_idx] = true;
-    }
-    else {
-      if (global_histo[nlt_idx] >= acc_partition_count[peer_idx]) {
-        p_borders.upper_bound[border_idx] = splitters[border_idx];
-      }
-      else {
-        p_borders.lower_bound[border_idx] = splitters[border_idx];
-      }
-    }
-  }
-
-  // Exit condition: is there any non-stable partition
-  auto const nonstable_it = std::find(
-      p_borders.is_stable.cbegin(), p_borders.is_stable.cend(), false);
-
-  DASH_LOG_TRACE("psort__validate_partitions >");
-  // exit condition
-  return nonstable_it == p_borders.is_stable.cend();
-}
-
 template <class LocalArrayT>
 inline void psort__calc_final_partition_dist(
     std::vector<size_t> const& acc_partition_count,
@@ -324,7 +245,7 @@ inline void psort__calc_final_partition_dist(
 
 template <typename ElementType, typename InputIt, typename OutputIt>
 inline void psort__calc_send_count(
-    PartitionBorder<ElementType> const& p_borders,
+    Splitter<ElementType> const& p_borders,
     std::vector<size_t> const&          valid_partitions,
     InputIt                             target_count,
     OutputIt                            send_count)
@@ -395,7 +316,7 @@ inline void psort__calc_send_count(
 
 template <typename ElementType>
 inline void psort__calc_target_displs(
-    PartitionBorder<ElementType> const& p_borders,
+    Splitter<ElementType> const& p_borders,
     std::vector<size_t> const&          valid_partitions,
     dash::Array<size_t>&                g_partition_data)
 {
@@ -456,173 +377,6 @@ inline void psort__calc_target_displs(
   g_partition_data.async.flush();
 }
 
-template <typename GlobIterT>
-inline UnitInfo psort__find_partition_borders(
-    typename GlobIterT::pattern_type const& pattern,
-    GlobIterT const                         begin,
-    GlobIterT const                         end)
-{
-  DASH_LOG_TRACE("< psort__find_partition_borders");
-
-  auto const nunits = pattern.team().size();
-  auto const myid   = pattern.team().myid();
-
-  dash::team_unit_t       unit{0};
-  const dash::team_unit_t last{static_cast<dart_unit_t>(nunits)};
-
-  auto const unit_first = pattern.unit_at(begin.pos());
-  auto const unit_last  = pattern.unit_at(end.pos() - 1);
-
-  // Starting offsets of all units
-  UnitInfo unit_info(nunits);
-  auto&    acc_partition_count = unit_info.acc_partition_count;
-  acc_partition_count[0]       = 0;
-
-  for (; unit < last; ++unit) {
-    // Number of elements located at current source unit:
-    auto const u_extents = pattern.local_extents(unit);
-    auto const u_size    = std::accumulate(
-        std::begin(u_extents),
-        std::end(u_extents),
-        1,
-        std::multiplies<std::size_t>());
-    // first linear global index of unit
-    auto const u_gidx_begin =
-        (unit == myid) ? pattern.lbegin() : pattern.global_index(unit, {});
-    // last global index of unit
-    auto const u_gidx_end = u_gidx_begin + u_size;
-
-    DASH_LOG_TRACE(
-        "local indexes",
-        unit,
-        ": ",
-        u_gidx_begin,
-        " ",
-        u_size,
-        " ",
-        u_gidx_end);
-
-    if (u_size == 0 || u_gidx_end - 1 < begin.pos() ||
-        u_gidx_begin >= end.pos()) {
-      // This unit does not participate...
-      acc_partition_count[unit + 1] = acc_partition_count[unit];
-    }
-    else {
-      std::size_t n_u_elements;
-      if (unit == unit_last) {
-        // The local range of this unit has the global end
-        n_u_elements = end.pos() - u_gidx_begin;
-      }
-      else if (unit == unit_first) {
-        // The local range of this unit has the global begin
-        auto const u_begin_disp = begin.pos() - u_gidx_begin;
-        n_u_elements            = u_size - u_begin_disp;
-      }
-      else {
-        // This is an inner unit
-        // TODO(kowalewski): Is this really necessary or can we assume that
-        // n_u_elements == u_size, i.e., local_pos.index == 0?
-        auto const local_pos = pattern.local(u_gidx_begin);
-
-        n_u_elements = u_size - local_pos.index;
-
-        DASH_ASSERT_EQ(local_pos.unit, unit, "units must match");
-      }
-
-      acc_partition_count[unit + 1] =
-          n_u_elements + acc_partition_count[unit];
-      if (unit != myid) {
-        unit_info.valid_remote_partitions.emplace_back(unit);
-      }
-    }
-  }
-
-  DASH_LOG_TRACE("psort__find_partition_borders >");
-  return unit_info;
-}
-
-template <typename T>
-inline void psort__init_partition_borders(
-    UnitInfo const& unit_info, detail::PartitionBorder<T>& p_borders)
-{
-  DASH_LOG_TRACE("< psort__init_partition_borders");
-
-  auto const& acc_partition_count = unit_info.acc_partition_count;
-
-  auto const last = acc_partition_count.cend();
-
-  // find the first non-empty unit
-  auto left =
-      std::upper_bound(std::next(acc_partition_count.cbegin()), last, 0);
-
-  if (left == last) {
-    std::fill(p_borders.is_skipped.begin(), p_borders.is_skipped.end(), true);
-    return;
-  }
-
-  // find next unit with a non-zero local portion to obtain first partition
-  // border
-  auto right = std::upper_bound(left, last, *left);
-
-  if (right == last) {
-    std::fill(p_borders.is_skipped.begin(), p_borders.is_skipped.end(), true);
-    return;
-  }
-
-  auto const get_border_idx = [](std::size_t const& idx) {
-    return (idx % NLT_NLE_BLOCK) ? (idx / NLT_NLE_BLOCK) * NLT_NLE_BLOCK
-                                 : idx - 1;
-  };
-
-  auto p_left     = std::distance(acc_partition_count.cbegin(), left) - 1;
-  auto right_u    = std::distance(acc_partition_count.cbegin(), right) - 1;
-  auto border_idx = get_border_idx(right_u);
-
-  // mark everything as skipped until the first partition border
-  std::fill(
-      p_borders.is_skipped.begin(),
-      p_borders.is_skipped.begin() + border_idx,
-      true);
-
-  p_borders.left_partition[border_idx] = p_left;
-
-  // find subsequent splitters
-  left = right;
-
-  while ((right = std::upper_bound(right, last, *right)) != last) {
-    auto const last_border_idx = border_idx;
-
-    p_left     = std::distance(acc_partition_count.cbegin(), left) - 1;
-    right_u    = std::distance(acc_partition_count.cbegin(), right) - 1;
-    border_idx = get_border_idx(right_u);
-
-    auto const dist = border_idx - last_border_idx;
-
-    // mark all skipped splitters as stable and skipped
-    std::fill_n(
-        std::next(p_borders.is_skipped.begin(), last_border_idx + 1),
-        dist - 1,
-        true);
-
-    p_borders.left_partition[border_idx] = p_left;
-
-    left = right;
-  }
-
-  // mark trailing empty parititons as stable and skipped
-  std::fill(
-      std::next(p_borders.is_skipped.begin(), border_idx + 1),
-      p_borders.is_skipped.end(),
-      true);
-
-  std::copy(
-      p_borders.is_skipped.begin(),
-      p_borders.is_skipped.end(),
-      p_borders.is_stable.begin());
-
-  DASH_LOG_TRACE("psort__init_partition_borders >");
-}
-
 template <class Iter, class SortableHash>
 inline auto find_global_min_max(
     Iter lbegin, Iter lend, dart_team_t teamid, SortableHash sortable_hash)
@@ -661,19 +415,20 @@ inline auto find_global_min_max(
 }
 
 template <class RAI, class Cmp>
-void local_sort(RAI first, RAI last, Cmp sort_comp, int nthreads=1)
+void local_sort(RAI first, RAI last, Cmp sort_comp, int nthreads = 1)
 {
 #ifdef DASH_ENABLE_PSTL
   if (nthreads > 1) {
-      DASH_LOG_TRACE("dash::sort", "local_sort", "Calling parallel sort using PSTL");
-      ::std::sort(pstl::execution::par_unseq, first, last,
-          sort_comp);
-  } else {
+    DASH_LOG_TRACE(
+        "dash::sort", "local_sort", "Calling parallel sort using PSTL");
+    ::std::sort(pstl::execution::par_unseq, first, last, sort_comp);
+  }
+  else {
     ::std::sort(first, last, sort_comp);
   }
 #else
-    DASH_LOG_TRACE("dash::sort", "local_sort", "Calling std::sort");
-    ::std::sort(first, last, sort_comp);
+  DASH_LOG_TRACE("dash::sort", "local_sort", "Calling std::sort");
+  ::std::sort(first, last, sort_comp);
 #endif
 }
 

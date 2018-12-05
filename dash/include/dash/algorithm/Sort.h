@@ -82,11 +82,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end);
 template <class GlobRandomIt, class SortableHash>
 void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash hash);
 
-}  //namespace dash
+}  // namespace dash
 
 #else
 
-#include <dash/algorithm/internal/Sort-inl.h>
+#include <dash/algorithm/sort/Histogram.h>
+#include <dash/algorithm/sort/Partition.h>
+#include <dash/algorithm/sort/Sort-inl.h>
+#include <dash/algorithm/sort/Types.h>
 
 namespace dash {
 
@@ -94,12 +97,11 @@ namespace dash {
 #define __DASH_SORT__FINAL_STEP_BY_SORT (1)
 #define __DASH_SORT__FINAL_STEP_STRATEGY (__DASH_SORT__FINAL_STEP_BY_MERGE)
 
-
 template <class GlobRandomIt, class SortableHash>
 void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 {
-  using iter_type    = GlobRandomIt;
-  using value_type   = typename iter_type::value_type;
+  using iter_type  = GlobRandomIt;
+  using value_type = typename iter_type::value_type;
   using mapped_type =
       typename std::decay<typename dash::functional::closure_traits<
           SortableHash>::result_type>::type;
@@ -118,12 +120,12 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   };
 
   // Number of threads
-  auto parallelism = 1;
+  auto                     parallelism = 1;
 
 #ifdef DASH_ENABLE_PSTL
   dash::util::TeamLocality tloc{pattern.team()};
-  auto uloc = tloc.unit_locality(pattern.team().myid());
-  parallelism = uloc.num_domain_threads();
+  auto                     uloc = tloc.unit_locality(pattern.team().myid());
+  parallelism                   = uloc.num_domain_threads();
 
   if (parallelism > 1) {
     // Initialize the scheduler with a specific number of threads
@@ -168,8 +170,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   auto const n_l_elem = l_range.end - l_range.begin;
 
-  auto * lbegin = l_mem_begin + l_range.begin;
-  auto * lend   = l_mem_begin + l_range.end;
+  auto* lbegin = l_mem_begin + l_range.begin;
+  auto* lend   = l_mem_begin + l_range.end;
 
   // initial local_sort
   trace.enter_state("1:initial_local_sort");
@@ -179,8 +181,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   trace.enter_state("2:init_temporary_global_data");
 
   using array_t = dash::Array<std::size_t>;
-
-  std::size_t gsize = nunits * NLT_NLE_BLOCK * 2;
 
   // implicit barrier...
   array_t g_partition_data(nunits * nunits * 3, dash::BLOCKED, team);
@@ -194,8 +194,28 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   // Temporary local buffer (sorted);
   std::vector<value_type> const lcopy(lbegin, lend);
 
-  auto const min_max = detail::find_global_min_max(
-      std::begin(lcopy), std::end(lcopy), team.dart_id(), sortable_hash);
+  std::array<mapped_type, 2> min_max_in{
+      // local minimum
+      (n_l_elem > 0) ? sortable_hash(*lbegin)
+                     : std::numeric_limits<mapped_type>::max(),
+      (n_l_elem > 0) ? sortable_hash(*(std::prev(lend)))
+                     : std::numeric_limits<mapped_type>::min()};
+
+  std::array<mapped_type, 2> min_max_out{};
+
+  DASH_ASSERT_RETURNS(
+      dart_allreduce(
+          &min_max_in,                              // send buffer
+          &min_max_out,                             // receive buffer
+          2,                                        // buffer size
+          dash::dart_datatype<mapped_type>::value,  // data type
+          DART_OP_MINMAX,                           // operation
+          team.dart_id()                            // team
+          ),
+      DART_OK);
+
+  auto const min_max = std::make_pair(
+      min_max_out[DART_OP_MINMAX_MIN], min_max_out[DART_OP_MINMAX_MAX]);
 
   trace.exit_state("3:find_global_min_max");
 
@@ -215,20 +235,20 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   auto const& acc_partition_count = p_unit_info.acc_partition_count;
 
-  auto const               nboundaries = nunits - 1;
-  std::vector<mapped_type> splitters(nboundaries, mapped_type{});
+  auto const nboundaries = nunits - 1;
 
-  detail::PartitionBorder<mapped_type> p_borders(
+  detail::Splitter<mapped_type> splitters(
       nboundaries, min_max.first, min_max.second);
 
-  detail::psort__init_partition_borders(p_unit_info, p_borders);
+  detail::psort__init_partition_borders(p_unit_info, splitters);
 
   DASH_LOG_TRACE_RANGE(
       "locally sorted array", std::begin(lcopy), std::end(lcopy));
+
   DASH_LOG_TRACE_RANGE(
       "skipped splitters",
-      p_borders.is_skipped.cbegin(),
-      p_borders.is_skipped.cend());
+      std::begin(splitters.threshold),
+      std::end(splitters.threshold));
 
   bool done = false;
 
@@ -238,16 +258,16 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   {
     // make this as a separately scoped block to deallocate non-required
     // temporary memory
-    std::vector<size_t> all_borders(splitters.size());
+    std::vector<size_t> all_borders(nboundaries);
     std::iota(all_borders.begin(), all_borders.end(), 0);
-
-    auto const& is_skipped = p_borders.is_skipped;
 
     std::copy_if(
         all_borders.begin(),
         all_borders.end(),
         std::back_inserter(valid_partitions),
-        [&is_skipped](size_t idx) { return is_skipped[idx] == false; });
+        [& is_skipped = splitters.is_skipped](size_t idx) {
+          return is_skipped[idx] == false;
+        });
   }
 
   DASH_LOG_TRACE_RANGE(
@@ -273,17 +293,18 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   do {
     ++iter;
 
-    detail::psort__calc_boundaries(p_borders, splitters);
+    detail::psort__calc_boundaries(splitters);
 
     DASH_LOG_TRACE_VAR("finding partition borders", iter);
 
     DASH_LOG_TRACE_RANGE(
-        "partition borders", std::begin(splitters), std::end(splitters));
+        "partition borders",
+        std::begin(splitters.threshold),
+        std::end(splitters.threshold));
 
     auto const l_nlt_nle = detail::psort__local_histogram(
         splitters,
         valid_partitions,
-        p_borders,
         std::begin(lcopy),
         std::end(lcopy),
         sortable_hash);
@@ -307,7 +328,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         std::next(std::begin(global_histo), (myid + 1) * NLT_NLE_BLOCK));
 
     done = detail::psort__validate_partitions(
-        p_unit_info, splitters, valid_partitions, p_borders, global_histo);
+        p_unit_info, splitters, valid_partitions, global_histo);
   } while (!done);
 
   trace.exit_state("5:find_global_partition_borders");
@@ -321,13 +342,15 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   auto const histograms = detail::psort__local_histogram(
       splitters,
       valid_partitions,
-      p_borders,
       std::begin(lcopy),
       std::end(lcopy),
       sortable_hash);
   trace.exit_state("6:final_local_histogram");
 
-  DASH_LOG_TRACE_RANGE("final splitters", splitters.begin(), splitters.end());
+  DASH_LOG_TRACE_RANGE(
+      "final splitters",
+      std::begin(splitters.threshold),
+      std::begin(splitters.threshold));
 
   detail::trace_local_histo("final histograms", histograms);
 
@@ -457,7 +480,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     auto* l_send_count = &(g_partition_data.local[IDX_SEND_COUNT(nunits)]);
 
     detail::psort__calc_send_count(
-        p_borders, valid_partitions, l_target_count, l_send_count);
+        splitters, valid_partitions, l_target_count, l_send_count);
 
     // exclusive scan using partial sum
     std::partial_sum(
@@ -508,12 +531,11 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   team.barrier();
   trace.exit_state("14:barrier");
 
-
   trace.enter_state("15:calc_final_target_displs");
 
   if (n_l_elem > 0) {
     detail::psort__calc_target_displs(
-        p_borders, valid_partitions, g_partition_data);
+        splitters, valid_partitions, g_partition_data);
   }
 
   trace.exit_state("15:calc_final_target_displs");
@@ -594,10 +616,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
    * temporary buffer internally which is also documented on cppreference. If
    * the allocation of this buffer fails, a less efficient merge method is
    * used. However, in Linux, the allocation nevers fails since the
-   * implementation simply allocates memory using malloc and the kernel follows
-   * the optimistic strategy. This is ugly and can lead to a segmentation fault
-   * later if no physical pages are available to map the allocated
-   * virtual memory.
+   * implementation simply allocates memory using malloc and the kernel
+   * follows the optimistic strategy. This is ugly and can lead to a
+   * segmentation fault later if no physical pages are available to map the
+   * allocated virtual memory.
    *
    *
    * std::sort does not suffer from this problem and may be a more safe
@@ -611,7 +633,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   trace.exit_state("18:barrier");
 
   trace.enter_state("19:final_local_sort");
-  detail::local_sort(lbegin, lend, sort_comp);
+  detail::local_sort(lbegin, lend, sort_comp, parallelism);
   trace.exit_state("19:final_local_sort");
 #else
   trace.enter_state("18:calc_recv_count (all-to-all)");
@@ -619,17 +641,18 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   std::vector<size_t> recv_count(nunits, 0);
 
   DASH_ASSERT_RETURNS(
-  dart_alltoall(
-      // send buffer
-      std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits)),
-      // receive buffer
-      recv_count.data(),
-      // we send / receive 1 element to / from each process
-      1,
-      // dtype
-      dash::dart_datatype<size_t>::value,
-      // teamid
-      team.dart_id()), DART_OK);
+      dart_alltoall(
+          // send buffer
+          std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits)),
+          // receive buffer
+          recv_count.data(),
+          // we send / receive 1 element to / from each process
+          1,
+          // dtype
+          dash::dart_datatype<size_t>::value,
+          // teamid
+          team.dart_id()),
+      DART_OK);
 
   DASH_LOG_TRACE_RANGE(
       "recv count", std::begin(recv_count), std::end(recv_count));
