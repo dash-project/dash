@@ -41,6 +41,16 @@
 #define DART_MATCHING_INTERVAL_ENVSTR "DART_TASK_MATCHING_INTERVAL"
 
 /**
+ * Name of the environment variable specifying the maximum number of phases that
+ * are active, effectively throttling the task creation. The value should be a
+ * multiple of the matching interval and will be rounded-up otherwise.
+ *
+ * Type: Integral positive value.
+ * Default: 2x the matching interval.
+ */
+#define DART_MATCHING_PHASE_MAX_ACTIVE_ENVSTR "DART_MATCHING_PHASE_MAX_ACTIVE"
+
+/**
  * Name of the environment variable specifying the number of phases after which
  * to perform a dependency matching.
  *

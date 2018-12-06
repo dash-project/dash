@@ -231,6 +231,9 @@ dart__tasking__mark_detached(dart_taskref_t task) DART_INTERNAL;
 void
 dart__tasking__release_detached(dart_taskref_t task) DART_INTERNAL;
 
+void
+dart__tasking__handle_task(dart_task_t *task) DART_INTERNAL;
+
 //void
 //dart__base__tasking_print_taskgraph();
 //

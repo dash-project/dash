@@ -783,12 +783,19 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 
       dart_task_t *parent = task->parent;
 
+      dart_taskphase_t phase = task->phase;
+
       // clean up
       if (!has_ref){
         // only destroy the task if there are no references outside
         // referenced tasks will be destroyed in task_wait/task_freeref
         // TODO: this needs some more thoughts!
         dart__tasking__destroy_task(task);
+      }
+
+      // take the task out of the phase
+      if (phase != DART_PHASE_ANY) {
+        dart__tasking__phase_take_task(phase);
       }
 
       // let the parent know that we are done
@@ -854,12 +861,19 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
       bool has_ref = DART_TASK_HAS_FLAG(task, DART_TASK_HAS_REF);
       UNLOCK_TASK(task);
 
+      dart_taskphase_t phase = task->phase;
+
       // clean up
       if (!has_ref){
         // only destroy the task if there are no references outside
         // referenced tasks will be destroyed in task_wait/task_freeref
         // TODO: this needs some more thoughts!
         dart__tasking__destroy_task(task);
+      }
+
+      // take the task out of the phase
+      if (phase != DART_PHASE_ANY) {
+        dart__tasking__phase_take_task(phase);
       }
 
       // let the parent know that we are done
