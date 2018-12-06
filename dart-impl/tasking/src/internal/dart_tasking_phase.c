@@ -34,7 +34,7 @@ dart__tasking__phase_advance()
         max_active_phases = dart__base__env__number(
                               DART_MATCHING_PHASE_MAX_ACTIVE_ENVSTR,
                               3*matching_interval);
-        if (max_active_phases == -1) {
+        if (max_active_phases > -1) {
           if (max_active_phases < matching_interval) {
             DART_LOG_WARN(
               "The number of max active phases (%d) is set smaller than the matching "
