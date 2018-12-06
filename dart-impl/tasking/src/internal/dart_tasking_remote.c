@@ -3,6 +3,7 @@
 #include <dash/dart/base/atomic.h>
 #include <dash/dart/base/assert.h>
 #include <dash/dart/base/env.h>
+#include <dash/dart/base/stack.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_team_group.h>
@@ -11,6 +12,7 @@
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_cancellation.h>
 #include <dash/dart/tasking/dart_tasking_copyin.h>
+#include <dash/dart/tasking/dart_tasking_wait.h>
 
 #include <pthread.h>
 #include <stdbool.h>
@@ -65,6 +67,41 @@ struct remote_sendrequest {
   dart_global_unit_t     unit;
 };
 
+union remote_operation_u {
+  struct remote_data_dep             data_dep;
+  struct remote_task_dep             task_dep;
+  struct remote_task_dep_cancelation dep_cancel;
+  struct remote_task_release         release;
+  struct remote_sendrequest          sendreq;
+};
+
+enum remote_op_type {
+  REMOTE_OP_DATADEP,
+  REMOTE_OP_TASKDEP,
+  REMOTE_OP_DEPCANCEL,
+  REMOTE_OP_RELEASE,
+  REMOTE_OP_SENDREQ
+};
+
+typedef
+struct remote_operation_t {
+  DART_STACK_MEMBER_DEF;
+  union remote_operation_u op;
+  dart_task_action_t       fn;
+  dart_team_unit_t         team_unit;
+  uint32_t                 size; // the size of op
+} remote_operation_t;
+
+#define DART_OPLIST_ELEM_POP(__list) \
+  (remote_operation_t*)((void*)dart__base__stack_pop(&__list))
+
+#define DART_OPLIST_ELEM_PUSH(__list, __elem) \
+  dart__base__stack_push(&__list, &DART_STACK_MEMBER_GET(__elem))
+
+static dart_stack_t operation_freelist = DART_STACK_INITIALIZER;
+static dart_stack_t operation_list     = DART_STACK_INITIALIZER;
+
+static dart_taskqueue_t comm_tasks;
 
 /**
  * Forward declarations of remote tasking actions
@@ -82,14 +119,50 @@ request_send(void *data);
 static void
 release_remote_outdep(void *data);
 
-static inline
-size_t
-max_size(size_t lhs, size_t rhs)
+static
+remote_operation_t* allocate_op()
 {
-  return (lhs > rhs) ? lhs : rhs;
+  remote_operation_t *op = DART_OPLIST_ELEM_POP(operation_freelist);
+  if (op == NULL) {
+    op = malloc(sizeof(*op));
+  }
+  return op;
+}
+
+static void
+process_operation_list()
+{
+  remote_operation_t *op;
+  // read operations until the list is empty
+  while (NULL != (op = DART_OPLIST_ELEM_POP(operation_list))) {
+    while (1) {
+      int ret;
+      ret = dart_amsg_buffered_send(
+              op->team_unit,
+              amsgq,
+              op->fn,
+              &op->op,
+              op->size);
+      if (ret == DART_OK) {
+        // the message was successfully sent
+        break;
+      } else  if (ret == DART_ERR_AGAIN) {
+        // cannot be sent at the moment, just try again
+        dart_amsg_process(amsgq);
+        continue;
+      } else {
+        // at this point wen can only abort!
+        DART_ASSERT_MSG(ret != DART_ERR_AGAIN,
+                        "Failed to send active message to unit %i",
+                        op->team_unit.id);
+      }
+    }
+    DART_OPLIST_ELEM_PUSH(operation_freelist, op);
+  }
 }
 
 static volatile int progress_thread = 0;
+static int handle_comm_tasks = 0;
 
 static void thread_progress_main(void *data)
 {
@@ -104,10 +177,27 @@ static void thread_progress_main(void *data)
 
   while (progress_thread) {
     //printf("Remote progress thread polling for new messages\n");
-    dart_amsg_process(amsgq);
+    // process the message list
+    process_operation_list();
+    // flush the buffer
     dart_amsg_flush_buffer(amsgq);
+    // put the buffer on the wire
+    dart_amsg_process(amsgq);
 
-    nanosleep(&ts, NULL);
+    // execute communication tasks we have
+    dart_task_t *ct;
+    while (NULL != (ct = dart_tasking_taskqueue_pop(&comm_tasks))) {
+      // mark as inlined, no need to allocate a context
+      DART_TASK_SET_FLAG(ct, DART_TASK_IS_INLINED);
+      dart__tasking__handle_task(ct);
+    }
+
+    // progress blocked tasks' communication
+    dart__task__wait_progress();
+
+    if (sleep_us > 0) {
+      nanosleep(&ts, NULL);
+    }
   }
   progress_thread = -1;
 }
@@ -115,9 +205,7 @@ static void thread_progress_main(void *data)
 dart_ret_t dart_tasking_remote_init()
 {
   if (!initialized) {
-    size_t size = max_size(sizeof(struct remote_data_dep),
-                           sizeof(struct remote_task_dep));
-    size = max_size(size, sizeof(struct remote_sendrequest));
+    size_t size = sizeof(union remote_operation_u);
     DART_ASSERT_RETURNS(
       dart_amsg_openq(
         size, DART_RTASK_QLEN, DART_TEAM_ALL, &amsgq),
@@ -128,6 +216,9 @@ dart_ret_t dart_tasking_remote_init()
     printf("progress_thread=%d\n", progress_thread);
     if (progress_thread) {
       dart__tasking__utility_thread(&thread_progress_main, NULL);
+      dart_tasking_taskqueue_init(&comm_tasks);
+      handle_comm_tasks = dart__base__env__us(
+                                  DART_THREAD_PROGRESS_COMMTASKS_ENVSTR, false);
     }
     initialized = true;
   }
@@ -145,6 +236,14 @@ dart_ret_t dart_tasking_remote_fini()
     }
     dart_amsg_closeq(amsgq);
     initialized = false;
+
+    if (progress_thread) {
+      dart_tasking_taskqueue_finalize(&comm_tasks);
+      remote_operation_t *op;
+      while (NULL != (op = DART_OPLIST_ELEM_POP(operation_freelist))) {
+        free(op);
+      }
+    }
   }
   return DART_OK;
 }
@@ -166,6 +265,16 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
   dart_team_unit_t team_unit = DART_TEAM_UNIT_ID(dep->gptr.unitid);
 
   DART_ASSERT(task != NULL);
+
+  if (progress_thread) {
+    remote_operation_t *op = allocate_op();
+    op->fn            = &enqueue_from_remote;
+    op->size          = sizeof(rdep);
+    op->team_unit     = team_unit;
+    op->op.data_dep   = rdep;
+    DART_OPLIST_ELEM_PUSH(operation_list, op);
+    return DART_OK;
+  }
 
   while (1) {
     ret = dart_amsg_buffered_send(
@@ -213,23 +322,24 @@ dart_ret_t dart_tasking_remote_release(
 
   DART_ASSERT(rtask.remote != NULL);
 
+  if (progress_thread) {
+    remote_operation_t *op = allocate_op();
+    op->fn            = &release_remote_dependency;
+    op->size          = sizeof(response);
+    op->team_unit     = team_unit;
+    op->op.release    = response;
+    DART_OPLIST_ELEM_PUSH(operation_list, op);
+    return DART_OK;
+  }
+
   while (1) {
     dart_ret_t ret;
-    if (progress_thread) {
-      ret = dart_amsg_buffered_send(
-              team_unit,
-              amsgq,
-              &release_remote_dependency,
-              &response,
-              sizeof(response));
-    } else {
-      ret = dart_amsg_trysend(
-              team_unit,
-              amsgq,
-              &release_remote_dependency,
-              &response,
-              sizeof(response));
-    }
+    ret = dart_amsg_trysend(
+            team_unit,
+            amsgq,
+            &release_remote_dependency,
+            &response,
+            sizeof(response));
     if (ret == DART_OK) {
       // the message was successfully sent
       DART_LOG_INFO("Sent remote dependency release to unit t:%i "
@@ -271,6 +381,17 @@ dart_ret_t dart_tasking_remote_direct_taskdep(
 
   DART_ASSERT(remote_task.local != NULL);
   DART_ASSERT(local_task != NULL);
+
+  if (progress_thread) {
+    remote_operation_t *op = allocate_op();
+    op->fn            = &request_direct_taskdep;
+    op->size          = sizeof(taskdep);
+    op->team_unit     = team_unit;
+    op->op.task_dep   = taskdep;
+    DART_OPLIST_ELEM_PUSH(operation_list, op);
+    return DART_OK;
+  }
+
 
   while (1) {
     dart_ret_t ret;
@@ -314,6 +435,16 @@ dart_ret_t dart_tasking_remote_release_outdep(
 
   DART_ASSERT(remote_task.local != NULL);
   DART_ASSERT(local_task != NULL);
+
+  if (progress_thread) {
+    remote_operation_t *op = allocate_op();
+    op->fn            = &release_remote_outdep;
+    op->size          = sizeof(taskdep);
+    op->team_unit     = team_unit;
+    op->op.task_dep   = taskdep;
+    DART_OPLIST_ELEM_PUSH(operation_list, op);
+    return DART_OK;
+  }
 
   while (1) {
     dart_ret_t ret;
@@ -359,6 +490,16 @@ dart_ret_t dart_tasking_remote_sendrequest(
   request.tag       = tag;
   request.phase     = phase;
 
+  if (progress_thread) {
+    remote_operation_t *op = allocate_op();
+    op->fn            = &request_send;
+    op->size          = sizeof(request);
+    op->team_unit     = DART_TEAM_UNIT_ID(unit.id);
+    op->op.sendreq    = request;
+    DART_OPLIST_ELEM_PUSH(operation_list, op);
+    return DART_OK;
+  }
+
   while (1) {
     int ret;
     ret = dart_amsg_buffered_send(DART_TEAM_UNIT_ID(unit.id), amsgq,
@@ -393,6 +534,7 @@ dart_ret_t dart_tasking_remote_bcast_cancel(dart_team_t team)
 dart_ret_t dart_tasking_remote_progress()
 {
   if (!progress_thread) {
+    dart__task__wait_progress();
     return dart_amsg_process(amsgq);
   }
   return DART_OK;
@@ -407,7 +549,19 @@ dart_ret_t dart_tasking_remote_progress()
  */
 dart_ret_t dart_tasking_remote_progress_blocking(dart_team_t team)
 {
+  // make sure all operations in-flight have been passed to the message queue
+  process_operation_list();
   return dart_amsg_process_blocking(amsgq, team);
+}
+
+void dart_tasking_remote_handle_comm_task(dart_task_t *task, bool *enqueued)
+{
+  if (progress_thread && handle_comm_tasks) {
+    dart_tasking_taskqueue_push(&comm_tasks, task);
+    *enqueued = true;
+  } else {
+    *enqueued = false;
+  }
 }
 
 

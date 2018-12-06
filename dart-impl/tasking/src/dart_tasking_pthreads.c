@@ -110,6 +110,7 @@ static struct timespec thread_idle_sleeptime;
 static dart_task_t root_task = {
     .next             = NULL,
     .prev             = NULL,
+    .flags            = 0,
     .fn               = NULL,
     .data             = NULL,
     .successor        = NULL,
@@ -118,8 +119,7 @@ static dart_task_t root_task = {
     .local_deps       = NULL,
     .prio             = DART_PRIO_DEFAULT,
     .num_children     = 0,
-    .state            = DART_TASK_ROOT,
-    .data_allocated   = false};
+    .state            = DART_TASK_ROOT};
 
 static void
 destroy_threadpool(bool print_stats);
@@ -174,7 +174,7 @@ dart__tasking__release_detached(dart_taskref_t task)
   // of remote successors in dart_tasking_datadeps_handle_remote_task
   LOCK_TASK(task);
   task->state = DART_TASK_FINISHED;
-  bool has_ref = task->has_ref;
+  bool has_ref = DART_TASK_HAS_FLAG(task, DART_TASK_HAS_REF);
   UNLOCK_TASK(task);
 
   dart_task_t *parent = task->parent;
@@ -611,26 +611,29 @@ dart_task_t * create_task(
   dart_task_t *task = allocate_task();
 
   if (data_size) {
-    task->data_allocated = true;
+    DART_TASK_SET_FLAG(task, DART_TASK_DATA_ALLOCATED);
     task->data           = malloc(data_size);
     memcpy(task->data, data, data_size);
   } else {
     task->data           = data;
-    task->data_allocated = false;
+    DART_TASK_UNSET_FLAG(task, DART_TASK_DATA_ALLOCATED);
   }
   task->fn           = fn;
   task->num_children = 0;
   task->parent       = get_current_task();
   task->state        = DART_TASK_NASCENT;
-  task->phase        = task->parent->state == DART_TASK_ROOT ?
-                                                dart__tasking__phase_current()
-                                                : DART_PHASE_ANY;
-  task->has_ref       = false;
+  if (task->parent->state == DART_TASK_ROOT) {
+    task->phase      = dart__tasking__phase_current();
+    dart__tasking__phase_add_task();
+  } else {
+    task->phase      = DART_PHASE_ANY;
+  }
+  DART_TASK_SET_FLAG(task, DART_TASK_HAS_REF);
+  DART_TASK_SET_FLAG(task, DART_TASK_IS_INLINED);
   task->remote_successor = NULL;
   task->local_deps    = NULL;
   task->prev          = NULL;
   task->successor     = NULL;
-  task->is_inlined    = false;
   //task->prio          = (prio == DART_PRIO_PARENT) ? task->parent->prio : prio;
   switch (prio) {
     case DART_PRIO_PARENT:
@@ -638,7 +641,7 @@ dart_task_t * create_task(
       break;
     case DART_PRIO_INLINE:
       task->prio       = DART_PRIO_HIGH;
-      task->is_inlined = true;
+      DART_TASK_SET_FLAG(task, DART_TASK_IS_INLINED);
       break;
     default:
       task->prio       = prio;
@@ -662,12 +665,13 @@ dart_task_t * create_task(
 
 void dart__tasking__destroy_task(dart_task_t *task)
 {
-  if (task->data_allocated) {
+  if (DART_TASK_HAS_FLAG(task, DART_TASK_DATA_ALLOCATED)) {
     free(task->data);
   }
   // reset some of the fields
   task->data             = NULL;
-  task->data_allocated   = false;
+  DART_TASK_UNSET_FLAG(task, DART_TASK_DATA_ALLOCATED);
+  DART_TASK_UNSET_FLAG(task, DART_TASK_HAS_REF);
   task->fn               = NULL;
   task->parent           = NULL;
   task->prev             = NULL;
@@ -675,7 +679,6 @@ void dart__tasking__destroy_task(dart_task_t *task)
   task->successor        = NULL;
   task->state            = DART_TASK_DESTROYED;
   task->phase            = DART_PHASE_ANY;
-  task->has_ref          = false;
   task->descr            = NULL;
 
   dart_tasking_datadeps_reset(task);
@@ -772,7 +775,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       // of remote successors in dart_tasking_datadeps_handle_remote_task
       LOCK_TASK(task);
       task->state = DART_TASK_FINISHED;
-      has_ref = task->has_ref;
+      has_ref = DART_TASK_HAS_FLAG(task, DART_TASK_HAS_REF);
       UNLOCK_TASK(task);
 
       // release the context
@@ -781,12 +784,19 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 
       dart_task_t *parent = task->parent;
 
+      dart_taskphase_t phase = task->phase;
+
       // clean up
       if (!has_ref){
         // only destroy the task if there are no references outside
         // referenced tasks will be destroyed in task_wait/task_freeref
         // TODO: this needs some more thoughts!
         dart__tasking__destroy_task(task);
+      }
+
+      // take the task out of the phase
+      if (phase != DART_PHASE_ANY) {
+        dart__tasking__phase_take_task(phase);
       }
 
       // let the parent know that we are done
@@ -848,9 +858,11 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
       // to allow for atomic check and update
       // of remote successors in dart_tasking_datadeps_handle_remote_task
       LOCK_TASK(task);
-      task->state = DART_TASK_FINISHED;
-      bool has_ref = task->has_ref;
+      task->state  = DART_TASK_FINISHED;
+      bool has_ref = DART_TASK_HAS_FLAG(task, DART_TASK_HAS_REF);
       UNLOCK_TASK(task);
+
+      dart_taskphase_t phase = task->phase;
 
       // clean up
       if (!has_ref){
@@ -858,6 +870,11 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
         // referenced tasks will be destroyed in task_wait/task_freeref
         // TODO: this needs some more thoughts!
         dart__tasking__destroy_task(task);
+      }
+
+      // take the task out of the phase
+      if (phase != DART_PHASE_ANY) {
+        dart__tasking__phase_take_task(phase);
       }
 
       // let the parent know that we are done
@@ -868,6 +885,18 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
     // return to previous task
     set_current_task(current_task);
     ++(thread->taskcntr);
+  }
+}
+
+
+void
+dart__tasking__handle_task(dart_task_t *task)
+{
+  dart_thread_t *thread = dart__tasking__current_thread();
+  if (DART_TASK_HAS_FLAG(task, DART_TASK_IS_INLINED)) {
+    handle_inline_task(task, thread);
+  } else {
+    handle_task(task, thread);
   }
 }
 
@@ -965,9 +994,8 @@ void* thread_main(void *data)
     if ((task == NULL || worker_poll_remote) && threadid == 1) {
       //DART_LOG_TRACE("worker polling for remote messages");
       remote_progress(thread, (task == NULL));
-      dart__task__wait_progress();
-      // try again to get a task
-      task = next_task(thread);
+      if (task == NULL)
+        task = next_task(thread);
       // wait for 100us to reduce pressure on master thread
       if (task == NULL) {
         nanosleep(&sleeptime, NULL);
@@ -1224,10 +1252,14 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     UNLOCK_TASK(task);
   }
 
+  if (!enqueued && DART_TASK_HAS_FLAG(task, DART_TASK_IS_COMMTASK)) {
+    dart_tasking_remote_handle_comm_task(task, &enqueued);
+  }
+
   if (!enqueued){
 
     // execute inlined task directly
-    if (task->is_inlined) {
+    if (DART_TASK_HAS_FLAG(task, DART_TASK_IS_INLINED)) {
       handle_inline_task(task, get_current_thread());
       return;
     }
@@ -1292,7 +1324,7 @@ dart__tasking__create_task(
   dart_task_t *task = create_task(fn, data, data_size, prio, descr);
 
   if (ref != NULL) {
-    task->has_ref = true;
+    DART_TASK_SET_FLAG(task, DART_TASK_HAS_REF);
     *ref = task;
   }
 
@@ -1389,17 +1421,12 @@ dart__tasking__task_complete()
   while (task->num_children > 0) {
     dart_task_t *next = next_task(thread);
     // a) look for incoming remote tasks and responses
-    if (next == NULL /*&& is_root_task*/) {
-      remote_progress(thread, is_root_task);
+    if (next == NULL) {
+      remote_progress(thread, (thread->thread_id == 0));
+      next = next_task(thread);
     }
     // b) check cancellation
     dart__tasking__check_cancellation(thread);
-    // c) check whether blocked tasks are ready
-    if (next == NULL /*|| thread->thread_id == 0*/) {
-      dart__task__wait_progress();
-      if (next == NULL)
-        next = next_task(thread);
-    }
     // d) process our tasks
     handle_task(next, thread);
     // e) requery the thread as it might have changed
@@ -1442,7 +1469,7 @@ dart__tasking__taskref_free(dart_taskref_t *tr)
 
   // free the task if already destroyed
   LOCK_TASK(*tr);
-  (*tr)->has_ref = false;
+  DART_TASK_UNSET_FLAG((*tr), DART_TASK_HAS_REF);
   if ((*tr)->state == DART_TASK_FINISHED) {
     UNLOCK_TASK(*tr);
     dart__tasking__destroy_task(*tr);
@@ -1488,7 +1515,7 @@ dart__tasking__task_wait(dart_taskref_t *tr)
 
   // finally we have to destroy the task
   UNLOCK_TASK(reftask);
-  reftask->has_ref = false;
+  DART_TASK_UNSET_FLAG(reftask, DART_TASK_HAS_REF);
   dart__tasking__destroy_task(reftask);
 
   *tr = DART_TASK_NULL;

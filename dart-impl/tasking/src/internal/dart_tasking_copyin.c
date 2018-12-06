@@ -162,8 +162,16 @@ dart_tasking_copyin_create_task_sendrecv(
   dart_task_prio_t prio = (wait_type == COPYIN_WAIT_DETACH) ? DART_PRIO_INLINE
                                                             : DART_PRIO_HIGH;
 
-  dart_task_create(&dart_tasking_copyin_recv_taskfn, &arg, sizeof(arg),
-                   &out_dep, 1, prio, "COPYIN (RECV)");
+  dart_task_t *task;
+  dart__tasking__create_task(
+      &dart_tasking_copyin_recv_taskfn, &arg, sizeof(arg),
+      &out_dep, 1, prio, "COPYIN (RECV)", &task);
+
+  // set the communication flag
+  DART_TASK_SET_FLAG(task, DART_TASK_IS_COMMTASK);
+
+  // free the handle
+  dart__tasking__taskref_free(&task);
 
   return DART_OK;
 }
@@ -196,9 +204,18 @@ dart_tasking_copyin_create_task_get(
   dart_task_prio_t prio = (wait_type == COPYIN_WAIT_DETACH) ? DART_PRIO_INLINE
                                                             : DART_PRIO_HIGH;
 
+  dart_task_t *task;
+  dart__tasking__create_task(
+    &dart_tasking_copyin_get_taskfn, &arg, sizeof(arg),
+    deps, 2, prio, "COPYIN (GET)", &task);
 
-  return dart_task_create(&dart_tasking_copyin_get_taskfn, &arg, sizeof(arg),
-                   deps, 2, prio, "COPYIN (GET)");
+  // set the communication flag
+  DART_TASK_SET_FLAG(task, DART_TASK_IS_COMMTASK);
+
+  // free the handle
+  dart__tasking__taskref_free(&task);
+
+  return DART_OK;
 }
 
 dart_ret_t

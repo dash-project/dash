@@ -158,10 +158,9 @@ static inline void instrument_task_dependency(
  */
 dart_ret_t dart_tasking_datadeps_init()
 {
-  struct dart_stack_head head;
-  printf("atomic_cas on 128 lock-free? %s\n", atomic_is_lock_free(&head) ? "true" : "false");
   dart_myid(&myguid);
   dart_tasking_taskqueue_init(&local_deferred_tasks);
+
   return dart_tasking_remote_init();
 }
 
@@ -1060,9 +1059,6 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     const dart_task_dep_t *deps,
     size_t                 ndeps)
 {
-  dart_global_unit_t myid;
-  dart_myid(&myid);
-
   DART_LOG_DEBUG("Datadeps: task %p has %zu data dependencies in phase %i",
                  task, ndeps, task->phase);
 
@@ -1101,7 +1097,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       // set the numaptr
       if (task->numaptr == NULL) task->numaptr = dep.copyin.dest;
       dart_tasking_datadeps_handle_copyin(&dep, task);
-    } else if (guid.id != myid.id) {
+    } else if (guid.id != myguid.id) {
         if (task->parent->state == DART_TASK_ROOT) {
           dart_tasking_remote_datadep(&dep, task);
           int32_t unresolved_deps = DART_INC_AND_FETCH32(&task->unresolved_remote_deps);
