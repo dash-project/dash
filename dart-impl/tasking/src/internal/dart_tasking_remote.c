@@ -11,6 +11,7 @@
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_cancellation.h>
 #include <dash/dart/tasking/dart_tasking_copyin.h>
+#include <dash/dart/tasking/dart_tasking_wait.h>
 
 #include <pthread.h>
 #include <stdbool.h>
@@ -393,6 +394,7 @@ dart_ret_t dart_tasking_remote_bcast_cancel(dart_team_t team)
 dart_ret_t dart_tasking_remote_progress()
 {
   if (!progress_thread) {
+    dart__task__wait_progress();
     return dart_amsg_process(amsgq);
   }
   return DART_OK;

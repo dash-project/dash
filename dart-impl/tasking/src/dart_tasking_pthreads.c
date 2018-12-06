@@ -987,7 +987,6 @@ void* thread_main(void *data)
     if ((task == NULL || worker_poll_remote) && threadid == 1) {
       //DART_LOG_TRACE("worker polling for remote messages");
       remote_progress(thread, (task == NULL));
-      dart__task__wait_progress();
       // wait for 100us to reduce pressure on master thread
       if (task == NULL) {
         nanosleep(&sleeptime, NULL);
@@ -1406,15 +1405,10 @@ dart__tasking__task_complete()
     // a) look for incoming remote tasks and responses
     if (next == NULL) {
       remote_progress(thread, (thread->thread_id == 0));
+      next = next_task(thread);
     }
     // b) check cancellation
     dart__tasking__check_cancellation(thread);
-    // c) check whether blocked tasks are ready
-    if (next == NULL || thread->thread_id == 0) {
-      dart__task__wait_progress();
-      if (next == NULL)
-        next = next_task(thread);
-    }
     // d) process our tasks
     handle_task(next, thread);
     // e) requery the thread as it might have changed
