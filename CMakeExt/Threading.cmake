@@ -1,8 +1,8 @@
-## Flags to enable support for multi-threading 
+## Flags to enable support for multi-threading
 
 ##
-# At the moment, DART_ENABLE_THREADSUPPORT enables DART_HAVE_PTHREADS since 
-# Pthreads are the only threading implementation currently supported. 
+# At the moment, DART_ENABLE_THREADSUPPORT enables DART_HAVE_PTHREADS since
+# Pthreads are the only threading implementation currently supported.
 ##
 
 if (ENABLE_THREADSUPPORT)
@@ -11,7 +11,7 @@ if (ENABLE_THREADSUPPORT)
     TRY_COMPILE(HAVE_128B_ATOMICS ${CMAKE_BINARY_DIR}
                 ${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_atomics.c
                 LINK_LIBRARIES atomic
-                C_STANDARD 11
+                CMAKE_FLAGS -DCMAKE_C_STANDARD=11
                 OUTPUT_VARIABLE output)
 
     if (HAVE_128B_ATOMICS)
@@ -24,7 +24,7 @@ if (ENABLE_THREADSUPPORT)
 
     MESSAGE(STATUS "Checking for builtin __sync_add_and_fetch")
     TRY_COMPILE(DART_SYNC_BUILTINS ${CMAKE_BINARY_DIR}
-                ${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_builtin_sync.c 
+                ${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_builtin_sync.c
                 OUTPUT_VARIABLE OUTPUT)
     if (DART_SYNC_BUILTINS)
       MESSAGE(STATUS "Found builtin __sync_add_and_fetch")
@@ -34,7 +34,7 @@ if (ENABLE_THREADSUPPORT)
         "${CMAKE_CXX_FLAGS} -DDART_HAVE_SYNC_BUILTINS")
     else()
       # error out for now
-      MESSAGE(STATUS "Compiling builtin __sync_add_and_fetch failed with error " 
+      MESSAGE(STATUS "Compiling builtin __sync_add_and_fetch failed with error "
                      ${OUTPUT})
       MESSAGE(FATAL_ERROR "Support for builtin __sync atomics required if "
                           "building with thread support enabled!")
