@@ -101,6 +101,7 @@ struct remote_operation_t {
 static dart_stack_t operation_freelist = DART_STACK_INITIALIZER;
 static dart_stack_t operation_list     = DART_STACK_INITIALIZER;
 
+static dart_taskqueue_t comm_tasks;
 
 /**
  * Forward declarations of remote tasking actions
@@ -161,6 +162,7 @@ process_operation_list()
 }
 
 static volatile int progress_thread = 0;
+static int handle_comm_tasks = 0;
 
 static void thread_progress_main(void *data)
 {
@@ -181,6 +183,14 @@ static void thread_progress_main(void *data)
     dart_amsg_flush_buffer(amsgq);
     // put the buffer on the wire
     dart_amsg_process(amsgq);
+
+    // execute communication tasks we have
+    dart_task_t *ct;
+    while (NULL != (ct = dart_tasking_taskqueue_pop(&comm_tasks))) {
+      // mark as inlined, no need to allocate a context
+      DART_TASK_SET_FLAG(ct, DART_TASK_IS_INLINED);
+      dart__tasking__handle_task(ct);
+    }
 
     // progress blocked tasks' communication
     dart__task__wait_progress();
@@ -206,6 +216,9 @@ dart_ret_t dart_tasking_remote_init()
     printf("progress_thread=%d\n", progress_thread);
     if (progress_thread) {
       dart__tasking__utility_thread(&thread_progress_main, NULL);
+      dart_tasking_taskqueue_init(&comm_tasks);
+      handle_comm_tasks = dart__base__env__us(
+                                  DART_THREAD_PROGRESS_COMMTASKS_ENVSTR, false);
     }
     initialized = true;
   }
@@ -539,6 +552,16 @@ dart_ret_t dart_tasking_remote_progress_blocking(dart_team_t team)
   // make sure all operations in-flight have been passed to the message queue
   process_operation_list();
   return dart_amsg_process_blocking(amsgq, team);
+}
+
+void dart_tasking_remote_handle_comm_task(dart_task_t *task, bool *enqueued)
+{
+  if (progress_thread && handle_comm_tasks) {
+    dart_tasking_taskqueue_push(&comm_tasks, task);
+    *enqueued = true;
+  } else {
+    *enqueued = false;
+  }
 }
 
 

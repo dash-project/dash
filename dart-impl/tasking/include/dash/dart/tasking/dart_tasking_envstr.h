@@ -96,6 +96,15 @@
 #define DART_THREAD_PROGRESS_ENVSTR    "DART_THREAD_PROGRESS"
 
 /**
+ * Name of the environment variable specifying whether communication tasks
+ * (e.g., copyin tasks) should be handled by the progress thread or scheduled
+ * as a regular task.
+ *
+ * Type: Boolean value.
+ */
+#define DART_THREAD_PROGRESS_COMMTASKS_ENVSTR "DART_THREAD_PROGRESS_COMMTASKS"
+
+/**
  * Name of the environment variable specifying whether the runtime should launch
  * a progress thread to handle inter-scheduler communication.
  *

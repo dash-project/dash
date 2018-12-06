@@ -84,4 +84,14 @@ dart_ret_t dart_tasking_remote_progress() DART_INTERNAL;
  */
 dart_ret_t dart_tasking_remote_progress_blocking(dart_team_t team) DART_INTERNAL;
 
+/**
+ * Pass a task to the remote communication engine. If the task is not handled
+ * by the engine (i.e., no progress thread exists) \c enqueued will be set
+ * to \c false, otherwise it's set to \c true in which case the task
+ * should not be enqueued anywhere else.
+ */
+void dart_tasking_remote_handle_comm_task(
+  dart_task_t *task,
+  bool        *enqueued) DART_INTERNAL;
+
 #endif /* DART_TASKING_REMOTE_H_ */

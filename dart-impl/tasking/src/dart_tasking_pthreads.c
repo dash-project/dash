@@ -888,6 +888,18 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
 }
 
 
+void
+dart__tasking__handle_task(dart_task_t *task)
+{
+  dart_thread_t *thread = dart__tasking__current_thread();
+  if (DART_TASK_HAS_FLAG(task, DART_TASK_IS_INLINED)) {
+    handle_inline_task(task, thread);
+  } else {
+    handle_task(task, thread);
+  }
+}
+
+
 static
 void dart_thread_init(dart_thread_t *thread, int threadnum)
 {
@@ -1236,6 +1248,10 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
       }
     }
     UNLOCK_TASK(task);
+  }
+
+  if (!enqueued && DART_TASK_HAS_FLAG(task, DART_TASK_IS_COMMTASK)) {
+    dart_tasking_remote_handle_comm_task(task, &enqueued);
   }
 
   if (!enqueued){
