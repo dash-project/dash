@@ -152,7 +152,9 @@ dart__tasking__affinity_init()
     free(buf);
   }
 
+#ifdef DART_ENABLE_NUMA
   memset(hashmap, 0, HASHSIZE*sizeof(hashmap[0]));
+#endif // DART_ENABLE_NUMA
 }
 
 void
