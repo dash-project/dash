@@ -47,7 +47,7 @@ typedef int32_t dart_tasklock_t;
 
 #include <stdatomic.h>
 
-typedef volatile atomic_flag dart_tasklock_t;
+typedef atomic_flag dart_tasklock_t;
 
 #define TASKLOCK_INIT(__task) do {    \
   atomic_flag_clear(&(__task)->lock); \
