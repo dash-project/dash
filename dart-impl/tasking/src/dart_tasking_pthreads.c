@@ -628,8 +628,7 @@ dart_task_t * create_task(
   } else {
     task->phase      = DART_PHASE_ANY;
   }
-  DART_TASK_SET_FLAG(task, DART_TASK_HAS_REF);
-  DART_TASK_SET_FLAG(task, DART_TASK_IS_INLINED);
+  task->flags        = 0;
   task->remote_successor = NULL;
   task->local_deps    = NULL;
   task->prev          = NULL;
