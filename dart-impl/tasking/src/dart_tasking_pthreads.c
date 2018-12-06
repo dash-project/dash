@@ -119,7 +119,8 @@ static dart_task_t root_task = {
     .local_deps       = NULL,
     .prio             = DART_PRIO_DEFAULT,
     .num_children     = 0,
-    .state            = DART_TASK_ROOT};
+    .state            = DART_TASK_ROOT,
+    .descr            = "root_task"};
 
 static void
 destroy_threadpool(bool print_stats);
