@@ -44,11 +44,6 @@ typedef enum {
   DART_TASK_CANCELLED
 } dart_task_state_t;
 
-typedef enum {
-  DART_YIELD_TARGET_ROOT  = 0,  // upon yield, return to the root_task
-  DART_YIELD_TARGET_YIELD = 1, // upon yield, yield to another task
-} dart_yield_target_t;
-
 #define IS_ACTIVE_TASK(task) \
   ((task)->state >= DART_TASK_CREATED   && \
    (task)->state <= DART_TASK_DETACHED)
@@ -172,7 +167,6 @@ typedef struct {
   int                     core_id;
   int                     numa_id;
   int                     delay;             // delay in case this task yields
-  dart_yield_target_t     yield_target;
   double                  last_progress_ts;  // the timestamp of the last remote progress call
   dart_task_t           * next_task;         // short-cut on the next task to execute
   bool                    is_releasing_deps; // whether the thread is currently releasing dependencies

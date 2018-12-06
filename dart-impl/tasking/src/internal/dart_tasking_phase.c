@@ -12,7 +12,7 @@ static dart_taskphase_t runnable_phase = DART_PHASE_FIRST;
 static dart_taskphase_t max_active_phases = INT_MAX;
 static dart_taskphase_t max_active_phases_mod = INT_MAX;
 static dart_taskphase_t num_active_phases = 0;
-static uint32_t *phase_task_counts = NULL;
+static int32_t *phase_task_counts = NULL;
 
 
 void
@@ -44,7 +44,7 @@ dart__tasking__phase_advance()
           }
           // give us some wiggle-room in case not all phases create tasks
           max_active_phases_mod = 1.2*max_active_phases;
-          phase_task_counts = calloc(sizeof(*phase_task_counts), max_active_phases);
+          phase_task_counts = calloc(sizeof(*phase_task_counts), max_active_phases_mod);
         }
       } else {
         DART_LOG_TRACE("Intermediate task matching disabled");
@@ -124,8 +124,8 @@ dart__tasking__phase_reset()
 void
 dart__tasking__phase_add_task()
 {
-  if (NULL != phase_task_counts) {
-    uint32_t val = DART_FETCH_AND_INC32(
+  if (NULL != phase_task_counts && creation_phase >= 0) {
+    int32_t val = DART_FETCH_AND_INC32(
                     &phase_task_counts[creation_phase%max_active_phases_mod]);
     if (val == 0) {
       DART_LOG_TRACE("Phase %d saw its first task!", creation_phase);
@@ -137,8 +137,8 @@ dart__tasking__phase_add_task()
 void
 dart__tasking__phase_take_task(dart_taskphase_t phase)
 {
-  if (NULL != phase_task_counts) {
-    uint32_t val = DART_DEC_AND_FETCH32(
+  if (NULL != phase_task_counts && phase >= 0) {
+    int32_t val = DART_DEC_AND_FETCH32(
                     &phase_task_counts[phase%max_active_phases_mod]);
     DART_LOG_TRACE("Phase %d has %d tasks active!", phase, val);
     if (val == 0) {
