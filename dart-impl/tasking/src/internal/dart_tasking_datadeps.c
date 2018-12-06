@@ -13,7 +13,7 @@
 #include <dash/dart/tasking/dart_tasking_copyin.h>
 
 //#define DART_DEPHASH_SIZE 1023
-#define DART_DEPHASH_SIZE 127
+#define DART_DEPHASH_SIZE 511
 
 // if we have support for TCmalloc we don't have to manage memory on our own
 #if !defined(DART_ENABLE_TCMALLOC)
