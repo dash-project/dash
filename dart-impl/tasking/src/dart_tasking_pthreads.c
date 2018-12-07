@@ -269,6 +269,7 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
   DART_LOG_TRACE("invoke_task: %p, cancellation %d", task, dart__tasking__cancellation_requested());
   if (!dart__tasking__cancellation_requested()) {
     if (task->taskctx == NULL) {
+      DART_ASSERT(task->fn != NULL);
       // create a context for a task invoked for the first time
       task->taskctx = dart__tasking__context_create(
                         (context_func_t*)&wrap_task, task);
@@ -308,10 +309,15 @@ dart__tasking__yield(int delay)
     return DART_OK;
   }
 
+  // exit task if the task is blocked and return as soon as we get back here
+  if (current_task->state == DART_TASK_BLOCKED) {
+    return dart__tasking__context_swap(current_task->taskctx, &thread->retctx);
+  }
+
   dart_task_t *next = next_task(thread);
-  // progress
-  remote_progress(thread, (next == NULL));
   if (next == NULL) {
+    // progress
+    remote_progress(thread, (next == NULL));
     // try again
     next = next_task(thread);
   }
@@ -672,6 +678,9 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
                   thread->thread_id, task, task->descr);
 
     dart_task_t *current_task = get_current_task();
+
+    DART_ASSERT_MSG(IS_ACTIVE_TASK(task), "Invalid state of task %p: %d",
+                    task, task->state);
 
     // set task to running state, protected to prevent race conditions with
     // dependency handling code
