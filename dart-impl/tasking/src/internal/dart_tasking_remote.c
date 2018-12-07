@@ -137,6 +137,7 @@ process_operation_list()
   while (NULL != (op = DART_OPLIST_ELEM_POP(operation_list))) {
     while (1) {
       int ret;
+      DART_LOG_TRACE("Sending op %p to unit %d to buffer", op, op->team_unit.id);
       ret = dart_amsg_buffered_send(
               op->team_unit,
               amsgq,
@@ -273,6 +274,11 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
     op->team_unit     = team_unit;
     op->op.data_dep   = rdep;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
+    DART_LOG_TRACE("Enqueued remote dependency request to unit %d "
+                   "(segid=%i, offset=%p, fn=%p, task=%p), op=%p",
+                   team_unit.id, dep->gptr.segid,
+                   dep->gptr.addr_or_offs.addr,
+                   &release_remote_dependency, task, op);
     return DART_OK;
   }
 
@@ -329,6 +335,11 @@ dart_ret_t dart_tasking_remote_release(
     op->team_unit     = team_unit;
     op->op.release    = response;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
+    DART_LOG_INFO("Enqueued remote dependency release to unit t:%i "
+        "(segid=%i, offset=%p, fn=%p, rtask=%p), op %p",
+        team_unit.id, dep->gptr.segid,
+        dep->gptr.addr_or_offs.addr,
+        &release_remote_dependency, rtask.local, op);
     return DART_OK;
   }
 
@@ -389,6 +400,9 @@ dart_ret_t dart_tasking_remote_direct_taskdep(
     op->team_unit     = team_unit;
     op->op.task_dep   = taskdep;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
+    DART_LOG_INFO("Enqueued direct remote task dependency to unit %i "
+                  "(local task %p depdends on remote task %p), op %p",
+                  unit.id, local_task, remote_task.local, op);
     return DART_OK;
   }
 
@@ -443,6 +457,9 @@ dart_ret_t dart_tasking_remote_release_outdep(
     op->team_unit     = team_unit;
     op->op.task_dep   = taskdep;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
+    DART_LOG_INFO("Enqueued release for remote out dependency to unit %i "
+                  "(local_task %p, remote task %p), op %p",
+                  unit.id, local_task, remote_task.local, op);
     return DART_OK;
   }
 
