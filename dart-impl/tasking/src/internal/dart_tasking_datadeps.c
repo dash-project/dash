@@ -211,7 +211,6 @@ dart_ret_t dart_tasking_datadeps_fini()
 #ifdef USE_FREELIST
   dart_dephash_elem_t *elem;
   while ((elem = DART_DEPHASH_ELEM_POP(freelist_head))!= NULL) {
-    DART_LOG_TRACE("Freeing elem %p", elem);
     free(elem);
   }
 #endif // USE_FREELIST
