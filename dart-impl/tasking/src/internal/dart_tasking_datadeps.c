@@ -877,11 +877,6 @@ dart_tasking_datadeps_match_local_datadep(
         break;
       }
 
-      DART_LOG_TRACE("Checking task %p against task %p "
-                     "(deptype: %i vs %i)",
-                     elem_task, task, elem->taskdep.type,
-                     dep->type);
-
       if (IS_OUT_DEP(*dep) ||
               (dep->type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep))) {
         // lock the task here to avoid race condition
