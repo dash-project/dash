@@ -1218,9 +1218,9 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     dart_thread_t *thread = get_current_thread();
 
 #ifdef DART_TASK_THREADLOCAL_Q
-    // fall-back in case we are called from the progress thread
-    if (thread == NULL) thread = thread_pool[0];
     dart_taskqueue_t *q = &thread->queue;
+    // fall-back in case we are called from the progress thread
+    if (thread->is_utility_thread) q = &thread_pool[0]->queue;
 #else
     int numa_node = 0;
     if (respect_numa && task->numaptr != NULL) {
@@ -1229,7 +1229,7 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     dart_taskqueue_t *q = &task_queue[numa_node];
 #endif // DART_TASK_THREADLOCAL_Q
 
-    if (thread && thread->is_releasing_deps) {
+    if (thread->is_releasing_deps && !thread->is_utility_thread) {
       // short-cut and avoid enqueuing the task
       // NOTE: we take the last available task as this is likely the task that
       //       is next in the chain (the list is a stack)
