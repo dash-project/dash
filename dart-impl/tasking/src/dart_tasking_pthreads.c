@@ -253,8 +253,6 @@ static
 void wrap_task(dart_task_t *task)
 {
   DART_ASSERT(task != &root_task);
-  // update current task
-  set_current_task(task);
   // invoke the new task
   EVENT_ENTER(EVENT_TASK);
   invoke_taskfn(task);
@@ -270,13 +268,14 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
 {
   DART_LOG_TRACE("invoke_task: %p, cancellation %d", task, dart__tasking__cancellation_requested());
   if (!dart__tasking__cancellation_requested()) {
-    dart_task_t *current_task = get_current_task();
     if (task->taskctx == NULL) {
       // create a context for a task invoked for the first time
       task->taskctx = dart__tasking__context_create(
                         (context_func_t*)&wrap_task, task);
     }
 
+    // update current task
+    set_current_task(task);
     // store current thread's context and jump into new task
     dart__tasking__context_swap(&thread->retctx, task->taskctx);
     DART_LOG_TRACE("Returning from task %p ('%s')", task, task->descr);
@@ -686,8 +685,8 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     // we're coming back into this task here
     dart_task_t *prev_task = dart_task_current_task();
 
-    DART_LOG_TRACE("Returned from invoke_task(%p, %p): prev_task=%p",
-                   task, thread, prev_task);
+    DART_LOG_TRACE("Returned from invoke_task(%p, %p): prev_task=%p, state=%d",
+                   task, thread, prev_task, prev_task->state);
 
     if (prev_task->state == DART_TASK_DETACHED) {
 
@@ -701,13 +700,9 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       // the blocked task so we have to make sure this task is enqueued as
       // blocked (see dart__tasking__yield)
       dart__task__wait_enqueue(prev_task);
-      // nothing else to be done here
-      return;
     } else if (prev_task->state == DART_TASK_SUSPENDED) {
       // the task was yielded, requeue it
       requeue_task(prev_task);
-      // nothing else to be done here
-      return;
     } else {
       DART_ASSERT_MSG(prev_task->state == DART_TASK_RUNNING ||
                       prev_task->state == DART_TASK_CANCELLED,
@@ -756,10 +751,10 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       // let the parent know that we are done
       int32_t nc = DART_DEC_AND_FETCH32(&parent->num_children);
       DART_LOG_DEBUG("Parent %p has %i children left\n", parent, nc);
+      ++(thread->taskcntr);
     }
     // return to previous task
     set_current_task(current_task);
-    ++(thread->taskcntr);
   }
 }
 
