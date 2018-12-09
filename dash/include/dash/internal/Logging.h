@@ -85,13 +85,15 @@
         typename std::iterator_traits<decltype(begin)>::value_type;      \
     using difference_t =                                                 \
         typename std::iterator_traits<decltype(begin)>::difference_type; \
-    auto const nelems = std::distance(begin, end);                       \
+    auto       first  = (begin);                                         \
+    auto       last   = (end);                                           \
+    auto const nelems = std::distance(first, last);                      \
     auto const max_elems =                                               \
         std::min<difference_t>(nelems, MAX_ELEMS_RANGE_LOGGING__);       \
     std::ostringstream os;                                               \
     std::copy(                                                           \
-        begin,                                                           \
-        std::next(begin, max_elems),                                     \
+        first,                                                           \
+        std::next(first, max_elems),                                     \
         std::ostream_iterator<value_t>(os, " "));                        \
     if (nelems > MAX_ELEMS_RANGE_LOGGING__) os << "...";                 \
     DASH_LOG_TRACE(ctx, os.str());                                       \

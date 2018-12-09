@@ -1,6 +1,7 @@
 #ifndef DASH__ALGORITHM__SORT__PARTITION_H
 #define DASH__ALGORITHM__SORT__PARTITION_H
 
+#include <dash/Team.h>
 #include <dash/algorithm/sort/Types.h>
 #include <dash/internal/Logging.h>
 
@@ -128,7 +129,7 @@ inline void psort__init_partition_borders(
 
   auto const get_border_idx = [](std::size_t const& idx) {
     return (idx % NLT_NLE_BLOCK) ? (idx / NLT_NLE_BLOCK) * NLT_NLE_BLOCK
-                                   : idx - 1;
+                                 : idx - 1;
   };
 
   auto p_left     = std::distance(acc_partition_count.cbegin(), left) - 1;
@@ -295,11 +296,15 @@ inline bool psort__validate_partitions(
   return nonstable_it == splitters.is_stable.cend();
 }
 
-template <class LocalArrayT>
+template <class Iter>
 inline void psort__calc_final_partition_dist(
-    std::vector<size_t> const& acc_partition_count,
-    LocalArrayT&               l_partition_dist)
+    Iter                                            nlt_first,
+    Iter                                            nlt_last,
+    Iter                                            nle_first,
+    typename std::iterator_traits<Iter>::value_type partition_size)
 {
+  using value_t = typename std::iterator_traits<Iter>::value_type;
+
   /* Calculate number of elements to receive for each partition:
    * We first assume that we we receive exactly the number of elements which
    * are less than P.
@@ -307,29 +312,25 @@ inline void psort__calc_final_partition_dist(
    */
   DASH_LOG_TRACE("< psort__calc_final_partition_dist");
 
-  auto const myid       = l_partition_dist.pattern().team().myid();
-  auto const nunits     = l_partition_dist.pattern().team().size();
-  auto const supp_begin = l_partition_dist.begin() + IDX_SUPP(nunits);
-  auto       dist_begin = l_partition_dist.begin() + IDX_DIST(nunits);
+  auto const nunits = std::distance(nlt_first, nlt_last);
 
-  auto const n_my_elements = std::accumulate(
-      dist_begin, dist_begin + nunits, static_cast<size_t>(0));
+  auto const n_my_elements = std::accumulate(nlt_first, nlt_last, value_t{0});
 
   // Calculate the deficit
-  auto my_deficit = acc_partition_count[myid + 1] - n_my_elements;
+  auto my_deficit = partition_size - n_my_elements;
 
   // If there is a deficit, look how much unit j can supply
   for (auto unit = dash::team_unit_t{0}; unit < nunits && my_deficit > 0;
-       ++unit) {
-    auto const supply_unit = *(supp_begin + unit) - *(dist_begin + unit);
+       ++unit, ++nlt_first, ++nle_first) {
+    auto const supply_unit = *nle_first - *nlt_first;
 
     DASH_ASSERT_GE(supply_unit, 0, "invalid supply of target unit");
     if (supply_unit <= my_deficit) {
-      *(dist_begin + unit) += supply_unit;
+      *(nlt_first) += supply_unit;
       my_deficit -= supply_unit;
     }
     else {
-      *(dist_begin + unit) += my_deficit;
+      *(nlt_first) += my_deficit;
       my_deficit = 0;
     }
   }
@@ -337,7 +338,6 @@ inline void psort__calc_final_partition_dist(
   DASH_ASSERT_GE(my_deficit, 0, "Invalid local deficit");
   DASH_LOG_TRACE("psort__calc_final_partition_dist >");
 }
-
 
 }  // namespace detail
 }  // namespace dash

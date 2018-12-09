@@ -430,5 +430,19 @@ TEST_F(SortTest, ExtremValues)
   perform_test(arr.begin(), arr.end());
 }
 
+TEST_F(SortTest, StridedIteratorTest)
+{
+  std::vector<size_t> v(10, 0);
+  std::iota(std::begin(v), std::end(v), 0);
+  auto begin = std::begin(v);
+  auto it_6 = begin + 6;
+
+  auto s_begin = dash::detail::make_strided_iterator(std::begin(v));
+  auto s_it_6 = dash::detail::make_strided_iterator(std::begin(v)) + 3;
+
+  EXPECT_EQ_U(*begin, *s_begin);
+  EXPECT_EQ_U(*it_6, *s_it_6);
+}
+
 // TODO: add additional unit tests with various pattern types and containers
 //

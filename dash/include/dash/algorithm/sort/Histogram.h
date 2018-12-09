@@ -53,6 +53,8 @@ inline const std::vector<std::size_t> psort__local_histogram(
             return b < sortable_hash(a);
           });
 
+      DASH_LOG_TRACE("local histogram", "distance between ub and lb", ub_it - lb_it);
+
       auto const p_left = splitters.left_partition[idx];
       DASH_ASSERT_NE(p_left, dash::team_unit_t{}, "invalid bounding unit");
 

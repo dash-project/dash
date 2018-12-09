@@ -89,72 +89,6 @@ inline void psort__calc_send_count(
   DASH_LOG_TRACE("psort__calc_send_count >");
 }
 
-#if 0
-template <typename ElementType>
-inline void psort__calc_target_displs(
-    Splitter<ElementType> const& p_borders,
-    std::vector<size_t> const&   valid_partitions,
-    dash::Array<size_t>&         g_partition_data)
-{
-  DASH_LOG_TRACE("< psort__calc_target_displs");
-  auto const nunits = g_partition_data.team().size();
-  auto const myid   = g_partition_data.team().myid();
-
-  auto* l_target_displs = &(g_partition_data.local[IDX_TARGET_DISP(nunits)]);
-
-  if (0 == myid) {
-    // Unit 0 always writes to target offset 0
-    std::fill(l_target_displs, l_target_displs + nunits, 0);
-  }
-
-  std::vector<size_t> target_displs(nunits, 0);
-
-  auto const u_blocksize = g_partition_data.lsize();
-
-  // What this algorithm does is basically an exclusive can over all send
-  // counts across all participating units to find the target displacements of
-  // a unit for all partitions. More precisely, each unit has to know the
-  // starting offset in each partition where the elements should be copied to.
-  //
-  // Note: The one-sided approach here is
-  // probably not the most efficient way. Something like dart_exscan should be
-  // more efficient in large scale scenarios
-
-  for (auto const& border_idx : valid_partitions) {
-    auto const   left_u  = p_borders.left_partition[border_idx];
-    auto const   right_u = border_idx + 1;
-    size_t const val =
-        (left_u == myid)
-            ?
-            /* if we are the bounding unit on the left-hand side we can access
-             * the value in local memory */
-            g_partition_data.local[left_u + IDX_SEND_COUNT(nunits)]
-            :
-            /* Otherwise we have to read the send count remotely from the
-             * corresponding offset at the unit's memory */
-            g_partition_data
-                [left_u * u_blocksize + myid + IDX_SEND_COUNT(nunits)];
-    target_displs[right_u] = val + target_displs[left_u];
-
-    if (right_u == myid) {
-      // we are local
-      g_partition_data.local[IDX_TARGET_DISP(nunits) + myid] =
-          target_displs[right_u];
-    }
-    else {
-      auto const target_offset =
-          right_u * u_blocksize + myid + IDX_TARGET_DISP(nunits);
-
-      g_partition_data.async[target_offset].set(&(target_displs[right_u]));
-    }
-  }
-
-  DASH_LOG_TRACE("psort__calc_target_displs >");
-  g_partition_data.async.flush();
-}
-#endif
-
-
 template <class RAI, class Cmp>
 inline void local_sort(RAI first, RAI last, Cmp sort_comp, int nthreads = 1)
 {
@@ -172,31 +106,6 @@ inline void local_sort(RAI first, RAI last, Cmp sort_comp, int nthreads = 1)
   ::std::sort(first, last, sort_comp);
 #endif
 }
-
-template <size_t Stride, class Iter>
-inline void log_strided_range(std::string ctx, std::array<Iter, 3> iter_tuple)
-{
-#ifdef DASH_ENABLE_TRACE_LOGGING
-  using strided_iterator_t = detail::
-      StridedIterator<typename std::vector<size_t>::const_iterator, Stride>;
-
-  strided_iterator_t begin{// first valid iter in range
-                           std::get<0>(iter_tuple),
-                           // initial iter to iterate from
-                           std::get<1>(iter_tuple),
-                           // last valid iter in range
-                           std::get<2>(iter_tuple)};
-  strided_iterator_t end{// first valid iter in range
-                         std::get<0>(iter_tuple),
-                         // initial iter to iterate from
-                         std::get<2>(iter_tuple),
-                         // last valid iter in range
-                         std::get<2>(iter_tuple)};
-
-  DASH_LOG_TRACE_RANGE(ctx.c_str(), begin, end);
-#endif
-}
-
 }  // namespace detail
 }  // namespace dash
 #endif

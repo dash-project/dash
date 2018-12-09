@@ -2,9 +2,9 @@
 #define DASH__ALGORITHM__SORT__TYPES_H
 
 #include <dash/Types.h>
+#include <dash/internal/Macro.h>
 #include <limits>
 #include <vector>
-
 
 #define IDX_DIST(nunits) ((nunits)*0)
 #define IDX_SUPP(nunits) ((nunits)*1)
@@ -70,14 +70,18 @@ struct UnitInfo {
   }
 };
 
-#ifdef DASH_ENABLE_TRACE_LOGGING
-
 template <
     class Iterator,
     typename std::iterator_traits<Iterator>::difference_type Stride>
 class StridedIterator {
   using iterator_traits = std::iterator_traits<Iterator>;
   using stride_t = typename std::iterator_traits<Iterator>::difference_type;
+
+  static_assert(
+      std::is_same<
+          typename std::iterator_traits<Iterator>::iterator_category,
+          std::random_access_iterator_tag>::value,
+      "only random access iterators are supported for strided iteration");
 
 public:
   using value_type        = typename iterator_traits::value_type;
@@ -88,10 +92,8 @@ public:
 
   StridedIterator() = default;
 
-  constexpr StridedIterator(Iterator first, Iterator it, Iterator last)
-    : m_first(first)
-    , m_iter(it)
-    , m_last(last)
+  constexpr StridedIterator(Iterator it)
+    : m_iter(it)
   {
   }
 
@@ -101,71 +103,193 @@ public:
   StridedIterator& operator=(StridedIterator&& other) noexcept = default;
   ~StridedIterator()                                           = default;
 
-  StridedIterator operator++()
+  constexpr StridedIterator& operator++() noexcept
   {
-    increment();
+    increment(1);
     return *this;
   }
 
-  StridedIterator operator--()
+  constexpr StridedIterator operator++(int) const noexcept
   {
-    decrement();
+    StridedIterator tmp = *this;
+    tmp.increment(1);
+    return tmp;
+  }
+
+  constexpr StridedIterator& operator--() noexcept
+  {
+    decrement(1);
     return *this;
   }
 
-  StridedIterator operator++(int) const noexcept
+  constexpr StridedIterator operator--(int) const noexcept
   {
-    Iterator tmp = *this;
-    tmp.increment();
+    StridedIterator tmp = *this;
+    tmp.decrement(1);
     return tmp;
   }
 
-  StridedIterator operator--(int) const noexcept
+  constexpr StridedIterator& operator+=(const difference_type n) noexcept
   {
-    Iterator tmp = *this;
-    tmp.decrement();
+    increment(n);
+  }
+
+  constexpr StridedIterator operator+(const difference_type n) const noexcept
+  {
+    StridedIterator tmp = *this;
+    tmp.increment(n);
     return tmp;
   }
 
-  reference operator*() const noexcept
+  constexpr StridedIterator& operator-=(const difference_type n) noexcept
+  {
+    decrement(n);
+  }
+
+  constexpr StridedIterator operator-(const difference_type n) const noexcept
+  {
+    StridedIterator tmp = *this;
+    tmp.decrement(n);
+    return tmp;
+  }
+
+  constexpr reference operator*() const noexcept
   {
     return *m_iter;
   }
 
 private:
-  void increment()
+  constexpr void increment(difference_type n)
   {
-    for (difference_type i = 0; (m_iter != m_last) && (i < Stride); ++i) {
-      ++m_iter;
-    }
+    std::advance(m_iter, n * Stride);
   }
 
-  void decrement()
+  constexpr void decrement(difference_type n)
   {
-    for (difference_type i = 0; (m_iter != m_first) && (i < Stride); ++i) {
-      --m_iter;
-    }
+    std::advance(m_iter, -n * Stride);
   }
 
 public:
-  friend bool operator==(
-      const StridedIterator& lhs, const StridedIterator rhs) noexcept
-  {
-    return lhs.m_iter == rhs.m_iter;
-  }
-  friend bool operator!=(
-      const StridedIterator& lhs, const StridedIterator rhs) noexcept
-  {
-    return !(lhs.m_iter == rhs.m_iter);
-  }
+  template <class It, typename std::iterator_traits<It>::difference_type S>
+  friend constexpr bool operator==(
+      const StridedIterator<It, S>& lhs,
+      const StridedIterator<It, S>& rhs) noexcept;
+
+  template <class It, typename std::iterator_traits<It>::difference_type S>
+  friend constexpr bool operator!=(
+      const StridedIterator<It, S>& lhs,
+      const StridedIterator<It, S>& rhs) noexcept;
+
+  template <class It, typename std::iterator_traits<It>::difference_type S>
+  friend constexpr bool operator<(
+      const StridedIterator<It, S>& lhs,
+      const StridedIterator<It, S>& rhs) noexcept;
+
+  template <class It, typename std::iterator_traits<It>::difference_type S>
+  friend constexpr bool operator<=(
+      const StridedIterator<It, S>& lhs,
+      const StridedIterator<It, S>& rhs) noexcept;
+
+  template <class It, typename std::iterator_traits<It>::difference_type S>
+  friend constexpr bool operator>(
+      const StridedIterator<It, S>& lhs,
+      const StridedIterator<It, S>& rhs) noexcept;
+
+  template <class It, typename std::iterator_traits<It>::difference_type S>
+  friend constexpr bool operator>=(
+      const StridedIterator<It, S>& lhs,
+      const StridedIterator<It, S>& rhs) noexcept;
+
+  template <class It, typename std::iterator_traits<It>::difference_type S>
+  friend constexpr difference_type operator-(
+      const StridedIterator<It, S>& lhs,
+      const StridedIterator<It, S>& rhs) noexcept;
+
+  template <class It, typename std::iterator_traits<It>::difference_type S>
+  friend constexpr difference_type operator-(
+      const StridedIterator<It, S>& lhs,
+      const StridedIterator<It, S>& rhs) noexcept;
 
 private:
-  Iterator m_first{};
   Iterator m_iter{};
-  Iterator m_last{};
 };
 
-#endif
+template <
+    class Iterator,
+    typename std::iterator_traits<Iterator>::difference_type Stride>
+constexpr bool operator==(
+    const StridedIterator<Iterator, Stride>& lhs,
+    const StridedIterator<Iterator, Stride>& rhs) noexcept
+{
+  return lhs.m_iter == rhs.m_iter;
+}
+
+template <
+    class Iterator,
+    typename std::iterator_traits<Iterator>::difference_type Stride>
+constexpr bool operator!=(
+    const StridedIterator<Iterator, Stride>& lhs,
+    const StridedIterator<Iterator, Stride>& rhs) noexcept
+{
+  return lhs.m_iter != rhs.m_iter;
+}
+
+template <
+    class Iterator,
+    typename std::iterator_traits<Iterator>::difference_type Stride>
+constexpr bool operator<(
+    const StridedIterator<Iterator, Stride>& lhs,
+    const StridedIterator<Iterator, Stride>& rhs) noexcept
+{
+  return (lhs.m_iter < rhs.m_iter);
+}
+
+template <
+    class Iterator,
+    typename std::iterator_traits<Iterator>::difference_type Stride>
+constexpr bool operator<=(
+    const StridedIterator<Iterator, Stride>& lhs,
+    const StridedIterator<Iterator, Stride>& rhs) noexcept
+{
+  return (lhs.m_iter <= rhs.m_iter);
+}
+
+template <
+    class Iterator,
+    typename std::iterator_traits<Iterator>::difference_type Stride>
+constexpr bool operator>(
+    const StridedIterator<Iterator, Stride>& lhs,
+    const StridedIterator<Iterator, Stride>& rhs) noexcept
+{
+  return lhs.m_iter > rhs.m_iter;
+}
+
+template <
+    class Iterator,
+    typename std::iterator_traits<Iterator>::difference_type Stride>
+constexpr bool operator>=(
+    const StridedIterator<Iterator, Stride>& lhs,
+    const StridedIterator<Iterator, Stride>& rhs) noexcept
+{
+  return lhs.m_iter >= rhs.m_iter;
+}
+
+template <
+    class Iterator,
+    typename std::iterator_traits<Iterator>::difference_type Stride>
+constexpr typename StridedIterator<Iterator, Stride>::difference_type
+operator-(
+    const StridedIterator<Iterator, Stride>& lhs,
+    const StridedIterator<Iterator, Stride>& rhs) noexcept
+{
+  return (lhs.m_iter - rhs.m_iter) / Stride;
+}
+
+template <class Iter>
+inline detail::StridedIterator<Iter, 2> make_strided_iterator(Iter it)
+{
+  return detail::StridedIterator<Iter, 2>{it};
+}
 
 }  // namespace detail
 }  // namespace dash
