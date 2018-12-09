@@ -211,6 +211,30 @@ dart_ret_t dart_alltoall(
   dart_team_t      team) DART_NOTHROW;
 
 /**
+ * DART Equivalent to MPI Exscan.
+ *
+ * \param sendbuf The buffer containing the data to be sent by each unit.
+ * \param recvbuf The buffer to hold the received data.
+ * \param nelem   Number of elements sent by each process and received from each unit.
+ *                The value of this parameter must not execeed INT_MAX.
+ * \param dtype   The data type of values in \c sendbuf and \c recvbuf to use in \c op.
+ * \param op      The reduction operation to perform.
+ * \param team    The team to participate in the allreduce.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_data{team}
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_exscan(
+    const void*      sendbuf,
+    void*            recvbuf,
+    size_t           nelem,
+    dart_datatype_t  dtype,
+    dart_operation_t op,
+    dart_team_t      team) DART_NOTHROW;
+
+/**
  * DART Equivalent to MPI_Reduce.
  *
  * \param sendbuf Buffer containing \c nelem elements to reduce using \c op.

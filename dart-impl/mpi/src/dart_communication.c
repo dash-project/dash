@@ -2215,7 +2215,7 @@ dart_ret_t dart_alltoall(
     dart_datatype_t dtype,
     dart_team_t     teamid)
 {
-  DART_LOG_TRACE("dart_alltoall() team:%d nelem:%" PRIu64 "", teamid, nelem);
+  DART_LOG_TRACE("dart_alltoall < team:%d nelem:%" PRIu64 "", teamid, nelem);
 
   CHECK_IS_BASICTYPE(dtype);
 
@@ -2253,6 +2253,50 @@ dart_ret_t dart_alltoall(
       "MPI_Alltoall");
 
   DART_LOG_TRACE("dart_alltoall > team:%d nelem:%" PRIu64 "", teamid, nelem);
+  return DART_OK;
+}
+
+dart_ret_t dart_exscan(
+  const void       * sendbuf,
+  void             * recvbuf,
+  size_t             nelem,
+  dart_datatype_t    dtype,
+  dart_operation_t   op,
+  dart_team_t        team)
+{
+  DART_LOG_TRACE("dart_exscan < team:%d nelem:%" PRIu64 "", team, nelem);
+
+  CHECK_IS_CONTIGUOUSTYPE(dtype);
+
+  MPI_Op       mpi_op    = dart__mpi__op(op, dtype);
+  MPI_Datatype mpi_dtype = dart__mpi__op_type(op, dtype);
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (dart__unlikely(nelem > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_exscan ! failed: nelem (%zu) > INT_MAX", nelem);
+    return DART_ERR_INVAL;
+  }
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_exscan ! unknown team %d", team);
+    return DART_ERR_INVAL;
+  }
+
+  MPI_Comm comm = team_data->comm;
+  CHECK_MPI_RET(
+    MPI_Exscan(
+           sendbuf,   // send buffer
+           recvbuf,   // receive buffer
+           nelem,     // buffer size
+           mpi_dtype, // datatype
+           mpi_op,    // reduce operation
+           comm),
+    "MPI_Exscan");
+
+  DART_LOG_TRACE("dart_exscan > team:%d nelem:%" PRIu64 "", team, nelem);
   return DART_OK;
 }
 

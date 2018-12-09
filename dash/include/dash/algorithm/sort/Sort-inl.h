@@ -89,6 +89,7 @@ inline void psort__calc_send_count(
   DASH_LOG_TRACE("psort__calc_send_count >");
 }
 
+#if 0
 template <typename ElementType>
 inline void psort__calc_target_displs(
     Splitter<ElementType> const& p_borders,
@@ -151,6 +152,7 @@ inline void psort__calc_target_displs(
   DASH_LOG_TRACE("psort__calc_target_displs >");
   g_partition_data.async.flush();
 }
+#endif
 
 
 template <class RAI, class Cmp>
@@ -171,29 +173,27 @@ inline void local_sort(RAI first, RAI last, Cmp sort_comp, int nthreads = 1)
 #endif
 }
 
-
-inline void trace_local_histo(
-    std::string&& ctx, std::vector<size_t> const& histograms)
+template <size_t Stride, class Iter>
+inline void log_strided_range(std::string ctx, std::array<Iter, 3> iter_tuple)
 {
 #ifdef DASH_ENABLE_TRACE_LOGGING
-  using strided_iterator_t = detail::StridedIterator<
-      typename std::vector<size_t>::const_iterator,
-      NLT_NLE_BLOCK>;
+  using strided_iterator_t = detail::
+      StridedIterator<typename std::vector<size_t>::const_iterator, Stride>;
 
-  strided_iterator_t nlt_first{
-      std::begin(histograms), std::begin(histograms), std::end(histograms)};
-  strided_iterator_t nlt_last{
-      std::begin(histograms), std::end(histograms), std::end(histograms)};
+  strided_iterator_t begin{// first valid iter in range
+                           std::get<0>(iter_tuple),
+                           // initial iter to iterate from
+                           std::get<1>(iter_tuple),
+                           // last valid iter in range
+                           std::get<2>(iter_tuple)};
+  strided_iterator_t end{// first valid iter in range
+                         std::get<0>(iter_tuple),
+                         // initial iter to iterate from
+                         std::get<2>(iter_tuple),
+                         // last valid iter in range
+                         std::get<2>(iter_tuple)};
 
-  DASH_LOG_TRACE_RANGE(ctx.c_str(), nlt_first, nlt_last);
-
-  strided_iterator_t nle_first{std::begin(histograms),
-                               std::next(std::begin(histograms)),
-                               std::end(histograms)};
-  strided_iterator_t nle_last{
-      std::begin(histograms), std::end(histograms), std::end(histograms)};
-
-  DASH_LOG_TRACE_RANGE(ctx.c_str(), nle_first, nle_last);
+  DASH_LOG_TRACE_RANGE(ctx.c_str(), begin, end);
 #endif
 }
 
