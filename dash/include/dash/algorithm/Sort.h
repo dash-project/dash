@@ -143,7 +143,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   }
   if (pattern.team().size() == 1) {
     DASH_LOG_TRACE("Sorting on a team with only 1 unit");
-    trace.enter_state("final_local_sort");
+    trace.enter_state("1: final_local_sort");
     detail::local_sort(begin.local(), end.local(), sort_comp, parallelism);
     trace.exit_state("final_local_sort");
     return;
@@ -151,9 +151,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   if (begin >= end) {
     DASH_LOG_TRACE("dash::sort", "empty range");
-    trace.enter_state("final_barrier");
+    trace.enter_state("1: final_barrier");
     pattern.team().barrier();
-    trace.exit_state("final_barrier");
+    trace.exit_state("1: final_barrier");
     return;
   }
 
@@ -278,13 +278,13 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     return;
   }
 
-  trace.exit_state("4:init_temporary_local_data");
-
-  trace.enter_state("5:find_global_partition_borders");
-
   size_t iter = 0;
 
   std::vector<size_t> global_histo(nunits * NLT_NLE_BLOCK, 0);
+
+  trace.exit_state("4:init_temporary_local_data");
+
+  trace.enter_state("5:find_global_partition_borders");
 
   do {
     ++iter;
@@ -349,6 +349,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::begin(lcopy),
       std::end(lcopy),
       sortable_hash);
+
   trace.exit_state("6:final_local_histogram");
 
   DASH_LOG_TRACE_RANGE(
@@ -399,7 +400,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
    * its own bucket.
    */
 
-  trace.enter_state("9:calc_final_partition_dist");
+  trace.enter_state("8:calc_final_partition_dist");
 
   auto first_nlt =
       detail::make_strided_iterator(std::begin(g_partition_data));
@@ -424,9 +425,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::next(std::begin(g_partition_data), IDX_DIST(nunits)),
       std::next(std::begin(g_partition_data), IDX_DIST(nunits) + nunits));
 
-  trace.exit_state("9:calc_final_partition_dist");
+  trace.exit_state("8:calc_final_partition_dist");
 
-  trace.enter_state("11:transpose_final_partition_dist (all-to-all)");
+  trace.enter_state("9:transpose_final_partition_dist (all-to-all)");
 
   DASH_ASSERT_RETURNS(
       dart_alltoall(
@@ -448,7 +449,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::next(
           std::begin(g_partition_data), IDX_TARGET_COUNT(nunits) + nunits));
 
-  trace.enter_state("13:calc_final_send_count");
+  trace.exit_state("9:transpose_final_partition_dist (all-to-all)");
+
+  trace.enter_state("10:calc_final_send_count");
 
   std::vector<std::size_t> l_send_displs(nunits, 0);
 
@@ -475,6 +478,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
             std::begin(g_partition_data), IDX_SEND_COUNT(nunits) + nunits),
         0);
   }
+
+  trace.exit_state("10:calc_final_send_count");
 
 #if defined(DASH_ENABLE_ASSERTIONS) && defined(DASH_ENABLE_TRACE_LOGGING)
   {
@@ -506,9 +511,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   DASH_LOG_TRACE_RANGE(
       "send displs", l_send_displs.begin(), l_send_displs.end());
 
-  trace.exit_state("13:calc_final_send_count");
-
-  trace.enter_state("15:calc_final_target_displs");
+  trace.enter_state("11:calc_final_target_displs");
 
   dash::exclusive_scan(
       // first
@@ -525,7 +528,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       // team
       team);
 
-  trace.exit_state("15:calc_final_target_displs");
+  trace.exit_state("11:calc_final_target_displs");
 
   DASH_LOG_TRACE_RANGE(
       "target displs",
@@ -533,7 +536,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::next(
           std::begin(g_partition_data), IDX_TARGET_DISP(nunits) + nunits));
 
-  trace.enter_state("17:exchange_data (all-to-all)");
+  trace.enter_state("12:exchange_data (all-to-all)");
 
   std::vector<dash::Future<iter_type> > async_copies{};
   async_copies.reserve(p_unit_info.valid_remote_partitions.size());
@@ -599,7 +602,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::end(async_copies),
       [](dash::Future<iter_type>& fut) { fut.wait(); });
 
-  trace.exit_state("17:exchange_data (all-to-all)");
+  trace.exit_state("12:exchange_data (all-to-all)");
 
   /* NOTE: While merging locally sorted sequences is faster than another
    * heavy-weight sort it comes at a cost. std::inplace_merge allocates a
@@ -618,15 +621,15 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
    */
 
 #if (__DASH_SORT__FINAL_STEP_STRATEGY == __DASH_SORT__FINAL_STEP_BY_SORT)
-  trace.enter_state("18:barrier");
+  trace.enter_state("13:barrier");
   team.barrier();
-  trace.exit_state("18:barrier");
+  trace.exit_state("13:barrier");
 
-  trace.enter_state("19:final_local_sort");
+  trace.enter_state("14:final_local_sort");
   detail::local_sort(lbegin, lend, sort_comp, parallelism);
-  trace.exit_state("19:final_local_sort");
+  trace.exit_state("14:final_local_sort");
 #else
-  trace.enter_state("18:calc_recv_count (all-to-all)");
+  trace.enter_state("13:calc_recv_count (all-to-all)");
 
   std::vector<size_t> recv_count(nunits, 0);
 
@@ -647,9 +650,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   DASH_LOG_TRACE_RANGE(
       "recv count", std::begin(recv_count), std::end(recv_count));
 
-  trace.exit_state("18:calc_recv_count (all-to-all)");
+  trace.exit_state("13:calc_recv_count (all-to-all)");
 
-  trace.enter_state("19:merge_local_sequences");
+  trace.enter_state("14:merge_local_sequences");
 
   // merging sorted sequences
   auto nsequences = nunits;
@@ -698,14 +701,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     nsequences -= nmerges;
   }
 
-  trace.exit_state("19:merge_local_sequences");
+  trace.exit_state("14:merge_local_sequences");
 #endif
 
   DASH_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
 
-  trace.enter_state("20:final_barrier");
+  trace.enter_state("15:final_barrier");
   team.barrier();
-  trace.exit_state("20:final_barrier");
+  trace.exit_state("15:final_barrier");
 }
 
 namespace detail {
