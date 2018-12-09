@@ -69,6 +69,11 @@ include_directories(
   ${DASH_DART_IF_INCLUDE_DIR}
 )
 
+# generate version header file
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/dash/Version.h.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/dash/Version.h)
+
 set (ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS} -DDASH)
 
 if (ENABLE_DEFAULT_INDEX_TYPE_LONG)
