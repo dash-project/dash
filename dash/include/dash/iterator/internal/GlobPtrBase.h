@@ -258,11 +258,6 @@ dart_gptr_t increment(
       // and in order to prevent this we set the local offset to 0.
 
       // Log the number of positions beyond the global end.
-      DASH_LOG_ERROR(
-          "GlobPtr.increment",
-          "offset goes beyond the global memory end",
-          offs == lsize ? 1 : offs - lsize + 1);
-
       offs = 0;
       ++current_uid;
       DASH_ASSERT_EQ(
