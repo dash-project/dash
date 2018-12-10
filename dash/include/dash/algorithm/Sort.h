@@ -554,6 +554,11 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   for (auto const& unit : p_unit_info.valid_remote_partitions) {
     std::tie(send_count, send_disp, target_disp) = get_send_info(unit);
+
+    if (0 == send_count) {
+      continue;
+    }
+
     DASH_LOG_TRACE(
         "async copies",
         "send_count",
