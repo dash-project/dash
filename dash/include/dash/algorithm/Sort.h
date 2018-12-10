@@ -180,13 +180,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   detail::local_sort(lbegin, lend, sort_comp, parallelism);
   trace.exit_state("1:initial_local_sort");
 
-  trace.enter_state("2:init_temporary_global_data");
-
-  std::vector<size_t> g_partition_data(nunits * 3);
-
-  trace.exit_state("2:init_temporary_global_data");
-
-  trace.enter_state("3:find_global_min_max");
+  trace.enter_state("2:find_global_min_max");
 
   std::array<mapped_type, 2> min_max_in{
       // local minimum
@@ -211,7 +205,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   auto const min_max = std::make_pair(
       min_max_out[DART_OP_MINMAX_MIN], min_max_out[DART_OP_MINMAX_MAX]);
 
-  trace.exit_state("3:find_global_min_max");
+  trace.exit_state("2:find_global_min_max");
 
   DASH_LOG_TRACE_VAR("global minimum in range", min_max.first);
   DASH_LOG_TRACE_VAR("global maximum in range", min_max.second);
@@ -222,7 +216,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     return;
   }
 
-  trace.enter_state("4:init_temporary_local_data");
+  trace.enter_state("3:init_temporary_local_data");
+
+  std::vector<size_t> g_partition_data(nunits * 3);
 
   // Temporary local buffer (sorted);
   std::vector<value_type> const lcopy(lbegin, lend);
@@ -283,9 +279,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   std::vector<size_t> global_histo(nunits * NLT_NLE_BLOCK, 0);
 
-  trace.exit_state("4:init_temporary_local_data");
+  trace.exit_state("3:init_temporary_local_data");
 
-  trace.enter_state("5:find_global_partition_borders");
+  trace.enter_state("4:find_global_partition_borders");
 
   do {
     ++iter;
@@ -336,11 +332,11 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         p_unit_info, splitters, valid_partitions, global_histo);
   } while (!done);
 
-  trace.exit_state("5:find_global_partition_borders");
+  trace.exit_state("4:find_global_partition_borders");
 
   DASH_LOG_TRACE_VAR("partition borders found after N iterations", iter);
 
-  trace.enter_state("6:final_local_histogram");
+  trace.enter_state("5:final_local_histogram");
 
   /* How many elements are less than P
    * or less than equals P */
@@ -351,7 +347,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::end(lcopy),
       sortable_hash);
 
-  trace.exit_state("6:final_local_histogram");
+  trace.exit_state("5:final_local_histogram");
 
   DASH_LOG_TRACE_RANGE(
       "final splitters",
@@ -368,7 +364,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       detail::make_strided_iterator(std::begin(histograms) + 1),
       detail::make_strided_iterator(std::begin(histograms) + 1) + nunits);
 
-  trace.enter_state("7:transpose_local_histograms (all-to-all)");
+  trace.enter_state("6:transpose_local_histograms (all-to-all)");
 
   DASH_ASSERT_RETURNS(
       dart_alltoall(
@@ -395,13 +391,13 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       detail::make_strided_iterator(std::begin(g_partition_data) + 1) +
           nunits);
 
-  trace.exit_state("7:transpose_local_histograms (all-to-all)");
+  trace.exit_state("6:transpose_local_histograms (all-to-all)");
 
   /* Calculate final distribution per partition. Each unit is responsible for
    * its own bucket.
    */
 
-  trace.enter_state("8:calc_final_partition_dist");
+  trace.enter_state("7:calc_final_partition_dist");
 
   auto first_nlt =
       detail::make_strided_iterator(std::begin(g_partition_data));
@@ -426,9 +422,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::next(std::begin(g_partition_data), IDX_DIST(nunits)),
       std::next(std::begin(g_partition_data), IDX_DIST(nunits) + nunits));
 
-  trace.exit_state("8:calc_final_partition_dist");
+  trace.exit_state("7:calc_final_partition_dist");
 
-  trace.enter_state("9:transpose_final_partition_dist (all-to-all)");
+  trace.enter_state("8:transpose_final_partition_dist (all-to-all)");
 
   DASH_ASSERT_RETURNS(
       dart_alltoall(
@@ -450,9 +446,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::next(
           std::begin(g_partition_data), IDX_TARGET_COUNT(nunits) + nunits));
 
-  trace.exit_state("9:transpose_final_partition_dist (all-to-all)");
+  trace.exit_state("8:transpose_final_partition_dist (all-to-all)");
 
-  trace.enter_state("10:calc_final_send_count");
+  trace.enter_state("9:calc_final_send_count");
 
   std::vector<std::size_t> l_send_displs(nunits, 0);
 
@@ -480,7 +476,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         0);
   }
 
-  trace.exit_state("10:calc_final_send_count");
+  trace.exit_state("9:calc_final_send_count");
 
 #if defined(DASH_ENABLE_ASSERTIONS) && defined(DASH_ENABLE_TRACE_LOGGING)
   {
@@ -512,7 +508,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   DASH_LOG_TRACE_RANGE(
       "send displs", l_send_displs.begin(), l_send_displs.end());
 
-  trace.enter_state("11:calc_final_target_displs");
+  trace.enter_state("10:calc_final_target_displs");
 
   dash::exclusive_scan(
       // first
@@ -529,7 +525,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       // team
       team);
 
-  trace.exit_state("11:calc_final_target_displs");
+  trace.exit_state("10:calc_final_target_displs");
 
   DASH_LOG_TRACE_RANGE(
       "target displs",
@@ -537,7 +533,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::next(
           std::begin(g_partition_data), IDX_TARGET_DISP(nunits) + nunits));
 
-  trace.enter_state("12:exchange_data (all-to-all)");
+  trace.enter_state("11:exchange_data (all-to-all)");
 
   std::vector<dash::Future<iter_type> > async_copies{};
   async_copies.reserve(p_unit_info.valid_remote_partitions.size());
@@ -621,7 +617,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         }
       });
 
-  trace.exit_state("12:exchange_data (all-to-all)");
+  trace.exit_state("11:exchange_data (all-to-all)");
 
   /* NOTE: While merging locally sorted sequences is faster than another
    * heavy-weight sort it comes at a cost. std::inplace_merge allocates a
@@ -640,15 +636,15 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
    */
 
 #if (__DASH_SORT__FINAL_STEP_STRATEGY == __DASH_SORT__FINAL_STEP_BY_SORT)
-  trace.enter_state("13:barrier");
+  trace.enter_state("12:barrier");
   team.barrier();
-  trace.exit_state("13:barrier");
+  trace.exit_state("12:barrier");
 
-  trace.enter_state("14:final_local_sort");
+  trace.enter_state("13:final_local_sort");
   detail::local_sort(lbegin, lend, sort_comp, parallelism);
-  trace.exit_state("14:final_local_sort");
+  trace.exit_state("13:final_local_sort");
 #else
-  trace.enter_state("13:calc_recv_count (all-to-all)");
+  trace.enter_state("12:calc_recv_count (all-to-all)");
 
   std::vector<size_t> recv_count(nunits, 0);
 
@@ -669,9 +665,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   DASH_LOG_TRACE_RANGE(
       "recv count", std::begin(recv_count), std::end(recv_count));
 
-  trace.exit_state("13:calc_recv_count (all-to-all)");
+  trace.exit_state("12:calc_recv_count (all-to-all)");
 
-  trace.enter_state("14:merge_local_sequences");
+  trace.enter_state("13:merge_local_sequences");
 
   // merging sorted sequences
   auto nsequences = nunits;
@@ -744,14 +740,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   chunk_range_t final_range(0, nunits);
   merge_dependencies.at(final_range).wait();
 
-  trace.exit_state("14:merge_local_sequences");
+  trace.exit_state("13:merge_local_sequences");
 #endif
 
   DASH_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
 
-  trace.enter_state("15:final_barrier");
+  trace.enter_state("14:final_barrier");
   team.barrier();
-  trace.exit_state("15:final_barrier");
+  trace.exit_state("14:final_barrier");
 }
 
 namespace detail {
