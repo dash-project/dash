@@ -12,7 +12,7 @@
 
 namespace dash {
 
-namespace detail {
+namespace impl {
 
 template <typename GlobIterT>
 inline UnitInfo psort__find_partition_borders(
@@ -101,7 +101,7 @@ inline UnitInfo psort__find_partition_borders(
 
 template <typename T>
 inline void psort__init_partition_borders(
-    UnitInfo const& unit_info, detail::Splitter<T>& p_borders)
+    UnitInfo const& unit_info, impl::Splitter<T>& p_borders)
 {
   DASH_LOG_TRACE("< psort__init_partition_borders");
 
@@ -339,7 +339,7 @@ inline void psort__calc_final_partition_dist(
   DASH_LOG_TRACE("psort__calc_final_partition_dist >");
 }
 
-}  // namespace detail
+}  // namespace impl
 }  // namespace dash
 
 #endif

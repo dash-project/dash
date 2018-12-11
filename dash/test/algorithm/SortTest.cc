@@ -437,8 +437,8 @@ TEST_F(SortTest, StridedIteratorTest)
   auto begin = std::begin(v);
   auto it_6 = begin + 6;
 
-  auto s_begin = dash::detail::make_strided_iterator(std::begin(v));
-  auto s_it_6 = dash::detail::make_strided_iterator(std::begin(v)) + 3;
+  auto s_begin = dash::impl::make_strided_iterator(std::begin(v));
+  auto s_it_6 = dash::impl::make_strided_iterator(std::begin(v)) + 3;
 
   EXPECT_EQ_U(*begin, *s_begin);
   EXPECT_EQ_U(*it_6, *s_it_6);

@@ -16,7 +16,7 @@
 
 namespace dash {
 
-namespace detail {
+namespace impl {
 
 template <typename ElementType, typename InputIt, typename OutputIt>
 inline void psort__calc_send_count(
@@ -106,6 +106,6 @@ inline void local_sort(RAI first, RAI last, Cmp sort_comp, int nthreads = 1)
   ::std::sort(first, last, sort_comp);
 #endif
 }
-}  // namespace detail
+}  // namespace impl
 }  // namespace dash
 #endif

@@ -16,7 +16,7 @@
 
 namespace dash {
 
-namespace detail {
+namespace impl {
 
 template <typename T>
 struct Splitter {
@@ -294,11 +294,11 @@ operator-(
 }
 
 template <class Iter>
-constexpr detail::StridedIterator<Iter, 2> make_strided_iterator(Iter begin)
+constexpr StridedIterator<Iter, 2> make_strided_iterator(Iter begin)
 {
-  return detail::StridedIterator<Iter, 2>{begin, begin};
+  return StridedIterator<Iter, 2>{begin, begin};
 }
 
-}  // namespace detail
+}  // namespace impl
 }  // namespace dash
 #endif

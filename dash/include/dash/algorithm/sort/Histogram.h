@@ -8,7 +8,7 @@
 #include <numeric>
 
 namespace dash {
-namespace detail {
+namespace impl {
 
 template <typename Iter, typename MappedType, typename SortableHash>
 inline const std::vector<std::size_t> psort__local_histogram(
@@ -100,7 +100,7 @@ inline void psort__global_histogram(
   DASH_LOG_TRACE("psort__global_histogram >");
 }
 
-}  // namespace detail
+}  // namespace impl
 }  // namespace dash
 
 #endif

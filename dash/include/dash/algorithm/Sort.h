@@ -145,7 +145,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   if (pattern.team().size() == 1) {
     DASH_LOG_TRACE("Sorting on a team with only 1 unit");
     trace.enter_state("1: final_local_sort");
-    detail::local_sort(begin.local(), end.local(), sort_comp, parallelism);
+    impl::local_sort(begin.local(), end.local(), sort_comp, parallelism);
     trace.exit_state("final_local_sort");
     return;
   }
@@ -177,7 +177,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   // initial local_sort
   trace.enter_state("1:initial_local_sort");
-  detail::local_sort(lbegin, lend, sort_comp, parallelism);
+  impl::local_sort(lbegin, lend, sort_comp, parallelism);
   trace.exit_state("1:initial_local_sort");
 
   trace.enter_state("2:find_global_min_max");
@@ -224,16 +224,16 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   std::vector<value_type> const lcopy(lbegin, lend);
 
   auto const p_unit_info =
-      detail::psort__find_partition_borders(pattern, begin, end);
+      impl::psort__find_partition_borders(pattern, begin, end);
 
   auto const& acc_partition_count = p_unit_info.acc_partition_count;
 
   auto const nboundaries = nunits - 1;
 
-  detail::Splitter<mapped_type> splitters(
+  impl::Splitter<mapped_type> splitters(
       nboundaries, min_max.first, min_max.second);
 
-  detail::psort__init_partition_borders(p_unit_info, splitters);
+  impl::psort__init_partition_borders(p_unit_info, splitters);
 
   DASH_LOG_TRACE_RANGE(
       "locally sorted array", std::begin(lcopy), std::end(lcopy));
@@ -286,7 +286,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   do {
     ++iter;
 
-    detail::psort__calc_boundaries(splitters);
+    impl::psort__calc_boundaries(splitters);
 
     DASH_LOG_TRACE_VAR("finding partition borders", iter);
 
@@ -295,7 +295,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         std::begin(splitters.threshold),
         std::end(splitters.threshold));
 
-    auto const l_nlt_nle = detail::psort__local_histogram(
+    auto const l_nlt_nle = impl::psort__local_histogram(
         splitters,
         valid_partitions,
         std::begin(lcopy),
@@ -304,16 +304,16 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
     DASH_LOG_TRACE_RANGE(
         "local histogram ( < )",
-        detail::make_strided_iterator(std::begin(l_nlt_nle)),
-        detail::make_strided_iterator(std::begin(l_nlt_nle)) + nunits);
+        impl::make_strided_iterator(std::begin(l_nlt_nle)),
+        impl::make_strided_iterator(std::begin(l_nlt_nle)) + nunits);
 
     DASH_LOG_TRACE_RANGE(
         "local histogram ( <= )",
-        detail::make_strided_iterator(std::begin(l_nlt_nle) + 1),
-        detail::make_strided_iterator(std::begin(l_nlt_nle) + 1) + nunits);
+        impl::make_strided_iterator(std::begin(l_nlt_nle) + 1),
+        impl::make_strided_iterator(std::begin(l_nlt_nle) + 1) + nunits);
 
     // allreduce with implicit barrier
-    detail::psort__global_histogram(
+    impl::psort__global_histogram(
         // first partition
         std::begin(l_nlt_nle),
         // iterator past last valid partition
@@ -328,7 +328,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         std::next(std::begin(global_histo), myid * NLT_NLE_BLOCK),
         std::next(std::begin(global_histo), (myid + 1) * NLT_NLE_BLOCK));
 
-    done = detail::psort__validate_partitions(
+    done = impl::psort__validate_partitions(
         p_unit_info, splitters, valid_partitions, global_histo);
   } while (!done);
 
@@ -340,7 +340,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   /* How many elements are less than P
    * or less than equals P */
-  auto const histograms = detail::psort__local_histogram(
+  auto const histograms = impl::psort__local_histogram(
       splitters,
       valid_partitions,
       std::begin(lcopy),
@@ -356,13 +356,13 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   DASH_LOG_TRACE_RANGE(
       "local histogram ( < )",
-      detail::make_strided_iterator(std::begin(histograms)),
-      detail::make_strided_iterator(std::begin(histograms)) + nunits);
+      impl::make_strided_iterator(std::begin(histograms)),
+      impl::make_strided_iterator(std::begin(histograms)) + nunits);
 
   DASH_LOG_TRACE_RANGE(
       "local histogram ( <= )",
-      detail::make_strided_iterator(std::begin(histograms) + 1),
-      detail::make_strided_iterator(std::begin(histograms) + 1) + nunits);
+      impl::make_strided_iterator(std::begin(histograms) + 1),
+      impl::make_strided_iterator(std::begin(histograms) + 1) + nunits);
 
   trace.enter_state("6:transpose_local_histograms (all-to-all)");
 
@@ -382,13 +382,13 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   DASH_LOG_TRACE_RANGE(
       "initial partition distribution",
-      detail::make_strided_iterator(std::begin(g_partition_data)),
-      detail::make_strided_iterator(std::begin(g_partition_data)) + nunits);
+      impl::make_strided_iterator(std::begin(g_partition_data)),
+      impl::make_strided_iterator(std::begin(g_partition_data)) + nunits);
 
   DASH_LOG_TRACE_RANGE(
       "initial partition supply",
-      detail::make_strided_iterator(std::begin(g_partition_data) + 1),
-      detail::make_strided_iterator(std::begin(g_partition_data) + 1) +
+      impl::make_strided_iterator(std::begin(g_partition_data) + 1),
+      impl::make_strided_iterator(std::begin(g_partition_data) + 1) +
           nunits);
 
   trace.exit_state("6:transpose_local_histograms (all-to-all)");
@@ -400,12 +400,12 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   trace.enter_state("7:calc_final_partition_dist");
 
   auto first_nlt =
-      detail::make_strided_iterator(std::begin(g_partition_data));
+      impl::make_strided_iterator(std::begin(g_partition_data));
 
   auto first_nle =
-      detail::make_strided_iterator(std::next(std::begin(g_partition_data)));
+      impl::make_strided_iterator(std::next(std::begin(g_partition_data)));
 
-  detail::psort__calc_final_partition_dist(
+  impl::psort__calc_final_partition_dist(
       first_nlt,
       first_nlt + nunits,
       first_nle,
@@ -413,8 +413,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   // let us now collapse the data as the nle is not needed anymore
   std::move(
-      detail::make_strided_iterator(std::begin(g_partition_data)) + 1,
-      detail::make_strided_iterator(std::begin(g_partition_data)) + nunits,
+      impl::make_strided_iterator(std::begin(g_partition_data)) + 1,
+      impl::make_strided_iterator(std::begin(g_partition_data)) + nunits,
       std::next(std::begin(g_partition_data)));
 
   DASH_LOG_TRACE_RANGE(
@@ -458,7 +458,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     auto l_send_count =
         std::next(std::begin(g_partition_data), IDX_SEND_COUNT(nunits));
 
-    detail::psort__calc_send_count(
+    impl::psort__calc_send_count(
         splitters, valid_partitions, l_target_count, l_send_count);
 
     // exclusive scan using partial sum
@@ -641,7 +641,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   trace.exit_state("12:barrier");
 
   trace.enter_state("13:final_local_sort");
-  detail::local_sort(lbegin, lend, sort_comp, parallelism);
+  impl::local_sort(lbegin, lend, sort_comp, parallelism);
   trace.exit_state("13:final_local_sort");
 #else
   trace.enter_state("12:calc_recv_count (all-to-all)");
@@ -750,7 +750,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   trace.exit_state("14:final_barrier");
 }
 
-namespace detail {
+namespace impl {
 template <typename T>
 struct identity_t : std::unary_function<T, T> {
   constexpr T&& operator()(T&& t) const noexcept
@@ -759,7 +759,7 @@ struct identity_t : std::unary_function<T, T> {
     return std::forward<T>(t);
   }
 };
-}  // namespace detail
+}  // namespace impl
 
 template <class GlobRandomIt>
 inline void sort(GlobRandomIt begin, GlobRandomIt end)
@@ -767,7 +767,7 @@ inline void sort(GlobRandomIt begin, GlobRandomIt end)
   using value_t = typename std::remove_cv<
       typename dash::iterator_traits<GlobRandomIt>::value_type>::type;
 
-  dash::sort(begin, end, detail::identity_t<value_t const&>());
+  dash::sort(begin, end, impl::identity_t<value_t const&>());
 }
 
 #endif  // DOXYGEN
