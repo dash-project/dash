@@ -603,7 +603,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
     // The std::async is necessary to convert to std::future<void>
     merge_dependencies.emplace(
-        unit_range, std::async(std::launch::async, [&] { fut.wait(); }));
+        unit_range,
+        std::async(
+            std::launch::async, [f = std::move(fut)] () mutable { f.wait(); }));
   }
 
   std::tie(send_count, send_disp, target_disp) = get_send_info(myid);
