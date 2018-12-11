@@ -143,9 +143,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     return;
   }
   if (pattern.team().size() == 1) {
-    DASH_LOG_TRACE("Sorting on a team with only 1 unit");
+    DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
     trace.enter_state("1: final_local_sort");
-    detail::local_sort(begin.local(), end.local(), sort_comp, parallelism);
+    impl::local_sort(begin.local(), end.local(), sort_comp, parallelism);
     trace.exit_state("final_local_sort");
     return;
   }
@@ -177,16 +177,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   // initial local_sort
   trace.enter_state("1:initial_local_sort");
-  detail::local_sort(lbegin, lend, sort_comp, parallelism);
+  impl::local_sort(lbegin, lend, sort_comp, parallelism);
   trace.exit_state("1:initial_local_sort");
 
-  trace.enter_state("2:init_temporary_global_data");
-
-  std::vector<size_t> g_partition_data(nunits * 3);
-
-  trace.exit_state("2:init_temporary_global_data");
-
-  trace.enter_state("3:find_global_min_max");
+  trace.enter_state("2:find_global_min_max");
 
   std::array<mapped_type, 2> min_max_in{
       // local minimum
@@ -211,7 +205,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   auto const min_max = std::make_pair(
       min_max_out[DART_OP_MINMAX_MIN], min_max_out[DART_OP_MINMAX_MAX]);
 
-  trace.exit_state("3:find_global_min_max");
+  trace.exit_state("2:find_global_min_max");
 
   DASH_LOG_TRACE_VAR("global minimum in range", min_max.first);
   DASH_LOG_TRACE_VAR("global maximum in range", min_max.second);
@@ -222,22 +216,24 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     return;
   }
 
-  trace.enter_state("4:init_temporary_local_data");
+  trace.enter_state("3:init_temporary_local_data");
+
+  std::vector<size_t> g_partition_data(nunits * 3);
 
   // Temporary local buffer (sorted);
   std::vector<value_type> const lcopy(lbegin, lend);
 
   auto const p_unit_info =
-      detail::psort__find_partition_borders(pattern, begin, end);
+      impl::psort__find_partition_borders(pattern, begin, end);
 
   auto const& acc_partition_count = p_unit_info.acc_partition_count;
 
   auto const nboundaries = nunits - 1;
 
-  detail::Splitter<mapped_type> splitters(
+  impl::Splitter<mapped_type> splitters(
       nboundaries, min_max.first, min_max.second);
 
-  detail::psort__init_partition_borders(p_unit_info, splitters);
+  impl::psort__init_partition_borders(p_unit_info, splitters);
 
   DASH_LOG_TRACE_RANGE(
       "locally sorted array", std::begin(lcopy), std::end(lcopy));
@@ -283,14 +279,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   std::vector<size_t> global_histo(nunits * NLT_NLE_BLOCK, 0);
 
-  trace.exit_state("4:init_temporary_local_data");
+  trace.exit_state("3:init_temporary_local_data");
 
-  trace.enter_state("5:find_global_partition_borders");
+  trace.enter_state("4:find_global_partition_borders");
 
   do {
     ++iter;
 
-    detail::psort__calc_boundaries(splitters);
+    impl::psort__calc_boundaries(splitters);
 
     DASH_LOG_TRACE_VAR("finding partition borders", iter);
 
@@ -299,7 +295,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         std::begin(splitters.threshold),
         std::end(splitters.threshold));
 
-    auto const l_nlt_nle = detail::psort__local_histogram(
+    auto const l_nlt_nle = impl::psort__local_histogram(
         splitters,
         valid_partitions,
         std::begin(lcopy),
@@ -308,16 +304,16 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
     DASH_LOG_TRACE_RANGE(
         "local histogram ( < )",
-        detail::make_strided_iterator(std::begin(l_nlt_nle)),
-        detail::make_strided_iterator(std::begin(l_nlt_nle)) + nunits);
+        impl::make_strided_iterator(std::begin(l_nlt_nle)),
+        impl::make_strided_iterator(std::begin(l_nlt_nle)) + nunits);
 
     DASH_LOG_TRACE_RANGE(
         "local histogram ( <= )",
-        detail::make_strided_iterator(std::begin(l_nlt_nle) + 1),
-        detail::make_strided_iterator(std::begin(l_nlt_nle) + 1) + nunits);
+        impl::make_strided_iterator(std::begin(l_nlt_nle) + 1),
+        impl::make_strided_iterator(std::begin(l_nlt_nle) + 1) + nunits);
 
     // allreduce with implicit barrier
-    detail::psort__global_histogram(
+    impl::psort__global_histogram(
         // first partition
         std::begin(l_nlt_nle),
         // iterator past last valid partition
@@ -332,26 +328,26 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         std::next(std::begin(global_histo), myid * NLT_NLE_BLOCK),
         std::next(std::begin(global_histo), (myid + 1) * NLT_NLE_BLOCK));
 
-    done = detail::psort__validate_partitions(
+    done = impl::psort__validate_partitions(
         p_unit_info, splitters, valid_partitions, global_histo);
   } while (!done);
 
-  trace.exit_state("5:find_global_partition_borders");
+  trace.exit_state("4:find_global_partition_borders");
 
   DASH_LOG_TRACE_VAR("partition borders found after N iterations", iter);
 
-  trace.enter_state("6:final_local_histogram");
+  trace.enter_state("5:final_local_histogram");
 
   /* How many elements are less than P
    * or less than equals P */
-  auto const histograms = detail::psort__local_histogram(
+  auto const histograms = impl::psort__local_histogram(
       splitters,
       valid_partitions,
       std::begin(lcopy),
       std::end(lcopy),
       sortable_hash);
 
-  trace.exit_state("6:final_local_histogram");
+  trace.exit_state("5:final_local_histogram");
 
   DASH_LOG_TRACE_RANGE(
       "final splitters",
@@ -360,15 +356,15 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   DASH_LOG_TRACE_RANGE(
       "local histogram ( < )",
-      detail::make_strided_iterator(std::begin(histograms)),
-      detail::make_strided_iterator(std::begin(histograms)) + nunits);
+      impl::make_strided_iterator(std::begin(histograms)),
+      impl::make_strided_iterator(std::begin(histograms)) + nunits);
 
   DASH_LOG_TRACE_RANGE(
       "local histogram ( <= )",
-      detail::make_strided_iterator(std::begin(histograms) + 1),
-      detail::make_strided_iterator(std::begin(histograms) + 1) + nunits);
+      impl::make_strided_iterator(std::begin(histograms) + 1),
+      impl::make_strided_iterator(std::begin(histograms) + 1) + nunits);
 
-  trace.enter_state("7:transpose_local_histograms (all-to-all)");
+  trace.enter_state("6:transpose_local_histograms (all-to-all)");
 
   DASH_ASSERT_RETURNS(
       dart_alltoall(
@@ -386,30 +382,30 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   DASH_LOG_TRACE_RANGE(
       "initial partition distribution",
-      detail::make_strided_iterator(std::begin(g_partition_data)),
-      detail::make_strided_iterator(std::begin(g_partition_data)) + nunits);
+      impl::make_strided_iterator(std::begin(g_partition_data)),
+      impl::make_strided_iterator(std::begin(g_partition_data)) + nunits);
 
   DASH_LOG_TRACE_RANGE(
       "initial partition supply",
-      detail::make_strided_iterator(std::begin(g_partition_data) + 1),
-      detail::make_strided_iterator(std::begin(g_partition_data) + 1) +
+      impl::make_strided_iterator(std::begin(g_partition_data) + 1),
+      impl::make_strided_iterator(std::begin(g_partition_data) + 1) +
           nunits);
 
-  trace.exit_state("7:transpose_local_histograms (all-to-all)");
+  trace.exit_state("6:transpose_local_histograms (all-to-all)");
 
   /* Calculate final distribution per partition. Each unit is responsible for
    * its own bucket.
    */
 
-  trace.enter_state("8:calc_final_partition_dist");
+  trace.enter_state("7:calc_final_partition_dist");
 
   auto first_nlt =
-      detail::make_strided_iterator(std::begin(g_partition_data));
+      impl::make_strided_iterator(std::begin(g_partition_data));
 
   auto first_nle =
-      detail::make_strided_iterator(std::next(std::begin(g_partition_data)));
+      impl::make_strided_iterator(std::next(std::begin(g_partition_data)));
 
-  detail::psort__calc_final_partition_dist(
+  impl::psort__calc_final_partition_dist(
       first_nlt,
       first_nlt + nunits,
       first_nle,
@@ -417,8 +413,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   // let us now collapse the data as the nle is not needed anymore
   std::move(
-      detail::make_strided_iterator(std::begin(g_partition_data)) + 1,
-      detail::make_strided_iterator(std::begin(g_partition_data)) + nunits,
+      impl::make_strided_iterator(std::begin(g_partition_data)) + 1,
+      impl::make_strided_iterator(std::begin(g_partition_data)) + nunits,
       std::next(std::begin(g_partition_data)));
 
   DASH_LOG_TRACE_RANGE(
@@ -426,9 +422,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::next(std::begin(g_partition_data), IDX_DIST(nunits)),
       std::next(std::begin(g_partition_data), IDX_DIST(nunits) + nunits));
 
-  trace.exit_state("8:calc_final_partition_dist");
+  trace.exit_state("7:calc_final_partition_dist");
 
-  trace.enter_state("9:transpose_final_partition_dist (all-to-all)");
+  trace.enter_state("8:transpose_final_partition_dist (all-to-all)");
 
   DASH_ASSERT_RETURNS(
       dart_alltoall(
@@ -450,9 +446,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::next(
           std::begin(g_partition_data), IDX_TARGET_COUNT(nunits) + nunits));
 
-  trace.exit_state("9:transpose_final_partition_dist (all-to-all)");
+  trace.exit_state("8:transpose_final_partition_dist (all-to-all)");
 
-  trace.enter_state("10:calc_final_send_count");
+  trace.enter_state("9:calc_final_send_count");
 
   std::vector<std::size_t> l_send_displs(nunits, 0);
 
@@ -462,7 +458,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     auto l_send_count =
         std::next(std::begin(g_partition_data), IDX_SEND_COUNT(nunits));
 
-    detail::psort__calc_send_count(
+    impl::psort__calc_send_count(
         splitters, valid_partitions, l_target_count, l_send_count);
 
     // exclusive scan using partial sum
@@ -480,7 +476,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         0);
   }
 
-  trace.exit_state("10:calc_final_send_count");
+  trace.exit_state("9:calc_final_send_count");
 
 #if defined(DASH_ENABLE_ASSERTIONS) && defined(DASH_ENABLE_TRACE_LOGGING)
   {
@@ -512,7 +508,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   DASH_LOG_TRACE_RANGE(
       "send displs", l_send_displs.begin(), l_send_displs.end());
 
-  trace.enter_state("11:calc_final_target_displs");
+  trace.enter_state("10:calc_final_target_displs");
 
   dash::exclusive_scan(
       // first
@@ -529,7 +525,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       // team
       team);
 
-  trace.exit_state("11:calc_final_target_displs");
+  trace.exit_state("10:calc_final_target_displs");
 
   DASH_LOG_TRACE_RANGE(
       "target displs",
@@ -537,7 +533,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::next(
           std::begin(g_partition_data), IDX_TARGET_DISP(nunits) + nunits));
 
-  trace.enter_state("12:exchange_data (all-to-all)");
+  trace.enter_state("11:exchange_data (all-to-all)");
 
   std::vector<dash::Future<iter_type> > async_copies{};
   async_copies.reserve(p_unit_info.valid_remote_partitions.size());
@@ -623,7 +619,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         }
       });
 
-  trace.exit_state("12:exchange_data (all-to-all)");
+  trace.exit_state("11:exchange_data (all-to-all)");
 
   /* NOTE: While merging locally sorted sequences is faster than another
    * heavy-weight sort it comes at a cost. std::inplace_merge allocates a
@@ -642,15 +638,15 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
    */
 
 #if (__DASH_SORT__FINAL_STEP_STRATEGY == __DASH_SORT__FINAL_STEP_BY_SORT)
-  trace.enter_state("13:barrier");
+  trace.enter_state("12:barrier");
   team.barrier();
-  trace.exit_state("13:barrier");
+  trace.exit_state("12:barrier");
 
-  trace.enter_state("14:final_local_sort");
-  detail::local_sort(lbegin, lend, sort_comp, parallelism);
-  trace.exit_state("14:final_local_sort");
+  trace.enter_state("13:final_local_sort");
+  impl::local_sort(lbegin, lend, sort_comp, parallelism);
+  trace.exit_state("13:final_local_sort");
 #else
-  trace.enter_state("13:calc_recv_count (all-to-all)");
+  trace.enter_state("12:calc_recv_count (all-to-all)");
 
   std::vector<size_t> recv_count(nunits, 0);
 
@@ -671,9 +667,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   DASH_LOG_TRACE_RANGE(
       "recv count", std::begin(recv_count), std::end(recv_count));
 
-  trace.exit_state("13:calc_recv_count (all-to-all)");
+  trace.exit_state("12:calc_recv_count (all-to-all)");
 
-  trace.enter_state("14:merge_local_sequences");
+  trace.enter_state("13:merge_local_sequences");
 
   // merging sorted sequences
   auto nsequences = nunits;
@@ -746,17 +742,17 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   chunk_range_t final_range(0, nunits);
   merge_dependencies.at(final_range).wait();
 
-  trace.exit_state("14:merge_local_sequences");
+  trace.exit_state("13:merge_local_sequences");
 #endif
 
   DASH_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
 
-  trace.enter_state("15:final_barrier");
+  trace.enter_state("14:final_barrier");
   team.barrier();
-  trace.exit_state("15:final_barrier");
+  trace.exit_state("14:final_barrier");
 }
 
-namespace detail {
+namespace impl {
 template <typename T>
 struct identity_t : std::unary_function<T, T> {
   constexpr T&& operator()(T&& t) const noexcept
@@ -765,7 +761,7 @@ struct identity_t : std::unary_function<T, T> {
     return std::forward<T>(t);
   }
 };
-}  // namespace detail
+}  // namespace impl
 
 template <class GlobRandomIt>
 inline void sort(GlobRandomIt begin, GlobRandomIt end)
@@ -773,7 +769,7 @@ inline void sort(GlobRandomIt begin, GlobRandomIt end)
   using value_t = typename std::remove_cv<
       typename dash::iterator_traits<GlobRandomIt>::value_type>::type;
 
-  dash::sort(begin, end, detail::identity_t<value_t const&>());
+  dash::sort(begin, end, impl::identity_t<value_t const&>());
 }
 
 #endif  // DOXYGEN
