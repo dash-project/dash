@@ -143,7 +143,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     return;
   }
   if (pattern.team().size() == 1) {
-    DASH_LOG_TRACE("Sorting on a team with only 1 unit");
+    DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
     trace.enter_state("1: final_local_sort");
     impl::local_sort(begin.local(), end.local(), sort_comp, parallelism);
     trace.exit_state("final_local_sort");

@@ -20,7 +20,7 @@ inline UnitInfo psort__find_partition_borders(
     GlobIterT const                         begin,
     GlobIterT const                         end)
 {
-  DASH_LOG_TRACE("< psort__find_partition_borders");
+  DASH_LOG_TRACE("dash::sort", "< psort__find_partition_borders");
 
   auto const nunits = pattern.team().size();
   auto const myid   = pattern.team().myid();
@@ -95,7 +95,7 @@ inline UnitInfo psort__find_partition_borders(
     }
   }
 
-  DASH_LOG_TRACE("psort__find_partition_borders >");
+  DASH_LOG_TRACE("dash::sort", "psort__find_partition_borders >");
   return unit_info;
 }
 
@@ -103,7 +103,7 @@ template <typename T>
 inline void psort__init_partition_borders(
     UnitInfo const& unit_info, impl::Splitter<T>& p_borders)
 {
-  DASH_LOG_TRACE("< psort__init_partition_borders");
+  DASH_LOG_TRACE("dash::sort", "< psort__init_partition_borders");
 
   auto const& acc_partition_count = unit_info.acc_partition_count;
 
@@ -178,13 +178,13 @@ inline void psort__init_partition_borders(
       p_borders.is_skipped.end(),
       p_borders.is_stable.begin());
 
-  DASH_LOG_TRACE("psort__init_partition_borders >");
+  DASH_LOG_TRACE("dash::sort", "psort__init_partition_borders >");
 }
 
 template <typename T>
 inline void psort__calc_boundaries(Splitter<T>& splitters)
 {
-  DASH_LOG_TRACE("< psort__calc_boundaries ");
+  DASH_LOG_TRACE("dash::sort", "< psort__calc_boundaries ");
 
   // recalculate partition boundaries
   for (std::size_t idx = 0; idx < splitters.count(); ++idx) {
@@ -213,7 +213,7 @@ inline void psort__calc_boundaries(Splitter<T>& splitters)
       }
     }
   }
-  DASH_LOG_TRACE("psort__calc_boundaries >");
+  DASH_LOG_TRACE("dash::sort", "psort__calc_boundaries >");
 }
 
 template <typename ElementType>
@@ -223,7 +223,7 @@ inline bool psort__validate_partitions(
     std::vector<size_t> const& valid_partitions,
     std::vector<size_t> const& global_histo)
 {
-  DASH_LOG_TRACE("< psort__validate_partitions");
+  DASH_LOG_TRACE("dash::sort", "< psort__validate_partitions");
 
   if (valid_partitions.empty()) {
     return true;
@@ -291,7 +291,7 @@ inline bool psort__validate_partitions(
   auto const nonstable_it = std::find(
       std::begin(splitters.is_stable), std::end(splitters.is_stable), false);
 
-  DASH_LOG_TRACE("psort__validate_partitions >");
+  DASH_LOG_TRACE("dash::sort", "psort__validate_partitions >");
   // exit condition
   return nonstable_it == splitters.is_stable.cend();
 }
@@ -310,7 +310,7 @@ inline void psort__calc_final_partition_dist(
    * are less than P.
    * The output are the end offsets for each partition
    */
-  DASH_LOG_TRACE("< psort__calc_final_partition_dist");
+  DASH_LOG_TRACE("dash::sort", "< psort__calc_final_partition_dist");
 
   auto const nunits = std::distance(nlt_first, nlt_last);
 
@@ -336,7 +336,7 @@ inline void psort__calc_final_partition_dist(
   }
 
   DASH_ASSERT_GE(my_deficit, 0, "Invalid local deficit");
-  DASH_LOG_TRACE("psort__calc_final_partition_dist >");
+  DASH_LOG_TRACE("dash::sort", "psort__calc_final_partition_dist >");
 }
 
 }  // namespace impl

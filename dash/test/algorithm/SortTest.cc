@@ -339,7 +339,7 @@ TEST_F(SortTest, PlausibilityWithStdSort)
   auto const NTask    = dash::size();
   size_t     i;
 
-  using value_t = int;
+  using value_t = int64_t;
 
   dash::Array<value_t> array(num_local_elem * NTask);
   std::vector<value_t> vec(num_local_elem * NTask);

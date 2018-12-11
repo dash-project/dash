@@ -18,7 +18,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
     Iter                        data_lend,
     SortableHash                sortable_hash)
 {
-  DASH_LOG_TRACE("< psort__local_histogram");
+  DASH_LOG_TRACE("dash::sort", "< psort__local_histogram");
 
   auto const nborders = splitters.count();
   // The first element is 0 and the last element is the total number of local
@@ -53,7 +53,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
             return b < sortable_hash(a);
           });
 
-      DASH_LOG_TRACE("local histogram", "distance between ub and lb", ub_it - lb_it);
+      DASH_LOG_TRACE("dash::sort", "local histogram", "distance between ub and lb", ub_it - lb_it);
 
       auto const p_left = splitters.left_partition[idx];
       DASH_ASSERT_NE(p_left, dash::team_unit_t{}, "invalid bounding unit");
@@ -74,7 +74,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
         n_l_elem);
   }
 
-  DASH_LOG_TRACE("psort__local_histogram >");
+  DASH_LOG_TRACE("dash::sort", "psort__local_histogram >");
   return l_nlt_nle;
 }
 
@@ -85,7 +85,7 @@ inline void psort__global_histogram(
     OutputIt    output_it,
     dart_team_t dart_team_id)
 {
-  DASH_LOG_TRACE("< psort__global_histogram ");
+  DASH_LOG_TRACE("dash::sort", "< psort__global_histogram ");
 
   auto const nels = std::distance(local_histo_begin, local_histo_end);
 
@@ -97,7 +97,7 @@ inline void psort__global_histogram(
       DART_OP_SUM,
       dart_team_id);
 
-  DASH_LOG_TRACE("psort__global_histogram >");
+  DASH_LOG_TRACE("dash::sort", "psort__global_histogram >");
 }
 
 }  // namespace impl
