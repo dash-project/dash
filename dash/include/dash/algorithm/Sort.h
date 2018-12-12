@@ -221,7 +221,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   std::vector<size_t> g_partition_data(nunits * 3);
 
   // Temporary local buffer (sorted);
-  std::vector<value_type> const lcopy(lbegin, lend);
+  std::vector<value_type> lcopy(lbegin, lend);
 
   auto const p_unit_info =
       impl::psort__find_partition_borders(pattern, begin, end);
@@ -388,8 +388,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   DASH_LOG_TRACE_RANGE(
       "initial partition supply",
       impl::make_strided_iterator(std::begin(g_partition_data) + 1),
-      impl::make_strided_iterator(std::begin(g_partition_data) + 1) +
-          nunits);
+      impl::make_strided_iterator(std::begin(g_partition_data) + 1) + nunits);
 
   trace.exit_state("6:transpose_local_histograms (all-to-all)");
 
@@ -399,8 +398,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   trace.enter_state("7:calc_final_partition_dist");
 
-  auto first_nlt =
-      impl::make_strided_iterator(std::begin(g_partition_data));
+  auto first_nlt = impl::make_strided_iterator(std::begin(g_partition_data));
 
   auto first_nle =
       impl::make_strided_iterator(std::next(std::begin(g_partition_data)));
@@ -411,7 +409,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       first_nle,
       acc_partition_count[myid + 1]);
 
-  // let us now collapse the data as the nle is not needed anymore
+  // let us now collapse the data into a contiguous range with unit stride
   std::move(
       impl::make_strided_iterator(std::begin(g_partition_data)) + 1,
       impl::make_strided_iterator(std::begin(g_partition_data)) + nunits,
@@ -423,6 +421,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::next(std::begin(g_partition_data), IDX_DIST(nunits) + nunits));
 
   trace.exit_state("7:calc_final_partition_dist");
+
+  /********************************************************************/
+  /****** Target Distribution *****************************************/
+  /********************************************************************/
 
   trace.enter_state("8:transpose_final_partition_dist (all-to-all)");
 
@@ -441,83 +443,105 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       DART_OK);
 
   DASH_LOG_TRACE_RANGE(
-      "final target count",
+      "target distribution",
       std::next(std::begin(g_partition_data), IDX_TARGET_COUNT(nunits)),
       std::next(
           std::begin(g_partition_data), IDX_TARGET_COUNT(nunits) + nunits));
 
   trace.exit_state("8:transpose_final_partition_dist (all-to-all)");
 
+  /********************************************************************/
+  /****** Source Count ************************************************/
+  /********************************************************************/
+
   trace.enter_state("9:calc_final_send_count");
 
-  std::vector<std::size_t> l_send_displs(nunits, 0);
+  auto l_send_count =
+      std::next(std::begin(g_partition_data), IDX_SRC_COUNT(nunits));
 
   if (n_l_elem > 0) {
     auto const l_target_count =
         std::next(std::begin(g_partition_data), IDX_TARGET_COUNT(nunits));
-    auto l_send_count =
-        std::next(std::begin(g_partition_data), IDX_SEND_COUNT(nunits));
 
     impl::psort__calc_send_count(
         splitters, valid_partitions, l_target_count, l_send_count);
-
-    // exclusive scan using partial sum
-    std::partial_sum(
-        l_send_count,
-        std::next(l_send_count, nunits - 1),
-        std::next(std::begin(l_send_displs)),
-        std::plus<size_t>());
   }
   else {
     std::fill(
-        std::next(std::begin(g_partition_data), IDX_SEND_COUNT(nunits)),
+        std::next(std::begin(g_partition_data), IDX_SRC_COUNT(nunits)),
         std::next(
-            std::begin(g_partition_data), IDX_SEND_COUNT(nunits) + nunits),
+            std::begin(g_partition_data), IDX_SRC_COUNT(nunits) + nunits),
         0);
   }
 
+  DASH_LOG_TRACE_RANGE(
+      "source count",
+      std::next(std::begin(g_partition_data), IDX_SRC_COUNT(nunits)),
+      std::next(
+          std::begin(g_partition_data), IDX_SRC_COUNT(nunits) + nunits));
+
   trace.exit_state("9:calc_final_send_count");
 
+  /********************************************************************/
+  /****** Target Count ************************************************/
+  /********************************************************************/
+
+  auto* l_target_count =
+      std::next(g_partition_data.data(), IDX_TARGET_COUNT(nunits));
+
+  DASH_ASSERT_RETURNS(
+      dart_alltoall(
+          // send buffer
+          std::next(g_partition_data.data(), IDX_SRC_COUNT(nunits)),
+          // receive buffer
+          l_target_count,
+          // we send / receive 1 element to / from each process
+          1,
+          // dtype
+          dash::dart_datatype<size_t>::value,
+          // teamid
+          team.dart_id()),
+      DART_OK);
+
+  std::vector<std::size_t> l_target_displs(nunits, 0);
+
+  // exclusive scan using partial sum
+  std::partial_sum(
+      l_target_count,
+      std::next(l_target_count, nunits - 1),
+      std::next(std::begin(l_target_displs)),
+      std::plus<size_t>());
+
 #if defined(DASH_ENABLE_ASSERTIONS) && defined(DASH_ENABLE_TRACE_LOGGING)
-  {
-    std::vector<size_t> chksum(nunits, 0);
-
-    DASH_ASSERT_RETURNS(
-        dart_allreduce(
-            std::next(g_partition_data.data(), IDX_SEND_COUNT(nunits)),
-            chksum.data(),
-            nunits,
-            dart_datatype<size_t>::value,
-            DART_OP_SUM,
-            team.dart_id()),
-        DART_OK);
-
-    DASH_ASSERT_EQ(
-        chksum[myid.id],
-        n_l_elem,
-        "send count must match the capacity of the unit");
-  }
+  DASH_ASSERT_EQ(
+      std::accumulate(
+          l_target_count, l_target_count + nunits, std::size_t{0}),
+      n_l_elem,
+      "invalid target count");
 #endif
 
   DASH_LOG_TRACE_RANGE(
-      "send count",
-      std::next(std::begin(g_partition_data), IDX_SEND_COUNT(nunits)),
-      std::next(
-          std::begin(g_partition_data), IDX_SEND_COUNT(nunits) + nunits));
+      "target count", l_target_count, l_target_count + nunits);
 
   DASH_LOG_TRACE_RANGE(
-      "send displs", l_send_displs.begin(), l_send_displs.end());
+      "target displs", l_target_displs.begin(), l_target_displs.end());
+
+  /********************************************************************/
+  /****** Source Displs ***********************************************/
+  /********************************************************************/
 
   trace.enter_state("10:calc_final_target_displs");
 
+  auto l_src_displs =
+      std::next(std::begin(g_partition_data), IDX_DISP(nunits));
+
   dash::exclusive_scan(
       // first
-      std::next(std::begin(g_partition_data), IDX_SEND_COUNT(nunits)),
+      std::next(std::begin(g_partition_data), IDX_TARGET_COUNT(nunits)),
       // last
-      std::next(
-          std::begin(g_partition_data), IDX_SEND_COUNT(nunits) + nunits),
+      std::next(std::begin(g_partition_data), IDX_TARGET_COUNT(nunits) + nunits),
       // out
-      std::next(std::begin(g_partition_data), IDX_TARGET_DISP(nunits)),
+      std::addressof(*l_src_displs),
       // init
       std::size_t{0},
       // op
@@ -525,57 +549,60 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       // team
       team);
 
-  trace.exit_state("10:calc_final_target_displs");
+  if (!myid) {
+    std::fill(l_src_displs, std::next(l_src_displs, nunits), 0);
+  }
 
   DASH_LOG_TRACE_RANGE(
-      "target displs",
-      std::next(std::begin(g_partition_data), IDX_TARGET_DISP(nunits)),
-      std::next(
-          std::begin(g_partition_data), IDX_TARGET_DISP(nunits) + nunits));
+      "source displs",
+      l_src_displs,
+      l_src_displs + nunits);
+
+  trace.exit_state("10:calc_final_target_displs");
+
 
   trace.enter_state("11:exchange_data (all-to-all)");
 
   std::vector<dash::Future<iter_type> > async_copies{};
   async_copies.reserve(p_unit_info.valid_remote_partitions.size());
 
-  auto const get_send_info = [&g_partition_data, &l_send_displs, nunits](
+  auto const get_send_info = [&g_partition_data, &l_target_displs, nunits](
                                  dash::default_index_t const p_idx) {
-    auto const send_count = g_partition_data[p_idx + IDX_SEND_COUNT(nunits)];
-    auto const target_disp =
-        g_partition_data[p_idx + IDX_TARGET_DISP(nunits)];
-    auto const send_disp = l_send_displs[p_idx];
-    return std::make_tuple(send_count, send_disp, target_disp);
+    auto const target_disp  = l_target_displs[p_idx];
+    auto const src_count   = g_partition_data[p_idx + IDX_SRC_COUNT(nunits)];
+    auto const src_disp   = g_partition_data[p_idx + IDX_DISP(nunits)];
+    return std::make_tuple(src_count, src_disp, target_disp);
   };
 
-  std::size_t send_count, send_disp, target_disp;
+  std::size_t src_count, src_disp, target_disp;
 
   // A range of chunks to be merged.
   using chunk_range_t = std::pair<std::size_t, std::size_t>;
   // Futures for the merges - only used to signal readiness.
   // Use a std::map because emplace will not invalidate any
   // references or iterators.
-  std::map<chunk_range_t, std::future<void>> merge_dependencies;
+  std::map<chunk_range_t, std::future<void> > merge_dependencies;
 
   for (auto const& unit : p_unit_info.valid_remote_partitions) {
-    std::tie(send_count, send_disp, target_disp) = get_send_info(unit);
+    std::tie(src_count, src_disp, target_disp) = get_send_info(unit);
 
-    if (0 == send_count) {
+    if (0 == src_count) {
       continue;
     }
 
     DASH_LOG_TRACE(
         "async copies",
-        "send_count",
-        send_count,
-        "send_disp",
-        send_disp,
+        "src_count",
+        src_count,
+        "src_disp",
+        src_disp,
         "target_disp",
         target_disp);
 
     // Get a global iterator to the first local element of a unit within the
     // range to be sorted [begin, end)
     //
-    iter_type it_copy =
+    iter_type it_src =
         (unit == unit_at_begin)
             ?
             /* If we are the unit at the beginning of the global range simply
@@ -593,28 +620,29 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     // a sentinel here.
     chunk_range_t unit_range(unit, unit + 1);
     auto&&        fut = dash::copy_async(
-        &(*(lcopy.begin() + send_disp)),
-        &(*(lcopy.begin() + send_disp + send_count)),
-        it_copy + target_disp);
+        it_src + src_disp,
+        it_src + src_disp + src_count,
+        std::addressof(*(lcopy.begin() + target_disp)));
 
     // The std::async is necessary to convert to std::future<void>
     merge_dependencies.emplace(
         unit_range,
-        std::async(
-            std::launch::async, [f = std::move(fut)] () mutable { f.wait(); }));
+        std::async(std::launch::async, [f = std::move(fut)]() mutable {
+          f.wait();
+        }));
   }
 
-  std::tie(send_count, send_disp, target_disp) = get_send_info(myid);
+  std::tie(src_count, src_disp, target_disp) = get_send_info(myid);
 
   // Create an entry for the local part
   chunk_range_t local_range(myid, myid + 1);
   merge_dependencies[local_range] = std::async(
       std::launch::async,
-      [send_count, local_range, send_disp, lcopy, target_disp, lbegin] {
-        if (send_count) {
+      [src_count, local_range, src_disp, lcopy, target_disp, lbegin] {
+        if (src_count) {
           std::copy(
-              std::next(std::begin(lcopy), send_disp),
-              std::next(std::begin(lcopy), send_disp + send_count),
+              std::next(std::begin(lcopy), src_disp),
+              std::next(std::begin(lcopy), src_disp + src_count),
               std::next(lbegin, target_disp));
         }
       });
@@ -646,29 +674,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   impl::local_sort(lbegin, lend, sort_comp, parallelism);
   trace.exit_state("13:final_local_sort");
 #else
-  trace.enter_state("12:calc_recv_count (all-to-all)");
-
-  std::vector<size_t> recv_count(nunits, 0);
-
-  DASH_ASSERT_RETURNS(
-      dart_alltoall(
-          // send buffer
-          std::next(g_partition_data.data(), IDX_SEND_COUNT(nunits)),
-          // receive buffer
-          recv_count.data(),
-          // we send / receive 1 element to / from each process
-          1,
-          // dtype
-          dash::dart_datatype<size_t>::value,
-          // teamid
-          team.dart_id()),
-      DART_OK);
-
-  DASH_LOG_TRACE_RANGE(
-      "recv count", std::begin(recv_count), std::end(recv_count));
-
-  trace.exit_state("12:calc_recv_count (all-to-all)");
-
   trace.enter_state("13:merge_local_sequences");
 
   // merging sorted sequences
@@ -684,8 +689,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   recv_count_psum.emplace_back(0);
 
   std::partial_sum(
-      std::begin(recv_count),
-      std::end(recv_count),
+      l_target_count,
+      l_target_count + nunits,
       std::back_inserter(recv_count_psum));
 
   DASH_LOG_TRACE_RANGE(
@@ -715,7 +720,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       chunk_range_t dep_l(f, mi);
       chunk_range_t dep_r(mi, l);
 
-
       // Start a thread that blocks until the two previous merges are ready.
       auto&& fut = std::async(
           std::launch::async,
@@ -741,6 +745,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   // Wait for the final merge step
   chunk_range_t final_range(0, nunits);
   merge_dependencies.at(final_range).wait();
+
+  //copy merged sequences back to local portion
+  std::copy(lcopy.begin(), lcopy.end(), lbegin);
 
   trace.exit_state("13:merge_local_sequences");
 #endif

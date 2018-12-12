@@ -8,9 +8,11 @@
 
 #define IDX_DIST(nunits) ((nunits)*0)
 #define IDX_SUPP(nunits) ((nunits)*1)
-#define IDX_TARGET_DISP(nunits) ((nunits)*2)
+//idx source disp
+#define IDX_DISP(nunits) ((nunits)*2)
 
-#define IDX_SEND_COUNT(nunits) IDX_DIST(nunits)
+//original: send count
+#define IDX_SRC_COUNT(nunits) IDX_DIST(nunits)
 #define IDX_TARGET_COUNT(nunits) IDX_SUPP(nunits)
 #define NLT_NLE_BLOCK (2)
 

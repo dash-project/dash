@@ -45,10 +45,6 @@ LocalOutputIter exclusive_scan(
           team.dart_id()),
       DART_OK);
 
-  if (!team.myid()) {
-    std::fill(out_first, std::next(out_first, nel), init);
-  }
-
   return std::next(out_first, nel);
 }
 

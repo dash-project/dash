@@ -36,7 +36,7 @@ inline void psort__calc_send_count(
   DASH_LOG_TRACE("< psort__calc_send_count");
 
   // The number of units is the number of splitters + 1
-  auto const           nunits = p_borders.lower_bound.size() + 1;
+  auto const           nunits = p_borders.count() + 1;
   std::vector<value_t> tmp_target_count;
   tmp_target_count.reserve(nunits + 1);
   tmp_target_count.emplace_back(0);
@@ -50,6 +50,7 @@ inline void psort__calc_send_count(
   auto tmp_target_count_begin = std::next(std::begin(tmp_target_count));
 
   auto const last_skipped = p_borders.is_skipped.cend();
+  //find the first empty partition
   auto       it_skipped =
       std::find(p_borders.is_skipped.cbegin(), last_skipped, true);
 
