@@ -1009,6 +1009,7 @@ dart_tasking_datadeps_match_delayed_local_datadep(
           taskref tr;
           tr.local = task;
           dart_dephash_elem_t *new_elem = dephash_allocate_elem(dep, tr, myguid);
+          DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
           if (elem->prev == NULL) {
             // we are still at the head of the hash table slot, i.e.,
             // our match was the very first task we encountered
