@@ -465,7 +465,7 @@ dart_ret_t dart_tasking_remote_release_outdep(
 
   while (1) {
     dart_ret_t ret;
-    ret = dart_amsg_buffered_send(
+    ret = dart_amsg_trysend(
             team_unit,
             amsgq,
             &release_remote_outdep,
