@@ -336,6 +336,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   DASH_LOG_TRACE_VAR("partition borders found after N iterations", iter);
 
+  /********************************************************************/
+  /****** Final Histogram *********************************************/
+  /********************************************************************/
+
   trace.enter_state("5:final_local_histogram");
 
   /* How many elements are less than P
@@ -363,6 +367,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       "local histogram ( <= )",
       impl::make_strided_iterator(std::begin(histograms) + 1),
       impl::make_strided_iterator(std::begin(histograms) + 1) + nunits);
+
+  /********************************************************************/
+  /****** Partition Distribution **************************************/
+  /********************************************************************/
 
   trace.enter_state("6:transpose_local_histograms (all-to-all)");
 
@@ -503,13 +511,16 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
           team.dart_id()),
       DART_OK);
 
-  std::vector<std::size_t> l_target_displs(nunits, 0);
+  auto l_target_displs =
+      std::next(g_partition_data.data(), IDX_SRC_COUNT(nunits));
+
+  *l_target_displs = 0;
 
   // exclusive scan using partial sum
   std::partial_sum(
       l_target_count,
       std::next(l_target_count, nunits - 1),
-      std::next(std::begin(l_target_displs)),
+      std::next(l_target_displs),
       std::plus<size_t>());
 
 #if defined(DASH_ENABLE_ASSERTIONS) && defined(DASH_ENABLE_TRACE_LOGGING)
@@ -524,7 +535,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       "target count", l_target_count, l_target_count + nunits);
 
   DASH_LOG_TRACE_RANGE(
-      "target displs", l_target_displs.begin(), l_target_displs.end());
+      "target displs", l_target_displs, std::next(l_target_displs, nunits));
 
   /********************************************************************/
   /****** Source Displs ***********************************************/
@@ -539,7 +550,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       // first
       std::next(std::begin(g_partition_data), IDX_TARGET_COUNT(nunits)),
       // last
-      std::next(std::begin(g_partition_data), IDX_TARGET_COUNT(nunits) + nunits),
+      std::next(
+          std::begin(g_partition_data), IDX_TARGET_COUNT(nunits) + nunits),
       // out
       std::addressof(*l_src_displs),
       // init
@@ -553,13 +565,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     std::fill(l_src_displs, std::next(l_src_displs, nunits), 0);
   }
 
-  DASH_LOG_TRACE_RANGE(
-      "source displs",
-      l_src_displs,
-      l_src_displs + nunits);
+  DASH_LOG_TRACE_RANGE("source displs", l_src_displs, l_src_displs + nunits);
 
   trace.exit_state("10:calc_final_target_displs");
-
 
   trace.enter_state("11:exchange_data (all-to-all)");
 
@@ -568,13 +576,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   auto const get_send_info = [&g_partition_data, &l_target_displs, nunits](
                                  dash::default_index_t const p_idx) {
-    auto const target_disp  = l_target_displs[p_idx];
-    auto const src_count   = g_partition_data[p_idx + IDX_SRC_COUNT(nunits)];
-    auto const src_disp   = g_partition_data[p_idx + IDX_DISP(nunits)];
-    return std::make_tuple(src_count, src_disp, target_disp);
+    auto const target_disp = l_target_displs[p_idx];
+    auto const target_count =
+        g_partition_data[p_idx + IDX_TARGET_COUNT(nunits)];
+    auto const src_disp = g_partition_data[p_idx + IDX_DISP(nunits)];
+    return std::make_tuple(target_count, src_disp, target_disp);
   };
 
-  std::size_t src_count, src_disp, target_disp;
+  std::size_t target_count, src_disp, target_disp;
 
   // A range of chunks to be merged.
   using chunk_range_t = std::pair<std::size_t, std::size_t>;
@@ -584,16 +593,18 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   std::map<chunk_range_t, std::future<void> > merge_dependencies;
 
   for (auto const& unit : p_unit_info.valid_remote_partitions) {
-    std::tie(src_count, src_disp, target_disp) = get_send_info(unit);
+    std::tie(target_count, src_disp, target_disp) = get_send_info(unit);
 
-    if (0 == src_count) {
+    if (0 == target_count) {
       continue;
     }
 
     DASH_LOG_TRACE(
-        "async copies",
-        "src_count",
-        src_count,
+        "async copy",
+        "source unit",
+        unit,
+        "target_count",
+        target_count,
         "src_disp",
         src_disp,
         "target_disp",
@@ -621,7 +632,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     chunk_range_t unit_range(unit, unit + 1);
     auto&&        fut = dash::copy_async(
         it_src + src_disp,
-        it_src + src_disp + src_count,
+        it_src + src_disp + target_count,
         std::addressof(*(lcopy.begin() + target_disp)));
 
     // The std::async is necessary to convert to std::future<void>
@@ -632,18 +643,18 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         }));
   }
 
-  std::tie(src_count, src_disp, target_disp) = get_send_info(myid);
+  std::tie(target_count, src_disp, target_disp) = get_send_info(myid);
 
   // Create an entry for the local part
   chunk_range_t local_range(myid, myid + 1);
   merge_dependencies[local_range] = std::async(
       std::launch::async,
-      [src_count, local_range, src_disp, lcopy, target_disp, lbegin] {
-        if (src_count) {
+      [target_count, local_range, src_disp, &lcopy, target_disp, lbegin] {
+        if (target_count) {
           std::copy(
-              std::next(std::begin(lcopy), src_disp),
-              std::next(std::begin(lcopy), src_disp + src_count),
-              std::next(lbegin, target_disp));
+              std::next(lbegin, src_disp),
+              std::next(lbegin, src_disp + target_count),
+              std::next(std::begin(lcopy), target_disp));
         }
       });
 
@@ -698,6 +709,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::begin(recv_count_psum),
       std::end(recv_count_psum));
 
+  DASH_LOG_TRACE_RANGE("before merging", lcopy.begin(), lcopy.end());
+
   for (std::size_t d = 0; d < depth; ++d) {
     // distance between first and mid iterator while merging
     auto const step = std::size_t(0x1) << d;
@@ -714,9 +727,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       // sometimes we have a lonely merge in the end, so we have to guarantee
       // that we do not access out of bounds
       auto          l = std::min(m * dist + dist, recv_count_psum.size() - 1);
-      auto          first = std::next(lbegin, recv_count_psum[f]);
-      auto          mid   = std::next(lbegin, recv_count_psum[mi]);
-      auto          last  = std::next(lbegin, recv_count_psum[l]);
+      auto          first = std::next(lcopy.begin(), recv_count_psum[f]);
+      auto          mid   = std::next(lcopy.begin(), recv_count_psum[mi]);
+      auto          last  = std::next(lcopy.begin(), recv_count_psum[l]);
       chunk_range_t dep_l(f, mi);
       chunk_range_t dep_r(mi, l);
 
@@ -746,7 +759,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   chunk_range_t final_range(0, nunits);
   merge_dependencies.at(final_range).wait();
 
-  //copy merged sequences back to local portion
+  team.barrier();
+  // copy merged sequences back to local portion
   std::copy(lcopy.begin(), lcopy.end(), lbegin);
 
   trace.exit_state("13:merge_local_sequences");
