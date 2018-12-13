@@ -502,7 +502,7 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
           }
 #else
           // finished tasks should not be in the hash table
-          DART_ASSERT(IS_ACTIVE_TASK(local_task));
+          DART_ASSERT_MSG(IS_ACTIVE_TASK(local_task), "Task %p found in inactive state", local_task);
 #endif
 
           if (local->taskdep.phase < rdep->taskdep.phase) {
@@ -882,7 +882,7 @@ dart_tasking_datadeps_match_local_datadep(
         // lock the task here to avoid race condition
         LOCK_TASK(elem_task);
         DART_ASSERT_MSG(IS_ACTIVE_TASK(elem_task),
-                        "Found inactive task in state %d", elem_task->state);
+                        "Found inactive task %p in state %d", elem_task, elem_task->state);
         // check whether this task is already in the successor list
         if (dart_tasking_tasklist_contains(elem_task->successor, task)){
           // the task is already in the list, don't add it again!
