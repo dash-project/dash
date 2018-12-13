@@ -196,6 +196,13 @@ dart_task_wait_handle(dart_handle_t *handle, size_t num_handle)
   return dart__task__wait_handle(handle, num_handle);
 }
 
+
+dart_ret_t
+dart_task_detach_handle(dart_handle_t *handle, size_t num_handle)
+{
+  return dart__task__detach_handle(handle, num_handle);
+}
+
 void
 dart_task_phase_advance()
 {

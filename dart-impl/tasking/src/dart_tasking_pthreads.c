@@ -562,6 +562,21 @@ dart_task_t * create_task(
   const char       *descr)
 {
   dart_task_t *task = allocate_task();
+  task->flags        = 0;
+  task->remote_successor = NULL;
+  task->local_deps    = NULL;
+  task->prev          = NULL;
+  task->successor     = NULL;
+  task->fn            = fn;
+  task->num_children  = 0;
+  task->parent        = get_current_task();
+  task->state         = DART_TASK_NASCENT;
+  task->taskctx       = NULL;
+  task->unresolved_deps = 0;
+  task->unresolved_remote_deps = 0;
+  task->deps_owned    = NULL;
+  task->wait_handle   = NULL;
+  task->numaptr       = NULL;
 
   if (data_size) {
     DART_TASK_SET_FLAG(task, DART_TASK_DATA_ALLOCATED);
@@ -571,21 +586,14 @@ dart_task_t * create_task(
     task->data           = data;
     DART_TASK_UNSET_FLAG(task, DART_TASK_DATA_ALLOCATED);
   }
-  task->fn           = fn;
-  task->num_children = 0;
-  task->parent       = get_current_task();
-  task->state        = DART_TASK_NASCENT;
+
   if (task->parent->state == DART_TASK_ROOT) {
     task->phase      = dart__tasking__phase_current();
     dart__tasking__phase_add_task();
   } else {
     task->phase      = DART_PHASE_ANY;
   }
-  task->flags        = 0;
-  task->remote_successor = NULL;
-  task->local_deps    = NULL;
-  task->prev          = NULL;
-  task->successor     = NULL;
+
   //task->prio          = (prio == DART_PRIO_PARENT) ? task->parent->prio : prio;
   switch (prio) {
     case DART_PRIO_PARENT:
@@ -599,12 +607,7 @@ dart_task_t * create_task(
       task->prio       = prio;
       break;
   }
-  task->taskctx       = NULL;
-  task->unresolved_deps = 0;
-  task->unresolved_remote_deps = 0;
-  task->deps_owned    = NULL;
-  task->wait_handle   = NULL;
-  task->numaptr       = NULL;
+
   // if descr is an absolute path (as with __FILE__) we only use the basename
   if (descr && descr[0] == '/') {
     const char *descr_base = strrchr(descr, '/');
@@ -612,12 +615,14 @@ dart_task_t * create_task(
   } else {
     task->descr = descr;
   }
+
   return task;
 }
 
 void dart__tasking__destroy_task(dart_task_t *task)
 {
   if (DART_TASK_HAS_FLAG(task, DART_TASK_DATA_ALLOCATED)) {
+    DART_TASK_UNSET_FLAG(task, DART_TASK_DATA_ALLOCATED);
     free(task->data);
   }
 
@@ -628,7 +633,6 @@ void dart__tasking__destroy_task(dart_task_t *task)
 
   // reset some of the fields
   task->data             = NULL;
-  DART_TASK_UNSET_FLAG(task, DART_TASK_DATA_ALLOCATED);
   DART_TASK_UNSET_FLAG(task, DART_TASK_HAS_REF);
   task->fn               = NULL;
   task->parent           = NULL;
