@@ -651,7 +651,8 @@ dart__tasking__allocate_dummytask()
 {
   dart_task_t *task = allocate_task();
   memset(task, 0, sizeof(*task));
-  task->state = DART_TASK_DUMMY;
+  task->state  = DART_TASK_DUMMY;
+  task->parent = dart__tasking__current_task();
   return task;
 }
 
