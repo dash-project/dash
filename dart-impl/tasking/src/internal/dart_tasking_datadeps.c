@@ -1056,6 +1056,19 @@ dart_ret_t dart_tasking_datadeps_handle_task(
   DART_LOG_DEBUG("Datadeps: task %p has %zu data dependencies in phase %i",
                  task, ndeps, task->phase);
 
+  // order dependencies: copyin dependencies need to come first
+  // to avoid a circular dependency with the copyin-task
+  for (size_t i = 0; i < ndeps; i++) {
+    if (deps[i].type == DART_DEP_COPYIN) {
+      dart_task_dep_t dep = deps[i];
+      // adjust the phase of the dependency if required
+      if (dep.phase == DART_PHASE_TASK) {
+        dep.phase = task->phase;
+      }
+      dart_tasking_datadeps_handle_copyin(&dep, task);
+    }
+  }
+
   for (size_t i = 0; i < ndeps; i++) {
     dart_task_dep_t dep = deps[i];
     if (dep.type == DART_DEP_IGNORE) {
@@ -1090,7 +1103,8 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     } else if (dep.type == DART_DEP_COPYIN){
       // set the numaptr
       if (task->numaptr == NULL) task->numaptr = dep.copyin.dest;
-      dart_tasking_datadeps_handle_copyin(&dep, task);
+      // nothing to be done, handled above
+      continue;
     } else if (guid.id != myguid.id) {
         if (task->parent->state == DART_TASK_ROOT) {
           dart_tasking_remote_datadep(&dep, task);
