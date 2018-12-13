@@ -45,7 +45,7 @@ typedef enum {
 } dart_task_state_t;
 
 #define IS_ACTIVE_TASK(task) \
-  ((task)->state >= DART_TASK_CREATED   && \
+  ((task)->state >= DART_TASK_NASCENT   && \
    (task)->state <= DART_TASK_DETACHED)
 
 
