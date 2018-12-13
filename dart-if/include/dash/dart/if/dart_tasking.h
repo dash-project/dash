@@ -230,6 +230,13 @@ dart_ret_t
 dart_task_wait_handle(dart_handle_t *handle, size_t num_handle);
 
 /**
+ * End the execution of the task but do not release it's dependencies until
+ * all \c num_handle operations in \c handle have completed.
+ */
+dart_ret_t
+dart_task_detach_handle(dart_handle_t *handle, size_t num_handle);
+
+/**
  * Advance to the next task execution phase.
  * This function is not blocking and only increments a counter that
  * represents the current phase. It is the user's responsibility to keep
