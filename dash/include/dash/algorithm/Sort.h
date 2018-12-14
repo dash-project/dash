@@ -743,6 +743,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
            last,
            dep_l,
            dep_r,
+           sort_comp,
            &team,
            &merge_dependencies]() {
             if (merge_dependencies.count(dep_l)) {
@@ -758,10 +759,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
               // Make sure everyone merged their parts (necessary for the copy
               // into the final buffer)
               team.barrier();
-              std::merge(first, mid, mid, last, lbegin);
+              std::merge(first, mid, mid, last, lbegin, sort_comp);
             }
             else {
-              std::inplace_merge(first, mid, last);
+              std::inplace_merge(first, mid, last, sort_comp);
             }
             DASH_LOG_TRACE("merged chunks", dep_l.first, dep_r.second);
           });
