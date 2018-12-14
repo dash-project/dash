@@ -212,7 +212,7 @@ dart__tasking__get_taskqueue()
 static void
 invoke_taskfn(dart_task_t *task)
 {
-  DART_ASSERT(task->fn != NULL);
+  DART_ASSERT(task != NULL && task->fn != NULL);
   DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p descr:'%s')",
                  task, task->fn, task->data, task->descr);
   if (setjmp(task->taskctx->cancel_return) == 0) {
@@ -657,6 +657,13 @@ dart__tasking__allocate_dummytask()
   memset(task, 0, sizeof(*task));
   task->state  = DART_TASK_DUMMY;
   task->parent = dart__tasking__current_task();
+
+  if (task->parent->state == DART_TASK_ROOT) {
+    task->phase      = dart__tasking__phase_current();
+    dart__tasking__phase_add_task();
+  } else {
+    task->phase      = DART_PHASE_ANY;
+  }
   return task;
 }
 
@@ -1077,7 +1084,7 @@ dart__tasking__init()
 
   respect_numa = dart__base__env__bool(DART_THREAD_PLACE_NUMA_ENVSTR, false);
 
-  printf("respect_numa: %d\n", respect_numa);
+  //printf("respect_numa: %d\n", respect_numa);
 
   num_threads = determine_num_threads();
   DART_LOG_INFO("Using %i threads", num_threads);
@@ -1677,7 +1684,7 @@ static void* utility_thread_main(void *data)
   free(ut);
   ut = NULL;
 
-  printf("Launching utility thread\n");
+  //printf("Launching utility thread\n");
   // invoke the utility function
   fn(fn_data);
 
