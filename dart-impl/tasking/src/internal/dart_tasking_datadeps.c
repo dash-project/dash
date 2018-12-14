@@ -251,6 +251,8 @@ dephash_allocate_elem(
   elem->origin  = origin;
   elem->next = elem->prev = NULL;
 
+  DART_LOG_TRACE("Allocated elem %p (task %p)", elem, task.local);
+
   return elem;
 }
 
@@ -523,10 +525,12 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
                       local_task, rdep->task.remote, rdep->origin.id);
               } else {
                 direct_dep_candidate = local_task;
+                /*
                 DART_LOG_TRACE("Making local task %p a direct dependency candidate "
                                "for remote task %p",
                                direct_dep_candidate,
                                rdep->task.remote);
+                */
               }
             }
           }
@@ -644,8 +648,6 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
                       "local output dependency (phase %d)", phase);
       }
       if (rdep->taskdep.type == DART_DEP_OUT) {
-        DART_LOG_TRACE("Setting prev_outdep to rdep of task %p in phase %d",
-                       local->task.local, local->taskdep.phase);
         prev_outdep = local;
       }
     }
@@ -690,8 +692,8 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
       union taskref tr;
       tr.local = dummy_task;
       rdep->task = tr;
-      if (local != NULL) {
-        DART_LOG_TRACE("Inserting dummy task %p in the middle of the slot", dummy_task);
+      if (local != local_deps[slot]) {
+        DART_LOG_TRACE("Inserting dummy task %p in the middle of the slot (rdep %p, local %p)", dummy_task, rdep, local);
         rdep->next  = local;
         rdep->prev  = local->prev;
         if (NULL != local->prev) {
@@ -699,7 +701,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
         }
         local->prev = rdep;
       } else {
-        DART_LOG_TRACE("Inserting dummy task %p at the front of the slot", dummy_task);
+        DART_LOG_TRACE("Inserting dummy task %p at the front of the slot (rdep %p, local_deps[%d] %p)", dummy_task, rdep, slot, local_deps[slot]);
         rdep->next = local_deps[slot];
         if (local_deps[slot] != NULL) {
           local_deps[slot]->prev = rdep;
@@ -863,9 +865,14 @@ dart_tasking_datadeps_match_local_datadep(
    * iterate over all dependent tasks until we find the first task with
    * OUT|INOUT dependency on the same pointer
    */
+  dart_dephash_elem_t *prev = NULL;
   for (dart_dephash_elem_t *elem = parent->local_deps[slot];
        elem != NULL; elem = elem->next)
   {
+    DART_ASSERT_MSG(elem->prev == prev,
+                    "Corrupt double linked list: elem %p, elem->prev %p, prev %p",
+                    elem, elem->prev, prev);
+    prev = elem;
     if (DEP_ADDR_EQ(elem->taskdep, *dep)) {
       dart_task_t *elem_task = elem->task.local;
       if (elem_task == task) {
@@ -882,7 +889,8 @@ dart_tasking_datadeps_match_local_datadep(
         // lock the task here to avoid race condition
         LOCK_TASK(elem_task);
         DART_ASSERT_MSG(IS_ACTIVE_TASK(elem_task),
-                        "Found inactive task %p in state %d", elem_task, elem_task->state);
+                        "Found inactive task %p in state %d in elem %p (prev elem %p)",
+                        elem_task, elem_task->state, elem, elem->prev);
         // check whether this task is already in the successor list
         if (dart_tasking_tasklist_contains(elem_task->successor, task)){
           // the task is already in the list, don't add it again!
@@ -1013,13 +1021,13 @@ dart_tasking_datadeps_match_delayed_local_datadep(
           if (elem->prev == NULL) {
             // we are still at the head of the hash table slot, i.e.,
             // our match was the very first task we encountered
-            DART_LOG_TRACE("Inserting delayed dependency at the beginning of the slot");
-            new_elem->next                 = parent->local_deps[slot];
-            parent->local_deps[slot]->prev = new_elem;
-            parent->local_deps[slot]       = new_elem;
-            new_elem->prev                 = NULL;
+            DART_LOG_TRACE("Inserting delayed dependency at the beginning of the slot (new_elem %p, elem %p)", new_elem, elem);
+            new_elem->next            = elem;
+            elem->prev                = new_elem;
+            parent->local_deps[slot]  = new_elem;
+            new_elem->prev            = NULL;
           } else {
-            DART_LOG_TRACE("Inserting delayed dependency in the middle");
+            DART_LOG_TRACE("Inserting delayed dependency in the middle (new_elem %p, elem %p)", new_elem, elem);
             new_elem->next        = elem;
             new_elem->prev        = elem->prev;
             new_elem->prev->next  = new_elem;
