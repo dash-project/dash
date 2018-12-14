@@ -495,182 +495,16 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   target_displs.back() = n_l_elem;
 
 
-#if 0
-
-  DASH_LOG_TRACE_RANGE(
-      "new target counts", std::next(std::begin(target_counts)), std::prev(std::end(target_counts)));
-
-  std::vector<size_t> target_displs(nunits, 0);
-
-  // exclusive scan using partial sum
-  std::partial_sum(
-      std::begin(target_counts),
-      std::prev(std::end(target_counts), 2),
-      std::begin(target_displs),
-      std::plus<size_t>());
-
-  DASH_LOG_TRACE_RANGE(
-      "new target displs", std::begin(target_displs), std::end(target_displs));
-#endif
-
-
-
-  DASH_LOG_TRACE_RANGE(
-      "new target counts", target_counts.begin(), target_counts.end());
-
-  DASH_LOG_TRACE_RANGE(
-      "new target displs", target_displs.begin(), target_displs.end());
-
-  /********************************************************************/
-  /****** Target Distribution *****************************************/
-  /********************************************************************/
-
-  trace.enter_state("8:transpose_final_partition_dist (all-to-all)");
-
-  DASH_ASSERT_RETURNS(
-      dart_alltoall(
-          // send buffer
-          std::next(g_partition_data.data(), IDX_DIST(nunits)),
-          // receive buffer
-          std::next(g_partition_data.data(), IDX_TARGET_COUNT(nunits)),
-          // we send / receive 1 element to / from each process
-          1,
-          // dtype
-          dash::dart_datatype<size_t>::value,
-          // teamid
-          team.dart_id()),
-      DART_OK);
-
-  DASH_LOG_TRACE_RANGE(
-      "target distribution",
-      std::next(std::begin(g_partition_data), IDX_TARGET_COUNT(nunits)),
-      std::next(
-          std::begin(g_partition_data), IDX_TARGET_COUNT(nunits) + nunits));
-
-  trace.exit_state("8:transpose_final_partition_dist (all-to-all)");
-
-  /********************************************************************/
-  /****** Source Count ************************************************/
-  /********************************************************************/
-
-  trace.enter_state("9:calc_final_send_count");
-
-  auto l_send_count =
-      std::next(std::begin(g_partition_data), IDX_SRC_COUNT(nunits));
-
-  if (n_l_elem > 0) {
-    auto const l_target_count =
-        std::next(std::begin(g_partition_data), IDX_TARGET_COUNT(nunits));
-
-    impl::psort__calc_send_count(
-        splitters, valid_partitions, l_target_count, l_send_count);
-  }
-  else {
-    std::fill(
-        std::next(std::begin(g_partition_data), IDX_SRC_COUNT(nunits)),
-        std::next(
-            std::begin(g_partition_data), IDX_SRC_COUNT(nunits) + nunits),
-        0);
-  }
-
-  DASH_LOG_TRACE_RANGE(
-      "source count",
-      std::next(std::begin(g_partition_data), IDX_SRC_COUNT(nunits)),
-      std::next(
-          std::begin(g_partition_data), IDX_SRC_COUNT(nunits) + nunits));
-
-  trace.exit_state("9:calc_final_send_count");
-
-  /********************************************************************/
-  /****** Target Count ************************************************/
-  /********************************************************************/
-
-  auto* l_target_count =
-      std::next(g_partition_data.data(), IDX_TARGET_COUNT(nunits));
-
-  DASH_ASSERT_RETURNS(
-      dart_alltoall(
-          // send buffer
-          std::next(g_partition_data.data(), IDX_SRC_COUNT(nunits)),
-          // receive buffer
-          l_target_count,
-          // we send / receive 1 element to / from each process
-          1,
-          // dtype
-          dash::dart_datatype<size_t>::value,
-          // teamid
-          team.dart_id()),
-      DART_OK);
-
-  auto l_target_displs =
-      std::next(g_partition_data.data(), IDX_SRC_COUNT(nunits));
-
-  *l_target_displs = 0;
-
-  // exclusive scan using partial sum
-  std::partial_sum(
-      l_target_count,
-      std::next(l_target_count, nunits - 1),
-      std::next(l_target_displs),
-      std::plus<size_t>());
-
-#if defined(DASH_ENABLE_ASSERTIONS) && defined(DASH_ENABLE_TRACE_LOGGING)
-  DASH_ASSERT_EQ(
-      std::accumulate(
-          l_target_count, l_target_count + nunits, std::size_t{0}),
-      n_l_elem,
-      "invalid target count");
-#endif
-
-  DASH_LOG_TRACE_RANGE(
-      "target count", l_target_count, l_target_count + nunits);
-
-  DASH_LOG_TRACE_RANGE(
-      "target displs", l_target_displs, std::next(l_target_displs, nunits));
-
-  /********************************************************************/
-  /****** Source Displs ***********************************************/
-  /********************************************************************/
-
-  trace.enter_state("10:calc_final_target_displs");
-
-  auto l_src_displs =
-      std::next(std::begin(g_partition_data), IDX_DISP(nunits));
-
-  dash::exclusive_scan(
-      // first
-      std::next(std::begin(g_partition_data), IDX_TARGET_COUNT(nunits)),
-      // last
-      std::next(
-          std::begin(g_partition_data), IDX_TARGET_COUNT(nunits) + nunits),
-      // out
-      std::addressof(*l_src_displs),
-      // init
-      std::size_t{0},
-      // op
-      dash::plus<std::size_t>{},
-      // team
-      team);
-
-  if (!myid) {
-    std::fill(l_src_displs, std::next(l_src_displs, nunits), 0);
-  }
-
-  DASH_LOG_TRACE_RANGE("source displs", l_src_displs, l_src_displs + nunits);
-
-  trace.exit_state("10:calc_final_target_displs");
-
   trace.enter_state("11:exchange_data (all-to-all)");
 
   std::vector<dash::Future<iter_type> > async_copies{};
   async_copies.reserve(p_unit_info.valid_remote_partitions.size());
 
-  auto const get_send_info = [&g_partition_data, &l_target_displs, nunits](
+  auto const get_send_info = [&source_displs, &target_displs, &target_counts, nunits](
                                  dash::default_index_t const p_idx) {
-    auto const target_disp = l_target_displs[p_idx];
-    auto const target_count =
-        g_partition_data[p_idx + IDX_TARGET_COUNT(nunits)];
-    auto const src_disp = g_partition_data[p_idx + IDX_DISP(nunits)];
+    auto const target_disp = target_displs[p_idx];
+    auto const target_count = target_counts[p_idx];
+    auto const src_disp = source_displs[p_idx];
     return std::make_tuple(target_count, src_disp, target_disp);
   };
 
@@ -786,14 +620,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   // calculate the prefix sum among all receive counts to find the offsets for
   // merging
-  std::vector<size_t> recv_count_psum;
-  recv_count_psum.reserve(nsequences + 1);
-  recv_count_psum.emplace_back(0);
-
-  std::partial_sum(
-      l_target_count,
-      l_target_count + nunits,
-      std::back_inserter(recv_count_psum));
+  std::vector<size_t> & recv_count_psum = target_displs;
 
   DASH_LOG_TRACE_RANGE(
       "recv count prefix sum",
