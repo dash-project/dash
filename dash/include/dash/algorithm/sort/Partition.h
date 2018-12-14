@@ -127,7 +127,7 @@ inline void psort__init_partition_borders(
     return;
   }
 
-  auto const get_border_idx = [](std::size_t const& idx) {
+  auto const get_border_idx = [](std::size_t const idx) {
     return (idx % NLT_NLE_BLOCK) ? (idx / NLT_NLE_BLOCK) * NLT_NLE_BLOCK
                                  : idx - 1;
   };

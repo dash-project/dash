@@ -50,8 +50,8 @@ inline void psort__calc_send_count(
   auto tmp_target_count_begin = std::next(std::begin(tmp_target_count));
 
   auto const last_skipped = p_borders.is_skipped.cend();
-  //find the first empty partition
-  auto       it_skipped =
+  // find the first empty partition
+  auto it_skipped =
       std::find(p_borders.is_skipped.cbegin(), last_skipped, true);
 
   auto it_valid = valid_partitions.cbegin();
@@ -106,6 +106,38 @@ inline void local_sort(RAI first, RAI last, Cmp sort_comp, int nthreads = 1)
   DASH_LOG_TRACE("dash::sort", "local_sort", "Calling std::sort");
   ::std::sort(first, last, sort_comp);
 #endif
+}
+
+template <class ElementType>
+inline auto psort__get_neighbors(
+    dash::team_unit_t            whoami,
+    std::size_t                  n_myelems,
+    Splitter<ElementType> const& splitters,
+    std::vector<size_t> const&   valid_partitions)
+{
+  // This thing can be made in a function called neighbours...
+  auto my_left_splitter = whoami - 1;
+  auto nunits = splitters.count() + 1;
+
+  dash::global_unit_t my_source{
+      (n_myelems > 0 && whoami)
+          ? static_cast<dart_unit_t>(
+                splitters.left_partition[my_left_splitter])
+          : DART_UNDEFINED_UNIT_ID};
+
+  auto it_right_splitter = (n_myelems > 0 && whoami < nunits)
+                               ? std::lower_bound(
+                                     std::begin(valid_partitions),
+                                     std::end(valid_partitions),
+                                     whoami)
+                               : std::end(valid_partitions);
+
+  dash::global_unit_t my_target{
+      (it_right_splitter != std::end(valid_partitions))
+          ? static_cast<dart_unit_t>(*it_right_splitter) + 1
+          : DART_UNDEFINED_UNIT_ID};
+
+  return std::make_pair(my_source, my_target);
 }
 }  // namespace impl
 }  // namespace dash

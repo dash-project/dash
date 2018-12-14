@@ -240,8 +240,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   DASH_LOG_TRACE_RANGE(
       "skipped splitters",
-      std::begin(splitters.threshold),
-      std::end(splitters.threshold));
+      std::begin(splitters.is_skipped),
+      std::end(splitters.is_skipped));
 
   bool done = false;
 
@@ -429,6 +429,97 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::next(std::begin(g_partition_data), IDX_DIST(nunits) + nunits));
 
   trace.exit_state("7:calc_final_partition_dist");
+
+  std::vector<size_t> source_displs(nunits, 0);
+
+  auto neighbors =
+      impl::psort__get_neighbors(myid, n_l_elem, splitters, valid_partitions);
+
+  DASH_LOG_TRACE(
+      "dash::sort",
+      "shift partition dist",
+      "my_source",
+      neighbors.first,
+      "my_target",
+      neighbors.second);
+
+  dart_sendrecv(
+      std::next(g_partition_data.data(), IDX_DIST(nunits)),
+      nunits,
+      dash::dart_datatype<size_t>::value,
+      101,
+      //dest neighbor (right)
+      neighbors.second,
+      source_displs.data(),
+      nunits,
+      dash::dart_datatype<size_t>::value,
+      101,
+      //source neighbor (left)
+      neighbors.first);
+
+  DASH_LOG_TRACE_RANGE(
+      "new source displs", source_displs.begin(), source_displs.end());
+
+  std::vector<size_t> target_counts(nunits, 0);
+
+  if (n_l_elem) {
+    if (myid) {
+      std::transform(
+          // in_first
+          std::next(g_partition_data.data(), IDX_DIST(nunits)),
+          // in_last
+          std::next(g_partition_data.data(), IDX_DIST(nunits) + nunits),
+          // in_second
+          std::begin(source_displs),
+          // out_first
+          std::begin(target_counts),
+          // operation
+          std::minus<size_t>());
+    }
+    else {
+      std::copy(
+          std::next(g_partition_data.data(), IDX_DIST(nunits)),
+          std::next(g_partition_data.data(), IDX_DIST(nunits) + nunits),
+          std::begin(target_counts));
+    }
+  }
+
+  std::vector<size_t> target_displs(nunits + 1, 0);
+
+  std::partial_sum(
+      std::begin(target_counts),
+      std::prev(std::end(target_counts)),
+      std::begin(target_displs) + 1,
+      std::plus<size_t>());
+
+  target_displs.back() = n_l_elem;
+
+
+#if 0
+
+  DASH_LOG_TRACE_RANGE(
+      "new target counts", std::next(std::begin(target_counts)), std::prev(std::end(target_counts)));
+
+  std::vector<size_t> target_displs(nunits, 0);
+
+  // exclusive scan using partial sum
+  std::partial_sum(
+      std::begin(target_counts),
+      std::prev(std::end(target_counts), 2),
+      std::begin(target_displs),
+      std::plus<size_t>());
+
+  DASH_LOG_TRACE_RANGE(
+      "new target displs", std::begin(target_displs), std::end(target_displs));
+#endif
+
+
+
+  DASH_LOG_TRACE_RANGE(
+      "new target counts", target_counts.begin(), target_counts.end());
+
+  DASH_LOG_TRACE_RANGE(
+      "new target displs", target_displs.begin(), target_displs.end());
 
   /********************************************************************/
   /****** Target Distribution *****************************************/

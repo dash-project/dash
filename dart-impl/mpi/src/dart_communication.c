@@ -2465,8 +2465,37 @@ dart_ret_t dart_sendrecv(
     return DART_ERR_INVAL;
   }
 
-  CHECK_UNITID_RANGE(dest, team_data);
-  CHECK_UNITID_RANGE(src, team_data);
+  if (dart__unlikely(
+          src.id < DART_UNDEFINED_UNIT_ID || src.id > team_data->size)) {
+    DART_LOG_ERROR(
+        "%s ! failed: unitid out of range 0 <= %d < %d",
+        __func__,
+        src.id,
+        team_data->size);
+    return DART_ERR_INVAL;
+  }
+
+  if (dart__unlikely(
+          dest.id < DART_UNDEFINED_UNIT_ID || dest.id > team_data->size)) {
+    DART_LOG_ERROR(
+        "%s ! failed: unitid out of range 0 <= %d < %d",
+        __func__,
+        dest.id,
+        team_data->size);
+    return DART_ERR_INVAL;
+  }
+
+  int source = src.id;
+  int target = dest.id;
+
+  if (src.id == DART_UNDEFINED_UNIT_ID) {
+    source = MPI_PROC_NULL;
+  }
+
+  if (dest.id == DART_UNDEFINED_UNIT_ID) {
+    target = MPI_PROC_NULL;
+  }
+
 
   comm = team_data->comm;
   CHECK_MPI_RET(
@@ -2474,12 +2503,12 @@ dart_ret_t dart_sendrecv(
         sendbuf,
         send_nelem,
         mpi_send_dtype,
-        dest.id,
+        target,
         send_tag,
         recvbuf,
         recv_nelem,
         mpi_recv_dtype,
-        src.id,
+        source,
         recv_tag,
         comm,
         MPI_STATUS_IGNORE),
