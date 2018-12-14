@@ -115,15 +115,21 @@ inline auto psort__get_neighbors(
     Splitter<ElementType> const& splitters,
     std::vector<size_t> const&   valid_partitions)
 {
-  // This thing can be made in a function called neighbours...
-  auto my_left_splitter = whoami - 1;
+  auto it_left_splitter = std::lower_bound(
+      std::begin(valid_partitions), std::end(valid_partitions), (whoami - 1));
+
+  auto has_left_splitter =
+      (n_myelems > 0) && whoami &&
+              (it_left_splitter != std::end(valid_partitions))
+          ? (*it_left_splitter == whoami - 1)
+          : false;
+
   auto nunits = splitters.count() + 1;
 
   dash::global_unit_t my_source{
-      (n_myelems > 0 && whoami)
-          ? static_cast<dart_unit_t>(
-                splitters.left_partition[my_left_splitter])
-          : DART_UNDEFINED_UNIT_ID};
+      (has_left_splitter) ? static_cast<dart_unit_t>(
+                                splitters.left_partition[*it_left_splitter])
+                          : DART_UNDEFINED_UNIT_ID};
 
   auto it_right_splitter = (n_myelems > 0 && whoami < nunits)
                                ? std::lower_bound(

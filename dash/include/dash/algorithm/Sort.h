@@ -430,6 +430,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   trace.exit_state("7:calc_final_partition_dist");
 
+  trace.enter_state("8:comm_source_displs (sendrecv)");
+
   std::vector<size_t> source_displs(nunits, 0);
 
   auto neighbors =
@@ -448,17 +450,21 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       nunits,
       dash::dart_datatype<size_t>::value,
       101,
-      //dest neighbor (right)
+      // dest neighbor (right)
       neighbors.second,
       source_displs.data(),
       nunits,
       dash::dart_datatype<size_t>::value,
       101,
-      //source neighbor (left)
+      // source neighbor (left)
       neighbors.first);
 
   DASH_LOG_TRACE_RANGE(
-      "new source displs", source_displs.begin(), source_displs.end());
+      "source displs", source_displs.begin(), source_displs.end());
+
+  trace.exit_state("8:comm_source_displs (sendrecv)");
+
+  trace.enter_state("9:calc_target_offsets");
 
   std::vector<size_t> target_counts(nunits, 0);
 
@@ -484,6 +490,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     }
   }
 
+  DASH_LOG_TRACE_RANGE(
+      "target counts", target_counts.begin(), target_counts.end());
+
   std::vector<size_t> target_displs(nunits + 1, 0);
 
   std::partial_sum(
@@ -494,17 +503,23 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   target_displs.back() = n_l_elem;
 
+  DASH_LOG_TRACE_RANGE(
+      "target displs", target_displs.begin(), target_displs.end() - 1);
 
-  trace.enter_state("11:exchange_data (all-to-all)");
+  trace.exit_state("9:calc_target_offsets");
+
+  trace.enter_state("10:exchange_data (all-to-all)");
 
   std::vector<dash::Future<iter_type> > async_copies{};
   async_copies.reserve(p_unit_info.valid_remote_partitions.size());
 
-  auto const get_send_info = [&source_displs, &target_displs, &target_counts, nunits](
-                                 dash::default_index_t const p_idx) {
-    auto const target_disp = target_displs[p_idx];
+  auto const get_send_info = [&source_displs,
+                              &target_displs,
+                              &target_counts,
+                              nunits](dash::default_index_t const p_idx) {
+    auto const target_disp  = target_displs[p_idx];
     auto const target_count = target_counts[p_idx];
-    auto const src_disp = source_displs[p_idx];
+    auto const src_disp     = source_displs[p_idx];
     return std::make_tuple(target_count, src_disp, target_disp);
   };
 
@@ -583,7 +598,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         }
       });
 
-  trace.exit_state("11:exchange_data (all-to-all)");
+  trace.exit_state("10:exchange_data (all-to-all)");
 
   /* NOTE: While merging locally sorted sequences is faster than another
    * heavy-weight sort it comes at a cost. std::inplace_merge allocates a
@@ -602,15 +617,15 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
    */
 
 #if (__DASH_SORT__FINAL_STEP_STRATEGY == __DASH_SORT__FINAL_STEP_BY_SORT)
-  trace.enter_state("12:barrier");
+  trace.enter_state("11:barrier");
   team.barrier();
-  trace.exit_state("12:barrier");
+  trace.exit_state("11:barrier");
 
-  trace.enter_state("13:final_local_sort");
+  trace.enter_state("12:final_local_sort");
   impl::local_sort(lbegin, lend, sort_comp, parallelism);
-  trace.exit_state("13:final_local_sort");
+  trace.exit_state("12:final_local_sort");
 #else
-  trace.enter_state("13:merge_local_sequences");
+  trace.enter_state("11:merge_local_sequences");
 
   // merging sorted sequences
   auto nsequences = nunits;
@@ -620,14 +635,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   // calculate the prefix sum among all receive counts to find the offsets for
   // merging
-  std::vector<size_t> & recv_count_psum = target_displs;
-
-  DASH_LOG_TRACE_RANGE(
-      "recv count prefix sum",
-      std::begin(recv_count_psum),
-      std::end(recv_count_psum));
-
-  DASH_LOG_TRACE_RANGE("before merging", lcopy.begin(), lcopy.end());
 
   for (std::size_t d = 0; d < depth; ++d) {
     // distance between first and mid iterator while merging
@@ -644,10 +651,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       auto mi = m * dist + step;
       // sometimes we have a lonely merge in the end, so we have to guarantee
       // that we do not access out of bounds
-      auto          l = std::min(m * dist + dist, recv_count_psum.size() - 1);
-      auto          first = std::next(lcopy.begin(), recv_count_psum[f]);
-      auto          mid   = std::next(lcopy.begin(), recv_count_psum[mi]);
-      auto          last  = std::next(lcopy.begin(), recv_count_psum[l]);
+      auto          l = std::min(m * dist + dist, target_displs.size() - 1);
+      auto          first = std::next(lcopy.begin(), target_displs[f]);
+      auto          mid   = std::next(lcopy.begin(), target_displs[mi]);
+      auto          last  = std::next(lcopy.begin(), target_displs[l]);
       chunk_range_t dep_l(f, mi);
       chunk_range_t dep_r(mi, l);
 
@@ -695,14 +702,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   chunk_range_t final_range(0, nunits);
   merge_dependencies.at(final_range).wait();
 
-  trace.exit_state("13:merge_local_sequences");
+  trace.exit_state("11:merge_local_sequences");
 #endif
 
   DASH_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
 
-  trace.enter_state("14:final_barrier");
+  trace.enter_state("final_barrier");
   team.barrier();
-  trace.exit_state("14:final_barrier");
+  trace.exit_state("final_barrier");
 }
 
 namespace impl {
