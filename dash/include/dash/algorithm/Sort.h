@@ -736,7 +736,15 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       // Start a thread that blocks until the two previous merges are ready.
       auto&& fut = std::async(
           std::launch::async,
-          [first, mid, last, dep_l, dep_r, &merge_dependencies]() {
+          [nunits,
+           lbegin,
+           first,
+           mid,
+           last,
+           dep_l,
+           dep_r,
+           &team,
+           &merge_dependencies]() {
             if (merge_dependencies.count(dep_l)) {
               merge_dependencies[dep_l].wait();
             }
@@ -744,8 +752,17 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
               merge_dependencies[dep_r].wait();
             }
 
-            // first level needs to wait for data to arrive
-            std::inplace_merge(first, mid, last);
+            // The final merge can be done non-inplace, because we need to
+            // copy the result to the final buffer anyways.
+            if (dep_l.first == 0 && dep_r.second == nunits) {
+              // Make sure everyone merged their parts (necessary for the copy
+              // into the final buffer)
+              team.barrier();
+              std::merge(first, mid, mid, last, lbegin);
+            }
+            else {
+              std::inplace_merge(first, mid, last);
+            }
             DASH_LOG_TRACE("merged chunks", dep_l.first, dep_r.second);
           });
       chunk_range_t to_merge(f, l);
@@ -758,10 +775,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   // Wait for the final merge step
   chunk_range_t final_range(0, nunits);
   merge_dependencies.at(final_range).wait();
-
-  team.barrier();
-  // copy merged sequences back to local portion
-  std::copy(lcopy.begin(), lcopy.end(), lbegin);
 
   trace.exit_state("13:merge_local_sequences");
 #endif
