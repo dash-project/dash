@@ -91,7 +91,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash hash);
 #include <dash/algorithm/sort/Histogram.h>
 #include <dash/algorithm/sort/Partition.h>
 #include <dash/algorithm/sort/Sort-inl.h>
+#include <dash/algorithm/sort/ThreadPool.h>
 #include <dash/algorithm/sort/Types.h>
+
 
 namespace dash {
 
@@ -122,7 +124,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   };
 
   // Number of threads
-  auto                     parallelism = 1;
+  std::uint32_t            parallelism = 1;
 
 #ifdef DASH_ENABLE_PSTL
   dash::util::TeamLocality tloc{pattern.team()};
@@ -525,12 +527,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   std::size_t target_count, src_disp, target_disp;
 
+  auto&& thread_pool = detail::ThreadPool{parallelism};
+
   // A range of chunks to be merged.
   using chunk_range_t = std::pair<std::size_t, std::size_t>;
   // Futures for the merges - only used to signal readiness.
   // Use a std::map because emplace will not invalidate any
   // references or iterators.
-  std::map<chunk_range_t, std::future<void> > merge_dependencies;
+  std::map<chunk_range_t, detail::ThreadPool::TaskFuture<void> > merge_dependencies;
 
   for (auto const& unit : p_unit_info.valid_remote_partitions) {
     std::tie(target_count, src_disp, target_disp) = get_send_info(unit);
@@ -578,7 +582,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     // The std::async is necessary to convert to std::future<void>
     merge_dependencies.emplace(
         unit_range,
-        std::async(std::launch::async, [f = std::move(fut)]() mutable {
+        thread_pool.submit([f = std::move(fut)]() mutable {
           f.wait();
         }));
   }
@@ -587,16 +591,17 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   // Create an entry for the local part
   chunk_range_t local_range(myid, myid + 1);
-  merge_dependencies[local_range] = std::async(
-      std::launch::async,
-      [target_count, local_range, src_disp, &lcopy, target_disp, lbegin] {
-        if (target_count) {
-          std::copy(
-              std::next(lbegin, src_disp),
-              std::next(lbegin, src_disp + target_count),
-              std::next(std::begin(lcopy), target_disp));
-        }
-      });
+  merge_dependencies.emplace(
+      local_range,
+      thread_pool.submit(
+          [target_count, local_range, src_disp, &lcopy, target_disp, lbegin] {
+            if (target_count) {
+              std::copy(
+                  std::next(lbegin, src_disp),
+                  std::next(lbegin, src_disp + target_count),
+                  std::next(std::begin(lcopy), target_disp));
+            }
+          }));
 
   trace.exit_state("10:exchange_data (all-to-all)");
 
@@ -659,8 +664,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       chunk_range_t dep_r(mi, l);
 
       // Start a thread that blocks until the two previous merges are ready.
-      auto&& fut = std::async(
-          std::launch::async,
+      auto&& fut = thread_pool.submit(
           [nunits,
            lbegin,
            first,
@@ -672,10 +676,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
            &team,
            &merge_dependencies]() {
             if (merge_dependencies.count(dep_l)) {
-              merge_dependencies[dep_l].wait();
+              merge_dependencies.at(dep_l).get();
             }
             if (merge_dependencies.count(dep_r)) {
-              merge_dependencies[dep_r].wait();
+              merge_dependencies.at(dep_r).get();
             }
 
             // The final merge can be done non-inplace, because we need to
@@ -700,7 +704,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   // Wait for the final merge step
   chunk_range_t final_range(0, nunits);
-  merge_dependencies.at(final_range).wait();
+  merge_dependencies.at(final_range).get();
 
   trace.exit_state("11:merge_local_sequences");
 #endif
