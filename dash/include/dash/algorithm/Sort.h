@@ -218,8 +218,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   trace.enter_state("3:init_temporary_local_data");
 
-  std::vector<size_t> g_partition_data(nunits * 3);
-
   // Temporary local buffer (sorted);
   std::vector<value_type> lcopy(lbegin, lend);
 
@@ -373,6 +371,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   /********************************************************************/
 
   trace.enter_state("6:transpose_local_histograms (all-to-all)");
+
+  std::vector<size_t> g_partition_data(nunits * 2);
 
   DASH_ASSERT_RETURNS(
       dart_alltoall(
