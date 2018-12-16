@@ -14,7 +14,7 @@
 #include <utility>
 
 namespace dash {
-namespace detail {
+namespace impl {
 template <typename T>
 class ThreadSafeQueue {
 public:

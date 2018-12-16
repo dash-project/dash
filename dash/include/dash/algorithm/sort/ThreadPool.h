@@ -21,7 +21,7 @@
 #include <vector>
 
 namespace dash {
-namespace detail {
+namespace impl {
 class ThreadPool {
 private:
   class IThreadTask {
@@ -224,7 +224,7 @@ inline auto submitJob(Func&& func, Args&&... args)
       std::forward<Func>(func), std::forward<Args>(args)...);
 }
 }  // namespace DefaultThreadPool
-}  // namespace detail
+}  // namespace impl
 }  // namespace dash
 
 #endif

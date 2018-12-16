@@ -2,8 +2,11 @@
 #define DASH__ALGORITHM__SORT__TYPES_H
 
 #include <dash/Types.h>
+#include <dash/algorithm/sort/ThreadPool.h>
 #include <dash/internal/Macro.h>
+#include <future>
 #include <limits>
+#include <map>
 #include <vector>
 
 #define IDX_DIST(nunits) ((nunits)*0)
@@ -19,6 +22,10 @@
 namespace dash {
 
 namespace impl {
+
+// A range of chunks to be merged.
+using ChunkRange = std::pair<std::size_t, std::size_t>;
+using ChunkDependencies = std::map<ChunkRange, impl::ThreadPool::TaskFuture<void>>;
 
 template <typename T>
 struct Splitter {
