@@ -1,11 +1,5 @@
-/**
- * The ThreadPool class.
- * Keeps a set of threads constantly waiting to execute incoming jobs.
- */
-#pragma once
-
-#ifndef THREADPOOL_HPP
-#define THREADPOOL_HPP
+#ifndef DASH__ALGORITHM__SORT__THREADPOOL_H
+#define DASH__ALGORITHM__SORT__THREADPOOL_H
 
 #include "ThreadSafeQueue.h"
 
@@ -22,6 +16,40 @@
 
 namespace dash {
 namespace impl {
+
+/**
+ * The ThreadPool class.
+ * Keeps a set of threads constantly waiting to execute incoming jobs.
+ *
+ * see http://roar11.com/2016/01/a-platform-independent-thread-pool-using-c14/
+ *
+ *
+ * This code is released under the BSD-2-Clause license.
+
+Copyright (c) 2018, Will Pearce
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+    Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+
+    Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS”
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
 class ThreadPool {
 private:
   class IThreadTask {
@@ -63,40 +91,6 @@ private:
 
   private:
     Func m_func;
-  };
-
-public:
-  /**
-   * A wrapper around a std::future that adds the behavior of futures returned
-   * from std::async. Specifically, this object will block and wait for
-   * execution to finish before going out of scope.
-   */
-  template <typename T>
-  class TaskFuture {
-  public:
-    TaskFuture(std::future<T>&& future)
-      : m_future{std::move(future)}
-    {
-    }
-
-    TaskFuture(const TaskFuture& rhs) = delete;
-    TaskFuture& operator=(const TaskFuture& rhs) = delete;
-    TaskFuture(TaskFuture&& other)               = default;
-    TaskFuture& operator=(TaskFuture&& other) = default;
-    ~TaskFuture(void)
-    {
-      if (m_future.valid()) {
-        m_future.get();
-      }
-    }
-
-    auto get(void)
-    {
-      return m_future.get();
-    }
-
-  private:
-    std::future<T> m_future;
   };
 
 public:
@@ -163,7 +157,7 @@ public:
     using TaskType     = ThreadTask<PackagedTask>;
 
     PackagedTask           task{std::move(boundTask)};
-    TaskFuture<ResultType> result{task.get_future()};
+    std::future<ResultType> result{task.get_future()};
     m_workQueue.push(std::make_unique<TaskType>(std::move(task)));
     return result;
   }

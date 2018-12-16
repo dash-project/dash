@@ -1,11 +1,6 @@
-/**
- * The ThreadSafeQueue class.
- * Provides a wrapper around a basic queue to provide thread safety.
- */
-#pragma once
+#ifndef DASH__ALGORITHM__SORT__THREADSAVEQUEUE_H
+#define DASH__ALGORITHM__SORT__THREADSAVEQUEUE_H
 
-#ifndef THREADSAFEQUEUE_HPP
-#define THREADSAFEQUEUE_HPP
 
 #include <atomic>
 #include <condition_variable>
@@ -15,6 +10,39 @@
 
 namespace dash {
 namespace impl {
+
+/**
+ * The ThreadSafeQueue class.
+ * Provides a wrapper around a basic queue to provide thread safety.
+ *
+ * @see http://roar11.com/2016/01/a-platform-independent-thread-pool-using-c14/
+ *
+ * This code is released under the BSD-2-Clause license.
+
+Copyright (c) 2018, Will Pearce
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+    Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+
+    Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS”
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
 template <typename T>
 class ThreadSafeQueue {
 public:
@@ -125,7 +153,8 @@ private:
   std::queue<T>           m_queue;
   std::condition_variable m_condition;
 };
-}  // namespace detail
+
+}  // namespace impl
 }  // namespace dash
 
 #endif
