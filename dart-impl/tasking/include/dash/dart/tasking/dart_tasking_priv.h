@@ -84,7 +84,7 @@ struct dart_task_data {
       int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
     };
     // only relevant during execution
-    dart_dephash_elem_t      **local_deps;      // hashmap containing dependencies of child tasks
+    dart_dephash_head_t      *local_deps;      // hashmap containing dependencies of child tasks
   };
   union {
     // used for dummy tasks
