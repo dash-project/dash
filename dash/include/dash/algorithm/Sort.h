@@ -19,10 +19,6 @@
 #include <dash/internal/Logging.h>
 #include <dash/util/Trace.h>
 
-#ifdef DASH_ENABLE_PSTL
-#include <tbb/task_scheduler_init.h>
-#endif
-
 #ifdef DOXYGEN
 namespace dash {
 /**
@@ -90,11 +86,11 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash hash);
 #include <dash/algorithm/sort/Communication.h>
 #include <dash/algorithm/sort/Histogram.h>
 #include <dash/algorithm/sort/Merge.h>
+#include <dash/algorithm/sort/NodeParallelismConfig.h>
 #include <dash/algorithm/sort/Partition.h>
 #include <dash/algorithm/sort/Sort-inl.h>
 #include <dash/algorithm/sort/ThreadPool.h>
 #include <dash/algorithm/sort/Types.h>
-
 
 namespace dash {
 
@@ -124,31 +120,28 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     return sortable_hash(a) < sortable_hash(b);
   };
 
-  // Number of threads
-  std::uint32_t            parallelism = 1;
+  dash::impl::NodeParallelismConfig nodeLevelConfig{};
 
-#ifdef DASH_ENABLE_PSTL
   dash::util::TeamLocality tloc{pattern.team()};
   auto                     uloc = tloc.unit_locality(pattern.team().myid());
-  parallelism                   = uloc.num_domain_threads();
 
-  if (parallelism > 1) {
-    // Initialize the scheduler with a specific number of threads
-    // This is for example useful if we have one unit per NUMA_domain
+  nodeLevelConfig.initThreads(uloc.num_domain_threads());
 
-    // This setting keeps fixed until the exit of the sorting algorithm
-    tbb::task_scheduler_init init{parallelism};
-  }
-#endif
+  DASH_LOG_TRACE(
+      "dash::sort",
+      "nthreads for local parallelism: ",
+      nodeLevelConfig.parallelism());
 
   if (pattern.team() == dash::Team::Null()) {
     DASH_LOG_TRACE("dash::sort", "Sorting on dash::Team::Null()");
     return;
   }
+
   if (pattern.team().size() == 1) {
     DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
     trace.enter_state("1: final_local_sort");
-    impl::local_sort(begin.local(), end.local(), sort_comp, parallelism);
+    impl::local_sort(
+        begin.local(), end.local(), sort_comp, nodeLevelConfig.parallelism());
     trace.exit_state("1: final_local_sort");
     return;
   }
@@ -180,7 +173,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   // initial local_sort
   trace.enter_state("1:initial_local_sort");
-  impl::local_sort(lbegin, lend, sort_comp, parallelism);
+  impl::local_sort(lbegin, lend, sort_comp, nodeLevelConfig.parallelism());
   trace.exit_state("1:initial_local_sort");
 
   trace.enter_state("2:find_global_min_max");
@@ -513,7 +506,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   trace.enter_state("10:exchange_data (all-to-all)");
 
-
   auto const get_send_info = [&source_displs, &target_displs, &target_counts](
                                  dash::default_index_t const p_idx) {
     auto const target_disp  = target_displs[p_idx];
@@ -550,7 +542,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   trace.exit_state("11:barrier");
 
   trace.enter_state("12:final_local_sort");
-  impl::local_sort(lbegin, lend, sort_comp, parallelism);
+  impl::local_sort(lbegin, lend, sort_comp, nodeLevelConfig.parallelism());
   trace.exit_state("12:final_local_sort");
 #else
   trace.enter_state("11:merge_local_sequences");
