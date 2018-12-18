@@ -58,6 +58,7 @@ dart_ret_t dart_team_memalloc_aligned(
   dart_datatype_t   dtype,
   dart_gptr_t      *gptr)
 {
+    printf("entering gaspi_memalloc alligned with nelm: %d \n", nelem);
     size_t nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
     size_t teamsize;
     dart_unit_t gptr_unitid = -1;
@@ -69,6 +70,7 @@ dart_ret_t dart_team_memalloc_aligned(
     gaspi_segment_id_t   gaspi_seg_id;
     gaspi_segment_id_t * gaspi_seg_ids = (gaspi_segment_id_t *) malloc(sizeof(gaspi_segment_id_t) * teamsize);
     assert(gaspi_seg_ids);
+
 
     uint16_t index;
     int result = dart_adapt_teamlist_convert(teamid, &index);
@@ -92,12 +94,21 @@ dart_ret_t dart_team_memalloc_aligned(
     /* get a free gaspi segment id */
     DART_CHECK_ERROR_GOTO(dart_error_label, seg_stack_pop(&dart_free_coll_seg_ids, &gaspi_seg_id));
 
-    /* Create the gaspi-segment with memory allocation */
-    DART_CHECK_ERROR_GOTO(dart_error_label, gaspi_segment_create(gaspi_seg_id,
-                                                                 nbytes,
-                                                                 gaspi_group,
-                                                                 GASPI_BLOCK,
-                                                                 GASPI_MEM_INITIALIZED));
+    dart_global_unit_t myid;
+    dart_myid(&myid);
+    printf("my_id: %d | seg_id: %d | nbytes: %d | gaspi_group: %d \n", myid, gaspi_seg_id, nbytes, gaspi_group );
+    
+    if( nbytes == 0 )
+    {
+        nbytes = 1;
+    }
+        /* Create the gaspi-segment with memory allocation */
+        DART_CHECK_ERROR_GOTO(dart_error_label, gaspi_segment_create(gaspi_seg_id,
+                                                                    nbytes,
+                                                                    gaspi_group,
+                                                                    GASPI_BLOCK,
+                                                                    GASPI_MEM_INITIALIZED));
+
     /**
      * collect the other segment numbers of the team
      * gaspi_segemt_id_t is currently defined as unsigned char.

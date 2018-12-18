@@ -83,7 +83,6 @@ TEST_F(DARTCollectiveTest, Max) {
   
   std::array<elem_t, 5> max{lmin, lmax};
   std::array<elem_t, 5> res{0,0};
-printf("Werte %d %d\n", max[0], max[1]);
   dart_allreduce(
       max.data(),                        // send buffer
       res.data(),                       // receive buffer
