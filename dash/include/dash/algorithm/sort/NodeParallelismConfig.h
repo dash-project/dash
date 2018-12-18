@@ -13,26 +13,26 @@
 #include <omp.h>
 #endif
 
-namespace dash
-{
-namespace impl
-{
-class NodeParallelismConfig
-{
-  uint32_t m_nthreads{1};
+namespace dash {
+namespace impl {
+class NodeParallelismConfig {
+  uint32_t m_nthreads{};
 #ifdef DASH_ENABLE_PSTL
   // We use the default number of threads
   tbb::task_scheduler_init m_init{};
 #endif
 public:
-  NodeParallelismConfig(uint32_t nthreads = 0):
-    m_nthreads(nthreads == 0 ? tbb::task_scheduler_init::default_num_threads() : nthreads)
+  NodeParallelismConfig(uint32_t nthreads = 0)
 #ifdef DASH_ENABLE_PSTL
-    , m_init (m_nthreads)
+    : m_nthreads(
+
+          nthreads == 0 ? tbb::task_scheduler_init::default_num_threads()
+                        : nthreads)
+    , m_init(m_nthreads)
 #endif
   {
 #ifndef DASH_ENABLE_PSTL
-    //If we use TBB we cannot do that
+    // If we use TBB we cannot do that
     setNumThreads(nthreads);
 #endif
   }
@@ -48,12 +48,10 @@ public:
 
   constexpr auto parallelism() const noexcept
   {
-    if (NodeParallelismConfig::hasNodeLevelParallelism())
-    {
+    if (NodeParallelismConfig::hasNodeLevelParallelism()) {
       return m_nthreads;
     }
-    else
-    {
+    else {
       return 1u;
     }
   }
@@ -70,20 +68,18 @@ private:
 
   static uint32_t getNThreads(uint32_t nthreads) noexcept
   {
-    if (!NodeParallelismConfig::hasNodeLevelParallelism())
-    {
+    if (!NodeParallelismConfig::hasNodeLevelParallelism()) {
       return 1u;
     }
 
-    if (nthreads > 0)
-    {
+    if (nthreads > 0) {
       return nthreads;
     }
 
 #if defined(DASH_ENABLE_OPENMP)
     return omp_get_max_threads();
 #else
-    //always create at least one thread...
+    // always create at least one thread...
     return std::max(std::thread::hardware_concurrency(), 2u) - 1u;
 #endif
   }
@@ -91,4 +87,4 @@ private:
 }  // namespace impl
 }  // namespace dash
 
-#endif
+#endif  // DASH__ALGORITHM__SORT__NODE_PARALLELISM_CONFIG_H
