@@ -14,13 +14,18 @@
 namespace dash {
 namespace impl {
 
-template <typename GlobIterT, typename SendInfoT, typename LocalIt>
+template <
+    typename GlobIterT,
+    typename SendInfoT,
+    typename LocalIt,
+    typename ThreadPoolT>
 ChunkDependencies psort__exchange_data(
     GlobIterT       begin,
     GlobIterT       end,
     const LocalIt   lcopy_begin,
     const SendInfoT get_send_info,
-    const UnitInfo& p_unit_info)
+    const UnitInfo& p_unit_info,
+    ThreadPoolT&    thread_pool)
 {
   using iter_type = GlobIterT;
 
@@ -38,8 +43,6 @@ ChunkDependencies psort__exchange_data(
   auto* const lend   = l_mem_begin + l_range.end;
 
   std::size_t target_count, src_disp, target_disp;
-
-  auto& thread_pool = impl::DefaultThreadPool::getThreadPool();
 
   // Futures for the merges - only used to signal readiness.
   // Use a std::map because emplace will not invalidate any
@@ -122,14 +125,20 @@ ChunkDependencies psort__exchange_data(
   return std::move(chunk_dependencies);
 }
 
-template <typename GlobIterT, typename LocalIt, typename MergeDeps, typename SortCompT>
+template <
+    typename GlobIterT,
+    typename LocalIt,
+    typename MergeDeps,
+    typename SortCompT,
+    typename ThreadPoolT>
 void psort__merge_local(
     GlobIterT                       begin,
     GlobIterT                       end,
     LocalIt                         lcopy_begin,
     const std::vector<std::size_t>& target_displs,
     MergeDeps&                      chunk_dependencies,
-    SortCompT                       sort_comp)
+    SortCompT                       sort_comp,
+    ThreadPoolT&                    thread_pool)
 {
 
   auto&      pattern       = begin.pattern();
@@ -145,7 +154,6 @@ void psort__merge_local(
   auto nsequences = nunits;
   // number of merge steps in the tree
   auto const depth = static_cast<size_t>(std::ceil(std::log2(nsequences)));
-  auto&& thread_pool = impl::DefaultThreadPool::getThreadPool();
 
   // calculate the prefix sum among all receive counts to find the offsets for
   // merging

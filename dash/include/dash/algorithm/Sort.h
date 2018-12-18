@@ -129,6 +129,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   dash::impl::NodeParallelismConfig nodeLevelConfig{
       static_cast<uint32_t>(nthreads)};
 
+  impl::ThreadPool thread_pool{nodeLevelConfig.parallelism()};
+
   DASH_LOG_TRACE(
       "dash::sort",
       "nthreads for local parallelism: ",
@@ -518,7 +520,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   // Note that this call is non-blocking (only enqueues the async_copies)
   auto chunk_dependencies = impl::psort__exchange_data(
-      begin, end, lcopy.begin(), get_send_info, p_unit_info);
+      begin, end, lcopy.begin(), get_send_info, p_unit_info, thread_pool);
 
   trace.exit_state("10:exchange_data (all-to-all)");
 
@@ -555,7 +557,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       lcopy.begin(),
       target_displs,
       chunk_dependencies,
-      sort_comp);
+      sort_comp,
+      thread_pool);
 
   // Wait for the final merge step
   impl::ChunkRange final_range(0, nunits);
