@@ -165,7 +165,7 @@ void psort__merge_local(
       impl::ChunkRange dep_r(mi, l);
 
       // Start a thread that blocks until the two previous merges are ready.
-      auto&&           fut = thread_pool.submit([nunits,
+      auto&&     fut = thread_pool.submit([nunits,
                                        lbegin,
                                        first,
                                        mid,
@@ -175,12 +175,16 @@ void psort__merge_local(
                                        sort_comp,
                                        &team,
                                        &chunk_dependencies]() {
-        if (chunk_dependencies.count(dep_l)) {
-          chunk_dependencies.at(dep_l).get();
-        }
-        if (chunk_dependencies.count(dep_r)) {
-          chunk_dependencies.at(dep_r).get();
-        }
+        // Wait for the left and right chunks to be copied/merged
+        // This guarantees that for
+        //
+        // [____________________________]
+        // ^f           ^mi             ^l
+        //
+        // [f, mi) and [mi, f) are both merged sequences when the task
+        // continues.
+        chunk_dependencies[dep_l].wait();
+        chunk_dependencies[dep_r].wait();
 
         // The final merge can be done non-inplace, because we need to
         // copy the result to the final buffer anyways.
