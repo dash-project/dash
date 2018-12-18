@@ -106,8 +106,6 @@ static void process_handle_chunk(
 {
   int32_t *flags = alloca(sizeof(int32_t)*num_handles);
 
-  printf("Processing %d blocked tasks at once\n", num_tasks);
-
   dart_testsome(handles, num_handles, flags);
 
   int c = 0;
