@@ -13,38 +13,47 @@
 #include <omp.h>
 #endif
 
-namespace dash {
-namespace impl {
-class NodeParallelismConfig {
+namespace dash
+{
+namespace impl
+{
+class NodeParallelismConfig
+{
   uint32_t m_nthreads{1};
 #ifdef DASH_ENABLE_PSTL
   // We use the default number of threads
   tbb::task_scheduler_init m_init{};
 #endif
 public:
-  NodeParallelismConfig(uint32_t nthreads = 0)
+  NodeParallelismConfig(uint32_t nthreads = 0):
+    m_nthreads(nthreads == 0 ? tbb::task_scheduler_init::default_num_threads() : nthreads)
+#ifdef DASH_ENABLE_PSTL
+    , m_init (m_nthreads)
+#endif
   {
-    initThreads(nthreads);
+#ifndef DASH_ENABLE_PSTL
+    //If we use TBB we cannot do that
+    setNumThreads(nthreads);
+#endif
   }
 
-  void initThreads(uint32_t nthreadsRequested) DASH_NOEXCEPT
+  void setNumThreads(uint32_t nthreadsRequested) DASH_NOEXCEPT
   {
-    DASH_ASSERT_GE(nthreadsRequested, 0, "invalid number of threads");
     m_nthreads = getNThreads(nthreadsRequested);
-#if defined(DASH_ENABLE_PSTL)
-    tbb::task_scheduler_init tmp{m_nthreads};
-    std::swap(m_init, tmp);
-#elif defined(DASH_ENABLE_OPENMP)
+
+#if defined(DASH_ENABLE_OPENMP)
     omp_set_num_threads(m_nthreads);
 #endif
   }
 
   constexpr auto parallelism() const noexcept
   {
-    if (NodeParallelismConfig::hasNodeLevelParallelism()) {
+    if (NodeParallelismConfig::hasNodeLevelParallelism())
+    {
       return m_nthreads;
     }
-    else {
+    else
+    {
       return 1u;
     }
   }
@@ -61,17 +70,17 @@ private:
 
   static uint32_t getNThreads(uint32_t nthreads) noexcept
   {
-    if (!NodeParallelismConfig::hasNodeLevelParallelism()) {
+    if (!NodeParallelismConfig::hasNodeLevelParallelism())
+    {
       return 1u;
     }
 
-    if (nthreads > 0) {
+    if (nthreads > 0)
+    {
       return nthreads;
     }
 
-#if defined(DASH_ENABLE_PSTL)
-    return tbb::task_scheduler_init::default_num_threads();
-#elif defined(DASH_ENABLE_OPENMP)
+#if defined(DASH_ENABLE_OPENMP)
     return omp_get_max_threads();
 #else
     //always create at least one thread...
