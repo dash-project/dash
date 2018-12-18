@@ -191,8 +191,12 @@ void psort__merge_local(
         //
         // [f, mi) and [mi, f) are both merged sequences when the task
         // continues.
-        chunk_dependencies[dep_l].wait();
-        chunk_dependencies[dep_r].wait();
+        if(chunk_dependencies[dep_l].valid()) {
+          chunk_dependencies[dep_l].wait();
+        }
+        if(chunk_dependencies[dep_r].valid()) {
+          chunk_dependencies[dep_r].wait();
+        }
 
         // The final merge can be done non-inplace, because we need to
         // copy the result to the final buffer anyways.
