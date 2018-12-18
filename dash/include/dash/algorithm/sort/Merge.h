@@ -4,6 +4,9 @@
 #include <dash/algorithm/Copy.h>
 #include <dash/algorithm/sort/ThreadPool.h>
 #include <dash/algorithm/sort/Types.h>
+
+#include <dash/dart/if/dart_communication.h>
+
 #include <dash/internal/Logging.h>
 
 #include <map>
@@ -78,18 +81,23 @@ ChunkDependencies psort__exchange_data(
                       pattern.global_index(
                           static_cast<dash::team_unit_t>(unit), {})};
 
+    dart_handle_t handle;
+    dash::internal::get_handle(
+        (it_src + src_disp).dart_gptr(),
+        std::addressof(*(lcopy_begin + target_disp)),
+        target_count,
+        &handle);
+
     // A chunk range (unit, unit + 1) signals represents the copy. Unit + 1 is
     // a sentinel here.
     ChunkRange unit_range(unit, unit + 1);
-    auto&&     fut = dash::copy_async(
-        it_src + src_disp,
-        it_src + src_disp + target_count,
-        std::addressof(*(lcopy_begin + target_disp)));
 
-    // The std::async is necessary to convert to std::future<void>
-    chunk_dependencies.emplace(
-        unit_range,
-        thread_pool.submit([f = std::move(fut)]() mutable { f.wait(); }));
+    // Copy the handle into a task and wait
+    chunk_dependencies.emplace(unit_range, thread_pool.submit([handle]() mutable {
+      if (handle != DART_HANDLE_NULL) {
+        dart_wait(&handle);
+      }
+    }));
   }
 
   std::tie(target_count, src_disp, target_disp) = get_send_info(myid);
