@@ -122,9 +122,12 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   dash::util::TeamLocality tloc{pattern.team()};
   auto                     uloc = tloc.unit_locality(pattern.team().myid());
+  auto                     nthreads = uloc.num_domain_threads();
+
+  DASH_ASSERT_GE(nthreads, 0, "invalid number of threads");
 
   dash::impl::NodeParallelismConfig nodeLevelConfig{
-      uloc.num_domain_threads()};
+      static_cast<uint32_t>(nthreads)};
 
   DASH_LOG_TRACE(
       "dash::sort",
