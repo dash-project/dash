@@ -682,6 +682,26 @@ dart_ret_t dart_testall(
   int32_t       * is_finished);
 
 /**
+ * Test for the completion of operations and ensure remote completion.
+ * If the transfers completed, the handles are invalidated and may not be
+ * used in another \c dart_wait or \c dart_test operation.
+ *
+ * \param handles Array of handles of operations to test for completion.
+ * \param n Number of \c handles to test for completion.
+ * \param[out] flags Array of \n n integer indicating the completion of
+ *             each of the \c n handles in \c handles.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_testsome(
+  dart_handle_t   handles[],
+  size_t          n,
+  int32_t         flags[]);
+
+/**
  * Free the handle without testing or waiting for completion of the operation.
  *
  * \param handle Pointer to the handle to free.

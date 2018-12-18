@@ -13,6 +13,7 @@ static dart_taskphase_t max_active_phases = INT_MAX;
 static dart_taskphase_t max_active_phases_mod = INT_MAX;
 static dart_taskphase_t num_active_phases = 0;
 static int32_t *phase_task_counts = NULL;
+static size_t num_units;
 
 
 void
@@ -23,6 +24,11 @@ dart__tasking__phase_advance()
   static dart_mutex_t     allocation_mutex  = DART_MUTEX_INITIALIZER;
   if (matching_interval == INT_MIN) {
     dart__base__mutex_lock(&allocation_mutex);
+    dart_team_size(DART_TEAM_ALL, &num_units);
+    if (num_units == 1) {
+      // disable matching
+      matching_interval = -1;
+    }
     if (matching_interval == INT_MIN)
     {
       matching_interval = dart__base__env__number(
@@ -51,6 +57,11 @@ dart__tasking__phase_advance()
       }
     }
     dart__base__mutex_unlock(&allocation_mutex);
+  }
+
+  // no need to handle phases if there is only one unit
+  if (num_units == 1) {
+    return;
   }
 
   if (--phases_remaining == 0) {

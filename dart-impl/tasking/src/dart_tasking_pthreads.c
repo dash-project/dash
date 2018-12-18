@@ -91,6 +91,8 @@ static bool bind_threads = false;
 static dart_taskqueue_t *task_queue;
 #endif // DART_TASK_THREADLOCAL_Q
 
+static size_t num_units;
+
 enum dart_thread_idle_t {
   DART_THREAD_IDLE_POLL,
   DART_THREAD_IDLE_USLEEP,
@@ -1134,6 +1136,8 @@ dart__tasking__init()
   dart__tasking__ayudame_init();
 #endif // DART_ENABLE_AYUDAME
 
+  dart_team_size(DART_TEAM_ALL, &num_units);
+
   dart__task__wait_init();
 
   dart_tasking_copyin_init();
@@ -1312,6 +1316,11 @@ dart__tasking__create_task(
 void
 dart__tasking__perform_matching(dart_taskphase_t phase)
 {
+  if (num_threads == 1) {
+    // nothing to be done for one unit
+    return;
+  }
+  //printf("Performing matching at phase %d\n", phase);
   // make sure all incoming requests are served
   dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
   // release unhandled remote dependencies
