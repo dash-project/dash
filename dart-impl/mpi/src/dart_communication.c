@@ -1817,57 +1817,60 @@ dart_ret_t dart_testsome(
     return DART_OK;
   }
 
-  int *r_flags = ALLOC_TMP(2 * n * sizeof (int));
+  int *r_idx = ALLOC_TMP(2 * n * sizeof (int));
   MPI_Request *mpi_req = ALLOC_TMP(2 * n * sizeof (MPI_Request));
   size_t r_n = 0;
   for (size_t i = 0; i < n; ++i) {
     flags[i] = 0;
     if (handles[i] != DART_HANDLE_NULL) {
+      // copy all requests, makes handling of finished requests at the end easier
       for (uint8_t j = 0; j < handles[i]->num_reqs; ++j) {
-        if (handles[i]->reqs[j] != MPI_REQUEST_NULL){
-          mpi_req[r_n] = handles[i]->reqs[j];
-          ++r_n;
-        }
+        mpi_req[r_n] = handles[i]->reqs[j];
+        ++r_n;
       }
     }
   }
 
   if (r_n) {
     DART_LOG_TRACE("  MPI_Testall on %zu requests", r_n);
-    if (dart__mpi__testall(r_n, mpi_req, r_flags) != MPI_SUCCESS){
+    int outcount;
+    if (MPI_Testsome(r_n, mpi_req, &outcount, r_idx, MPI_STATUSES_IGNORE) != MPI_SUCCESS){
       DART_LOG_ERROR("dart_testsome: MPI_Testall failed");
       FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
-      FREE_TMP(2 * n * sizeof(int), r_flags);
+      FREE_TMP(2 * n * sizeof(int), r_idx);
       return DART_ERR_OTHER;
     }
 
-    int c = 0;
+    r_n = 0;
+    // TODO: can we map the out indices back to the original tasks?
     for (int i = 0; i < n; ++i) {
       bool handle_complete = true;
-      for (int j = 0; j < handles[i]->num_reqs; ++j) {
-        if (!r_flags[c]) {
-          handle_complete = false;
+      if (handles[i] != DART_HANDLE_NULL) {
+        for (int j = 0; j < handles[i]->num_reqs; ++j) {
+          if (mpi_req[r_n] != MPI_REQUEST_NULL) {
+            handle_complete = false;
+          }
+          ++r_n;
         }
-        ++c;
-      }
-      if (handle_complete) {
-        DART_LOG_DEBUG(
-          "dart_testsome: handle %p complete, waiting for remote completion",
-          handles[i]);
-        if (DART_OK != wait_remote_completion(&handles[i], 1)) {
-          DART_LOG_ERROR("dart_testsome: MPI_Win_flush failed");
-          FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
-          FREE_TMP(2 * n * sizeof(int), r_flags);
-          return DART_ERR_OTHER;
+        if (handle_complete) {
+          DART_LOG_DEBUG(
+            "dart_testsome: handle %p complete, waiting for remote completion",
+            handles[i]);
+          if (DART_OK != wait_remote_completion(&handles[i], 1)) {
+            DART_LOG_ERROR("dart_testsome: MPI_Win_flush failed");
+            FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
+            FREE_TMP(2 * n * sizeof(int), r_idx);
+            return DART_ERR_OTHER;
+          }
+          free(handles[i]);
+          handles[i] = DART_HANDLE_NULL;
+          flags[i] = 1;
         }
-        free(handles[i]);
-        handles[i] = DART_HANDLE_NULL;
-        flags[i] = 1;
       }
     }
   }
   FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
-  FREE_TMP(2 * n * sizeof(int), r_flags);
+  FREE_TMP(2 * n * sizeof(int), r_idx);
   DART_LOG_DEBUG("dart_testsome > finished");
   return DART_OK;
 }
