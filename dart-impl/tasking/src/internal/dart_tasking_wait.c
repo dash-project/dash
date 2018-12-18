@@ -9,6 +9,7 @@
 #include <dash/dart/base/assert.h>
 
 #include <stdlib.h>
+#include <alloca.h>
 
 static dart_taskqueue_t handle_list;
 static dart_taskqueue_t handle_list_tmp;
@@ -95,6 +96,48 @@ dart__task__wait_handle(dart_handle_t *handles, size_t num_handle)
 #endif // HAVE_RESCHEDULING_YIELD
 }
 
+#define NUM_CHUNK_HANDLE 16
+
+static void process_handle_chunk(
+  dart_task_t   **tasks,
+  int             num_tasks,
+  dart_handle_t * handles,
+  int             num_handles)
+{
+  int32_t *flags = alloca(sizeof(int32_t)*num_handles);
+
+  printf("Processing %d blocked tasks at once\n", num_tasks);
+
+  dart_testsome(handles, num_handles, flags);
+
+  int c = 0;
+  for (int i = 0; i < num_tasks; ++i) {
+    dart_task_t *task = tasks[i];
+    int task_completed = true;
+    for (int j = 0; j < tasks[i]->wait_handle->num_handle; ++j) {
+      if (!flags[c]) {
+        task_completed = false;
+      }
+      ++c;
+    }
+    if (task_completed) {
+      free(task->wait_handle);
+      task->wait_handle = NULL;
+      if (task->state != DART_TASK_DETACHED) {
+        // all transfers finished, the task can be requeued
+        task->state       = DART_TASK_SUSPENDED;
+        DART_LOG_TRACE("wait_handle: Unblocking task %p", task);
+        dart__tasking__enqueue_runnable(task);
+      } else {
+        DART_LOG_TRACE("wait_handle: Releasing detached task %p", task);
+        dart__tasking__release_detached(task);
+      }
+    } else {
+      dart_tasking_taskqueue_pushback_unsafe(&handle_list_tmp, task);
+    }
+  }
+}
+
 void
 dart__task__wait_progress()
 {
@@ -103,27 +146,33 @@ dart__task__wait_progress()
     dart_task_t *task;
     // check each task from the handle_list and put it into a temporary
     // list if necessary
-    while ((task = dart_tasking_taskqueue_pop(&handle_list)) != NULL) {
-      int32_t flag;
-      DART_LOG_TRACE("wait_handle: Testing task %p", task);
-      dart_wait_handle_t *waithandle = task->wait_handle;
-      dart_testall(waithandle->handle, waithandle->num_handle, &flag);
-      if (flag) {
-        if (task->state != DART_TASK_DETACHED) {
-          // all transfers finished, the task can be requeued
-          task->state       = DART_TASK_SUSPENDED;
-          task->wait_handle = NULL;
-          DART_LOG_TRACE("wait_handle: Unblocking task %p", task);
-          dart__tasking__enqueue_runnable(task);
+
+    while (handle_list.num_elem > 0) {
+      // collect tasks and their handles to process as chunk
+      dart_task_t *tasks[NUM_CHUNK_HANDLE];
+      int num_tasks = 0;
+      dart_handle_t handle[NUM_CHUNK_HANDLE];
+      int num_handle = 0;
+      while ((task = dart_tasking_taskqueue_pop(&handle_list)) != NULL) {
+        if (task->wait_handle->num_handle > NUM_CHUNK_HANDLE) {
+          process_handle_chunk(&task, 1,
+                              task->wait_handle->handle,
+                              task->wait_handle->num_handle);
         } else {
-          DART_LOG_TRACE("wait_handle: Releasing detached task %p", task);
-          dart__tasking__release_detached(task);
-          task->wait_handle = NULL;
+          if ((num_handle + task->wait_handle->num_handle) > NUM_CHUNK_HANDLE) {
+            // put back into queue and try again after we processed the current chunk
+            dart_tasking_taskqueue_push(&handle_list, task);
+            break;
+          }
+
+          tasks[num_tasks++] = task;
+          for (int i = 0; i < task->wait_handle->num_handle; ++i) {
+            handle[num_handle++] = task->wait_handle->handle[i];
+          }
         }
-        free(waithandle);
-      } else {
-        // put the task into the new list for further waiting
-        dart_tasking_taskqueue_pushback_unsafe(&handle_list_tmp, task);
+      }
+      if (num_handle) {
+        process_handle_chunk(tasks, num_tasks, handle, num_handle);
       }
     }
     // move the remaining tasks to the main queue
