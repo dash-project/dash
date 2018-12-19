@@ -99,7 +99,11 @@ namespace dash {
 #define __DASH_SORT__FINAL_STEP_STRATEGY (__DASH_SORT__FINAL_STEP_BY_MERGE)
 
 template <class GlobRandomIt, class SortableHash>
-void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
+void sort(
+    GlobRandomIt begin,
+    GlobRandomIt end,
+    GlobRandomIt out,
+    SortableHash sortable_hash)
 {
   using iter_type  = GlobRandomIt;
   using value_type = typename iter_type::value_type;
@@ -111,7 +115,35 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       std::is_arithmetic<mapped_type>::value,
       "Only arithmetic types are supported");
 
-  auto pattern = begin.pattern();
+  static_assert(
+      std::is_same<decltype(begin.pattern()), decltype(out.pattern())>::value,
+      "incompatible pattern types for input and output iterator");
+
+  if (begin.pattern().team() != out.pattern().team()) {
+    DASH_LOG_ERROR("dash::sort", "incompatible teams");
+    return;
+  }
+
+  auto const lcapacity = [](auto const& pattern) {
+    auto const extents = pattern.local_extents(pattern.team().myid());
+    auto const lsize   = std::accumulate(
+        std::begin(extents),
+        std::end(extents),
+        1,
+        std::multiplies<std::size_t>());
+    return lsize;
+  };
+
+  auto lcap_in  = lcapacity(begin.pattern());
+  auto lcap_out = lcapacity(out.pattern());
+
+  if (lcap_out < lcap_in) {
+    DASH_LOG_ERROR(
+        "dash::sort",
+        "cannot write into a output buffer which is smaller than the input "
+        "buffer");
+    return;
+  }
 
   dash::util::Trace trace("Sort");
 
@@ -119,6 +151,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
                              const value_type& a, const value_type& b) {
     return sortable_hash(a) < sortable_hash(b);
   };
+
+  auto pattern = begin.pattern();
 
   dash::util::TeamLocality tloc{pattern.team()};
   auto                     uloc = tloc.unit_locality(pattern.team().myid());
@@ -218,8 +252,19 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   trace.enter_state("3:init_temporary_local_data");
 
-  // Temporary local buffer (sorted);
-  std::vector<value_type> lcopy(lbegin, lend);
+  std::vector<value_type> lcopy;
+
+  auto * lcopy_begin = lbegin;
+
+  auto const in_place = begin == out;
+
+  if (in_place) {
+    lcopy.reserve(n_l_elem);
+    std::copy(lbegin, lend, std::back_inserter(lcopy));
+    lcopy_begin = lcopy.data();
+  } else {
+    lcopy_begin = dash::local_begin(static_cast<typename GlobRandomIt::pointer>(out), team.myid());
+  }
 
   auto const p_unit_info =
       impl::psort__find_partition_borders(pattern, begin, end);
@@ -234,7 +279,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   impl::psort__init_partition_borders(p_unit_info, splitters);
 
   DASH_LOG_TRACE_RANGE(
-      "locally sorted array", std::begin(lcopy), std::end(lcopy));
+      "locally sorted array", lcopy_begin, lcopy_begin + n_l_elem);
 
   DASH_LOG_TRACE_RANGE(
       "skipped splitters",
@@ -296,8 +341,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     auto const l_nlt_nle = impl::psort__local_histogram(
         splitters,
         valid_partitions,
-        std::begin(lcopy),
-        std::end(lcopy),
+        lcopy_begin,
+        lcopy_begin + n_l_elem,
         sortable_hash);
 
     DASH_LOG_TRACE_RANGE(
@@ -345,8 +390,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   auto const histograms = impl::psort__local_histogram(
       splitters,
       valid_partitions,
-      std::begin(lcopy),
-      std::end(lcopy),
+      lcopy_begin,
+      lcopy_begin + n_l_elem,
       sortable_hash);
 
   trace.exit_state("5:final_local_histogram");
@@ -520,7 +565,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   // Note that this call is non-blocking (only enqueues the async_copies)
   auto chunk_dependencies = impl::psort__exchange_data(
-      begin, end, lcopy.begin(), get_send_info, p_unit_info, thread_pool);
+      begin, end, lcopy_begin, get_send_info, p_unit_info, thread_pool);
 
   trace.exit_state("10:exchange_data (all-to-all)");
 
@@ -552,13 +597,15 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   trace.enter_state("11:merge_local_sequences");
 
   impl::psort__merge_local(
-      begin,
-      end,
-      lcopy.begin(),
+      lbegin,
+      lcopy_begin,
       target_displs,
       chunk_dependencies,
       sort_comp,
-      thread_pool);
+      team,
+      thread_pool,
+      in_place
+      );
 
   // Wait for the final merge step
   impl::ChunkRange final_range(0, nunits);
@@ -591,11 +638,11 @@ inline void sort(GlobRandomIt begin, GlobRandomIt end)
   using value_t = typename std::remove_cv<
       typename dash::iterator_traits<GlobRandomIt>::value_type>::type;
 
-  dash::sort(begin, end, impl::identity_t<value_t const&>());
+  dash::sort(begin, end, begin, impl::identity_t<value_t const&>());
 }
 
 #endif  // DOXYGEN
 
 }  // namespace dash
 
-#endif  // DASH__ALGORITHM__SORT_Hll
+#endif  // DASH__ALGORITHM__SORT_H

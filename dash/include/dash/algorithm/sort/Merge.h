@@ -96,11 +96,12 @@ ChunkDependencies psort__exchange_data(
     ChunkRange unit_range(unit, unit + 1);
 
     // Copy the handle into a task and wait
-    chunk_dependencies.emplace(unit_range, thread_pool.submit([handle]() mutable {
-      if (handle != DART_HANDLE_NULL) {
-        dart_wait(&handle);
-      }
-    }));
+    chunk_dependencies.emplace(
+        unit_range, thread_pool.submit([handle]() mutable {
+          if (handle != DART_HANDLE_NULL) {
+            dart_wait(&handle);
+          }
+        }));
   }
 
   std::tie(target_count, src_disp, target_disp) = get_send_info(myid);
@@ -126,34 +127,24 @@ ChunkDependencies psort__exchange_data(
 }
 
 template <
-    typename GlobIterT,
     typename LocalIt,
     typename MergeDeps,
     typename SortCompT,
     typename ThreadPoolT>
 void psort__merge_local(
-    GlobIterT                       begin,
-    GlobIterT                       end,
-    LocalIt                         lcopy_begin,
+    LocalIt                         out,
+    LocalIt                         buffer,
     const std::vector<std::size_t>& target_displs,
     MergeDeps&                      chunk_dependencies,
     SortCompT                       sort_comp,
-    ThreadPoolT&                    thread_pool)
+    dash::Team const&               team,
+    ThreadPoolT&                    thread_pool,
+    bool                            in_place)
 {
-
-  auto&      pattern       = begin.pattern();
-  auto&      team          = begin.team();
-  auto const nunits        = team.size();
-
-  // local distance
-  auto const l_range     = dash::local_index_range(begin, end);
-  auto*      l_mem_begin = dash::local_begin(
-      static_cast<typename GlobIterT::pointer>(begin), team.myid());
-  auto* const lbegin = l_mem_begin + l_range.begin;
-
-  auto nsequences = nunits;
+  auto const nunits  = team.size();
+  auto       nchunks = nunits;
   // number of merge steps in the tree
-  auto const depth = static_cast<size_t>(std::ceil(std::log2(nsequences)));
+  auto const depth = static_cast<size_t>(std::ceil(std::log2(nchunks)));
 
   // calculate the prefix sum among all receive counts to find the offsets for
   // merging
@@ -164,7 +155,7 @@ void psort__merge_local(
     // distance between first and last iterator while merging
     auto const dist = step << 1;
     // number of merges
-    auto const nmerges = nsequences >> 1;
+    auto const nmerges = nchunks >> 1;
 
     // Start threaded merges. When d == 0 they depend on dash::copy to finish,
     // later on other merges.
@@ -173,22 +164,23 @@ void psort__merge_local(
       auto mi = m * dist + step;
       // sometimes we have a lonely merge in the end, so we have to guarantee
       // that we do not access out of bounds
-      auto l = std::min(m * dist + dist, target_displs.size() - 1);
-      auto             first = std::next(lcopy_begin, target_displs[f]);
-      auto             mid   = std::next(lcopy_begin, target_displs[mi]);
-      auto             last  = std::next(lcopy_begin, target_displs[l]);
+      auto l     = std::min(m * dist + dist, target_displs.size() - 1);
+      auto first = std::next(buffer, target_displs[f]);
+      auto mid   = std::next(buffer, target_displs[mi]);
+      auto last  = std::next(buffer, target_displs[l]);
       impl::ChunkRange dep_l(f, mi);
       impl::ChunkRange dep_r(mi, l);
 
       // Start a thread that blocks until the two previous merges are ready.
       auto&&     fut = thread_pool.submit([nunits,
-                                       lbegin,
+                                       out,
                                        first,
                                        mid,
                                        last,
                                        dep_l,
                                        dep_r,
                                        sort_comp,
+                                       in_place,
                                        &team,
                                        &chunk_dependencies]() {
         // Wait for the left and right chunks to be copied/merged
@@ -199,23 +191,28 @@ void psort__merge_local(
         //
         // [f, mi) and [mi, f) are both merged sequences when the task
         // continues.
-        if(chunk_dependencies[dep_l].valid()) {
+        if (chunk_dependencies[dep_l].valid()) {
           chunk_dependencies[dep_l].wait();
         }
-        if(chunk_dependencies[dep_r].valid()) {
+        if (chunk_dependencies[dep_r].valid()) {
           chunk_dependencies[dep_r].wait();
         }
 
-        // The final merge can be done non-inplace, because we need to
-        // copy the result to the final buffer anyways.
-        if (dep_l.first == 0 && dep_r.second == nunits) {
-          // Make sure everyone merged their parts (necessary for the copy
-          // into the final buffer)
-          team.barrier();
-          std::merge(first, mid, mid, last, lbegin, sort_comp);
+        if (in_place) {
+          // The final merge can be done non-inplace, because we need to
+          // copy the result to the final buffer anyways.
+          if (dep_l.first == 0 && dep_r.second == nunits) {
+            // Make sure everyone merged their parts (necessary for the copy
+            // into the final buffer)
+            team.barrier();
+            std::merge(first, mid, mid, last, out, sort_comp);
+          }
+          else {
+            std::inplace_merge(first, mid, last, sort_comp);
+          }
         }
         else {
-          std::inplace_merge(first, mid, last, sort_comp);
+          std::merge(first, mid, mid, last, out, sort_comp);
         }
         DASH_LOG_TRACE("merged chunks", dep_l.first, dep_r.second);
       });
@@ -223,7 +220,7 @@ void psort__merge_local(
       chunk_dependencies.emplace(to_merge, std::move(fut));
     }
 
-    nsequences -= nmerges;
+    nchunks -= nmerges;
   }
 }
 

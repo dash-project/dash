@@ -265,7 +265,9 @@ TEST_F(SortTest, ArrayOfPoints)
 
   array.barrier();
 
-  dash::sort(array.begin(), array.end(), [](const Point& p) { return p.x; });
+  dash::sort(array.begin(), array.end(), array.begin(), [](const Point& p) {
+    return p.x;
+  });
 
   if (dash::myid() == 0) {
     for (auto it = array.begin() + 1; it < array.end(); ++it) {
