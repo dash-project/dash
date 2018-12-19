@@ -46,7 +46,7 @@ public:
 #endif
   }
 
-  constexpr auto parallelism() const noexcept
+  auto parallelism() const noexcept
   {
     if (NodeParallelismConfig::hasNodeLevelParallelism()) {
       return m_nthreads;
