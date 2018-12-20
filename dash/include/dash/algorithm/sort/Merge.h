@@ -166,9 +166,19 @@ void psort__merge_local(
       // that we do not access out of bounds
       auto l = std::min(m * dist + dist, nunits);
 
-      // tuple of chunk displacements
+      // tuple of chunk displacements. Be cautious with the indexes and the
+      // order in make_tuple
+      static constexpr int left   = 0;
+      static constexpr int right  = 1;
+      static constexpr int middle = 2;
+
       auto chunk_displs = std::make_tuple(
-          target_displs[f], target_displs[mi], target_displs[l]);
+          // left
+          target_displs[f],
+          // right
+          target_displs[l],
+          // middle
+          target_displs[mi]);
 
       // pair of merge dependencies
       auto merge_deps =
@@ -185,13 +195,10 @@ void psort__merge_local(
                                        &team,
                                        &chunk_dependencies]() {
         // indexes for displacements
-        static constexpr int c_first  = 0;
-        static constexpr int c_middle = 1;
-        static constexpr int c_last   = 2;
 
-        auto first = std::next(buffer, std::get<c_first>(displs));
-        auto mid   = std::next(buffer, std::get<c_middle>(displs));
-        auto last  = std::next(buffer, std::get<c_last>(displs));
+        auto first = std::next(buffer, std::get<left>(displs));
+        auto mid   = std::next(buffer, std::get<middle>(displs));
+        auto last  = std::next(buffer, std::get<right>(displs));
         // Wait for the left and right chunks to be copied/merged
         // This guarantees that for
         //
@@ -201,11 +208,8 @@ void psort__merge_local(
         // [f, mi) and [mi, f) are both merged sequences when the task
         // continues.
 
-        static constexpr int left_dep  = 0;
-        static constexpr int right_dep = 1;
-
-        auto dep_l = std::get<left_dep>(deps);
-        auto dep_r = std::get<right_dep>(deps);
+        auto dep_l = std::get<left>(deps);
+        auto dep_r = std::get<right>(deps);
 
         if (chunk_dependencies[dep_l].valid()) {
           chunk_dependencies[dep_l].wait();
