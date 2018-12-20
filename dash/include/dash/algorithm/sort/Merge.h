@@ -164,25 +164,34 @@ void psort__merge_local(
       auto mi = m * dist + step;
       // sometimes we have a lonely merge in the end, so we have to guarantee
       // that we do not access out of bounds
-      auto l     = std::min(m * dist + dist, target_displs.size() - 1);
-      auto first = std::next(buffer, target_displs[f]);
-      auto mid   = std::next(buffer, target_displs[mi]);
-      auto last  = std::next(buffer, target_displs[l]);
-      impl::ChunkRange dep_l(f, mi);
-      impl::ChunkRange dep_r(mi, l);
+      auto l = std::min(m * dist + dist, nunits);
+
+      // tuple of chunk displacements
+      auto chunk_displs = std::make_tuple(
+          target_displs[f], target_displs[mi], target_displs[l]);
+
+      // pair of merge dependencies
+      auto merge_deps =
+          std::make_pair(impl::ChunkRange{f, mi}, impl::ChunkRange{mi, l});
 
       // Start a thread that blocks until the two previous merges are ready.
       auto&&     fut = thread_pool.submit([nunits,
                                        out,
-                                       first,
-                                       mid,
-                                       last,
-                                       dep_l,
-                                       dep_r,
+                                       buffer,
+                                       displs = std::move(chunk_displs),
+                                       deps   = std::move(merge_deps),
                                        sort_comp,
                                        in_place,
                                        &team,
                                        &chunk_dependencies]() {
+        // indexes for displacements
+        static constexpr int c_first  = 0;
+        static constexpr int c_middle = 1;
+        static constexpr int c_last   = 2;
+
+        auto first = std::next(buffer, std::get<c_first>(displs));
+        auto mid   = std::next(buffer, std::get<c_middle>(displs));
+        auto last  = std::next(buffer, std::get<c_last>(displs));
         // Wait for the left and right chunks to be copied/merged
         // This guarantees that for
         //
@@ -191,6 +200,13 @@ void psort__merge_local(
         //
         // [f, mi) and [mi, f) are both merged sequences when the task
         // continues.
+
+        static constexpr int left_dep  = 0;
+        static constexpr int right_dep = 1;
+
+        auto dep_l = std::get<left_dep>(deps);
+        auto dep_r = std::get<right_dep>(deps);
+
         if (chunk_dependencies[dep_l].valid()) {
           chunk_dependencies[dep_l].wait();
         }
@@ -212,7 +228,11 @@ void psort__merge_local(
           }
         }
         else {
-          std::merge(first, mid, mid, last, out, sort_comp);
+          DASH_THROW(
+              dash::exception::NotImplemented,
+              "non-inplace merge not supported yet");
+          // std::merge(first, mid, mid, last, std::next(out, first),
+          // sort_comp);
         }
         DASH_LOG_TRACE("merged chunks", dep_l.first, dep_r.second);
       });

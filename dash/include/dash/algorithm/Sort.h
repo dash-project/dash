@@ -129,7 +129,7 @@ void sort(
     auto const lsize   = std::accumulate(
         std::begin(extents),
         std::end(extents),
-        1,
+        std::size_t(1),
         std::multiplies<std::size_t>());
     return lsize;
   };
@@ -254,7 +254,7 @@ void sort(
 
   std::vector<value_type> lcopy;
 
-  auto * lcopy_begin = lbegin;
+  auto* lcopy_begin = lbegin;
 
   auto const in_place = begin == out;
 
@@ -262,8 +262,10 @@ void sort(
     lcopy.reserve(n_l_elem);
     std::copy(lbegin, lend, std::back_inserter(lcopy));
     lcopy_begin = lcopy.data();
-  } else {
-    lcopy_begin = dash::local_begin(static_cast<typename GlobRandomIt::pointer>(out), team.myid());
+  }
+  else {
+    lcopy_begin = dash::local_begin(
+        static_cast<typename GlobRandomIt::pointer>(out), team.myid());
   }
 
   auto const p_unit_info =
@@ -415,6 +417,22 @@ void sort(
   /****** Partition Distribution **************************************/
   /********************************************************************/
 
+  /**
+   * Each unit 0 <= p < P-1  is responsible for a final refinement around the
+   * borders of bucket B_p.
+   *
+   * Parameters:
+   * - Lower bound ( < S_p): The number of elements which definitely belong to
+   *   Bucket p.
+   * - Bucket size: Local capacity of unit u_p
+   * - Uppoer bound ( <= S_p): The number of elements which eventually go into
+   *   Bucket p.
+   *
+   * We first calculate the deficit (Bucket size - lower bound). If the
+   * bucket is not fully exhausted (deficit > 0) we fill the space with
+   * elements from the upper bound until the bucket is full.
+   */
+
   trace.enter_state("6:transpose_local_histograms (all-to-all)");
 
   std::vector<size_t> g_partition_data(nunits * 2);
@@ -475,6 +493,23 @@ void sort(
 
   trace.exit_state("7:calc_final_partition_dist");
 
+  /********************************************************************/
+  /****** Source Displacements ****************************************/
+  /********************************************************************/
+
+  /**
+   * Based on the distribution we have to know the source displacements
+   * (the offset where we have to read from in each unit). This is just a
+   * ring-communication where each unit shift its local distribution downwards
+   * to the succeeding neighbor.
+   *
+   * Worst Case Communication Complexity: O(P)
+   * Memory Complexity: O(P)
+   *
+   * Only Units which contribute local elements participate in the
+   * communication
+   */
+
   trace.enter_state("8:comm_source_displs (sendrecv)");
 
   std::vector<size_t> source_displs(nunits, 0);
@@ -509,6 +544,21 @@ void sort(
 
   trace.exit_state("8:comm_source_displs (sendrecv)");
 
+  /********************************************************************/
+  /****** Target Counts ***********************************************/
+  /********************************************************************/
+
+  /**
+   * Based on the distribution and the source displacements we can determine
+   * the number of elemens we have to copy from each unit (target count) to
+   * obtain the finally sorted sequence. This is just a mapping operation
+   * where we calculcate for all elements 0 <= i < P:
+   *
+   * target_count[i] = partition_dist[i+1] - source_displacements[i]
+   *
+   * Communication Complexity: 0
+   * Memory Complexity: O(P)
+   */
   trace.enter_state("9:calc_target_offsets");
 
   std::vector<size_t> target_counts(nunits, 0);
@@ -538,6 +588,18 @@ void sort(
   DASH_LOG_TRACE_RANGE(
       "target counts", target_counts.begin(), target_counts.end());
 
+  /********************************************************************/
+  /****** Target Counts ***********************************************/
+  /********************************************************************/
+
+  /**
+   * Based on the target count we calculate the target displace (the offset to
+   * which we have to copy remote data). This is just an exclusive scan with a
+   * plus opertion.
+   *
+   * Communication Complexity: 0
+   * Memory Complexity: O(P)
+   */
   std::vector<size_t> target_displs(nunits + 1, 0);
 
   std::partial_sum(
@@ -562,6 +624,20 @@ void sort(
     auto const src_disp     = source_displs[p_idx];
     return std::make_tuple(target_count, src_disp, target_disp);
   };
+
+  /********************************************************************/
+  /****** Exchange Data (All-To-All) **********************************/
+  /********************************************************************/
+
+  /**
+   * Based on the information calculate above we initiate the data exchange.
+   * Each process copies P chunks from each Process to the local portion.
+   * Assuming all local portions are of equal local size gives us the
+   * following complexity:
+   *
+   * Average Communication Traffic: O(N)
+   * Aerage Comunication Overhead: O(P^2)
+   */
 
   // Note that this call is non-blocking (only enqueues the async_copies)
   auto chunk_dependencies = impl::psort__exchange_data(
@@ -604,8 +680,7 @@ void sort(
       sort_comp,
       team,
       thread_pool,
-      in_place
-      );
+      in_place);
 
   // Wait for the final merge step
   impl::ChunkRange final_range(0, nunits);
