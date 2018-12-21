@@ -632,28 +632,35 @@ void sort(
    * Aerage Comunication Overhead: O(P^2)
    */
 
-  auto const get_send_info = [&source_displs, &target_displs, &target_counts](
-                                 dash::default_index_t const p_idx) {
-    auto const target_disp  = target_displs[p_idx];
-    auto const target_count = target_counts[p_idx];
-    auto const src_disp     = source_displs[p_idx];
-    return std::make_tuple(target_count, src_disp, target_disp);
-  };
+  impl::ChunkDependencies chunk_dependencies;
+  {
+    auto const get_send_info =
+        [&source_displs, &target_displs, &target_counts](
+            dash::default_index_t const p_idx) {
+          auto const target_disp  = target_displs[p_idx];
+          auto const target_count = target_counts[p_idx];
+          auto const src_disp     = source_displs[p_idx];
+          return std::make_tuple(target_count, src_disp, target_disp);
+        };
 
-  // Note that this call is non-blocking (only enqueues the async_copies)
-  auto copy_handles = impl::psort__exchange_data(
-      begin, lcopy_begin, p_unit_info.valid_remote_partitions, get_send_info);
+    // Note that this call is non-blocking (only enqueues the async_copies)
+    auto copy_handles = impl::psort__exchange_data(
+        begin,
+        lcopy_begin,
+        p_unit_info.valid_remote_partitions,
+        get_send_info);
 
-  // Schedule all these async copies for parallel processing in a thread
-  // pool...
-  auto chunk_dependencies = impl::psort__schedule_copy_tasks(
-      lbegin,
-      lcopy_begin,
-      myid,
-      p_unit_info.valid_remote_partitions,
-      std::move(copy_handles),
-      thread_pool,
-      get_send_info);
+    // Schedule all these async copies for parallel processing in a thread
+    // pool...
+    chunk_dependencies = impl::psort__schedule_copy_tasks(
+        lbegin,
+        lcopy_begin,
+        myid,
+        p_unit_info.valid_remote_partitions,
+        std::move(copy_handles),
+        thread_pool,
+        get_send_info);
+  }
 
   /* NOTE: While merging locally sorted sequences is faster than another
    * heavy-weight sort it comes at a cost. std::inplace_merge allocates a

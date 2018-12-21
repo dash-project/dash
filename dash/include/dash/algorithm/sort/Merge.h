@@ -100,16 +100,17 @@ inline auto psort__schedule_copy_tasks(
       std::begin(remote_partitions),
       std::end(remote_partitions),
       std::inserter(chunk_dependencies, chunk_dependencies.begin()),
-      [&thread_pool, &copy_handles](auto partition) {
+      [&thread_pool,
+       handles = std::move(copy_handles)](auto partition) mutable {
         // our copy handle
-        dart_handle_t& handle = copy_handles[partition];
+        dart_handle_t& handle = handles[partition];
         return std::make_pair(
             // the partition range
             std::make_pair(partition, partition + 1),
             // the future of our asynchronous communication task
-            thread_pool.submit([&handle]() {
-              if (handle != DART_HANDLE_NULL) {
-                dart_wait(&handle);
+            thread_pool.submit([hdl = std::move(handle)]() mutable {
+              if (hdl != DART_HANDLE_NULL) {
+                dart_wait(&hdl);
               }
             }));
       });
