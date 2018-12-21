@@ -77,7 +77,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end);
  * \ingroup  DashAlgorithms
  */
 template <class GlobRandomIt, class SortableHash>
-void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash hash);
+void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash&& hash);
 
 }  // namespace dash
 
@@ -99,10 +99,10 @@ template <
     class SortableHash,
     class MergeStrategy = impl::sort__final_strategy__merge>
 void sort(
-    GlobRandomIt begin,
-    GlobRandomIt end,
-    GlobRandomIt out,
-    SortableHash sortable_hash)
+    GlobRandomIt   begin,
+    GlobRandomIt   end,
+    GlobRandomIt   out,
+    SortableHash&& sortable_hash)
 {
   using iter_type  = GlobRandomIt;
   using value_type = typename iter_type::value_type;
@@ -653,7 +653,9 @@ void sort(
     // Schedule all these async copies for parallel processing in a thread
     // pool...
     chunk_dependencies = impl::psort__schedule_copy_tasks(
+        // in
         lbegin,
+        // out
         lcopy_begin,
         myid,
         p_unit_info.valid_remote_partitions,
@@ -679,9 +681,11 @@ void sort(
    */
 
   if (std::is_same<MergeStrategy, impl::sort__final_strategy__sort>::value) {
-    // Wait for the final merge step
-    impl::ChunkRange final_range(0, nunits);
-    chunk_dependencies.at(final_range).get();
+    // Wait for all local copies
+    for (auto& dep : chunk_dependencies) {
+      dep.second.wait();
+    }
+
     trace.exit_state("10:exchange_data (all-to-all)");
 
     trace.enter_state("11:final_local_sort");
@@ -741,13 +745,18 @@ struct identity_t : std::unary_function<T, T> {
 };
 }  // namespace impl
 
-template <class GlobRandomIt>
+template <
+    class GlobRandomIt,
+    class MergeStrategy = impl::sort__final_strategy__merge>
 inline void sort(GlobRandomIt begin, GlobRandomIt end)
 {
   using value_t = typename std::remove_cv<
       typename dash::iterator_traits<GlobRandomIt>::value_type>::type;
 
-  dash::sort(begin, end, begin, impl::identity_t<value_t const&>());
+  auto hash = impl::identity_t<value_t const&>{};
+
+  dash::sort<GlobRandomIt, decltype(hash), MergeStrategy>(
+      begin, end, begin, std::move(hash));
 }
 
 #endif  // DOXYGEN
