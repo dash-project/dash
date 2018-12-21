@@ -11,10 +11,10 @@
 
 #define IDX_DIST(nunits) ((nunits)*0)
 #define IDX_SUPP(nunits) ((nunits)*1)
-//idx source disp
+// idx source disp
 #define IDX_DISP(nunits) ((nunits)*2)
 
-//original: send count
+// original: send count
 #define IDX_SRC_COUNT(nunits) IDX_DIST(nunits)
 #define IDX_TARGET_COUNT(nunits) IDX_SUPP(nunits)
 #define NLT_NLE_BLOCK (2)
@@ -26,6 +26,13 @@ namespace impl {
 // A range of chunks to be merged/copied
 using ChunkRange        = std::pair<std::size_t, std::size_t>;
 using ChunkDependencies = std::map<ChunkRange, std::future<void>>;
+
+// Final Step Strategy
+struct sort__final_strategy__merge {
+};
+
+struct sort__final_strategy__sort {
+};
 
 template <typename T>
 struct Splitter {

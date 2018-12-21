@@ -94,11 +94,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash hash);
 
 namespace dash {
 
-#define __DASH_SORT__FINAL_STEP_BY_MERGE (0)
-#define __DASH_SORT__FINAL_STEP_BY_SORT (1)
-#define __DASH_SORT__FINAL_STEP_STRATEGY (__DASH_SORT__FINAL_STEP_BY_MERGE)
-
-template <class GlobRandomIt, class SortableHash>
+template <
+    class GlobRandomIt,
+    class SortableHash,
+    class MergeStrategy = impl::sort__final_strategy__merge>
 void sort(
     GlobRandomIt begin,
     GlobRandomIt end,
@@ -254,18 +253,20 @@ void sort(
 
   std::vector<value_type> lcopy;
 
-  auto* lcopy_begin = lbegin;
+  decltype(lbegin) lcopy_begin = nullptr;
 
   auto const in_place = begin == out;
 
-  if (in_place) {
-    lcopy.reserve(n_l_elem);
-    std::copy(lbegin, lend, std::back_inserter(lcopy));
-    lcopy_begin = lcopy.data();
-  }
-  else {
-    lcopy_begin = dash::local_begin(
-        static_cast<typename GlobRandomIt::pointer>(out), team.myid());
+  if (n_l_elem) {
+    if (in_place) {
+      lcopy.reserve(n_l_elem);
+      std::copy(lbegin, lend, std::back_inserter(lcopy));
+      lcopy_begin = lcopy.data();
+    }
+    else {
+      lcopy_begin = dash::local_begin(
+          static_cast<typename GlobRandomIt::pointer>(out), team.myid());
+    }
   }
 
   auto const p_unit_info =
@@ -617,14 +618,6 @@ void sort(
 
   trace.enter_state("10:exchange_data (all-to-all)");
 
-  auto const get_send_info = [&source_displs, &target_displs, &target_counts](
-                                 dash::default_index_t const p_idx) {
-    auto const target_disp  = target_displs[p_idx];
-    auto const target_count = target_counts[p_idx];
-    auto const src_disp     = source_displs[p_idx];
-    return std::make_tuple(target_count, src_disp, target_disp);
-  };
-
   /********************************************************************/
   /****** Exchange Data (All-To-All) **********************************/
   /********************************************************************/
@@ -639,11 +632,28 @@ void sort(
    * Aerage Comunication Overhead: O(P^2)
    */
 
-  // Note that this call is non-blocking (only enqueues the async_copies)
-  auto chunk_dependencies = impl::psort__exchange_data(
-      begin, end, lcopy_begin, get_send_info, p_unit_info, thread_pool);
+  auto const get_send_info = [&source_displs, &target_displs, &target_counts](
+                                 dash::default_index_t const p_idx) {
+    auto const target_disp  = target_displs[p_idx];
+    auto const target_count = target_counts[p_idx];
+    auto const src_disp     = source_displs[p_idx];
+    return std::make_tuple(target_count, src_disp, target_disp);
+  };
 
-  trace.exit_state("10:exchange_data (all-to-all)");
+  // Note that this call is non-blocking (only enqueues the async_copies)
+  auto copy_handles = impl::psort__exchange_data(
+      begin, lcopy_begin, p_unit_info.valid_remote_partitions, get_send_info);
+
+  // Schedule all these async copies for parallel processing in a thread
+  // pool...
+  auto chunk_dependencies = impl::psort__schedule_copy_tasks(
+      lbegin,
+      lcopy_begin,
+      myid,
+      p_unit_info.valid_remote_partitions,
+      std::move(copy_handles),
+      thread_pool,
+      get_send_info);
 
   /* NOTE: While merging locally sorted sequences is faster than another
    * heavy-weight sort it comes at a cost. std::inplace_merge allocates a
@@ -661,33 +671,50 @@ void sort(
    * memory capacity on its own.
    */
 
-#if (__DASH_SORT__FINAL_STEP_STRATEGY == __DASH_SORT__FINAL_STEP_BY_SORT)
-  trace.enter_state("11:barrier");
-  team.barrier();
-  trace.exit_state("11:barrier");
+  if (std::is_same<MergeStrategy, impl::sort__final_strategy__sort>::value) {
+    // Wait for the final merge step
+    impl::ChunkRange final_range(0, nunits);
+    chunk_dependencies.at(final_range).get();
+    trace.exit_state("10:exchange_data (all-to-all)");
 
-  trace.enter_state("12:final_local_sort");
-  impl::local_sort(lbegin, lend, sort_comp, nodeLevelConfig.parallelism());
-  trace.exit_state("12:final_local_sort");
-#else
-  trace.enter_state("11:merge_local_sequences");
+    trace.enter_state("11:final_local_sort");
+    impl::local_sort(
+        lcopy_begin,
+        lcopy_begin + n_l_elem,
+        sort_comp,
+        nodeLevelConfig.parallelism());
+    trace.exit_state("11:final_local_sort");
 
-  impl::psort__merge_local(
-      lbegin,
-      lcopy_begin,
-      target_displs,
-      chunk_dependencies,
-      sort_comp,
-      team,
-      thread_pool,
-      in_place);
+    trace.enter_state("12:barrier");
+    team.barrier();
+    trace.exit_state("12:barrier");
 
-  // Wait for the final merge step
-  impl::ChunkRange final_range(0, nunits);
-  chunk_dependencies.at(final_range).get();
+    trace.enter_state("13:final_local_copy");
+    std::copy(lcopy_begin, lcopy_begin + n_l_elem, lbegin);
+    trace.exit_state("13:final_local_copy");
+  }
+  else {
+    trace.exit_state("10:exchange_data (all-to-all)");
 
-  trace.exit_state("11:merge_local_sequences");
-#endif
+    trace.enter_state("11:merge_local_sequences");
+
+    // Merge all asynchronous copies into a locally sorted range
+    impl::psort__merge_local(
+        lcopy_begin,
+        lbegin,
+        target_displs,
+        chunk_dependencies,
+        sort_comp,
+        team,
+        thread_pool,
+        in_place);
+
+    // Wait for the final merge step
+    impl::ChunkRange final_range(0, nunits);
+    chunk_dependencies.at(final_range).get();
+
+    trace.exit_state("11:merge_local_sequences");
+  }
 
   DASH_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
 

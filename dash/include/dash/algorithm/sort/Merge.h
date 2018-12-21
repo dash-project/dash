@@ -14,42 +14,29 @@
 namespace dash {
 namespace impl {
 
-template <
-    typename GlobIterT,
-    typename SendInfoT,
-    typename LocalIt,
-    typename ThreadPoolT>
-ChunkDependencies psort__exchange_data(
-    GlobIterT       begin,
-    GlobIterT       end,
-    const LocalIt   lcopy_begin,
-    const SendInfoT get_send_info,
-    const UnitInfo& p_unit_info,
-    ThreadPoolT&    thread_pool)
+template <typename GlobIterT, typename SendInfoT, typename LocalIt>
+inline auto psort__exchange_data(
+    GlobIterT                                 gbegin,
+    const LocalIt                             lbuffer,
+    std::vector<dash::default_index_t> const& remote_partitions,
+    SendInfoT&&                               get_send_info)
 {
   using iter_type = GlobIterT;
 
-  auto&      pattern       = begin.pattern();
-  auto&      team          = begin.team();
-  auto const unit_at_begin = pattern.unit_at(begin.pos());
-  auto const myid          = team.myid();
+  auto&      pattern       = gbegin.pattern();
+  auto&      team          = gbegin.team();
+  auto const unit_at_begin = pattern.unit_at(gbegin.pos());
 
-  // local distance
-  auto const l_range     = dash::local_index_range(begin, end);
-  auto*      l_mem_begin = dash::local_begin(
-      static_cast<typename iter_type::pointer>(begin), team.myid());
+  auto                       nchunks = team.size();
+  std::vector<dart_handle_t> handles(nchunks, DART_HANDLE_NULL);
 
-  auto* const lbegin = l_mem_begin + l_range.begin;
-  auto* const lend   = l_mem_begin + l_range.end;
+  if (nullptr == lbuffer) {
+    return handles;
+  }
 
   std::size_t target_count, src_disp, target_disp;
 
-  // Futures for the merges - only used to signal readiness.
-  // Use a std::map because emplace will not invalidate any
-  // references or iterators.
-  ChunkDependencies chunk_dependencies;
-
-  for (auto const& unit : p_unit_info.valid_remote_partitions) {
+  for (auto const& unit : remote_partitions) {
     std::tie(target_count, src_disp, target_disp) = get_send_info(unit);
 
     if (0 == target_count) {
@@ -75,54 +62,82 @@ ChunkDependencies psort__exchange_data(
             ?
             /* If we are the unit at the beginning of the global range simply
                return begin */
-            begin
+            gbegin
             :
             /* Otherwise construct an global iterator pointing the first local
                element from the correspoding unit */
-            iter_type{&(begin.globmem()),
+            iter_type{std::addressof(gbegin.globmem()),
                       pattern,
                       pattern.global_index(
                           static_cast<dash::team_unit_t>(unit), {})};
 
-    dart_handle_t handle;
     dash::internal::get_handle(
         (it_src + src_disp).dart_gptr(),
-        std::addressof(*(lcopy_begin + target_disp)),
+        std::addressof(*(lbuffer + target_disp)),
         target_count,
-        &handle);
-
-    // A chunk range (unit, unit + 1) signals represents the copy. Unit + 1 is
-    // a sentinel here.
-    ChunkRange unit_range(unit, unit + 1);
-
-    // Copy the handle into a task and wait
-    chunk_dependencies.emplace(
-        unit_range, thread_pool.submit([handle]() mutable {
-          if (handle != DART_HANDLE_NULL) {
-            dart_wait(&handle);
-          }
-        }));
+        std::addressof(handles[unit]));
   }
 
-  std::tie(target_count, src_disp, target_disp) = get_send_info(myid);
+  return handles;
+}
 
+template <class LocalIt, class ThreadPoolT, class SendInfoT>
+inline auto psort__schedule_copy_tasks(
+    const LocalIt                             lbuffer_from,
+    LocalIt                                   lbuffer_to,
+    dash::team_unit_t                         whoami,
+    std::vector<dash::default_index_t> const& remote_partitions,
+    std::vector<dart_handle_t>&&              copy_handles,
+    ThreadPoolT&                              thread_pool,
+    SendInfoT&&                               get_send_info)
+{
+  // Futures for the merges - only used to signal readiness.
+  // Use a std::map because emplace will not invalidate any
+  // references or iterators.
+  impl::ChunkDependencies chunk_dependencies;
+
+  std::transform(
+      std::begin(remote_partitions),
+      std::end(remote_partitions),
+      std::inserter(chunk_dependencies, chunk_dependencies.begin()),
+      [&thread_pool, &copy_handles](auto partition) {
+        // our copy handle
+        dart_handle_t& handle = copy_handles[partition];
+        return std::make_pair(
+            // the partition range
+            std::make_pair(partition, partition + 1),
+            // the future of our asynchronous communication task
+            thread_pool.submit([&handle]() {
+              if (handle != DART_HANDLE_NULL) {
+                dart_wait(&handle);
+              }
+            }));
+      });
+
+  std::size_t target_count, src_disp, target_disp;
+  std::tie(target_count, src_disp, target_disp) = get_send_info(whoami);
   // Create an entry for the local part
-  ChunkRange local_range(myid, myid + 1);
+  impl::ChunkRange local_range = std::make_pair(whoami, whoami + 1);
   chunk_dependencies.emplace(
       local_range,
       thread_pool.submit([target_count,
                           local_range,
                           src_disp,
                           target_disp,
-                          lbegin,
-                          lcopy_begin] {
+                          lbuffer_from,
+                          lbuffer_to] {
         if (target_count) {
           std::copy(
-              std::next(lbegin, src_disp),
-              std::next(lbegin, src_disp + target_count),
-              std::next(lcopy_begin, target_disp));
+              std::next(lbuffer_from, src_disp),
+              std::next(lbuffer_from, src_disp + target_count),
+              std::next(lbuffer_to, target_disp));
         }
       }));
+  DASH_ASSERT_EQ(
+      remote_partitions.size() + 1,
+      chunk_dependencies.size(),
+      "invalid chunk dependencies");
+
   return std::move(chunk_dependencies);
 }
 
@@ -131,9 +146,9 @@ template <
     typename MergeDeps,
     typename SortCompT,
     typename ThreadPoolT>
-void psort__merge_local(
-    LocalIt                         out,
-    LocalIt                         buffer,
+inline void psort__merge_local(
+    LocalIt                         lbuffer_from,
+    LocalIt                         lbuffer_to,
     const std::vector<std::size_t>& target_displs,
     MergeDeps&                      chunk_dependencies,
     SortCompT                       sort_comp,
@@ -186,8 +201,8 @@ void psort__merge_local(
 
       // Start a thread that blocks until the two previous merges are ready.
       auto&&     fut = thread_pool.submit([nunits,
-                                       out,
-                                       buffer,
+                                       lbuffer_to,
+                                       lbuffer_from,
                                        displs = std::move(chunk_displs),
                                        deps   = std::move(merge_deps),
                                        sort_comp,
@@ -196,9 +211,9 @@ void psort__merge_local(
                                        &chunk_dependencies]() {
         // indexes for displacements
 
-        auto first = std::next(buffer, std::get<left>(displs));
-        auto mid   = std::next(buffer, std::get<middle>(displs));
-        auto last  = std::next(buffer, std::get<right>(displs));
+        auto first = std::next(lbuffer_from, std::get<left>(displs));
+        auto mid   = std::next(lbuffer_from, std::get<middle>(displs));
+        auto last  = std::next(lbuffer_from, std::get<right>(displs));
         // Wait for the left and right chunks to be copied/merged
         // This guarantees that for
         //
@@ -225,7 +240,7 @@ void psort__merge_local(
             // Make sure everyone merged their parts (necessary for the copy
             // into the final buffer)
             team.barrier();
-            std::merge(first, mid, mid, last, out, sort_comp);
+            std::merge(first, mid, mid, last, lbuffer_to, sort_comp);
           }
           else {
             std::inplace_merge(first, mid, last, sort_comp);
@@ -235,7 +250,7 @@ void psort__merge_local(
           DASH_THROW(
               dash::exception::NotImplemented,
               "non-inplace merge not supported yet");
-          // std::merge(first, mid, mid, last, std::next(out, first),
+          // std::merge(first, mid, mid, last, std::next(lbuffer_to, first),
           // sort_comp);
         }
         DASH_LOG_TRACE("merged chunks", dep_l.first, dep_r.second);
