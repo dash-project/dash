@@ -23,16 +23,16 @@ namespace dash {
 
 namespace impl {
 
-// A range of chunks to be merged/copied
-using ChunkRange        = std::pair<std::size_t, std::size_t>;
-using ChunkDependencies = std::map<ChunkRange, std::future<void>>;
-
 // Final Step Strategy
 struct sort__final_strategy__merge {
 };
 
 struct sort__final_strategy__sort {
 };
+
+// A range of chunks to be merged/copied
+using ChunkRange        = std::pair<std::size_t, std::size_t>;
+using ChunkDependencies = std::map<ChunkRange, std::future<void>>;
 
 template <typename T>
 struct Splitter {

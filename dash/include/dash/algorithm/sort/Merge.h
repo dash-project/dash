@@ -16,21 +16,21 @@ namespace impl {
 
 template <typename GlobIterT, typename SendInfoT, typename LocalIt>
 inline auto psort__exchange_data(
-    GlobIterT                                 gbegin,
-    const LocalIt                             lbuffer,
+    GlobIterT                                 from_global_begin,
+    LocalIt                                   to_local_begin,
     std::vector<dash::default_index_t> const& remote_partitions,
     SendInfoT&&                               get_send_info)
 {
   using iter_type = GlobIterT;
 
-  auto&      pattern       = gbegin.pattern();
-  auto&      team          = gbegin.team();
-  auto const unit_at_begin = pattern.unit_at(gbegin.pos());
+  auto&      pattern       = from_global_begin.pattern();
+  auto&      team          = from_global_begin.team();
+  auto const unit_at_begin = pattern.unit_at(from_global_begin.pos());
 
   auto                       nchunks = team.size();
   std::vector<dart_handle_t> handles(nchunks, DART_HANDLE_NULL);
 
-  if (nullptr == lbuffer) {
+  if (nullptr == to_local_begin) {
     return handles;
   }
 
@@ -62,18 +62,18 @@ inline auto psort__exchange_data(
             ?
             /* If we are the unit at the beginning of the global range simply
                return begin */
-            gbegin
+            from_global_begin
             :
             /* Otherwise construct an global iterator pointing the first local
                element from the correspoding unit */
-            iter_type{std::addressof(gbegin.globmem()),
+            iter_type{std::addressof(from_global_begin.globmem()),
                       pattern,
                       pattern.global_index(
                           static_cast<dash::team_unit_t>(unit), {})};
 
     dash::internal::get_handle(
         (it_src + src_disp).dart_gptr(),
-        std::addressof(*(lbuffer + target_disp)),
+        std::addressof(*(to_local_begin + target_disp)),
         target_count,
         std::addressof(handles[unit]));
   }
@@ -83,8 +83,8 @@ inline auto psort__exchange_data(
 
 template <class LocalIt, class ThreadPoolT, class SendInfoT>
 inline auto psort__schedule_copy_tasks(
-    const LocalIt                             lbuffer_from,
-    LocalIt                                   lbuffer_to,
+    const LocalIt                             from_local_it,
+    LocalIt                                   to_local_buffer_it,
     dash::team_unit_t                         whoami,
     std::vector<dash::default_index_t> const& remote_partitions,
     std::vector<dart_handle_t>&&              copy_handles,
@@ -125,13 +125,13 @@ inline auto psort__schedule_copy_tasks(
                           local_range,
                           src_disp,
                           target_disp,
-                          lbuffer_from,
-                          lbuffer_to] {
+                          from_local_it,
+                          to_local_buffer_it] {
         if (target_count) {
           std::copy(
-              std::next(lbuffer_from, src_disp),
-              std::next(lbuffer_from, src_disp + target_count),
-              std::next(lbuffer_to, target_disp));
+              std::next(from_local_it, src_disp),
+              std::next(from_local_it, src_disp + target_count),
+              std::next(to_local_buffer_it, target_disp));
         }
       }));
   DASH_ASSERT_EQ(
@@ -142,25 +142,62 @@ inline auto psort__schedule_copy_tasks(
   return std::move(chunk_dependencies);
 }
 
-template <
-    typename LocalIt,
-    typename MergeDeps,
-    typename SortCompT,
-    typename ThreadPoolT>
-inline void psort__merge_local(
-    LocalIt                         lbuffer_from,
-    LocalIt                         lbuffer_to,
-    const std::vector<std::size_t>& target_displs,
-    MergeDeps&                      chunk_dependencies,
-    SortCompT                       sort_comp,
-    dash::Team const&               team,
-    ThreadPoolT&                    thread_pool,
-    bool                            in_place)
+template <class Iter, class OutputIt, class Cmp, class Barrier>
+void merge_inplace(
+    Iter      first,
+    Iter      mid,
+    Iter      last,
+    OutputIt  out,
+    Cmp&&     cmp,
+    Barrier&& barrier,
+    bool      is_final_merge)
 {
-  auto const nunits  = team.size();
-  auto       nchunks = nunits;
+  // The final merge can be done non-inplace, because we need to
+  // copy the result to the final buffer anyways.
+  if (is_final_merge) {
+    // Make sure everyone merged their parts (necessary for the copy
+    // into the final buffer)
+    barrier();
+    std::merge(first, mid, mid, last, out, cmp);
+  }
+  else {
+    std::inplace_merge(first, mid, last, cmp);
+  }
+}
+
+template <class Iter, class OutputIt, class Cmp>
+void merge(
+    Iter      first,
+    Iter      mid,
+    Iter      last,
+    OutputIt  out,
+    Cmp&&     cmp,
+    bool      is_final_merge)
+{
+  // The final merge can be done non-inplace, because we need to
+  // copy the result to the final buffer anyways.
+  if (is_final_merge) {
+    // Make sure everyone merged their parts (necessary for the copy
+    // into the final buffer)
+    barrier();
+    std::merge(first, mid, mid, last, out, cmp);
+  }
+  else {
+    std::inplace_merge(first, mid, last, cmp);
+  }
+}
+
+template <typename ThreadPoolT, typename MergeOp>
+inline auto psort__merge_tree(
+    ChunkDependencies&&  chunk_dependencies,
+    size_t       nchunks,
+    ThreadPoolT& thread_pool,
+    MergeOp&&    mergeOp)
+{
   // number of merge steps in the tree
   auto const depth = static_cast<size_t>(std::ceil(std::log2(nchunks)));
+
+  auto const npartitions = nchunks;
 
   // calculate the prefix sum among all receive counts to find the offsets for
   // merging
@@ -180,7 +217,7 @@ inline void psort__merge_local(
       auto mi = m * dist + step;
       // sometimes we have a lonely merge in the end, so we have to guarantee
       // that we do not access out of bounds
-      auto l = std::min(m * dist + dist, nunits);
+      auto l = std::min(m * dist + dist, npartitions);
 
       // tuple of chunk displacements. Be cautious with the indexes and the
       // order in make_tuple
@@ -188,80 +225,46 @@ inline void psort__merge_local(
       static constexpr int right  = 1;
       static constexpr int middle = 2;
 
-      auto chunk_displs = std::make_tuple(
-          // left
-          target_displs[f],
-          // right
-          target_displs[l],
-          // middle
-          target_displs[mi]);
-
-      // pair of merge dependencies
-      auto merge_deps =
-          std::make_pair(impl::ChunkRange{f, mi}, impl::ChunkRange{mi, l});
-
       // Start a thread that blocks until the two previous merges are ready.
-      auto&&     fut = thread_pool.submit([nunits,
-                                       lbuffer_to,
-                                       lbuffer_from,
-                                       displs = std::move(chunk_displs),
-                                       deps   = std::move(merge_deps),
-                                       sort_comp,
-                                       in_place,
-                                       &team,
-                                       &chunk_dependencies]() {
-        // indexes for displacements
+      auto&& fut = thread_pool.submit(
+          [f, mi, l, &chunk_dependencies, npartitions, merge = mergeOp]() {
+            // Wait for the left and right chunks to be copied/merged
+            // This guarantees that for
+            //
+            // [____________________________]
+            // ^f           ^mi             ^l
+            //
+            // [f, mi) and [mi, f) are both merged sequences when the task
+            // continues.
 
-        auto first = std::next(lbuffer_from, std::get<left>(displs));
-        auto mid   = std::next(lbuffer_from, std::get<middle>(displs));
-        auto last  = std::next(lbuffer_from, std::get<right>(displs));
-        // Wait for the left and right chunks to be copied/merged
-        // This guarantees that for
-        //
-        // [____________________________]
-        // ^f           ^mi             ^l
-        //
-        // [f, mi) and [mi, f) are both merged sequences when the task
-        // continues.
+            // pair of merge dependencies
+            ChunkRange dep_l{f, mi};
+            ChunkRange dep_r{mi, l};
 
-        auto dep_l = std::get<left>(deps);
-        auto dep_r = std::get<right>(deps);
+            if (chunk_dependencies[dep_l].valid()) {
+              chunk_dependencies[dep_l].wait();
+            }
+            if (chunk_dependencies[dep_r].valid()) {
+              chunk_dependencies[dep_r].wait();
+            }
 
-        if (chunk_dependencies[dep_l].valid()) {
-          chunk_dependencies[dep_l].wait();
-        }
-        if (chunk_dependencies[dep_r].valid()) {
-          chunk_dependencies[dep_r].wait();
-        }
+            auto is_final_merge =
+                dep_l.first == 0 && dep_r.second == npartitions;
 
-        if (in_place) {
-          // The final merge can be done non-inplace, because we need to
-          // copy the result to the final buffer anyways.
-          if (dep_l.first == 0 && dep_r.second == nunits) {
-            // Make sure everyone merged their parts (necessary for the copy
-            // into the final buffer)
-            team.barrier();
-            std::merge(first, mid, mid, last, lbuffer_to, sort_comp);
-          }
-          else {
-            std::inplace_merge(first, mid, last, sort_comp);
-          }
-        }
-        else {
-          DASH_THROW(
-              dash::exception::NotImplemented,
-              "non-inplace merge not supported yet");
-          // std::merge(first, mid, mid, last, std::next(lbuffer_to, first),
-          // sort_comp);
-        }
-        DASH_LOG_TRACE("merged chunks", dep_l.first, dep_r.second);
-      });
+            merge(f, mi, l, is_final_merge);
+            DASH_LOG_TRACE("merged chunks", dep_l.first, dep_r.second);
+          });
+
       ChunkRange to_merge(f, l);
       chunk_dependencies.emplace(to_merge, std::move(fut));
     }
 
     nchunks -= nmerges;
   }
+
+  // Wait for the final merge step
+  impl::ChunkRange final_range(0, npartitions);
+  chunk_dependencies.at(final_range).get();
 }
 
 }  // namespace impl

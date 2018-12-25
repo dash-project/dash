@@ -709,30 +709,50 @@ void sort(
 
     trace.enter_state("11:merge_local_sequences");
 
-    // Merge all asynchronous copies into a locally sorted range
-    impl::psort__merge_local(
-        lcopy_begin,
-        lbegin,
-        target_displs,
-        chunk_dependencies,
-        sort_comp,
-        team,
-        thread_pool,
-        in_place);
+    if (in_place)
+      impl::psort__merge_tree(
+          std::move(chunk_dependencies),
+          nunits,
+          thread_pool,
+          [from_buffer = lcopy_begin,
+           to_buffer   = lbegin,
+           &target_displs,
+           &team,
+           cmp = sort_comp](
+              auto merge_first,
+              auto merge_middle,
+              auto merge_last,
+              auto is_final_merge) {
+            auto* first = std::next(from_buffer, target_displs[merge_first]);
+            auto* mid   = std::next(from_buffer, target_displs[merge_middle]);
+            auto* last  = std::next(from_buffer, target_displs[merge_last]);
 
-    // Wait for the final merge step
-    impl::ChunkRange final_range(0, nunits);
-    chunk_dependencies.at(final_range).get();
-
-    trace.exit_state("11:merge_local_sequences");
+            impl::merge_inplace(
+                first,
+                mid,
+                last,
+                to_buffer,
+                cmp,
+                [&team]() { team.barrier(); },
+                is_final_merge);
+          });
+    else {
+      DASH_THROW(
+          dash::exception::NotImplemented,
+          "non-inplace merge not supported yet");
+      // std::merge(first, mid, mid, last, std::next(to_buffer,
+      // first), sort_comp);
+    }
   }
+
+  trace.exit_state("11:merge_local_sequences");
 
   DASH_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
 
   trace.enter_state("final_barrier");
   team.barrier();
   trace.exit_state("final_barrier");
-}
+}  // namespace dash
 
 namespace impl {
 template <typename T>
