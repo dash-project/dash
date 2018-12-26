@@ -1,24 +1,6 @@
 #ifndef DASH__ALGORITHM__SORT_H
 #define DASH__ALGORITHM__SORT_H
 
-#include <algorithm>
-#include <functional>
-#include <future>
-#include <iterator>
-#include <type_traits>
-#include <vector>
-
-#include <dash/Array.h>
-#include <dash/Exception.h>
-#include <dash/Meta.h>
-#include <dash/dart/if/dart.h>
-
-#include <dash/algorithm/Copy.h>
-#include <dash/algorithm/LocalRange.h>
-
-#include <dash/internal/Logging.h>
-#include <dash/util/Trace.h>
-
 #ifdef DOXYGEN
 namespace dash {
 /**
@@ -83,6 +65,19 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash&& hash);
 
 #else
 
+#include <algorithm>
+#include <functional>
+#include <future>
+#include <iterator>
+#include <type_traits>
+#include <vector>
+
+#include <cpp17/monotonic_buffer.h>
+
+#include <dash/Exception.h>
+#include <dash/Meta.h>
+#include <dash/algorithm/Copy.h>
+#include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/sort/Communication.h>
 #include <dash/algorithm/sort/Histogram.h>
 #include <dash/algorithm/sort/LocalData.h>
@@ -92,6 +87,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash&& hash);
 #include <dash/algorithm/sort/Sort-inl.h>
 #include <dash/algorithm/sort/ThreadPool.h>
 #include <dash/algorithm/sort/Types.h>
+#include <dash/dart/if/dart.h>
+#include <dash/internal/Logging.h>
+#include <dash/util/Trace.h>
 
 namespace dash {
 
@@ -225,7 +223,6 @@ void sort(
       sort_comp,
       nodeLevelConfig.parallelism());
   trace.exit_state("1:initial_local_sort");
-
 
   if (pattern.team().size() == 1) {
     DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
