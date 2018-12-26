@@ -217,20 +217,6 @@ void sort(
       "nthreads for local parallelism: ",
       nodeLevelConfig.parallelism());
 
-  if (pattern.team().size() == 1) {
-    DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
-    trace.enter_state("1: final_local_sort");
-
-    impl::local_sort(
-        local_data.input(),
-        local_data.input() + n_l_elem,
-        sort_comp,
-        nodeLevelConfig.parallelism());
-
-    trace.exit_state("1: final_local_sort");
-    return;
-  }
-
   // initial local_sort
   trace.enter_state("1:initial_local_sort");
   impl::local_sort(
@@ -239,6 +225,12 @@ void sort(
       sort_comp,
       nodeLevelConfig.parallelism());
   trace.exit_state("1:initial_local_sort");
+
+
+  if (pattern.team().size() == 1) {
+    DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
+    return;
+  }
 
   trace.enter_state("2:find_global_min_max");
 
