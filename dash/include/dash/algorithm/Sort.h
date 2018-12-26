@@ -85,6 +85,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash&& hash);
 
 #include <dash/algorithm/sort/Communication.h>
 #include <dash/algorithm/sort/Histogram.h>
+#include <dash/algorithm/sort/LocalData.h>
 #include <dash/algorithm/sort/Merge.h>
 #include <dash/algorithm/sort/NodeParallelismConfig.h>
 #include <dash/algorithm/sort/Partition.h>
@@ -118,6 +119,23 @@ void sort(
       std::is_same<decltype(begin.pattern()), decltype(out.pattern())>::value,
       "incompatible pattern types for input and output iterator");
 
+  if (begin != out) {
+    DASH_LOG_ERROR("dash::sort", "non in-place sort is not supported yet");
+    return;
+  }
+
+  if (begin >= end) {
+    DASH_LOG_TRACE("dash::sort", "empty range");
+    begin.pattern().team().barrier();
+    return;
+  }
+
+  if (begin.pattern().team() == dash::Team::Null() ||
+      out.pattern().team() == dash::Team::Null()) {
+    DASH_LOG_TRACE("dash::sort", "Sorting on dash::Team::Null()");
+    return;
+  }
+
   if (begin.pattern().team() != out.pattern().team()) {
     DASH_LOG_ERROR("dash::sort", "incompatible teams");
     return;
@@ -125,12 +143,11 @@ void sort(
 
   auto const lcapacity = [](auto const& pattern) {
     auto const extents = pattern.local_extents(pattern.team().myid());
-    auto const lsize   = std::accumulate(
+    return std::accumulate(
         std::begin(extents),
         std::end(extents),
         std::size_t(1),
         std::multiplies<std::size_t>());
-    return lsize;
   };
 
   auto lcap_in  = lcapacity(begin.pattern());
@@ -153,6 +170,37 @@ void sort(
 
   auto pattern = begin.pattern();
 
+  dash::Team& team   = pattern.team();
+  auto const  nunits = team.size();
+  auto const  myid   = team.myid();
+
+  auto const unit_at_begin = pattern.unit_at(begin.pos());
+
+  // local distance
+  auto const l_range = dash::local_index_range(begin, end);
+
+  // local pointer to input data
+  auto* l_mem_begin = dash::local_begin(
+      static_cast<typename GlobRandomIt::pointer>(begin), team.myid());
+
+  // local pointer to output data
+  auto* l_mem_target = dash::local_begin(
+      static_cast<typename GlobRandomIt::pointer>(out), team.myid());
+
+  auto const n_l_elem = l_range.end - l_range.begin;
+
+  auto* lbegin  = l_mem_begin + l_range.begin;
+  auto* ltarget = l_mem_target + l_range.begin;
+
+  impl::LocalData<value_type> local_data{
+      // l_first
+      l_mem_begin + l_range.begin,
+      // l_last
+      l_mem_begin + l_range.begin + n_l_elem,
+      // output
+      l_mem_target + l_range.begin};
+
+  // Request a thread pool based on locality information
   dash::util::TeamLocality tloc{pattern.team()};
   auto                     uloc = tloc.unit_locality(pattern.team().myid());
   auto                     nthreads = uloc.num_domain_threads();
@@ -169,57 +217,36 @@ void sort(
       "nthreads for local parallelism: ",
       nodeLevelConfig.parallelism());
 
-  if (pattern.team() == dash::Team::Null()) {
-    DASH_LOG_TRACE("dash::sort", "Sorting on dash::Team::Null()");
-    return;
-  }
-
   if (pattern.team().size() == 1) {
     DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
     trace.enter_state("1: final_local_sort");
+
     impl::local_sort(
-        begin.local(), end.local(), sort_comp, nodeLevelConfig.parallelism());
+        local_data.input(),
+        local_data.input() + n_l_elem,
+        sort_comp,
+        nodeLevelConfig.parallelism());
+
     trace.exit_state("1: final_local_sort");
     return;
   }
 
-  if (begin >= end) {
-    DASH_LOG_TRACE("dash::sort", "empty range");
-    trace.enter_state("1: final_barrier");
-    pattern.team().barrier();
-    trace.exit_state("1: final_barrier");
-    return;
-  }
-
-  dash::Team& team   = pattern.team();
-  auto const  nunits = team.size();
-  auto const  myid   = team.myid();
-
-  auto const unit_at_begin = pattern.unit_at(begin.pos());
-
-  // local distance
-  auto const l_range = dash::local_index_range(begin, end);
-
-  auto* l_mem_begin = dash::local_begin(
-      static_cast<typename GlobRandomIt::pointer>(begin), team.myid());
-
-  auto const n_l_elem = l_range.end - l_range.begin;
-
-  auto* lbegin = l_mem_begin + l_range.begin;
-  auto* lend   = l_mem_begin + l_range.end;
-
   // initial local_sort
   trace.enter_state("1:initial_local_sort");
-  impl::local_sort(lbegin, lend, sort_comp, nodeLevelConfig.parallelism());
+  impl::local_sort(
+      local_data.input(),
+      local_data.input() + n_l_elem,
+      sort_comp,
+      nodeLevelConfig.parallelism());
   trace.exit_state("1:initial_local_sort");
 
   trace.enter_state("2:find_global_min_max");
 
   std::array<mapped_type, 2> min_max_in{
       // local minimum
-      (n_l_elem > 0) ? sortable_hash(*lbegin)
+      (n_l_elem > 0) ? sortable_hash(*local_data.input())
                      : std::numeric_limits<mapped_type>::max(),
-      (n_l_elem > 0) ? sortable_hash(*(std::prev(lend)))
+      (n_l_elem > 0) ? sortable_hash(*(local_data.input() + n_l_elem - 1))
                      : std::numeric_limits<mapped_type>::min()};
 
   std::array<mapped_type, 2> min_max_out{};
@@ -251,24 +278,6 @@ void sort(
 
   trace.enter_state("3:init_temporary_local_data");
 
-  std::vector<value_type> lcopy;
-
-  decltype(lbegin) lcopy_begin = nullptr;
-
-  auto const in_place = begin == out;
-
-  if (n_l_elem) {
-    if (in_place) {
-      lcopy.reserve(n_l_elem);
-      std::copy(lbegin, lend, std::back_inserter(lcopy));
-      lcopy_begin = lcopy.data();
-    }
-    else {
-      lcopy_begin = dash::local_begin(
-          static_cast<typename GlobRandomIt::pointer>(out), team.myid());
-    }
-  }
-
   auto const p_unit_info =
       impl::psort__find_partition_borders(pattern, begin, end);
 
@@ -282,7 +291,9 @@ void sort(
   impl::psort__init_partition_borders(p_unit_info, splitters);
 
   DASH_LOG_TRACE_RANGE(
-      "locally sorted array", lcopy_begin, lcopy_begin + n_l_elem);
+      "locally sorted array",
+      local_data.input(),
+      local_data.input() + n_l_elem);
 
   DASH_LOG_TRACE_RANGE(
       "skipped splitters",
@@ -344,8 +355,8 @@ void sort(
     auto const l_nlt_nle = impl::psort__local_histogram(
         splitters,
         valid_partitions,
-        lcopy_begin,
-        lcopy_begin + n_l_elem,
+        local_data.input(),
+        local_data.input() + n_l_elem,
         sortable_hash);
 
     DASH_LOG_TRACE_RANGE(
@@ -393,8 +404,8 @@ void sort(
   auto const histograms = impl::psort__local_histogram(
       splitters,
       valid_partitions,
-      lcopy_begin,
-      lcopy_begin + n_l_elem,
+      local_data.input(),
+      local_data.input() + n_l_elem,
       sortable_hash);
 
   trace.exit_state("5:final_local_histogram");
@@ -645,23 +656,33 @@ void sort(
 
     // Note that this call is non-blocking (only enqueues the async_copies)
     auto copy_handles = impl::psort__exchange_data(
+        // from global begin...
         begin,
-        lcopy_begin,
+        // to a local buffer
+        local_data.buffer(),
         p_unit_info.valid_remote_partitions,
         get_send_info);
 
     // Schedule all these async copies for parallel processing in a thread
-    // pool...
+    // pool along withe the copy of the local data portion
     chunk_dependencies = impl::psort__schedule_copy_tasks(
-        // in
-        lbegin,
-        // out
-        lcopy_begin,
-        myid,
         p_unit_info.valid_remote_partitions,
         std::move(copy_handles),
         thread_pool,
-        get_send_info);
+        myid,
+        // local copy operation
+        [from      = local_data.input(),
+         to        = local_data.buffer(),
+         send_info = std::move(get_send_info(myid))]() {
+          std::size_t target_count, src_disp, target_disp;
+          std::tie(target_count, src_disp, target_disp) = send_info;
+          if (target_count) {
+            std::copy(
+                std::next(from, src_disp),
+                std::next(from, src_disp + target_count),
+                std::next(to, target_disp));
+          }
+        });
   }
 
   /* NOTE: While merging locally sorted sequences is faster than another
@@ -690,8 +711,8 @@ void sort(
 
     trace.enter_state("11:final_local_sort");
     impl::local_sort(
-        lcopy_begin,
-        lcopy_begin + n_l_elem,
+        local_data.buffer(),
+        local_data.buffer() + n_l_elem,
         sort_comp,
         nodeLevelConfig.parallelism());
     trace.exit_state("11:final_local_sort");
@@ -701,7 +722,10 @@ void sort(
     trace.exit_state("12:barrier");
 
     trace.enter_state("13:final_local_copy");
-    std::copy(lcopy_begin, lcopy_begin + n_l_elem, lbegin);
+    std::copy(
+        local_data.buffer(),
+        local_data.buffer() + n_l_elem,
+        local_data.output());
     trace.exit_state("13:final_local_copy");
   }
   else {
@@ -709,13 +733,13 @@ void sort(
 
     trace.enter_state("11:merge_local_sequences");
 
-    if (in_place)
+    if (begin == out /* In-Place Sort */)
       impl::psort__merge_tree(
           std::move(chunk_dependencies),
           nunits,
           thread_pool,
-          [from_buffer = lcopy_begin,
-           to_buffer   = lbegin,
+          [from_buffer = local_data.buffer(),
+           to_buffer   = local_data.output(),
            &target_displs,
            &team,
            cmp = sort_comp](
@@ -747,7 +771,10 @@ void sort(
 
   trace.exit_state("11:merge_local_sequences");
 
-  DASH_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
+  DASH_LOG_TRACE_RANGE(
+      "finally sorted range",
+      local_data.output(),
+      local_data.output() + n_l_elem);
 
   trace.enter_state("final_barrier");
   team.barrier();

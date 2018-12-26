@@ -14,7 +14,7 @@
 namespace dash {
 namespace impl {
 
-template <typename GlobIterT, typename SendInfoT, typename LocalIt>
+template <typename GlobIterT, typename LocalIt, typename SendInfoT>
 inline auto psort__exchange_data(
     GlobIterT                                 from_global_begin,
     LocalIt                                   to_local_begin,
@@ -31,6 +31,7 @@ inline auto psort__exchange_data(
   std::vector<dart_handle_t> handles(nchunks, DART_HANDLE_NULL);
 
   if (nullptr == to_local_begin) {
+    //this is the case if we have an empty unit
     return handles;
   }
 
@@ -81,15 +82,13 @@ inline auto psort__exchange_data(
   return handles;
 }
 
-template <class LocalIt, class ThreadPoolT, class SendInfoT>
+template <class ThreadPoolT, class LocalCopy>
 inline auto psort__schedule_copy_tasks(
-    const LocalIt                             from_local_it,
-    LocalIt                                   to_local_buffer_it,
-    dash::team_unit_t                         whoami,
     std::vector<dash::default_index_t> const& remote_partitions,
     std::vector<dart_handle_t>&&              copy_handles,
     ThreadPoolT&                              thread_pool,
-    SendInfoT&&                               get_send_info)
+    dash::team_unit_t                         whoami,
+    LocalCopy&&                               local_copy)
 {
   // Futures for the merges - only used to signal readiness.
   // Use a std::map because emplace will not invalidate any
@@ -115,25 +114,9 @@ inline auto psort__schedule_copy_tasks(
             }));
       });
 
-  std::size_t target_count, src_disp, target_disp;
-  std::tie(target_count, src_disp, target_disp) = get_send_info(whoami);
   // Create an entry for the local part
-  impl::ChunkRange local_range = std::make_pair(whoami, whoami + 1);
-  chunk_dependencies.emplace(
-      local_range,
-      thread_pool.submit([target_count,
-                          local_range,
-                          src_disp,
-                          target_disp,
-                          from_local_it,
-                          to_local_buffer_it] {
-        if (target_count) {
-          std::copy(
-              std::next(from_local_it, src_disp),
-              std::next(from_local_it, src_disp + target_count),
-              std::next(to_local_buffer_it, target_disp));
-        }
-      }));
+  ChunkRange local_range{whoami, whoami + 1};
+  chunk_dependencies.emplace(local_range, thread_pool.submit(local_copy));
   DASH_ASSERT_EQ(
       remote_partitions.size() + 1,
       chunk_dependencies.size(),
@@ -167,12 +150,12 @@ void merge_inplace(
 
 template <class Iter, class OutputIt, class Cmp>
 void merge(
-    Iter      first,
-    Iter      mid,
-    Iter      last,
-    OutputIt  out,
-    Cmp&&     cmp,
-    bool      is_final_merge)
+    Iter     first,
+    Iter     mid,
+    Iter     last,
+    OutputIt out,
+    Cmp&&    cmp,
+    bool     is_final_merge)
 {
   // The final merge can be done non-inplace, because we need to
   // copy the result to the final buffer anyways.
@@ -189,10 +172,10 @@ void merge(
 
 template <typename ThreadPoolT, typename MergeOp>
 inline auto psort__merge_tree(
-    ChunkDependencies&&  chunk_dependencies,
-    size_t       nchunks,
-    ThreadPoolT& thread_pool,
-    MergeOp&&    mergeOp)
+    ChunkDependencies&& chunk_dependencies,
+    size_t              nchunks,
+    ThreadPoolT&        thread_pool,
+    MergeOp&&           mergeOp)
 {
   // number of merge steps in the tree
   auto const depth = static_cast<size_t>(std::ceil(std::log2(nchunks)));
