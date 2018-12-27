@@ -72,20 +72,6 @@ public:
   }
 };
 
-struct UnitInfo {
-  std::size_t nunits;
-  // prefix sum over the number of local elements of all unit
-  std::vector<size_t>                acc_partition_count;
-  std::vector<dash::default_index_t> valid_remote_partitions;
-
-  explicit UnitInfo(std::size_t p_nunits)
-    : nunits(p_nunits)
-    , acc_partition_count(nunits + 1)
-  {
-    valid_remote_partitions.reserve(nunits - 1);
-  }
-};
-
 template <
     class Iterator,
     typename std::iterator_traits<Iterator>::difference_type Stride>

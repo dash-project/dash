@@ -16,10 +16,10 @@ namespace impl {
 
 template <typename GlobIterT, typename LocalIt, typename SendInfoT>
 inline auto psort__exchange_data(
-    GlobIterT                                 from_global_begin,
-    LocalIt                                   to_local_begin,
-    std::vector<dash::default_index_t> const& remote_partitions,
-    SendInfoT&&                               get_send_info)
+    GlobIterT                       from_global_begin,
+    LocalIt                         to_local_begin,
+    std::vector<dash::team_unit_t> const& valid_partitions,
+    SendInfoT&&                     get_send_info)
 {
   using iter_type = GlobIterT;
 
@@ -31,16 +31,16 @@ inline auto psort__exchange_data(
   std::vector<dart_handle_t> handles(nchunks, DART_HANDLE_NULL);
 
   if (nullptr == to_local_begin) {
-    //this is the case if we have an empty unit
+    // this is the case if we have an empty unit
     return handles;
   }
 
   std::size_t target_count, src_disp, target_disp;
 
-  for (auto const& unit : remote_partitions) {
+  for (auto unit : valid_partitions) {
     std::tie(target_count, src_disp, target_disp) = get_send_info(unit);
 
-    if (0 == target_count) {
+    if (team.myid() == unit || 0 == target_count) {
       continue;
     }
 
@@ -84,11 +84,11 @@ inline auto psort__exchange_data(
 
 template <class ThreadPoolT, class LocalCopy>
 inline auto psort__schedule_copy_tasks(
-    std::vector<dash::default_index_t> const& remote_partitions,
-    std::vector<dart_handle_t>&&              copy_handles,
-    ThreadPoolT&                              thread_pool,
-    dash::team_unit_t                         whoami,
-    LocalCopy&&                               local_copy)
+    std::vector<dash::team_unit_t> const& remote_partitions,
+    std::vector<dart_handle_t>&&    copy_handles,
+    ThreadPoolT&                    thread_pool,
+    dash::team_unit_t               whoami,
+    LocalCopy&&                     local_copy)
 {
   // Futures for the merges - only used to signal readiness.
   // Use a std::map because emplace will not invalidate any

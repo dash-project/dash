@@ -4,6 +4,7 @@
 #include <dash/Team.h>
 #include <dash/algorithm/sort/Types.h>
 #include <dash/internal/Logging.h>
+#include <dash/meta/NumericRange.h>
 
 #include <algorithm>
 #include <limits>
@@ -14,98 +15,100 @@ namespace dash {
 
 namespace impl {
 
-template <typename GlobIterT>
-inline UnitInfo psort__find_partition_borders(
-    typename GlobIterT::pattern_type const& pattern,
-    GlobIterT const                         begin,
-    GlobIterT const                         end)
+template <class GlobIter>
+inline auto psort__partition_sizes(GlobIter const begin, GlobIter const end)
 {
-  DASH_LOG_TRACE("dash::sort", "< psort__find_partition_borders");
+  auto const& pattern = begin.pattern();
 
-  auto const nunits = pattern.team().size();
-  auto const myid   = pattern.team().myid();
+  auto nunits     = pattern.team().size();
+  auto unit_begin = pattern.unit_at(begin.pos());
+  auto unit_last  = pattern.unit_at(end.pos() - 1);
 
-  dash::team_unit_t       unit{0};
-  const dash::team_unit_t last{static_cast<dart_unit_t>(nunits)};
+  std::vector<std::size_t> partition_sizes_psum;
+  partition_sizes_psum.reserve(nunits + 1);
 
-  auto const unit_first = pattern.unit_at(begin.pos());
-  auto const unit_last  = pattern.unit_at(end.pos() - 1);
-
-  // Starting offsets of all units
-  UnitInfo unit_info(nunits);
-  auto&    acc_partition_count = unit_info.acc_partition_count;
-  acc_partition_count[0]       = 0;
-
-  for (; unit < last; ++unit) {
+  auto local_extent = [&pattern](auto unit) {
     // Number of elements located at current source unit:
     auto const u_extents = pattern.local_extents(unit);
-    auto const u_size    = std::accumulate(
+
+    return std::accumulate(
         std::begin(u_extents),
         std::end(u_extents),
         1,
         std::multiplies<std::size_t>());
-    // first linear global index of unit
-    auto const u_gidx_begin =
-        (unit == myid) ? pattern.lbegin() : pattern.global_index(unit, {});
-    // last global index of unit
-    auto const u_gidx_end = u_gidx_begin + u_size;
+  };
 
-    DASH_LOG_TRACE(
-        "local indexes",
-        unit,
-        ": ",
-        u_gidx_begin,
-        " ",
-        u_size,
-        " ",
-        u_gidx_end);
+  auto gidx_begin = [&pattern](auto unit) {
+    // global start index of local segment
+    return (unit == pattern.team().myid()) ? pattern.lbegin()
+                                           : pattern.global_index(unit, {});
+  };
 
-    if (u_size == 0 || u_gidx_end - 1 < begin.pos() ||
-        u_gidx_begin >= end.pos()) {
-      // This unit does not participate...
-      acc_partition_count[unit + 1] = acc_partition_count[unit];
-    }
-    else {
-      std::size_t n_u_elements;
-      if (unit == unit_last) {
-        // The local range of this unit has the global end
-        n_u_elements = end.pos() - u_gidx_begin;
-      }
-      else if (unit == unit_first) {
-        // The local range of this unit has the global begin
-        auto const u_begin_disp = begin.pos() - u_gidx_begin;
-        n_u_elements            = u_size - u_begin_disp;
-      }
-      else {
+  // 1. fill leading partition with 0 until we reach the first non-empty
+  // partition
+  std::fill_n(
+      std::back_inserter(partition_sizes_psum),
+      unit_begin + 1,
+      std::size_t{0});
+
+  // 2. first unit: consider the case that we do not sort the full range but
+  // start somewhere in the middle of the unit's segment
+  auto ucap = local_extent(unit_begin);
+  partition_sizes_psum.emplace_back(
+      ucap == 0 ? 0 : ucap - (begin.pos() - gidx_begin(unit_begin)));
+
+  // 3. units in the middle
+  auto range = dash::meta::range(
+      static_cast<dash::team_unit_t>(unit_begin + 1), unit_last);
+
+  std::transform(
+      std::begin(range),
+      std::end(range),
+      std::back_inserter(partition_sizes_psum),
+      [local_extent](auto unit) -> std::size_t {
         // This is an inner unit
         // TODO(kowalewski): Is this really necessary or can we assume that
         // n_u_elements == u_size, i.e., local_pos.index == 0?
-        auto const local_pos = pattern.local(u_gidx_begin);
+        //
+        // auto const local_pos = pattern.local(u_gidx_begin);
 
-        n_u_elements = u_size - local_pos.index;
+        return local_extent(unit);
+      });
 
-        DASH_ASSERT_EQ(local_pos.unit, unit, "units must match");
-      }
+  // 4. last unit: consider the case that we do not sort the full range but
+  // end somewhere in the middle of the unit's segment
+  partition_sizes_psum.emplace_back(end.pos() - gidx_begin(unit_last));
 
-      acc_partition_count[unit + 1] =
-          n_u_elements + acc_partition_count[unit];
-      if (unit != myid) {
-        unit_info.valid_remote_partitions.emplace_back(unit);
-      }
-    }
-  }
+  std::fill_n(
+      std::back_inserter(partition_sizes_psum),
+      nunits - unit_last - 1,
+      std::size_t{0});
 
-  DASH_LOG_TRACE("dash::sort", "psort__find_partition_borders >");
-  return unit_info;
+  DASH_LOG_TRACE_RANGE(
+      "partition sizes",
+      std::begin(partition_sizes_psum),
+      std::end(partition_sizes_psum));
+
+  // calculate the prefix sum
+  std::partial_sum(
+      std::begin(partition_sizes_psum),
+      std::end(partition_sizes_psum),
+      std::begin(partition_sizes_psum));
+
+  DASH_LOG_TRACE_RANGE(
+      "partition sizes prefix sum",
+      std::begin(partition_sizes_psum),
+      std::end(partition_sizes_psum));
+
+  return partition_sizes_psum;
 }
 
 template <typename T>
 inline void psort__init_partition_borders(
-    UnitInfo const& unit_info, impl::Splitter<T>& p_borders)
+    std::vector<size_t> const& acc_partition_count,
+    impl::Splitter<T>&         p_borders)
 {
   DASH_LOG_TRACE("dash::sort", "< psort__init_partition_borders");
-
-  auto const& acc_partition_count = unit_info.acc_partition_count;
 
   auto const last = acc_partition_count.cend();
 
@@ -218,8 +221,8 @@ inline void psort__calc_boundaries(Splitter<T>& splitters)
 
 template <typename ElementType>
 inline bool psort__validate_partitions(
-    UnitInfo const&            p_unit_info,
     Splitter<ElementType>&     splitters,
+    std::vector<size_t> const& acc_partition_count,
     std::vector<size_t> const& valid_partitions,
     std::vector<size_t> const& global_histo)
 {
@@ -228,8 +231,6 @@ inline bool psort__validate_partitions(
   if (valid_partitions.empty()) {
     return true;
   }
-
-  auto const& acc_partition_count = p_unit_info.acc_partition_count;
 
   // This validates if all partititions have been correctly determined. The
   // example below shows 4 units where unit 1 is empty (capacity 0). Thus

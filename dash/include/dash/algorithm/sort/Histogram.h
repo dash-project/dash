@@ -10,13 +10,13 @@
 namespace dash {
 namespace impl {
 
-template <typename Iter, typename MappedType, typename SortableHash>
+template <typename Iter, typename MappedType, typename Projection>
 inline const std::vector<std::size_t> psort__local_histogram(
     Splitter<MappedType> const& splitters,
     std::vector<size_t> const&  valid_partitions,
     Iter                        data_lbegin,
     Iter                        data_lend,
-    SortableHash                sortable_hash)
+    Projection                  projection)
 {
   DASH_LOG_TRACE("dash::sort", "< psort__local_histogram");
 
@@ -41,16 +41,16 @@ inline const std::vector<std::size_t> psort__local_histogram(
           data_lbegin,
           data_lend,
           splitters.threshold[idx],
-          [&sortable_hash](reference a, const MappedType& b) {
-            return sortable_hash(a) < b;
+          [&projection](reference a, const MappedType& b) {
+            return projection(a) < b;
           });
       // search upper bound by starting from the lower bound
       auto ub_it = std::upper_bound(
           lb_it,
           data_lend,
           splitters.threshold[idx],
-          [&sortable_hash](const MappedType& b, reference a) {
-            return b < sortable_hash(a);
+          [&projection](const MappedType& b, reference a) {
+            return b < projection(a);
           });
 
       DASH_LOG_TRACE(
