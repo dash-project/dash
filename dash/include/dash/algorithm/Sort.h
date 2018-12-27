@@ -84,6 +84,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash&& hash);
 #include <dash/algorithm/sort/Merge.h>
 #include <dash/algorithm/sort/NodeParallelismConfig.h>
 #include <dash/algorithm/sort/Partition.h>
+#include <dash/algorithm/sort/Sampling.h>
 #include <dash/algorithm/sort/Sort-inl.h>
 #include <dash/algorithm/sort/ThreadPool.h>
 #include <dash/algorithm/sort/Types.h>
@@ -187,9 +188,6 @@ void sort(
 
   auto const n_l_elem = l_range.end - l_range.begin;
 
-  auto* lbegin  = l_mem_begin + l_range.begin;
-  auto* ltarget = l_mem_target + l_range.begin;
-
   impl::LocalData<value_type> local_data{
       // l_first
       l_mem_begin + l_range.begin,
@@ -231,28 +229,17 @@ void sort(
 
   trace.enter_state("2:find_global_min_max");
 
-  std::array<mapped_type, 2> min_max_in{
-      // local minimum
-      (n_l_elem > 0) ? sortable_hash(*local_data.input())
-                     : std::numeric_limits<mapped_type>::max(),
-      (n_l_elem > 0) ? sortable_hash(*(local_data.input() + n_l_elem - 1))
-                     : std::numeric_limits<mapped_type>::min()};
-
-  std::array<mapped_type, 2> min_max_out{};
-
-  DASH_ASSERT_RETURNS(
-      dart_allreduce(
-          &min_max_in,                              // send buffer
-          &min_max_out,                             // receive buffer
-          2,                                        // buffer size
-          dash::dart_datatype<mapped_type>::value,  // data type
-          DART_OP_MINMAX,                           // operation
-          team.dart_id()                            // team
-          ),
-      DART_OK);
-
-  auto const min_max = std::make_pair(
-      min_max_out[DART_OP_MINMAX_MIN], min_max_out[DART_OP_MINMAX_MAX]);
+  auto min_max = impl::minmax(
+      (n_l_elem > 0)
+          ? std::make_pair(
+                // local minimum
+                sortable_hash(*local_data.input()),
+                // local maximum
+                sortable_hash(*(local_data.input() + n_l_elem - 1)))
+          : std::make_pair(
+                std::numeric_limits<mapped_type>::max(),
+                std::numeric_limits<mapped_type>::min()),
+      team.dart_id());
 
   trace.exit_state("2:find_global_min_max");
 
@@ -289,8 +276,6 @@ void sort(
       std::begin(splitters.is_skipped),
       std::end(splitters.is_skipped));
 
-  bool done = false;
-
   // collect all valid splitters in a temporary vector
   std::vector<size_t> valid_partitions;
 
@@ -322,6 +307,7 @@ void sort(
   }
 
   size_t iter = 0;
+  bool   done = false;
 
   std::vector<size_t> global_histo(nunits * NLT_NLE_BLOCK, 0);
 
