@@ -18,7 +18,7 @@ template <typename GlobIterT, typename LocalIt, typename SendInfoT>
 inline auto psort__exchange_data(
     GlobIterT                             from_global_begin,
     LocalIt                               to_local_begin,
-    std::vector<dash::team_unit_t> const& valid_partitions,
+    std::vector<dash::team_unit_t> const& remote_partitions,
     SendInfoT&&                           get_send_info)
 {
   using iter_type = GlobIterT;
@@ -37,12 +37,8 @@ inline auto psort__exchange_data(
 
   std::size_t target_count, src_disp, target_disp;
 
-  for (auto unit : valid_partitions) {
+  for (auto unit : remote_partitions) {
     std::tie(target_count, src_disp, target_disp) = get_send_info(unit);
-
-    if (team.myid() == unit || 0 == target_count) {
-      continue;
-    }
 
     DASH_LOG_TRACE(
         "async copy",
@@ -247,6 +243,7 @@ inline auto psort__merge_tree(
 
 inline auto psort__remote_partitions(
     std::vector<size_t> const& valid_splitters,
+    std::vector<size_t> const& target_counts,
     std::size_t                nunits,
     dash::team_unit_t          unit_at_begin,
     dash::team_unit_t          whoami)
@@ -254,7 +251,7 @@ inline auto psort__remote_partitions(
   std::vector<dash::team_unit_t> remote_units;
   remote_units.reserve(nunits);
 
-  if (whoami != unit_at_begin) {
+  if (target_counts[unit_at_begin] && whoami != unit_at_begin) {
     remote_units.emplace_back(unit_at_begin);
   }
 
@@ -262,9 +259,9 @@ inline auto psort__remote_partitions(
       std::begin(valid_splitters),
       std::end(valid_splitters),
       std::back_inserter(remote_units),
-      [whoami](auto splitter) {
+      [whoami, &target_counts](auto splitter) {
         auto right_unit = static_cast<dart_unit_t>(splitter) + 1;
-        return whoami != right_unit
+        return target_counts[right_unit] && whoami != right_unit
                    ? dash::team_unit_t{right_unit}
                    : dash::team_unit_t{DART_UNDEFINED_UNIT_ID};
       });

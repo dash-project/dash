@@ -161,13 +161,6 @@ void sort(
   auto* l_mem_target = dash::local_begin(
       static_cast<typename GlobRandomIt::pointer>(out), team.myid());
 
-  auto ptr_begin = static_cast<dart_gptr_t>(
-      static_cast<typename iter_type::pointer>(begin));
-  auto ptr_out =
-      static_cast<dart_gptr_t>(static_cast<typename iter_type::pointer>(out));
-
-  auto iters_refer_to_diff_memory = ptr_begin.segid != ptr_out.segid;
-
   auto const n_l_elem = l_range.end - l_range.begin;
 
   impl::LocalData<value_type> local_data{
@@ -197,6 +190,7 @@ void sort(
 
   // initial local_sort
   trace.enter_state("1:initial_local_sort");
+
   impl::local_sort(
       local_data.input(),
       local_data.input() + n_l_elem,
@@ -210,8 +204,15 @@ void sort(
 
   trace.exit_state("1:initial_local_sort");
 
+  auto ptr_begin = static_cast<dart_gptr_t>(
+      static_cast<typename iter_type::pointer>(begin));
+  auto ptr_out =
+      static_cast<dart_gptr_t>(static_cast<typename iter_type::pointer>(out));
+
+  auto in_place = ptr_begin.segid == ptr_out.segid;
+
   if (pattern.team().size() == 1) {
-    if(iters_refer_to_diff_memory) {
+    if(in_place) {
       std::copy(
           local_data.input(),
           local_data.input() + n_l_elem,
@@ -615,7 +616,7 @@ void sort(
     // retrieve all non-empty remote partitions where we have to communicate
     // data to
     auto remote_units = impl::psort__remote_partitions(
-        valid_splitters, nunits, unit_at_begin, myid);
+        valid_splitters, target_counts, nunits, unit_at_begin, myid);
 
     // Note that this call is non-blocking (only enqueues the async_copies)
     auto copy_handles = impl::psort__exchange_data(
@@ -696,8 +697,7 @@ void sort(
 
     trace.enter_state("11:merge_local_sequences");
 
-
-    if (!iters_refer_to_diff_memory /* In-Place Sort */) {
+    if (in_place) {
       impl::psort__merge_tree(
           std::move(chunk_dependencies),
           nunits,
