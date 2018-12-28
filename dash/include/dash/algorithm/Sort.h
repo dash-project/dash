@@ -59,7 +59,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end);
  * \ingroup  DashAlgorithms
  */
 template <class GlobRandomIt, class Projection>
-void sort(GlobRandomIt begin, GlobRandomIt end, Projection&& hash);
+void sort(GlobRandomIt begin, GlobRandomIt end, Projection&& projection);
 
 }  // namespace dash
 
@@ -117,11 +117,6 @@ void sort(
   static_assert(
       std::is_same<decltype(begin.pattern()), decltype(out.pattern())>::value,
       "incompatible pattern types for input and output iterator");
-
-  if (begin != out) {
-    DASH_LOG_ERROR("dash::sort", "non in-place sort is not supported yet");
-    return;
-  }
 
   if (begin >= end) {
     DASH_LOG_TRACE("dash::sort", "empty range");
@@ -631,7 +626,6 @@ void sort(
             }),
         std::end(remote_units));
 
-
     // Note that this call is non-blocking (only enqueues the async_copies)
     auto copy_handles = impl::psort__exchange_data(
         // from global begin...
@@ -711,7 +705,14 @@ void sort(
 
     trace.enter_state("11:merge_local_sequences");
 
-    if (begin == out /* In-Place Sort */)
+    auto ptr_begin = static_cast<dart_gptr_t>(
+        static_cast<typename iter_type::pointer>(begin));
+    auto ptr_out = static_cast<dart_gptr_t>(
+        static_cast<typename iter_type::pointer>(out));
+
+    auto iters_refer_to_diff_memory = ptr_begin.segid != ptr_out.segid;
+
+    if (!iters_refer_to_diff_memory /* In-Place Sort */) {
       impl::psort__merge_tree(
           std::move(chunk_dependencies),
           nunits,
@@ -737,13 +738,34 @@ void sort(
                 cmp,
                 [&team]() { team.barrier(); },
                 is_final_merge);
-          });
-    else {
-      DASH_THROW(
-          dash::exception::NotImplemented,
-          "non-inplace merge not supported yet");
-      // std::merge(first, mid, mid, last, std::next(to_buffer,
-      // first), sort_comp);
+          },
+          []() {});
+    }
+    else /* Non-Inplace Sort */
+    {
+      auto* from = local_data.buffer();
+      auto* to   = local_data.output();
+
+      impl::psort__merge_tree(
+          std::move(chunk_dependencies),
+          nunits,
+          thread_pool,
+          [& from_buffer = from,
+           &to_buffer    = to,
+           &target_displs,
+           &team,
+           cmp = sort_comp](
+              auto merge_first,
+              auto merge_middle,
+              auto merge_last,
+              auto /*is_final_merge*/) {
+            auto* first = std::next(from_buffer, target_displs[merge_first]);
+            auto* mid   = std::next(from_buffer, target_displs[merge_middle]);
+            auto* last  = std::next(from_buffer, target_displs[merge_last]);
+
+            impl::merge(first, mid, last, to_buffer, cmp);
+          },
+          [&from, &to]() { std::swap(from, to); });
     }
   }
 
@@ -778,10 +800,24 @@ inline void sort(GlobRandomIt begin, GlobRandomIt end)
   using value_t = typename std::remove_cv<
       typename dash::iterator_traits<GlobRandomIt>::value_type>::type;
 
-  auto hash = impl::identity_t<value_t const&>{};
+  auto projection = impl::identity_t<value_t const&>{};
 
-  dash::sort<GlobRandomIt, decltype(hash), MergeStrategy>(
-      begin, end, begin, std::move(hash));
+  dash::sort<GlobRandomIt, decltype(projection), MergeStrategy>(
+      begin, end, begin, std::move(projection));
+}
+
+template <
+    class GlobRandomIt,
+    class MergeStrategy = impl::sort__final_strategy__merge>
+inline void sort(GlobRandomIt begin, GlobRandomIt end, GlobRandomIt out)
+{
+  using value_t = typename std::remove_cv<
+      typename dash::iterator_traits<GlobRandomIt>::value_type>::type;
+
+  auto projection = impl::identity_t<value_t const&>{};
+
+  dash::sort<GlobRandomIt, decltype(projection), MergeStrategy>(
+      begin, end, out, std::move(projection));
 }
 
 #endif  // DOXYGEN

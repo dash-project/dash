@@ -281,7 +281,7 @@ TEST_F(SortTest, ArrayOfPoints)
 }
 
 template <typename GlobIter>
-static void perform_test(GlobIter begin, GlobIter end)
+static void perform_test(GlobIter begin, GlobIter end, GlobIter out)
 {
   using Element_t    = typename decltype(begin)::value_type;
   Element_t true_sum = 0, actual_sum = 0, mysum;
@@ -309,7 +309,7 @@ static void perform_test(GlobIter begin, GlobIter end)
       0,
       begin.pattern().team().dart_id());
 
-  dash::sort(begin, end);
+  dash::sort(begin, end, out);
 
   mysum = std::accumulate(lbegin, lend, 0);
 
@@ -325,7 +325,7 @@ static void perform_test(GlobIter begin, GlobIter end)
   if (dash::myid() == 0) {
     EXPECT_EQ_U(true_sum, actual_sum);
 
-    for (auto it = begin + 1; it < end; ++it) {
+    for (auto it = out + 1; it < out + dash::distance(begin, end); ++it) {
       auto const a = static_cast<const Element_t>(*(it - 1));
       auto const b = static_cast<const Element_t>(*it);
 
@@ -334,6 +334,12 @@ static void perform_test(GlobIter begin, GlobIter end)
   }
 
   begin.pattern().team().barrier();
+}
+
+template <typename GlobIter>
+static void perform_test(GlobIter begin, GlobIter end)
+{
+  perform_test(begin, end, begin);
 }
 
 TEST_F(SortTest, PlausibilityWithStdSort)
@@ -445,6 +451,23 @@ TEST_F(SortTest, StridedIteratorTest)
 
   EXPECT_EQ_U(*begin, *s_begin);
   EXPECT_EQ_U(*it_6, *s_it_6);
+}
+
+TEST_F(SortTest, ArrayBlockedFullRangeNonInPlace)
+{
+  using Element_t = int32_t;
+  using Array_t   = dash::Array<Element_t>;
+
+  LOG_MESSAGE("SortTest.ArrayBlockedFullRange: allocate array");
+  // Initialize global array:
+  Array_t array(num_local_elem * dash::size());
+  Array_t out(num_local_elem * dash::size());
+
+  rand_range(array.begin(), array.end());
+
+  array.barrier();
+
+  perform_test(array.begin(), array.end(), out.begin());
 }
 
 // TODO: add additional unit tests with various pattern types and containers

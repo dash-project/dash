@@ -149,33 +149,22 @@ inline void merge_inplace(
 }
 
 template <class Iter, class OutputIt, class Cmp>
-inline void merge(
-    Iter     first,
-    Iter     mid,
-    Iter     last,
-    OutputIt out,
-    Cmp&&    cmp,
-    bool     is_final_merge)
+inline void merge(Iter first, Iter mid, Iter last, OutputIt out, Cmp&& cmp)
 {
-  // The final merge can be done non-inplace, because we need to
-  // copy the result to the final buffer anyways.
-  if (is_final_merge) {
-    // Make sure everyone merged their parts (necessary for the copy
-    // into the final buffer)
-    barrier();
-    std::merge(first, mid, mid, last, out, cmp);
-  }
-  else {
-    std::inplace_merge(first, mid, last, cmp);
-  }
+  std::merge(first, mid, mid, last, out, cmp);
+
+  auto dist = std::distance(first, last);
+
+  DASH_LOG_TRACE_RANGE("after merge", out, std::next(out, dist));
 }
 
-template <typename ThreadPoolT, typename MergeOp>
+template <class ThreadPoolT, class MergeOp, class MergeSync>
 inline auto psort__merge_tree(
     ChunkDependencies chunk_dependencies,
     size_t            nchunks,
     ThreadPoolT&      thread_pool,
-    MergeOp&&         mergeOp)
+    MergeOp&&         mergeOp,
+    MergeSync&&       mergeSync)
 {
   // number of merge steps in the tree
   auto const depth = static_cast<size_t>(std::ceil(std::log2(nchunks)));
@@ -236,6 +225,10 @@ inline auto psort__merge_tree(
     }
 
     nchunks -= nmerges;
+
+    if (nchunks) {
+      mergeSync();
+    }
   }
 
   // Wait for the final merge step
