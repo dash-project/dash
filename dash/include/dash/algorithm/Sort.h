@@ -599,32 +599,10 @@ void sort(
           return std::make_tuple(target_count, src_disp, target_disp);
         };
 
-    std::vector<dash::team_unit_t> remote_units;
-    remote_units.reserve(nunits);
-
-    if (myid != unit_at_begin) {
-      remote_units.emplace_back(unit_at_begin);
-    }
-
-    std::transform(
-        std::begin(valid_splitters),
-        std::end(valid_splitters),
-        std::back_inserter(remote_units),
-        [myid](auto splitter) {
-          auto right_unit = static_cast<dart_unit_t>(splitter) + 1;
-          return myid != right_unit
-                     ? dash::team_unit_t{right_unit}
-                     : dash::team_unit_t{DART_UNDEFINED_UNIT_ID};
-        });
-
-    remote_units.erase(
-        std::remove_if(
-            std::begin(remote_units),
-            std::end(remote_units),
-            [](auto unit) {
-              return unit == dash::team_unit_t{DART_UNDEFINED_UNIT_ID};
-            }),
-        std::end(remote_units));
+    // retrieve all non-empty remote partitions where we have to communicate
+    // data to
+    auto remote_units = impl::psort__remote_partitions(
+        valid_splitters, nunits, unit_at_begin, myid);
 
     // Note that this call is non-blocking (only enqueues the async_copies)
     auto copy_handles = impl::psort__exchange_data(

@@ -236,6 +236,41 @@ inline auto psort__merge_tree(
   chunk_dependencies.at(final_range).get();
 }
 
+inline auto psort__remote_partitions(
+    std::vector<size_t> const& valid_splitters,
+    std::size_t                nunits,
+    dash::team_unit_t          unit_at_begin,
+    dash::team_unit_t          whoami)
+{
+  std::vector<dash::team_unit_t> remote_units;
+  remote_units.reserve(nunits);
+
+  if (whoami != unit_at_begin) {
+    remote_units.emplace_back(unit_at_begin);
+  }
+
+  std::transform(
+      std::begin(valid_splitters),
+      std::end(valid_splitters),
+      std::back_inserter(remote_units),
+      [whoami](auto splitter) {
+        auto right_unit = static_cast<dart_unit_t>(splitter) + 1;
+        return whoami != right_unit
+                   ? dash::team_unit_t{right_unit}
+                   : dash::team_unit_t{DART_UNDEFINED_UNIT_ID};
+      });
+
+  remote_units.erase(
+      std::remove_if(
+          std::begin(remote_units),
+          std::end(remote_units),
+          [](auto unit) {
+            return unit == dash::team_unit_t{DART_UNDEFINED_UNIT_ID};
+          }),
+      std::end(remote_units));
+  return remote_units;
+}
+
 }  // namespace impl
 }  // namespace dash
 
