@@ -25,26 +25,9 @@ public:
     : m_input(first)
     , m_output(out)
     , m_size(std::distance(first, last))
+    , m_buffer(std::move(std::unique_ptr<element_t[]>{new element_t[m_size]}))
   {
-    if (m_input == m_output) {
-      // using operator new does not apply any default value initialization.
-      // So let's use that and encapsulate it in a pointer
-
-      // in-place
-      m_buffer =
-          std::move(std::unique_ptr<element_t[]>{new element_t[m_size]});
-
-      // We dot not have to copy but can move instead
-      //std::copy(first, last, m_buffer.get());
-    }
-    else {
-      //std::copy(first, last, m_output);
-    }
   }
-
-  // prevent copies
-  LocalData(const LocalData& other) = delete;
-  LocalData& operator=(const LocalData& other) = delete;
 
   constexpr element_t const* input() const noexcept
   {

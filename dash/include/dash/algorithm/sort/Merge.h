@@ -204,15 +204,9 @@ inline auto psort__merge_tree(
       // that we do not access out of bounds
       auto l = std::min(m * dist + dist, npartitions);
 
-      // tuple of chunk displacements. Be cautious with the indexes and the
-      // order in make_tuple
-      static constexpr int left   = 0;
-      static constexpr int right  = 1;
-      static constexpr int middle = 2;
-
       // Start a thread that blocks until the two previous merges are ready.
       auto fut = thread_pool.submit(
-          [f, mi, l, &chunk_dependencies, is_final_merge, npartitions, merge = mergeOp]() {
+          [f, mi, l, &chunk_dependencies, is_final_merge, merge = mergeOp]() {
             // Wait for the left and right chunks to be copied/merged
             // This guarantees that for
             //
