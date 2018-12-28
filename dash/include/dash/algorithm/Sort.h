@@ -631,6 +631,7 @@ void sort(
             }),
         std::end(remote_units));
 
+
     // Note that this call is non-blocking (only enqueues the async_copies)
     auto copy_handles = impl::psort__exchange_data(
         // from global begin...

@@ -172,10 +172,10 @@ inline void merge(
 
 template <typename ThreadPoolT, typename MergeOp>
 inline auto psort__merge_tree(
-    ChunkDependencies&& chunk_dependencies,
-    size_t              nchunks,
-    ThreadPoolT&        thread_pool,
-    MergeOp&&           mergeOp)
+    ChunkDependencies chunk_dependencies,
+    size_t            nchunks,
+    ThreadPoolT&      thread_pool,
+    MergeOp&&         mergeOp)
 {
   // number of merge steps in the tree
   auto const depth = static_cast<size_t>(std::ceil(std::log2(nchunks)));
@@ -193,6 +193,8 @@ inline auto psort__merge_tree(
     // number of merges
     auto const nmerges = nchunks >> 1;
 
+    auto const is_final_merge = nchunks == 2;
+
     // Start threaded merges. When d == 0 they depend on dash::copy to finish,
     // later on other merges.
     for (std::size_t m = 0; m < nmerges; ++m) {
@@ -209,8 +211,8 @@ inline auto psort__merge_tree(
       static constexpr int middle = 2;
 
       // Start a thread that blocks until the two previous merges are ready.
-      auto&& fut = thread_pool.submit(
-          [f, mi, l, &chunk_dependencies, npartitions, merge = mergeOp]() {
+      auto fut = thread_pool.submit(
+          [f, mi, l, &chunk_dependencies, is_final_merge, npartitions, merge = mergeOp]() {
             // Wait for the left and right chunks to be copied/merged
             // This guarantees that for
             //
@@ -230,9 +232,6 @@ inline auto psort__merge_tree(
             if (chunk_dependencies[dep_r].valid()) {
               chunk_dependencies[dep_r].wait();
             }
-
-            auto is_final_merge =
-                dep_l.first == 0 && dep_r.second == npartitions;
 
             merge(f, mi, l, is_final_merge);
             DASH_LOG_TRACE("merged chunks", dep_l.first, dep_r.second);

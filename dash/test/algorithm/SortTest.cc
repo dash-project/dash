@@ -18,7 +18,8 @@ using random_dev_t = sense_of_life_dev;
 #endif
 
 class sense_of_life_dev {
-  unsigned int operator()() const {
+  unsigned int operator()() const
+  {
     return 42;
   }
 };
@@ -33,9 +34,9 @@ template <
 static void rand_range(GlobIter begin, GlobIter end)
 {
   static std::uniform_int_distribution<typename GlobIter::value_type>
-                            distribution(-1E6, 1E6);
+                      distribution(-1E6, 1E6);
   static random_dev_t rd;
-  static std::mt19937       generator(rd() + begin.team().myid());
+  static std::mt19937 generator(rd() + begin.team().myid());
 
   dash::generate(begin, end, []() { return distribution(generator); });
 }
@@ -47,7 +48,7 @@ template <
 static void rand_range(GlobIter begin, GlobIter end)
 {
   static std::uniform_real_distribution<typename GlobIter::value_type>
-                            distribution(-1.0, 1.0);
+                      distribution(-1.0, 1.0);
   static random_dev_t rd;
   static std::mt19937 generator(rd() + begin.team().myid());
 
@@ -294,8 +295,8 @@ static void perform_test(GlobIter begin, GlobIter end)
 
   auto const n_l_elem = l_range.end - l_range.begin;
 
-  auto const * lbegin = l_mem_begin + l_range.begin;
-  auto const * lend   = l_mem_begin + l_range.end;
+  auto const* lbegin = l_mem_begin + l_range.begin;
+  auto const* lend   = l_mem_begin + l_range.end;
 
   mysum = std::accumulate(lbegin, lend, 0);
 
@@ -437,10 +438,10 @@ TEST_F(SortTest, StridedIteratorTest)
   std::vector<size_t> v(10, 0);
   std::iota(std::begin(v), std::end(v), 0);
   auto begin = std::begin(v);
-  auto it_6 = begin + 6;
+  auto it_6  = begin + 6;
 
   auto s_begin = dash::impl::make_strided_iterator(std::begin(v));
-  auto s_it_6 = dash::impl::make_strided_iterator(std::begin(v)) + 3;
+  auto s_it_6  = dash::impl::make_strided_iterator(std::begin(v)) + 3;
 
   EXPECT_EQ_U(*begin, *s_begin);
   EXPECT_EQ_U(*it_6, *s_it_6);

@@ -57,6 +57,10 @@ inline auto psort__partition_sizes(GlobIter const begin, GlobIter const end)
   partition_sizes_psum.emplace_back(
       ucap == 0 ? 0 : ucap - (begin.pos() - gidx_begin(unit_begin)));
 
+  if (unit_begin == unit_last) {
+    return partition_sizes_psum;
+  }
+
   // 3. units in the middle
   auto range = dash::meta::range(
       static_cast<dash::team_unit_t>(unit_begin + 1), unit_last);
