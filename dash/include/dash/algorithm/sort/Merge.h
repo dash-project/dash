@@ -16,10 +16,10 @@ namespace impl {
 
 template <typename GlobIterT, typename LocalIt, typename SendInfoT>
 inline auto psort__exchange_data(
-    GlobIterT                       from_global_begin,
-    LocalIt                         to_local_begin,
+    GlobIterT                             from_global_begin,
+    LocalIt                               to_local_begin,
     std::vector<dash::team_unit_t> const& valid_partitions,
-    SendInfoT&&                     get_send_info)
+    SendInfoT&&                           get_send_info)
 {
   using iter_type = GlobIterT;
 
@@ -85,10 +85,10 @@ inline auto psort__exchange_data(
 template <class ThreadPoolT, class LocalCopy>
 inline auto psort__schedule_copy_tasks(
     std::vector<dash::team_unit_t> const& remote_partitions,
-    std::vector<dart_handle_t>&&    copy_handles,
-    ThreadPoolT&                    thread_pool,
-    dash::team_unit_t               whoami,
-    LocalCopy&&                     local_copy)
+    std::vector<dart_handle_t>            copy_handles,
+    ThreadPoolT&                          thread_pool,
+    dash::team_unit_t                     whoami,
+    LocalCopy&&                           local_copy)
 {
   // Futures for the merges - only used to signal readiness.
   // Use a std::map because emplace will not invalidate any
@@ -122,11 +122,11 @@ inline auto psort__schedule_copy_tasks(
       chunk_dependencies.size(),
       "invalid chunk dependencies");
 
-  return std::move(chunk_dependencies);
+  return chunk_dependencies;
 }
 
 template <class Iter, class OutputIt, class Cmp, class Barrier>
-void merge_inplace(
+inline void merge_inplace(
     Iter      first,
     Iter      mid,
     Iter      last,
@@ -149,7 +149,7 @@ void merge_inplace(
 }
 
 template <class Iter, class OutputIt, class Cmp>
-void merge(
+inline void merge(
     Iter     first,
     Iter     mid,
     Iter     last,

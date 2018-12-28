@@ -644,7 +644,7 @@ void sort(
     // pool along withe the copy of the local data portion
     chunk_dependencies = impl::psort__schedule_copy_tasks(
         remote_units,
-        std::move(copy_handles),
+        copy_handles,
         thread_pool,
         myid,
         // local copy operation
