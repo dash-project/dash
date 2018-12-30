@@ -51,6 +51,20 @@
 #define DART_MATCHING_PHASE_MAX_ACTIVE_ENVSTR "DART_MATCHING_PHASE_MAX_ACTIVE"
 
 /**
+ * Name of the environment variable specifying the factor by which the matching
+ * interval is multiplied after each match,
+ * This can be used to ensure ensure quick availability of tasks while limiting
+ * the number of later task matching steps.
+ * The default value is one, i.e., the matching factor will not be increased.
+ * The interval will be capped at the configured maximum number of active phases,
+ * if set, or 1 in case the factor is smaller than 1.
+ *
+ * Type: floating point positive value.
+ * Default: 1.
+ */
+#define DART_MATCHING_PHASE_INTERVAL_FACTOR_ENVSTR "DART_MATCHING_PHASE_INTERVAL_FACTOR"
+
+/**
  * Name of the environment variable specifying the number of phases after which
  * to perform a dependency matching.
  *
@@ -80,7 +94,7 @@
 /**
  * Name of the environment variable specifying the number of microseconds a
  * thread should sleep if no tasks are available and \c DART_TASK_IDLE_THREAD
- * is set to \c
+ * is set to \c SLEEP.
  *
  * Type: the time in microseconds or a number postfixed with 'm'/'ms',
  *       'u'/'us', or 's'.

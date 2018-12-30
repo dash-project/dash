@@ -58,7 +58,23 @@ dart__base__env__number(const char *env, int fallback)
     result = strtol(envstr, &endptr, 10);
     if (*endptr != '\0') {
       // parsing failed
-      result = -1;
+      result = fallback;
+    }
+  }
+  return result;
+}
+
+float
+dart__base__env__float(const char *env, float fallback)
+{
+  float result = fallback;
+  char *endptr;
+  const char *envstr = getenv(env);
+  if (envstr && *envstr != '\0') {
+    result = strtof(envstr, &endptr);
+    if (*endptr != '\0') {
+      // parsing failed
+      result = fallback;
     }
   }
   return result;

@@ -29,11 +29,20 @@ dart__base__env__str2int(
   int                             fallback);
 
 /**
- * Returns the number provided in the environment variable or \c fallback
+ * Returns the integral number provided in the environment variable or \c fallback
  * if the environment variable is not set or does not represent a number.
  */
 int
 dart__base__env__number(const char *env, int fallback);
+
+
+/**
+ * Returns the floating point number provided in the environment variable or
+ * \c fallback if the environment variable is not set or does not represent a
+ * number.
+ */
+float
+dart__base__env__float(const char *env, float fallback);
 
 /**
  * Parse a size from the provided environment variable.

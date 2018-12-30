@@ -22,6 +22,7 @@ dart__tasking__phase_advance()
   static dart_taskphase_t matching_interval = INT_MIN;
   static dart_taskphase_t phases_remaining  = INT_MAX;
   static dart_mutex_t     allocation_mutex  = DART_MUTEX_INITIALIZER;
+  static float            matching_factor   = 1.0;
   if (matching_interval == INT_MIN) {
     dart__base__mutex_lock(&allocation_mutex);
     dart_team_size(DART_TEAM_ALL, &num_units);
@@ -52,6 +53,9 @@ dart__tasking__phase_advance()
           max_active_phases_mod = 1.2*max_active_phases;
           phase_task_counts = calloc(sizeof(*phase_task_counts), max_active_phases_mod);
         }
+        matching_factor = dart__base__env__float(
+                              DART_MATCHING_PHASE_INTERVAL_FACTOR_ENVSTR,
+                              1);
       } else {
         DART_LOG_TRACE("Intermediate task matching disabled");
       }
@@ -67,6 +71,19 @@ dart__tasking__phase_advance()
   if (--phases_remaining == 0) {
     DART_LOG_TRACE("Performing intermediate matching");
     dart__tasking__perform_matching(creation_phase);
+    if (matching_interval < max_active_phases) {
+      dart_taskphase_t next_interval = matching_interval * matching_factor;
+      if (next_interval > 0) {
+        if (next_interval < max_active_phases) {
+          matching_interval = next_interval;
+        } else {
+          matching_interval = max_active_phases;
+        }
+      } else {
+        matching_interval = 1;
+      }
+      DART_LOG_TRACE("Next matching interval: %d", matching_interval);
+    }
     phases_remaining = matching_interval;
   }
 

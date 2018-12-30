@@ -16,6 +16,7 @@
 
 // forward declaration, defined in dart_tasking_datadeps.c
 typedef struct dart_dephash_elem dart_dephash_elem_t;
+typedef struct dart_dephash_head dart_dephash_head_t;
 struct task_list;
 
 // whether to use thread-local task queues or a single queue
