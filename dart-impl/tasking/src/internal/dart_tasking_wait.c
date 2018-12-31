@@ -185,8 +185,12 @@ void
 dart__task__wait_enqueue(dart_task_t *task)
 {
   DART_LOG_TRACE("Enqueueing blocked task %p \n", task);
-  DART_ASSERT(task->wait_handle != NULL);
-  dart_tasking_taskqueue_pushback(&handle_list, task);
+  if (task->wait_handle == NULL || task->wait_handle->num_handle == 0) {
+    free(task->wait_handle);
+    dart__tasking__release_detached(task);
+  } else {
+    dart_tasking_taskqueue_pushback(&handle_list, task);
+  }
 }
 
 
@@ -200,12 +204,22 @@ dart__task__detach_handle(
   // mark the task as detached
   dart__tasking__mark_detached(task);
 
-  // register the task for waiting
-  dart_wait_handle_t *waithandle = malloc(sizeof(*waithandle) +
-                                          sizeof(dart_handle_t)*num_handle);
-  memcpy(waithandle->handle, handles, sizeof(*handles)*num_handle);
-  waithandle->num_handle    = num_handle;
-  task->wait_handle = waithandle;
+  int num_nn_handles = 0;
+  for (int i = 0; i < num_nn_handles; ++i) {
+    if (handles[i]) ++num_nn_handles;
+  }
 
+  if (num_nn_handles) {
+    // register the task for waiting
+    dart_wait_handle_t *waithandle = malloc(sizeof(*waithandle) +
+                                            sizeof(dart_handle_t)*num_nn_handles);
+    int c = 0;
+    for (int i = 0; i < num_handle; ++i) {
+      if (handles[i]) waithandle->handle[c++] = handles[i];
+    }
+
+    waithandle->num_handle    = num_nn_handles;
+    task->wait_handle = waithandle;
+  }
   return DART_OK;
 }
