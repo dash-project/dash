@@ -161,6 +161,13 @@ void sort(
   auto* l_mem_target = dash::local_begin(
       static_cast<typename GlobRandomIt::pointer>(out), team.myid());
 
+  auto ptr_begin = static_cast<dart_gptr_t>(
+      static_cast<typename iter_type::pointer>(begin));
+  auto ptr_out =
+      static_cast<dart_gptr_t>(static_cast<typename iter_type::pointer>(out));
+
+  auto iters_refer_to_diff_memory = ptr_begin.segid != ptr_out.segid;
+
   auto const n_l_elem = l_range.end - l_range.begin;
 
   impl::LocalData<value_type> local_data{
@@ -204,6 +211,12 @@ void sort(
   trace.exit_state("1:initial_local_sort");
 
   if (pattern.team().size() == 1) {
+    if(iters_refer_to_diff_memory) {
+      std::copy(
+          local_data.input(),
+          local_data.input() + n_l_elem,
+          local_data.output());
+    }
     DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
     return;
   }
@@ -683,12 +696,6 @@ void sort(
 
     trace.enter_state("11:merge_local_sequences");
 
-    auto ptr_begin = static_cast<dart_gptr_t>(
-        static_cast<typename iter_type::pointer>(begin));
-    auto ptr_out = static_cast<dart_gptr_t>(
-        static_cast<typename iter_type::pointer>(out));
-
-    auto iters_refer_to_diff_memory = ptr_begin.segid != ptr_out.segid;
 
     if (!iters_refer_to_diff_memory /* In-Place Sort */) {
       impl::psort__merge_tree(
