@@ -703,21 +703,21 @@ void sort(
               auto merge_first,
               auto merge_middle,
               auto merge_last,
-              auto is_final_merge) {
+              auto d,
+              auto depth) {
             auto* first = std::next(from_buffer, target_displs[merge_first]);
             auto* mid   = std::next(from_buffer, target_displs[merge_middle]);
             auto* last  = std::next(from_buffer, target_displs[merge_last]);
 
-            impl::merge_inplace(
+            impl::merge_inplace_and_copy(
                 first,
                 mid,
                 last,
                 to_buffer,
                 cmp,
                 [&team]() { team.barrier(); },
-                is_final_merge);
-          },
-          []() {});
+                 d == depth - 1);
+          });
     }
     else /* Non-Inplace Sort */
     {
@@ -728,22 +728,69 @@ void sort(
           std::move(chunk_dependencies),
           nunits,
           thread_pool,
-          [& from_buffer = from,
-           &to_buffer    = to,
-           &target_displs,
-           &team,
-           cmp = sort_comp](
+          [from, to, &target_displs, &team, cmp = sort_comp](
               auto merge_first,
               auto merge_middle,
               auto merge_last,
-              auto /*is_final_merge*/) {
-            auto* first = std::next(from_buffer, target_displs[merge_first]);
-            auto* mid   = std::next(from_buffer, target_displs[merge_middle]);
-            auto* last  = std::next(from_buffer, target_displs[merge_last]);
+              auto d,
+              auto depth) {
+            // If the merge tree has an even number of levels, we merge the
+            // first level in place so that all following merges may be
+            // (non-inline) merges without extra copying.
+            //
+            // TODO: test whether it's faster on level 0 or on depth - 1.
+            auto uses_inplace   = depth % 2 == 0;
+            auto left_distance  = merge_middle - merge_first;
+            auto right_distance = merge_last - merge_middle;
+            auto left_buffer    = from;
+            auto right_buffer   = from;
 
-            impl::merge(first, mid, last, to_buffer, cmp);
-          },
-          [&from, &to]() { std::swap(from, to); });
+            // Switch buffers on every second level. First level is always
+            // from "from". Also account for the offset when inplace merging
+            // is used on the first level.
+            if (static_cast<int>(std::log2(left_distance)) % 2 -
+                    uses_inplace &&
+                left_distance > 1) {
+              left_buffer = to;
+            }
+            if (static_cast<int>(std::log2(right_distance)) % 2 -
+                    uses_inplace &&
+                right_distance > 1) {
+              right_buffer = to;
+            }
+            auto* left_begin =
+                std::next(left_buffer, target_displs[merge_first]);
+            auto* left_end =
+                std::next(left_buffer, target_displs[merge_middle]);
+            auto* right_begin =
+                std::next(right_buffer, target_displs[merge_middle]);
+            auto* right_end =
+                std::next(right_buffer, target_displs[merge_last]);
+
+            // Merge into the oposite of left_buffer.
+            auto out_buffer = left_buffer == from ? to : from;
+
+            // On first level and even depth, merge inplace
+            if (uses_inplace && d == 0) {
+              impl::merge_inplace_and_copy(
+                  left_begin,
+                  right_begin,
+                  right_end,
+                  out_buffer,
+                  cmp,
+                  [] {},
+                  false);
+            }
+            else {
+              impl::merge(
+                  left_begin,
+                  left_end,
+                  right_begin,
+                  right_end,
+                  std::next(out_buffer, target_displs[merge_first]),
+                  cmp);
+            }
+          });
     }
   }
 

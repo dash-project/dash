@@ -126,7 +126,7 @@ inline auto psort__schedule_copy_tasks(
 }
 
 template <class Iter, class OutputIt, class Cmp, class Barrier>
-inline void merge_inplace(
+inline void merge_inplace_and_copy(
     Iter      first,
     Iter      mid,
     Iter      last,
@@ -149,22 +149,29 @@ inline void merge_inplace(
 }
 
 template <class Iter, class OutputIt, class Cmp>
-inline void merge(Iter first, Iter mid, Iter last, OutputIt out, Cmp&& cmp)
+inline void merge(
+    Iter     left_begin,
+    Iter     left_end,
+    Iter     right_begin,
+    Iter     right_end,
+    OutputIt out,
+    Cmp&&    cmp)
 {
-  std::merge(first, mid, mid, last, out, cmp);
+  std::merge(left_begin, left_end, right_begin, right_end, out, cmp);
 
-  auto dist = std::distance(first, last);
+  auto dist = std::distance(left_begin, left_end) +
+              std::distance(right_begin, right_end);
 
   DASH_LOG_TRACE_RANGE("after merge", out, std::next(out, dist));
+  DASH_LOG_TRACE("merge outbuffer", std::addressof(out[0]));
 }
 
-template <class ThreadPoolT, class MergeOp, class MergeSync>
+template <class ThreadPoolT, class MergeOp>
 inline auto psort__merge_tree(
     ChunkDependencies chunk_dependencies,
     size_t            nchunks,
     ThreadPoolT&      thread_pool,
-    MergeOp&&         mergeOp,
-    MergeSync&&       mergeSync)
+    MergeOp&&         mergeOp)
 {
   // number of merge steps in the tree
   auto const depth = static_cast<size_t>(std::ceil(std::log2(nchunks)));
@@ -194,45 +201,47 @@ inline auto psort__merge_tree(
       auto l = std::min(m * dist + dist, npartitions);
 
       // Start a thread that blocks until the two previous merges are ready.
-      auto fut = thread_pool.submit(
-          [f, mi, l, &chunk_dependencies, is_final_merge, merge = mergeOp]() {
-            // Wait for the left and right chunks to be copied/merged
-            // This guarantees that for
-            //
-            // [____________________________]
-            // ^f           ^mi             ^l
-            //
-            // [f, mi) and [mi, f) are both merged sequences when the task
-            // continues.
+      auto fut = thread_pool.submit([f,
+                                     mi,
+                                     l,
+                                     &chunk_dependencies,
+                                     is_final_merge,
+                                     d,
+                                     depth,
+                                     merge = mergeOp]() {
+        // Wait for the left and right chunks to be copied/merged
+        // This guarantees that for
+        //
+        // [____________________________]
+        // ^f           ^mi             ^l
+        //
+        // [f, mi) and [mi, f) are both merged sequences when the task
+        // continues.
 
-            // pair of merge dependencies
-            ChunkRange dep_l{f, mi};
-            ChunkRange dep_r{mi, l};
+        // pair of merge dependencies
+        ChunkRange dep_l{f, mi};
+        ChunkRange dep_r{mi, l};
 
-            if (chunk_dependencies[dep_l].valid()) {
-              chunk_dependencies[dep_l].wait();
-            }
-            if (chunk_dependencies[dep_r].valid()) {
-              chunk_dependencies[dep_r].wait();
-            }
+        if (chunk_dependencies[dep_l].valid()) {
+          chunk_dependencies[dep_l].wait();
+        }
+        if (chunk_dependencies[dep_r].valid()) {
+          chunk_dependencies[dep_r].wait();
+        }
 
-            merge(f, mi, l, is_final_merge);
-            DASH_LOG_TRACE("merged chunks", dep_l.first, dep_r.second);
-          });
+        merge(f, mi, l, d, depth);
+        DASH_LOG_TRACE("merged chunks", dep_l.first, dep_l.second,  dep_r.second, d);
+      });
 
       ChunkRange to_merge(f, l);
       chunk_dependencies.emplace(to_merge, std::move(fut));
     }
 
     nchunks -= nmerges;
-
-    if (nchunks) {
-      mergeSync();
-    }
   }
 
   // Wait for the final merge step
-  impl::ChunkRange final_range(0, npartitions);
+  ChunkRange final_range(0, npartitions);
   chunk_dependencies.at(final_range).get();
 }
 
