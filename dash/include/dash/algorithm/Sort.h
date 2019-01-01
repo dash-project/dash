@@ -163,13 +163,10 @@ void sort(
 
   auto const n_l_elem = l_range.end - l_range.begin;
 
-  impl::LocalData<value_type> local_data{
-      // l_first
-      l_mem_begin + l_range.begin,
-      // l_last
-      l_mem_begin + l_range.begin + n_l_elem,
-      // output
-      l_mem_target + l_range.begin};
+  impl::LocalData<value_type> local_data{// input
+                                         l_mem_begin + l_range.begin,
+                                         // output
+                                         l_mem_target + l_range.begin};
 
   // Request a thread pool based on locality information
   dash::util::TeamLocality tloc{pattern.team()};
@@ -192,15 +189,13 @@ void sort(
   trace.enter_state("1:initial_local_sort");
 
   impl::local_sort(
-      local_data.input(),
-      local_data.input() + n_l_elem,
+      local_data.input,
+      local_data.input + n_l_elem,
       sort_comp,
       nodeLevelConfig.parallelism());
 
   DASH_LOG_TRACE_RANGE(
-      "locally sorted array",
-      local_data.input(),
-      local_data.input() + n_l_elem);
+      "locally sorted array", local_data.input, local_data.input + n_l_elem);
 
   trace.exit_state("1:initial_local_sort");
 
@@ -212,11 +207,9 @@ void sort(
   auto in_place = ptr_begin.segid == ptr_out.segid;
 
   if (pattern.team().size() == 1) {
-    if(in_place) {
+    if (!in_place) {
       std::copy(
-          local_data.input(),
-          local_data.input() + n_l_elem,
-          local_data.output());
+          local_data.input, local_data.input + n_l_elem, local_data.output);
     }
     DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
     return;
@@ -227,9 +220,9 @@ void sort(
   auto min_max = impl::minmax(
       (n_l_elem > 0) ? std::make_pair(
                            // local minimum
-                           projection(*local_data.input()),
+                           projection(*local_data.input),
                            // local maximum
-                           projection(*(local_data.input() + n_l_elem - 1)))
+                           projection(*(local_data.input + n_l_elem - 1)))
                      : std::make_pair(
                            std::numeric_limits<mapped_type>::max(),
                            std::numeric_limits<mapped_type>::min()),
@@ -314,8 +307,8 @@ void sort(
       auto const l_nlt_nle = impl::psort__local_histogram(
           splitters,
           valid_splitters,
-          local_data.input(),
-          local_data.input() + n_l_elem,
+          local_data.input,
+          local_data.input + n_l_elem,
           projection);
 
       DASH_LOG_TRACE_RANGE(
@@ -363,8 +356,8 @@ void sort(
   auto const histograms = impl::psort__local_histogram(
       splitters,
       valid_splitters,
-      local_data.input(),
-      local_data.input() + n_l_elem,
+      local_data.input,
+      local_data.input + n_l_elem,
       projection);
 
   trace.exit_state("5:final_local_histogram");
@@ -603,6 +596,10 @@ void sort(
    */
 
   impl::ChunkDependencies chunk_dependencies;
+  // allocate a temporary buffer
+  local_data.buffer =
+      std::move(std::unique_ptr<value_type[]>{new value_type[n_l_elem]});
+
   {
     auto const get_send_info =
         [&source_displs, &target_displs, &target_counts](
@@ -623,7 +620,7 @@ void sort(
         // from global begin...
         begin,
         // to a local buffer
-        local_data.buffer(),
+        local_data.buffer.get(),
         remote_units,
         get_send_info);
 
@@ -635,8 +632,8 @@ void sort(
         thread_pool,
         myid,
         // local copy operation
-        [from      = local_data.input(),
-         to        = local_data.buffer(),
+        [from      = local_data.input,
+         to        = local_data.buffer.get(),
          send_info = std::move(get_send_info(myid))]() {
           std::size_t target_count, src_disp, target_disp;
           std::tie(target_count, src_disp, target_disp) = send_info;
@@ -675,8 +672,8 @@ void sort(
 
     trace.enter_state("11:final_local_sort");
     impl::local_sort(
-        local_data.buffer(),
-        local_data.buffer() + n_l_elem,
+        local_data.buffer.get(),
+        local_data.buffer.get() + n_l_elem,
         sort_comp,
         nodeLevelConfig.parallelism());
     trace.exit_state("11:final_local_sort");
@@ -687,9 +684,9 @@ void sort(
 
     trace.enter_state("13:final_local_copy");
     std::copy(
-        local_data.buffer(),
-        local_data.buffer() + n_l_elem,
-        local_data.output());
+        local_data.buffer.get(),
+        local_data.buffer.get() + n_l_elem,
+        local_data.output);
     trace.exit_state("13:final_local_copy");
   }
   else {
@@ -702,8 +699,8 @@ void sort(
           std::move(chunk_dependencies),
           nunits,
           thread_pool,
-          [from_buffer = local_data.buffer(),
-           to_buffer   = local_data.output(),
+          [from_buffer = local_data.buffer.get(),
+           to_buffer   = local_data.output,
            &target_displs,
            &team,
            cmp = sort_comp](
@@ -723,13 +720,13 @@ void sort(
                 to_buffer,
                 cmp,
                 [&team]() { team.barrier(); },
-                 d == depth - 1);
+                d == depth - 1);
           });
     }
     else /* Non-Inplace Sort */
     {
-      auto* from = local_data.buffer();
-      auto* to   = local_data.output();
+      auto* from = local_data.buffer.get();
+      auto* to   = local_data.output;
 
       impl::psort__merge_tree(
           std::move(chunk_dependencies),
@@ -805,8 +802,8 @@ void sort(
 
   DASH_LOG_TRACE_RANGE(
       "finally sorted range",
-      local_data.output(),
-      local_data.output() + n_l_elem);
+      local_data.output,
+      local_data.output + n_l_elem);
 
   trace.enter_state("final_barrier");
   team.barrier();

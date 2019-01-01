@@ -34,6 +34,16 @@ struct sort__final_strategy__sort {
 using ChunkRange        = std::pair<std::size_t, std::size_t>;
 using ChunkDependencies = std::map<ChunkRange, std::future<void>>;
 
+template <class T>
+struct LocalData {
+private:
+  using element_t = T;
+public:
+  element_t*                   input{};
+  element_t*                   output{};
+  std::unique_ptr<element_t[]> buffer{};
+};
+
 template <typename T>
 struct Splitter {
 public:
