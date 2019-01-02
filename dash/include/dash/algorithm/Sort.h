@@ -59,7 +59,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end);
  * \ingroup  DashAlgorithms
  */
 template <class GlobRandomIt, class Projection>
-void sort(GlobRandomIt begin, GlobRandomIt end, Projection&& projection);
+void sort(GlobRandomIt begin, GlobRandomIt end, Projection projection);
 
 }  // namespace dash
 
@@ -98,10 +98,11 @@ template <
     class Projection,
     class MergeStrategy = impl::sort__final_strategy__merge>
 void sort(
-    GlobRandomIt begin,
-    GlobRandomIt end,
-    GlobRandomIt out,
-    Projection&& projection)
+    GlobRandomIt  begin,
+    GlobRandomIt  end,
+    GlobRandomIt  out,
+    Projection    projection,
+    MergeStrategy strategy = MergeStrategy{})
 {
   using iter_type  = GlobRandomIt;
   using value_type = typename iter_type::value_type;
@@ -820,32 +821,32 @@ struct identity_t : std::unary_function<T, T> {
 };
 }  // namespace impl
 
-template <
-    class GlobRandomIt,
-    class MergeStrategy = impl::sort__final_strategy__merge>
-inline void sort(GlobRandomIt begin, GlobRandomIt end)
-{
-  using value_t = typename std::remove_cv<
-      typename dash::iterator_traits<GlobRandomIt>::value_type>::type;
-
-  auto projection = impl::identity_t<value_t const&>{};
-
-  dash::sort<GlobRandomIt, decltype(projection), MergeStrategy>(
-      begin, end, begin, std::move(projection));
-}
-
-template <
-    class GlobRandomIt,
-    class MergeStrategy = impl::sort__final_strategy__merge>
+template <class GlobRandomIt>
 inline void sort(GlobRandomIt begin, GlobRandomIt end, GlobRandomIt out)
 {
   using value_t = typename std::remove_cv<
       typename dash::iterator_traits<GlobRandomIt>::value_type>::type;
 
-  auto projection = impl::identity_t<value_t const&>{};
+  dash::sort(
+      begin,
+      end,
+      out,
+      impl::identity_t<value_t const&>{},
+      impl::sort__final_strategy__merge{});
+}
 
-  dash::sort<GlobRandomIt, decltype(projection), MergeStrategy>(
-      begin, end, out, std::move(projection));
+template <class GlobRandomIt>
+inline void sort(GlobRandomIt begin, GlobRandomIt end)
+{
+  using value_t = typename std::remove_cv<
+      typename dash::iterator_traits<GlobRandomIt>::value_type>::type;
+
+  dash::sort(
+      begin,
+      end,
+      begin,
+      impl::identity_t<value_t const&>{},
+      impl::sort__final_strategy__merge{});
 }
 
 #endif  // DOXYGEN

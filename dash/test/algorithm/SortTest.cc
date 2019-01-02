@@ -470,5 +470,35 @@ TEST_F(SortTest, ArrayBlockedFullRangeNonInPlace)
   perform_test(array.begin(), array.end(), out.begin());
 }
 
-// TODO: add additional unit tests with various pattern types and containers
-//
+TEST_F(SortTest, ArrayOfPointsFinalSort)
+{
+  using Element_t = Point;
+  using Array_t   = dash::Array<Element_t>;
+
+  LOG_MESSAGE("SortTest.ArrayOfPoints: allocate array");
+  // Initialize global array:
+  Array_t array(num_local_elem * dash::size());
+
+  static std::uniform_int_distribution<int32_t> distribution(-1000, 1000);
+  static random_dev_t                           rd;
+  static std::mt19937 generator(rd() + array.team().myid());
+
+  dash::generate(array.begin(), array.end(), []() {
+    return Point{distribution(generator), distribution(generator)};
+  });
+
+  array.barrier();
+
+  dash::sort(array.begin(), array.end(), array.begin(), [](const Point& p) {
+    return p.x;
+  }, dash::impl::sort__final_strategy__sort{});
+
+  if (dash::myid() == 0) {
+    for (auto it = array.begin() + 1; it < array.end(); ++it) {
+      auto const a = static_cast<const Element_t>(*(it - 1));
+      auto const b = static_cast<const Element_t>(*it);
+
+      EXPECT_FALSE_U(b < a);
+    }
+  }
+}
