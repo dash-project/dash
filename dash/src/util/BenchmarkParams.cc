@@ -9,12 +9,13 @@
 #include <ctime>
 
 #include <dash/util/Config.h>
+#include <dash/internal/Config.h>
 #include <dash/util/Locality.h>
 #include <dash/Array.h>
+#include <dash/Version.h>
 
 // Environment variables as array of strings, terminated by null pointer.
 extern char ** environ;
-
 
 namespace dash {
 namespace util {
@@ -58,6 +59,9 @@ BenchmarkParams::BenchmarkParams(
     {
       params.env_mpi_config.push_back(
         std::make_pair(flag_name, flag_value));
+    } else if (strstr(env_var_kv, "DART_") == env_var_kv) {
+      params.env_dart_config.push_back(
+        std::make_pair(flag_name, flag_value));
     }
     env_var_kv = *(environ + i);
   }
@@ -89,37 +93,64 @@ void BenchmarkParams::print_header()
   print_param("date",   date_cstr);
   print_section_end();
 
+
 #ifdef DASH_MPI_IMPL_ID
-  print_section_start("MPI Environment Flags");
 
-  std::ostringstream mpi_ss;
-  for (auto flag : _config.env_mpi_config) {
-    int val_w  = box_width - flag.first.length() - 6;
-    mpi_ss << "--   " << std::left   << flag.first << " "
-                      << std::setw(val_w) << std::right << flag.second
-           << '\n';
+  {
+    print_section_start("MPI Environment Flags");
+    std::ostringstream oss;
+    for (auto flag : _config.env_mpi_config) {
+      int val_w  = box_width - flag.first.length() - 6;
+      oss << "--   " << std::left   << flag.first << " "
+                        << std::setw(val_w) << std::right << flag.second
+          << '\n';
+    }
+    std::cout << oss.str();
+
+    print_section_end();
   }
-  std::cout << mpi_ss.str();
-
-  print_section_end();
 #endif
 
-  print_section_start("DASH Environment Flags");
-
-  std::ostringstream oss;
-  for (auto flag = dash::util::Config::begin();
-       flag != dash::util::Config::end(); ++flag)
   {
-    int val_w  = box_width - flag->first.length() - 5;
-    oss << "--   " << std::left   << flag->first
-                   << std::setw(val_w) << std::right << flag->second
-        << '\n';
-  }
-  std::cout << oss.str();
+    print_section_start("DASH Environment Flags");
 
-  print_section_end();
+    std::ostringstream oss;
+    for (auto flag = dash::util::Config::begin();
+        flag != dash::util::Config::end(); ++flag)
+    {
+      int val_w  = box_width - flag->first.length() - 5;
+      oss << "--   " << std::left   << flag->first
+                    << std::setw(val_w) << std::right << flag->second
+          << '\n';
+    }
+    std::cout << oss.str();
+
+    print_section_end();
+  }
+
+  if (!_config.env_dart_config.empty())
+  {
+    print_section_start("DART Environment Flags");
+
+    std::ostringstream oss;
+    for (auto flag : _config.env_dart_config) {
+      int val_w  = box_width - flag.first.length() - 6;
+      oss << "--   " << std::left   << flag.first << " "
+                        << std::setw(val_w) << std::right << flag.second
+          << '\n';
+    }
+    std::cout << oss.str();
+
+    print_section_end();
+  }
+
 
   print_section_start("DASH Configuration");
+  print_param("DASH version", DASH_VERSION_STRING);
+#ifdef DASH_GIT_COMMIT
+  print_param("DASH git commit", DASH_GIT_COMMIT);
+#endif
+  print_param("Compiler ID", DASH_COMPILER_ID);
 #ifdef DASH_MPI_IMPL_ID
   print_param("MPI implementation", dash__toxstr(DASH_MPI_IMPL_ID));
 #endif

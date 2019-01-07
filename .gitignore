@@ -12,6 +12,7 @@ build-ci*
 CMakeFiles/*
 compile_commands.json
 dash/include/dash/util/StaticConfig.h
+dash/include/dash/Version.h
 *.o
 *.a
 *.so
