@@ -3,17 +3,39 @@
 
 #include <dash/internal/Logging.h>
 
-#include <map>
-#include <set>
-#include <array>
-#include <utility>
 #include <algorithm>
-#include <functional>
+#include <array>
 #include <cmath>
+#include <functional>
+#include <map>
 #include <numeric>
+#include <set>
+#include <utility>
+#include <climits> //For CHAR_BITS
 
 namespace dash {
 namespace math {
+
+/**
+ * Given an unsigned integer \c v, find the next power of 2.
+ *
+ * \returns the next power of 2 which is >= v.
+ */
+template <typename UnsignedT>
+UnsignedT NextPowerOf2(UnsignedT v)
+{
+  // This loop should be unrolled since the compiler knows how many iterations
+  // we need. Based on the famous Bit Twiddling Hacks
+  static_assert(std::is_unsigned<UnsignedT>::value, "Must be unsigned");
+
+  v--;
+
+  for (size_t i = 1; i < sizeof(v) * CHAR_BIT; i *= 2) {
+    v |= v >> i;
+  }
+
+  return ++v;
+}
 
 /**
  * Ceil the quotient of \c a and \c b.
@@ -22,17 +44,17 @@ namespace math {
  *           by 1 if the regular division (a/b) has a non-zero
  *           remainder.
  */
-template<typename T1, typename T2>
+template <typename T1, typename T2>
 inline T1 div_ceil(
-  /// Dividend
-  T1 a,
-  /// Divisor
-  T2 b)
+    /// Dividend
+    T1 a,
+    /// Divisor
+    T2 b)
 {
   return (a / b) + static_cast<T1>(a % b > 0);
 }
 
-template<typename Iter>
+template <typename Iter>
 inline void div_mean(Iter begin, Iter end)
 {
   auto   nvals = std::distance(begin, end);
@@ -40,15 +62,14 @@ inline void div_mean(Iter begin, Iter end)
   if (nvals <= 0 || sum <= 0) {
     return;
   }
-  double mean  = sum / nvals;
+  double mean = sum / nvals;
 
   typedef typename Iter::value_type value_t;
   // range[i] /= mean
-  std::transform(begin, end, begin,
-                 [=](value_t v) { return v / mean; });
+  std::transform(begin, end, begin, [=](value_t v) { return v / mean; });
 }
 
-template<typename T>
+template <typename T>
 inline T max(T a, T b)
 {
   return (a > b) ? a : b;
@@ -57,10 +78,8 @@ inline T max(T a, T b)
 /**
  * Calculates the standard deviation of given values.
  */
-template<typename Iter>
-double sigma(
-  const Iter & begin,
-  const Iter & end)
+template <typename Iter>
+double sigma(const Iter& begin, const Iter& end)
 {
   auto   n      = std::distance(begin, end);
   double mean   = 0;
@@ -91,7 +110,7 @@ double sigma(
  *   // returns map { (2,3), (4,1), (7,2) }
  * \endcode
  */
-template<typename Integer>
+template <typename Integer>
 std::map<Integer, int> factorize(Integer n)
 {
   std::map<Integer, int> factors;
@@ -99,31 +118,34 @@ std::map<Integer, int> factorize(Integer n)
     return factors;
   }
   while (n % 2 == 0) {
-    n = n / 2;
+    n       = n / 2;
     auto it = factors.find(2);
     if (it == factors.end()) {
       factors.insert(std::make_pair(2, 1));
-    } else {
+    }
+    else {
       it->second++;
     }
   }
   Integer sqrt_n = std::ceil(std::sqrt(n));
   for (Integer i = 3; i <= sqrt_n; i = i + 2) {
-    while (n  % i == 0) {
+    while (n % i == 0) {
       auto it = factors.find(i);
       if (it == factors.end()) {
         factors.insert(std::make_pair(i, 1));
-      } else {
+      }
+      else {
         it->second++;
       }
-      n = n/i;
+      n = n / i;
     }
   }
   if (n > 2) {
     auto it = factors.find(n);
     if (it == factors.end()) {
       factors.insert(std::make_pair(n, 1));
-    } else {
+    }
+    else {
       it->second++;
     }
   }
@@ -142,7 +164,7 @@ std::map<Integer, int> factorize(Integer n)
  *   // returns set { 2, 4, 7 }
  * \endcode
  */
-template<typename Integer>
+template <typename Integer>
 std::set<Integer> factors(Integer n)
 {
   std::set<Integer> primes;
@@ -152,22 +174,23 @@ std::set<Integer> factors(Integer n)
   // In HPC applications, we assume (multiples of) powers of 2 as the
   // most common case:
   while (n % 2 == 0) {
-    n = n / 2;
+    n       = n / 2;
     auto it = primes.find(2);
     if (it == primes.end()) {
       primes.insert(2);
-    } else {
+    }
+    else {
       it->second++;
     }
   }
   Integer sqrt_n = std::ceil(std::sqrt(n));
   for (Integer i = 3; i <= sqrt_n; i = i + 2) {
-    while (n  % i == 0) {
+    while (n % i == 0) {
       auto it = primes.find(i);
       if (it == primes.end()) {
         primes.insert(i);
       }
-      n = n/i;
+      n = n / i;
     }
   }
   if (n > 2) {
@@ -180,10 +203,9 @@ std::set<Integer> factors(Integer n)
   return primes;
 }
 
-template<typename Integer, size_t NumDim>
+template <typename Integer, size_t NumDim>
 typename std::enable_if<(NumDim > 1), std::array<Integer, NumDim> >::type
-balance_extents(
-  std::array<Integer, NumDim> extents)
+balance_extents(std::array<Integer, NumDim> extents)
 {
   DASH_LOG_TRACE_VAR("dash::math::balance_extents()", extents);
   Integer size = 1;
@@ -194,19 +216,20 @@ balance_extents(
   DASH_ASSERT_GT(size, 0, "dash::math::balance_extents: extent must be > 0");
   extents[0]      = size;
   extents[1]      = 1;
-  auto factors    = dash::math::factorize(size);
+  auto    factors = dash::math::factorize(size);
   Integer surface = 0;
 
   DASH_LOG_TRACE_VAR("dash::math::balance_extents", factors);
   for (auto it : factors) {
-    DASH_LOG_TRACE("dash::math::balance_extents",
-                   "factor:", it.first, "x", it.second);
+    DASH_LOG_TRACE(
+        "dash::math::balance_extents", "factor:", it.first, "x", it.second);
     for (auto i = 1; i < it.second + 1; ++i) {
       Integer extent_x    = it.first * i;
       Integer extent_y    = size / extent_x;
       Integer surface_new = (2 * extent_x) + (2 * extent_y);
-      DASH_LOG_TRACE("dash::math::balance_extents", "testing extents",
-                     extent_x, "x", extent_y, " -> surface:", surface_new);
+      DASH_LOG_TRACE(
+          "dash::math::balance_extents", "testing extents", extent_x, "x",
+          extent_y, " -> surface:", surface_new);
       if (surface == 0 || surface_new < surface) {
         surface    = surface_new;
         extents[0] = extent_x;
@@ -218,12 +241,12 @@ balance_extents(
   return extents;
 }
 
-template<typename Integer, size_t NumDim>
+template <typename Integer, size_t NumDim>
 typename std::enable_if<(NumDim > 1), std::array<Integer, NumDim> >::type
 balance_extents(
-  std::array<Integer, NumDim> extents,
-  // List of preferred blocking factors.
-  std::set<Integer>           blocking)
+    std::array<Integer, NumDim> extents,
+    // List of preferred blocking factors.
+    std::set<Integer> blocking)
 {
   DASH_LOG_TRACE_VAR("dash::math::balance_extents()", extents);
   DASH_LOG_TRACE_VAR("dash::math::balance_extents()", blocking);
@@ -232,17 +255,17 @@ balance_extents(
     size *= extents[d];
   }
   DASH_ASSERT_GT(size, 0, "dash::math::balance_extents: extent must be > 0");
-  extents[0]        = size;
-  extents[1]        = 1;
-  auto size_factors = dash::math::factorize(size);
-  Integer surface   = 0;
+  extents[0]           = size;
+  extents[1]           = 1;
+  auto    size_factors = dash::math::factorize(size);
+  Integer surface      = 0;
 
   DASH_LOG_TRACE_VAR("dash::math::balance_extents", size_factors);
 
   // Test if size is divisible by blocking factors:
   for (auto block_size : blocking) {
-    DASH_LOG_TRACE("dash::math::balance_extents",
-                   "trying block factor", block_size);
+    DASH_LOG_TRACE(
+        "dash::math::balance_extents", "trying block factor", block_size);
     if (block_size < 2 || size % block_size != 0) {
       continue;
     }
@@ -250,19 +273,20 @@ balance_extents(
     if (n_combinations == 0) {
       n_combinations = size / block_size;
     }
-    DASH_LOG_TRACE("dash::math::balance_extents",
-                   "trying block factor", block_size,
-                   "in", n_combinations, "combinations");
+    DASH_LOG_TRACE(
+        "dash::math::balance_extents", "trying block factor", block_size,
+        "in", n_combinations, "combinations");
     for (int i = 1; i < (n_combinations / 2) + 1; ++i) {
       // Size can be partitioned into n_blocks of size block_size:
-      Integer extent_x    = i * block_size;
+      Integer extent_x = i * block_size;
       if (size % extent_x != 0) {
         continue;
       }
       Integer extent_y    = size / extent_x;
       Integer surface_new = (2 * extent_x) + (2 * extent_y);
-      DASH_LOG_TRACE("dash::math::balance_extents", "testing extents",
-                     extent_x, "x", extent_y, " -> surface:", surface_new);
+      DASH_LOG_TRACE(
+          "dash::math::balance_extents", "testing extents", extent_x, "x",
+          extent_y, " -> surface:", surface_new);
       if (surface == 0 || surface_new < surface) {
         surface    = surface_new;
         extents[0] = extent_x;
@@ -322,9 +346,9 @@ namespace internal {
 
 double _lrand_f(double r, double x);
 
-} // namespace internal
+}  // namespace internal
 
-} // namespace math
-} // namespace dash
+}  // namespace math
+}  // namespace dash
 
-#endif // DASH__INTERNAL__MATH_H_
+#endif  // DASH__INTERNAL__MATH_H_

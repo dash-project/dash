@@ -76,7 +76,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
     int32_t *tail_ptr;
     ret = dart_memalloc(1, DART_TYPE_INT, &gptr_tail);
     if (ret != DART_OK) {
-      DART_LOG_ERROR("%s: Failed to allocate global memory!", __FUNCTION__);
+      DART_LOG_ERROR("%s: Failed to allocate global memory!", __func__);
       return ret;
     }
     DART_ASSERT_RETURNS(
@@ -93,7 +93,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
    * waiting on the lock. */
   ret = dart_team_memalloc_aligned(teamid, 1, DART_TYPE_INT, &gptr_list);
   if (ret != DART_OK) {
-    DART_LOG_ERROR("%s: Failed to allocate global memory!", __FUNCTION__);
+    DART_LOG_ERROR("%s: Failed to allocate global memory!", __func__);
     return ret;
   }
 
@@ -115,7 +115,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
     DART_TEAM_UNIT_ID(0),
     teamid);
   if (ret != DART_OK) {
-    DART_LOG_ERROR("%s: Failed to broadcast lock information!", __FUNCTION__);
+    DART_LOG_ERROR("%s: Failed to broadcast lock information!", __func__);
     return ret;
   }
 

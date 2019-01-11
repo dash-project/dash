@@ -22,21 +22,24 @@ template <
   typename T,
   dim_t NumDimensions,
   typename IndexT,
-  class PatternT >
+  class PatternT,
+  typename LocalMemT>
 class Matrix;
 /// Forward-declaration
 template <
   typename T,
   dim_t NumDimensions,
   dim_t CUR,
-  class PatternT >
+  class PatternT,
+  typename LocalMemT >
 class MatrixRef;
 /// Forward-declaration
 template <
   typename T,
   dim_t NumDimensions,
   dim_t CUR,
-  class PatternT >
+  class PatternT,
+  typename LocalMemT>
 class LocalMatrixRef;
 
 /**
@@ -49,18 +52,21 @@ class LocalMatrixRef;
 template <
   typename T,
   dim_t NumDimensions,
-  class PatternT =
-    TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
+  class PatternT,
+  class LocalMemT>
 class MatrixRefView
 {
- public:
+  using matrix_t =
+      Matrix<T, NumDimensions, typename PatternT::index_type, PatternT, LocalMemT>;
+
+public:
   typedef typename PatternT::index_type             index_type;
 
  private:
   /// The view's next unspecified dimension, initialized with 0.
   dim_t                                             _dim       = 0;
   /// The matrix referenced by the view.
-  Matrix<T, NumDimensions, index_type, PatternT>  * _mat;
+  matrix_t  * _mat;
   /// Coordinates of a single referenced element if view references fully
   /// specified coordinates.
   ::std::array<index_type, NumDimensions>           _coord     = {{  }};
@@ -73,44 +79,49 @@ class MatrixRefView
   template<
     typename T_,
     dim_t NumDimensions1,
-    class PatternT_ >
+    class PatternT_,
+    typename LocalMemT_>
   friend std::ostream & operator<<(
     std::ostream & os,
-    const MatrixRefView<T_, NumDimensions1, PatternT_> & mrefview);
+    const MatrixRefView<T_, NumDimensions1, PatternT_, LocalMemT> & mrefview);
 
   template<
     typename T_,
     dim_t NumDimensions1,
     dim_t NumDimensions2,
-    class PatternT_ >
+    class PatternT_,
+    typename LocalMemT_>
   friend class MatrixRef;
   template<
     typename T_,
     dim_t NumDimensions1,
-    class PatternT_ >
+    class PatternT_,
+    typename LocalMemT_>
   friend class MatrixRefView;
   template<
     typename T_,
     dim_t NumDimensions1,
     dim_t NumDimensions2,
-    class PatternT_ >
+    class PatternT_,
+    typename LocalMemT_>
   friend class LocalMatrixRef;
   template<
     typename T_,
     dim_t NumDimensions1,
     typename IndexT_,
-    class PatternT_ >
+    class PatternT_,
+    typename LocalMemT_ >
   friend class Matrix;
 
-  MatrixRefView<T, NumDimensions, PatternT>();
+  MatrixRefView<T, NumDimensions, PatternT, LocalMemT>();
 
   template <class T_>
-  MatrixRefView<T, NumDimensions, PatternT>(
-    const MatrixRefView<T_, NumDimensions, PatternT> & other);
+  MatrixRefView<T, NumDimensions, PatternT, LocalMemT>(
+    const MatrixRefView<T_, NumDimensions, PatternT, LocalMemT> & other);
 
   template <class T_>
-  MatrixRefView<T, NumDimensions, PatternT>(
-    Matrix<T_, NumDimensions, index_type, PatternT> * matrix);
+  MatrixRefView<T, NumDimensions, PatternT, LocalMemT>(
+    Matrix<T_, NumDimensions, index_type, PatternT, LocalMemT> * matrix);
 
   GlobRef<T>       global_reference();
   GlobRef<const T> global_reference() const;
@@ -126,10 +137,11 @@ class MatrixRefView
 template<
   typename T_,
   dim_t NumDimensions1,
-  class PatternT_ >
+  class PatternT_,
+  typename LocalMemT >
 std::ostream & operator<<(
   std::ostream & os,
-  const MatrixRefView<T_, NumDimensions1, PatternT_> & mrefview) {
+  const MatrixRefView<T_, NumDimensions1, PatternT_, LocalMemT> & mrefview) {
   std::ostringstream ss;
   ss << dash::typestr(mrefview)
      << "("

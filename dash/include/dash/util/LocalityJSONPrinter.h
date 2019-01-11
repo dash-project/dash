@@ -22,9 +22,7 @@ private:
   typedef LocalityJSONPrinter self_t;
 
 public:
-
-  LocalityJSONPrinter()
-  { }
+  LocalityJSONPrinter() = default;
 
   self_t & operator<<(const std::string & str) {
     _os << str;

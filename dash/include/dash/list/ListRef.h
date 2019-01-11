@@ -23,13 +23,13 @@ namespace dash {
 // forward declaration
 template<
   typename ElementType,
-  class    AllocatorType >
+  class    LMemSpace >
 class List;
 
 // forward declaration
 template<
   typename ElementType,
-  class    AllocatorType >
+  class    LMemSpace >
 class LocalListRef;
 
 /**
@@ -39,7 +39,7 @@ class LocalListRef;
  */
 template<
   typename ElementType,
-  class    AllocatorType >
+  class    LMemSpace >
 class ListRef
 {
 private:
@@ -47,27 +47,19 @@ private:
 
 /// Type definitions required for DASH list concept:
 public:
-  typedef dash::default_index_t                                   index_type;
-  typedef ElementType                                             value_type;
-  typedef ListRef<ElementType, AllocatorType>                      view_type;
-  typedef LocalListRef<value_type, AllocatorType>                 local_type;
-  typedef AllocatorType                                       allocator_type;
+  typedef dash::default_index_t               index_type;
+  typedef ElementType                         value_type;
+  typedef ListRef<ElementType, LMemSpace>     view_type;
+  typedef LocalListRef<value_type, LMemSpace> local_type;
 
 private:
-  typedef ListRef<ElementType, AllocatorType>
-    self_t;
-  typedef List<ElementType, AllocatorType>
-    list_type;
-  typedef ViewSpec<NumDimensions, index_type>
-    ViewSpec_t;
-  typedef internal::ListNode<ElementType>
-    ListNode_t;
-  typedef typename allocator_type::template rebind<ListNode_t>::other
-    node_allocator_type;
-  typedef dash::GlobHeapMem<ElementType, node_allocator_type>
-    glob_mem_type;
+  typedef ListRef<ElementType, LMemSpace>     self_t;
+  typedef List<ElementType, LMemSpace>        list_type;
+  typedef ViewSpec<NumDimensions, index_type> ViewSpec_t;
+  typedef typename list_type::node_type       ListNode_t;
+  typedef typename list_type::glob_mem_type   glob_mem_type;
 
-/// Public types as required by STL list concept:
+  /// Public types as required by STL list concept:
 public:
   typedef typename std::make_unsigned<index_type>::type            size_type;
 

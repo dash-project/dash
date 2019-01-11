@@ -139,12 +139,13 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   // local distance
   auto const l_range = dash::local_index_range(begin, end);
 
-  auto l_mem_begin = begin.globmem().lbegin();
+  auto* l_mem_begin = dash::local_begin(
+      static_cast<typename GlobRandomIt::pointer>(begin), team.myid());
 
   auto const n_l_elem = l_range.end - l_range.begin;
 
-  auto lbegin = l_mem_begin + l_range.begin;
-  auto lend   = l_mem_begin + l_range.end;
+  auto * lbegin = l_mem_begin + l_range.begin;
+  auto * lend   = l_mem_begin + l_range.end;
 
   // initial local_sort
   trace.enter_state("1:initial_local_sort");

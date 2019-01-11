@@ -9,7 +9,7 @@
 
 namespace dash {
 
-template<class ContainerType, int LEVEL> 
+template<class ContainerType, int LEVEL>
 class HIter : public ContainerType::iterator
 {
 private:
@@ -31,10 +31,10 @@ public:
 
 public:
   HIter(
-    typename ContainerType::iterator it, 
-    Pattern<1> & pattern,
+    typename ContainerType::iterator it,
+    BlockPattern<1> & pattern,
     Team & subteam)
-  : ContainerType::iterator(it), 
+  : ContainerType::iterator(it),
     m_pattern(pattern),
     m_subteam(subteam) {
   }
@@ -51,11 +51,11 @@ class HView
 public:
   typedef typename ContainerType::iterator    iterator;
   typedef typename ContainerType::value_type  value_type;
-  
+
 private:
   ContainerType & m_container;
   Team          & m_subteam;
-  Pattern<1>    & m_pat;
+  BlockPattern<1>    & m_pat;
 
   HIter<ContainerType,LEVEL> m_begin;
   HIter<ContainerType,LEVEL> m_end;
@@ -79,20 +79,20 @@ private:
       m_subteam
     };
   }
-  
+
 public:
-  HView(ContainerType& cont) 
-  : m_container(cont), 
+  HView(ContainerType& cont)
+  : m_container(cont),
     m_subteam(cont.team().sub(LEVEL)),
     m_pat(cont.pattern()),
     m_begin(find_begin()),
     m_end(find_end())
   { }
-  
+
   HIter<ContainerType, LEVEL> begin() {
     return m_begin;
   }
-  
+
   HIter<ContainerType, LEVEL> end() {
     return m_end;
   }
@@ -110,17 +110,17 @@ private:
   BlockPattern<1> & m_pat;
 
 public:
-  HView(ContainerType& cont) 
-  : m_container(cont), 
+  HView(ContainerType& cont)
+  : m_container(cont),
     m_subteam(cont.team()),
     m_pat(cont.pattern()) {
   };
-  
-  value_type* begin() { 
+
+  value_type* begin() {
     return m_container.lbegin();
   }
-  
-  value_type* end() { 
+
+  value_type* end() {
     return m_container.lend();
   }
 };

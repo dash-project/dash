@@ -14,6 +14,7 @@
 
 #include <dash/dart/if/dart_util.h>
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_team_group.h>
 
 // make sure dynamic windows are enabled if shared windows are not disabled
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS) && \

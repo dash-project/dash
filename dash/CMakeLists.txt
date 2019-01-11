@@ -41,6 +41,8 @@ set(ENABLE_PAPI ${ENABLE_PAPI}
     PARENT_SCOPE)
 set(ENABLE_COMPTIME_RED ${ENABLE_COMPTIME_RED}
     PARENT_SCOPE)
+set(ENABLE_MEMKIND ${ENABLE_MEMKIND}
+    PARENT_SCOPE)
 
 
 # Source- and header files to be compiled (OBJ):
@@ -66,6 +68,11 @@ include_directories(
   ${DASH_LIBRARY_INCLUDE_DIRS}
   ${DASH_DART_IF_INCLUDE_DIR}
 )
+
+# generate version header file
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/dash/Version.h.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/dash/Version.h)
 
 set (ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS} -DDASH)
 
@@ -154,6 +161,19 @@ if (ENABLE_HDF5 AND HDF5_FOUND)
 	set (ADDITIONAL_LINK_FLAGS ${ADDITIONAL_LINK_FLAGS}
        ${HDF5_LINKER_FLAGS})
 endif()
+
+if (ENABLE_MEMKIND AND MEMKIND_FOUND)
+  set (CONF_AVAIL_MEMKIND "true")
+  set (ADDITIONAL_COMPILE_FLAGS
+    ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_MEMKIND)
+  set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+    ${MEMKIND_INCLUDE_DIRS})
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+    ${MEMKIND_LIBRARIES})
+        set (ADDITIONAL_LINK_FLAGS ${ADDITIONAL_LINK_FLAGS}
+    ${MEMKIND_LINKER_FLAGS})
+endif()
+
 
 if (ENABLE_MKL AND MKL_FOUND)
   message (STATUS "    Intel MKL enabled")
@@ -329,7 +349,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   )
 
   if(ENABLE_COMPTIME_RED)
-    cotire(${DASH_LIBRARY})
+      #cotire(${DASH_LIBRARY})
   endif()
 
   include_directories(
@@ -436,7 +456,7 @@ if (BUILD_TESTS)
 
   if (GTEST_FOUND)
     if (BUILD_COVERAGE_TESTS)
-      include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
+        #include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
     endif()
 
     foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
@@ -480,7 +500,7 @@ if (BUILD_TESTS)
       )
 
       if(ENABLE_COMPTIME_RED)
-        cotire(${DASH_TEST})
+          #cotire(${DASH_TEST})
       endif()
 
       if(INSTALL_TESTS)
@@ -516,6 +536,9 @@ endif()
 
 # Headers
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
+        DESTINATION include FILES_MATCHING PATTERN "*.h")
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/cpp17
         DESTINATION include FILES_MATCHING PATTERN "*.h")
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/libdash.h

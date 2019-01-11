@@ -16,6 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <type_traits>
+#include <utility>
 
 
 namespace dash {
@@ -76,12 +77,12 @@ public:
 
   inline iterator begin()
   {
-    return iterator(0);
+    return {0};
   }
 
   inline iterator end()
   {
-    return iterator(size());
+    return {static_cast<int>(size())};
   }
 
 public:
@@ -288,7 +289,7 @@ public:
     Deallocator::dealloc_function dealloc)
   {
     DASH_LOG_DEBUG_VAR("Team.register_deallocator()", object);
-    _deallocs.push_back(Deallocator { object, dealloc });
+    _deallocs.push_back(Deallocator { object, std::move(dealloc) });
   }
 
   /**
@@ -303,7 +304,7 @@ public:
     Deallocator::dealloc_function dealloc)
   {
     DASH_LOG_DEBUG_VAR("Team.unregister_deallocator()", object);
-    _deallocs.remove(Deallocator { object, dealloc });
+    _deallocs.remove(Deallocator { object, std::move(dealloc) });
   }
 
   /**
@@ -313,11 +314,12 @@ public:
   void free()
   {
     DASH_LOG_DEBUG("Team.free()");
-    for (auto dealloc = _deallocs.rbegin();
-         dealloc != _deallocs.rend();
-         ++dealloc) {
+    std::list<Deallocator>::iterator next = _deallocs.begin();
+    std::list<Deallocator>::iterator dealloc;
+    while ((dealloc = next) != _deallocs.end()) {
       barrier();
       // List changes in iterations
+      ++next;
       DASH_LOG_DEBUG_VAR("Team.free", dealloc->object);
       (dealloc->deallocator)();
     }
