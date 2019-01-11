@@ -299,14 +299,14 @@ public:
    * views.
    */
   const BoundaryViews_t& view() const {
-    return _stencil_op->spec_views.boundary_views();
+    return _stencil_op->_spec_views.boundary_views();
   }
 
   /**
    * Returns the number of all boundary elements (no dublicates)
    */
   pattern_size_t boundary_size() const {
-    return _stencil_op->spec_views.boundary_size();
+    return _stencil_op->_spec_views.boundary_size();
   }
 
   /**
