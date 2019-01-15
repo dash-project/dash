@@ -509,6 +509,59 @@ void sort(
   trace.exit_state("8:comm_source_displs (sendrecv)");
 
   /********************************************************************/
+  /****** Send Displacements (all-to-all) *****************************/
+  /********************************************************************/
+
+  /**
+   * Send displacements are needed for alltoallv at the data exchange part
+   *
+   * Worst Case Communication Complexity: O(P^2)
+   * Memory Complexity: O(P)
+   */
+  trace.enter_state("9:comm_send_displs (all-to-all)");
+  std::vector<size_t> send_displs(nunits, 0);
+
+  DASH_ASSERT_RETURNS(
+      dart_alltoall(
+          // send buffer
+          g_partition_data.data(),
+          // receive buffer
+          send_displs.data(),
+          // we send / receive 1 element to / from each process
+          1,
+          // dtype
+          dash::dart_datatype<size_t>::value,
+          // teamid
+          team.dart_id()),
+      DART_OK);
+
+//  DASH_LOG_TRACE_RANGE("send displs unproc", send_displs.begin(), send_displs.end());
+
+
+  trace.exit_state("9:comm_send_displs (all-to-all)");
+
+
+  trace.enter_state("10:calc_send_counts");
+
+  std::vector<size_t> send_counts(nunits, 0);
+
+  impl::psort__calc_send_count(
+      splitters, valid_splitters, send_displs.begin(), send_counts.begin());
+
+  std::partial_sum(
+      send_counts.begin(),
+      std::next(send_counts.begin(), nunits - 1),
+      std::next(send_displs.begin()),
+      std::plus<size_t>());
+  send_displs[0] = 0;
+
+  DASH_LOG_TRACE_RANGE("send displs", send_displs.begin(), send_displs.end());
+  DASH_LOG_TRACE_RANGE("send counts", send_counts.begin(), send_counts.end());
+
+  trace.exit_state("10:calc_send_counts");
+
+
+  /********************************************************************/
   /****** Target Counts ***********************************************/
   /********************************************************************/
 
@@ -523,7 +576,7 @@ void sort(
    * Communication Complexity: 0
    * Memory Complexity: O(P)
    */
-  trace.enter_state("9:calc_target_offsets");
+  trace.enter_state("11:calc_target_offsets");
 
   std::vector<size_t> target_counts(nunits, 0);
 
@@ -577,9 +630,9 @@ void sort(
   DASH_LOG_TRACE_RANGE(
       "target displs", target_displs.begin(), target_displs.end() - 1);
 
-  trace.exit_state("9:calc_target_offsets");
+  trace.exit_state("11:calc_target_offsets");
 
-  trace.enter_state("10:exchange_data (all-to-all)");
+  trace.enter_state("12:exchange_data (all-to-all)");
 
   /********************************************************************/
   /****** Exchange Data (All-To-All) **********************************/
@@ -594,220 +647,62 @@ void sort(
    * Average Communication Traffic: O(N)
    * Aerage Comunication Overhead: O(P^2)
    */
+  auto remote_units = impl::psort__remote_partitions(
+      valid_splitters, target_counts, nunits, unit_at_begin, myid);
 
   impl::ChunkDependencies chunk_dependencies;
   // allocate a temporary buffer
   local_data.buffer =
       std::move(std::unique_ptr<value_type[]>{new value_type[n_l_elem]});
 
-  {
-    auto const get_send_info =
-        [&source_displs, &target_displs, &target_counts](
-            dash::default_index_t const p_idx) {
-          auto const target_disp  = target_displs[p_idx];
-          auto const target_count = target_counts[p_idx];
-          auto const src_disp     = source_displs[p_idx];
-          return std::make_tuple(target_count, src_disp, target_disp);
-        };
-
-    // retrieve all non-empty remote partitions where we have to communicate
-    // data to
-    auto remote_units = impl::psort__remote_partitions(
-        valid_splitters, target_counts, nunits, unit_at_begin, myid);
-
-    // Note that this call is non-blocking (only enqueues the async_copies)
-    auto copy_handles = impl::psort__exchange_data(
-        // from global begin...
-        begin,
-        // to a local buffer
-        local_data.buffer.get(),
-        remote_units,
-        get_send_info);
-
-    // Schedule all these async copies for parallel processing in a thread
-    // pool along withe the copy of the local data portion
-    chunk_dependencies = impl::psort__schedule_copy_tasks(
-        remote_units,
-        copy_handles,
-        thread_pool,
-        myid,
-        // local copy operation
-        [from      = local_data.input,
-         to        = local_data.buffer.get(),
-         send_info = std::move(get_send_info(myid))]() {
-          std::size_t target_count, src_disp, target_disp;
-          std::tie(target_count, src_disp, target_disp) = send_info;
-          if (target_count) {
-            std::copy(
-                std::next(from, src_disp),
-                std::next(from, src_disp + target_count),
-                std::next(to, target_disp));
-          }
-        });
-  }
-
-  /* NOTE: While merging locally sorted sequences is faster than another
-   * heavy-weight sort it comes at a cost. std::inplace_merge allocates a
-   * temporary buffer internally which is also documented on cppreference. If
-   * the allocation of this buffer fails, a less efficient merge method is
-   * used. However, in Linux, the allocation nevers fails since the
-   * implementation simply allocates memory using malloc and the kernel
-   * follows the optimistic strategy. This is ugly and can lead to a
-   * segmentation fault later if no physical pages are available to map the
-   * allocated virtual memory.
-   *
-   *
-   * std::sort does not suffer from this problem and may be a more safe
-   * variant, especially if the user wants to utilize the fully available
-   * memory capacity on its own.
-   */
-
-  if (std::is_same<MergeStrategy, impl::sort__final_strategy__sort>::value) {
-    // Wait for all local copies
-    for (auto& dep : chunk_dependencies) {
-      dep.second.wait();
-    }
-
-    trace.exit_state("10:exchange_data (all-to-all)");
-
-    trace.enter_state("11:final_local_sort");
-    impl::local_sort(
-        local_data.buffer.get(),
-        local_data.buffer.get() + n_l_elem,
-        sort_comp,
-        nodeLevelConfig.parallelism());
-    trace.exit_state("11:final_local_sort");
-
-    trace.enter_state("12:barrier");
-    team.barrier();
-    trace.exit_state("12:barrier");
-
-    trace.enter_state("13:final_local_copy");
+  if (n_l_elem) {
+    DASH_ASSERT_RETURNS(
+        dart_alltoallv(
+            local_data.input,
+            local_data.buffer.get(),
+            send_counts.data(),
+            send_displs.data(),
+            target_counts.data(),
+            target_displs.data(),
+            dash::dart_datatype<value_type>::value,
+            team.dart_id()),
+        DART_OK);
     std::copy(
-        local_data.buffer.get(),
-        local_data.buffer.get() + n_l_elem,
-        local_data.output);
-    trace.exit_state("13:final_local_copy");
-  }
-  else {
-    trace.exit_state("10:exchange_data (all-to-all)");
-
-    trace.enter_state("11:merge_local_sequences");
-
-    if (in_place) {
-      impl::psort__merge_tree(
-          std::move(chunk_dependencies),
-          nunits,
-          thread_pool,
-          [from_buffer = local_data.buffer.get(),
-           to_buffer   = local_data.output,
-           &target_displs,
-           &team,
-           cmp = sort_comp](
-              auto merge_first,
-              auto merge_middle,
-              auto merge_last,
-              auto d,
-              auto depth) {
-            auto* first = std::next(from_buffer, target_displs[merge_first]);
-            auto* mid   = std::next(from_buffer, target_displs[merge_middle]);
-            auto* last  = std::next(from_buffer, target_displs[merge_last]);
-
-            impl::merge_inplace_and_copy(
-                first,
-                mid,
-                last,
-                to_buffer,
-                cmp,
-                [&team]() { team.barrier(); },
-                d == depth - 1);
-          });
-    }
-    else /* Non-Inplace Sort */
-    {
-      auto* from = local_data.buffer.get();
-      auto* to   = local_data.output;
-
-      impl::psort__merge_tree(
-          std::move(chunk_dependencies),
-          nunits,
-          thread_pool,
-          [from, to, &target_displs, &team, cmp = sort_comp](
-              auto merge_first,
-              auto merge_middle,
-              auto merge_last,
-              auto d,
-              auto depth) {
-            // If the merge tree has an even number of levels, we merge the
-            // first level in place so that all following merges may be
-            // (non-inline) merges without extra copying.
-            //
-            // TODO: test whether it's faster on level 0 or on depth - 1.
-            auto uses_inplace   = depth % 2 == 0;
-            auto left_distance  = merge_middle - merge_first;
-            auto right_distance = merge_last - merge_middle;
-            auto left_buffer    = from;
-            auto right_buffer   = from;
-
-            // Switch buffers on every second level. First level is always
-            // from "from". Also account for the offset when inplace merging
-            // is used on the first level.
-            if (static_cast<int>(std::log2(left_distance)) % 2 -
-                    uses_inplace &&
-                left_distance > 1) {
-              left_buffer = to;
-            }
-            if (static_cast<int>(std::log2(right_distance)) % 2 -
-                    uses_inplace &&
-                right_distance > 1) {
-              right_buffer = to;
-            }
-            auto* left_begin =
-                std::next(left_buffer, target_displs[merge_first]);
-            auto* left_end =
-                std::next(left_buffer, target_displs[merge_middle]);
-            auto* right_begin =
-                std::next(right_buffer, target_displs[merge_middle]);
-            auto* right_end =
-                std::next(right_buffer, target_displs[merge_last]);
-
-            // Merge into the oposite of left_buffer.
-            auto out_buffer = left_buffer == from ? to : from;
-
-            // On first level and even depth, merge inplace
-            if (uses_inplace && d == 0) {
-              impl::merge_inplace_and_copy(
-                  left_begin,
-                  right_begin,
-                  right_end,
-                  out_buffer,
-                  cmp,
-                  [] {},
-                  false);
-            }
-            else {
-              impl::merge(
-                  left_begin,
-                  left_end,
-                  right_begin,
-                  right_end,
-                  std::next(out_buffer, target_displs[merge_first]),
-                  cmp);
-            }
-          });
-    }
+        std::next(local_data.input, source_displs[myid]),
+        std::next(local_data.input, source_displs[myid] + target_counts[myid]),
+        std::next(local_data.buffer.get(), target_displs[myid]));
   }
 
-  trace.exit_state("11:merge_local_sequences");
+
+  trace.exit_state("12:exchange_data (all-to-all)");
+
+  trace.enter_state("13:final_local_sort");
+  impl::local_sort(
+      local_data.buffer.get(),
+      local_data.buffer.get() + n_l_elem,
+      sort_comp,
+      nodeLevelConfig.parallelism());
+  trace.exit_state("13:final_local_sort");
+
+  trace.enter_state("14:barrier");
+  team.barrier();
+  trace.exit_state("14:barrier");
+
+  trace.enter_state("15:final_local_copy");
+  std::copy(
+      local_data.buffer.get(),
+      local_data.buffer.get() + n_l_elem,
+      local_data.output);
+  trace.exit_state("15:final_local_copy");
 
   DASH_LOG_TRACE_RANGE(
       "finally sorted range",
       local_data.output,
       local_data.output + n_l_elem);
 
-  trace.enter_state("final_barrier");
+  trace.enter_state("16:final_barrier");
   team.barrier();
-  trace.exit_state("final_barrier");
+  trace.exit_state("16:final_barrier");
 }  // namespace dash
 
 namespace impl {

@@ -2256,6 +2256,105 @@ dart_ret_t dart_alltoall(
   return DART_OK;
 }
 
+dart_ret_t dart_alltoallv(
+    const void *    sendbuf,
+    void *          recvbuf,
+    size_t *        send_counts,
+    size_t *        send_displ,
+    size_t *        recv_counts,
+    size_t *        recv_displ,
+    dart_datatype_t dtype,
+    dart_team_t     teamid)
+{
+  DART_LOG_TRACE("dart_alltoallv < team:%d", teamid);
+
+  CHECK_IS_BASICTYPE(dtype);
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_alltoallv ! unknown teamid %d", teamid);
+    return DART_ERR_INVAL;
+  }
+
+  if (sendbuf == recvbuf || NULL == sendbuf) {
+    sendbuf = MPI_IN_PLACE;
+  }
+
+  MPI_Comm comm = team_data->comm;
+
+  int comm_size;
+  CHECK_MPI_RET(MPI_Comm_size(comm, &comm_size), "MPI_Comm_size");
+
+  int *send_counts_int = ALLOC_TMP(comm_size * sizeof(int));
+  int *send_displ_int  = ALLOC_TMP(comm_size * sizeof(int));
+  int *recv_counts_int = ALLOC_TMP(comm_size * sizeof(int));
+  int *recv_displ_int  = ALLOC_TMP(comm_size * sizeof(int));
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  int found_error = 0;
+  for(int i = 0; i < comm_size; i++) {
+    if (dart__unlikely(send_counts[i] > INT_MAX)) {
+      DART_LOG_ERROR(
+          "dart_alltoallv ! failed: nelem (%zu) > INT_MAX", send_counts[i]);
+      found_error = 1;
+    }
+    if (dart__unlikely(send_displ[i] > INT_MAX)) {
+      DART_LOG_ERROR(
+          "dart_alltoallv ! failed: nelem (%zu) > INT_MAX", send_displ[i]);
+      found_error = 1;
+    }
+    if (dart__unlikely(recv_counts[i] > INT_MAX)) {
+      DART_LOG_ERROR(
+          "dart_alltoallv ! failed: nelem (%zu) > INT_MAX", recv_counts[i]);
+      found_error = 1;
+    }
+    if (dart__unlikely(recv_displ[i] > INT_MAX)) {
+      DART_LOG_ERROR(
+          "dart_alltoallv ! failed: nelem (%zu) > INT_MAX", recv_displ[i]);
+      found_error = 1;
+    }
+    if (dart__unlikely(found_error)) {
+      FREE_TMP(comm_size, send_counts_int);
+      FREE_TMP(comm_size, send_displ_int);
+      FREE_TMP(comm_size, recv_counts_int);
+      FREE_TMP(comm_size, recv_displ_int);
+      return DART_ERR_INVAL;
+    }
+
+    send_counts_int[i] = send_counts[i];
+    send_displ_int[i]  = send_displ[i];
+    recv_counts_int[i] = recv_counts[i];
+    recv_displ_int[i]  = recv_displ[i];
+  }
+
+  MPI_Datatype mpi_dtype =
+      dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
+
+  CHECK_MPI_RET(
+      MPI_Alltoallv(
+          sendbuf,
+          send_counts_int,
+          send_displ_int,
+          mpi_dtype,
+          recvbuf,
+          recv_counts_int,
+          recv_displ_int,
+          mpi_dtype,
+          comm),
+      "MPI_Alltoallv");
+
+  FREE_TMP(comm_size, send_counts_int);
+  FREE_TMP(comm_size, send_displ_int);
+  FREE_TMP(comm_size, recv_counts_int);
+  FREE_TMP(comm_size, recv_displ_int);
+
+  DART_LOG_TRACE("dart_alltoallv > team:%d", teamid);
+
+  return DART_OK;
+}
+
 dart_ret_t dart_exscan(
   const void       * sendbuf,
   void             * recvbuf,

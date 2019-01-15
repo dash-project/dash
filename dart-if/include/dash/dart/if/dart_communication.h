@@ -211,6 +211,33 @@ dart_ret_t dart_alltoall(
   dart_team_t      team) DART_NOTHROW;
 
 /**
+ * DART Equivalent to MPI alltoallv.
+ *
+ * \param sendbuf     The buffer containing the data to be sent by each unit.
+ * \param recvbuf     The buffer to hold the received data.
+ * \param send_counts Number of elements sent to each unit.
+ * \param send_displ  Displacements of elements send to each unit.
+ * \param recv_counts Number of elements to receive from each unit.
+ * \param send_displl Displacements of the received elements from each unit.
+ * \param dtype       The data type of values in \c sendbuf and \c recvbuf to use in \c op.
+ * \param team        The team to participate in the allreduce.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_data{team}
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_alltoallv(
+    const void *    sendbuf,
+    void *          recvbuf,
+    size_t *        send_counts,
+    size_t *        send_displ,
+    size_t *        recv_counts,
+    size_t *        recv_displ,
+    dart_datatype_t dtype,
+    dart_team_t     teamid) DART_NOTHROW;
+
+/**
  * DART Equivalent to MPI Exscan.
  *
  * \param sendbuf The buffer containing the data to be sent by each unit.
