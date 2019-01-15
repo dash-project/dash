@@ -535,11 +535,20 @@ void sort(
           team.dart_id()),
       DART_OK);
 
-//  DASH_LOG_TRACE_RANGE("send displs unproc", send_displs.begin(), send_displs.end());
-
-
   trace.exit_state("9:comm_send_displs (all-to-all)");
 
+  /********************************************************************/
+  /****** Send counts *************************************************/
+  /********************************************************************/
+
+  /**
+   * Based on the transposed partition data we can calculate the number of
+   * elements to send to each process. With that we can calculate the
+   * correct send displacements by summing up the send counts.
+   *
+   * Communication Complexity: 0
+   * Memory Complexity: O(P)
+   */
 
   trace.enter_state("10:calc_send_counts");
 
