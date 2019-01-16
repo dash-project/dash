@@ -665,6 +665,41 @@ void sort(
       std::move(std::unique_ptr<value_type[]>{new value_type[n_l_elem]});
 
   if (n_l_elem) {
+    std::copy(
+        std::next(local_data.input, source_displs[myid]),
+        std::next(
+            local_data.input, source_displs[myid] + target_counts[myid]),
+        std::next(local_data.buffer.get(), target_displs[myid]));
+
+    // check whether value_type is supported by dart, else switch to byte
+    auto dart_value_t = dash::dart_datatype<value_type>::value;
+    if (dart_value_t == DART_TYPE_UNDEFINED) {
+      dart_value_t = DART_TYPE_BYTE;
+      auto const value_size = sizeof(value_type);
+      auto const multiplier = std::bind(
+          std::multiplies<size_t>(), std::placeholders::_1, value_size);
+      std::transform(
+          send_counts.begin(),
+          send_counts.end(),
+          send_counts.begin(),
+          multiplier);
+      std::transform(
+          send_displs.begin(),
+          send_displs.end(),
+          send_displs.begin(),
+          multiplier);
+      std::transform(
+          target_counts.begin(),
+          target_counts.end(),
+          target_counts.begin(),
+          multiplier);
+      std::transform(
+          target_displs.begin(),
+          target_displs.end(),
+          target_displs.begin(),
+          multiplier);
+    }
+
     DASH_ASSERT_RETURNS(
         dart_alltoallv(
             local_data.input,
@@ -673,13 +708,9 @@ void sort(
             send_displs.data(),
             target_counts.data(),
             target_displs.data(),
-            dash::dart_datatype<value_type>::value,
+            dart_value_t,
             team.dart_id()),
         DART_OK);
-    std::copy(
-        std::next(local_data.input, source_displs[myid]),
-        std::next(local_data.input, source_displs[myid] + target_counts[myid]),
-        std::next(local_data.buffer.get(), target_displs[myid]));
   }
 
 
