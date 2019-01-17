@@ -319,7 +319,7 @@ public:
   void wait(region_index_t index) {
     auto it_find = _region_data.find(index);
     if(it_find != _region_data.end())
-      dart_wait_local(it_find->second.handle);
+      dart_wait_local(&it_find->second.handle);
   }
 
   /**
