@@ -24,6 +24,25 @@ class sense_of_life_dev {
   }
 };
 
+struct random_seed_seq {
+  template <typename It>
+  void generate(It begin, It end)
+  {
+    for (; begin != end; ++begin) {
+      *begin = device();
+    }
+  }
+
+  static random_seed_seq& get_instance()
+  {
+    static thread_local random_seed_seq result;
+    return result;
+  }
+
+private:
+  random_dev_t device;
+};
+
 template <typename GlobIter>
 static void perform_test(GlobIter begin, GlobIter end);
 
@@ -33,10 +52,11 @@ template <
         typename GlobIter::value_type>::value>::type* = nullptr>
 static void rand_range(GlobIter begin, GlobIter end)
 {
-  static std::uniform_int_distribution<typename GlobIter::value_type>
-                      distribution(-1E6, 1E6);
-  static random_dev_t rd;
-  static std::mt19937 generator(rd() + begin.team().myid());
+  static thread_local std::mt19937_64 generator (
+      random_seed_seq::get_instance());
+  static thread_local std::uniform_int_distribution<
+      typename GlobIter::value_type>
+      distribution(-1E6, 1E6);
 
   dash::generate(begin, end, []() { return distribution(generator); });
 }
@@ -489,9 +509,12 @@ TEST_F(SortTest, ArrayOfPointsFinalSort)
 
   array.barrier();
 
-  dash::sort(array.begin(), array.end(), array.begin(), [](const Point& p) {
-    return p.x;
-  }, dash::impl::sort__final_strategy__sort{});
+  dash::sort(
+      array.begin(),
+      array.end(),
+      array.begin(),
+      [](const Point& p) { return p.x; },
+      dash::impl::sort__final_strategy__sort{});
 
   if (dash::myid() == 0) {
     for (auto it = array.begin() + 1; it < array.end(); ++it) {

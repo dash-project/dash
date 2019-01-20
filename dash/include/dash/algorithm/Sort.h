@@ -343,6 +343,12 @@ void sort(
 
     DASH_LOG_TRACE_VAR("partition borders found after N iterations", iter);
     trace.exit_state("4:find_global_partition_borders");
+
+    if (!myid) {
+      DASH_LOG_TRACE_RANGE("final global histogram", std::begin(global_histo), std::end(global_histo));
+      DASH_LOG_TRACE_RANGE("prefix sum capacities", std::begin(partition_sizes_psum), std::end(partition_sizes_psum));
+    }
+    DASH_LOG_TRACE("local min and max element", min_max.first, min_max.second);
   }
 
   /********************************************************************/
@@ -569,7 +575,6 @@ void sort(
 
   trace.exit_state("10:calc_send_counts");
 
-
   /********************************************************************/
   /****** Target Counts ***********************************************/
   /********************************************************************/
@@ -656,11 +661,10 @@ void sort(
    * Average Communication Traffic: O(N)
    * Aerage Comunication Overhead: O(P^2)
    */
-  auto remote_units = impl::psort__remote_partitions(
-      valid_splitters, target_counts, nunits, unit_at_begin, myid);
 
-  impl::ChunkDependencies chunk_dependencies;
-  // allocate a temporary buffer
+  // allocate a temporary buffer:
+  // we explcitly do not use std::make_unique because we do want to have any
+  // construction
   local_data.buffer =
       std::move(std::unique_ptr<value_type[]>{new value_type[n_l_elem]});
 
@@ -712,7 +716,6 @@ void sort(
             team.dart_id()),
         DART_OK);
   }
-
 
   trace.exit_state("12:exchange_data (all-to-all)");
 
