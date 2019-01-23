@@ -218,7 +218,7 @@ dart_amsg_sendrecv_trysend(
     return DART_ERR_AGAIN;
   }
 
-  DART_LOG_INFO("Sent message of size %zu to unit %i", data_size, target.id);
+  DART_LOG_TRACE("Sent message of size %zu to unit %i", data_size, target.id);
 
   return DART_OK;
 }
@@ -251,7 +251,7 @@ amsg_sendrecv_process_internal(
       amsgq->msg_count, amsgq->recv_reqs, &outcount,
       amsgq->recv_outidx, amsgq->recv_status);
     if (outcount > 0) {
-      DART_LOG_INFO("MPI_Testsome: %d/%d incoming messages available\n",
+      DART_LOG_TRACE("MPI_Testsome: %d/%d incoming messages available\n",
                     outcount, amsgq->msg_count);
     }
     for (int i = 0; i < outcount; ++i) {
@@ -347,7 +347,7 @@ dart_ret_t
 dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
 {
   if (amsgq->send_tailpos > 0) {
-    DART_LOG_INFO("Waiting for %d active messages to complete",
+    DART_LOG_TRACE("Waiting for %d active messages to complete",
                   amsgq->send_tailpos);
     MPI_Waitall(amsgq->msg_count, amsgq->send_reqs, MPI_STATUSES_IGNORE);
   }

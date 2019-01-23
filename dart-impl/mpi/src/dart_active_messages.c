@@ -103,15 +103,15 @@ dart_amsg_init()
   switch(impl) {
     case DART_AMSGQ_SINGLEWIN:
       res = dart_amsg_singlewin_init(&amsgq_impl);
-      DART_LOG_INFO("Using single-window active message queue");
+      DART_LOG_TRACE("Using single-window active message queue");
       break;
     case DART_AMSGQ_SOPNOP:
       res = dart_amsg_sopnop_init(&amsgq_impl);
-      DART_LOG_INFO("Using same-op-no-op single-window active message queue");
+      DART_LOG_TRACE("Using same-op-no-op single-window active message queue");
       break;
     case DART_AMSGQ_SENDRECV:
       res = dart_amsg_sendrecv_init(&amsgq_impl);
-      DART_LOG_INFO("Using send/recv-based active message queue");
+      DART_LOG_TRACE("Using send/recv-based active message queue");
       break;
     default:
       DART_LOG_ERROR("UNKNOWN active message queue implementation: %d", impl);
@@ -521,7 +521,7 @@ dart__amsgq__process_buffer(
                       tailpos, pos);
 
     // invoke the message
-    DART_LOG_INFO("Invoking active message %p id=%d from %i on data %p of "
+    DART_LOG_TRACE("Invoking active message %p id=%d from %i on data %p of "
                   "size %i starting from tailpos %ld",
                   header->fn,
                   header->msgid,

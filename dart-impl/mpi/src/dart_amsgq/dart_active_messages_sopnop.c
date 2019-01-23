@@ -229,7 +229,7 @@ dart_amsg_sopnop_sendbuf(
     amsgq->queue_win);
   MPI_Win_flush(target.id, amsgq->queue_win);
 
-  DART_LOG_INFO("Sent message of size %zu with payload %zu to unit "
+  DART_LOG_TRACE("Sent message of size %zu with payload %zu to unit "
                 "%d starting at offset %ld (writecnt=%ld)",
                 msg_size, data_size, target.id, offset, writecnt-1);
 
