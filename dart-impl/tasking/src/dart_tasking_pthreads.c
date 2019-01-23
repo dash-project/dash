@@ -382,7 +382,7 @@ dart__tasking__yield(int delay)
 
   // "nothing to be done here" (libgomp)
   // we do not execute another task to prevent serialization
-  DART_LOG_INFO("Skipping dart__task__yield");
+  DART_LOG_DEBUG("Skipping dart__task__yield");
   // progress
   remote_progress(get_current_thread(), false);
   // check for abort
@@ -688,7 +688,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 {
   if (task != NULL)
   {
-    DART_LOG_INFO("Thread %i executing task %p ('%s')",
+    DART_LOG_DEBUG("Thread %i executing task %p ('%s')",
                   thread->thread_id, task, task->descr);
 
     dart_task_t *current_task = get_current_task();
@@ -789,7 +789,7 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
 {
   if (task != NULL)
   {
-    DART_LOG_INFO("Thread %i executing inlined task %p ('%s')",
+    DART_LOG_DEBUG("Thread %i executing inlined task %p ('%s')",
                   thread->thread_id, task, task->descr);
 
     dart_task_t *current_task = get_current_task();
@@ -1314,7 +1314,7 @@ dart__tasking__create_task(
 void
 dart__tasking__perform_matching(dart_taskphase_t phase)
 {
-  if (num_threads == 1) {
+  if (num_units == 1) {
     // nothing to be done for one unit
     return;
   }
