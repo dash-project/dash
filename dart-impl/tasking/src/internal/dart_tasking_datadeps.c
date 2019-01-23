@@ -11,6 +11,7 @@
 #include <dash/dart/tasking/dart_tasking_remote.h>
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_copyin.h>
+#include <dash/dart/tasking/dart_tasking_hashtab.h>
 
 //#define DART_DEPHASH_SIZE 1023
 #define DART_DEPHASH_SIZE 511
@@ -35,36 +36,6 @@
 
 #define DEP_ADDR_EQ(dep1, dep2) \
   (DEP_ADDR(dep1) == DEP_ADDR(dep2))
-
-// we know that the stack member entry is the first element of the struct
-// so we can cast directly
-#define DART_DEPHASH_ELEM_POP(__freelist) \
-  (dart_dephash_elem_t*)((void*)dart__base__stack_pop(&__freelist))
-
-#define DART_DEPHASH_ELEM_PUSH(__freelist, __elem) \
-  dart__base__stack_push(&__freelist, &DART_STACK_MEMBER_GET(__elem))
-
-struct dart_dephash_elem {
-  union {
-    // atomic list used for free elements
-    DART_STACK_MEMBER_DEF;
-    // double linked list
-    struct {
-      dart_dephash_elem_t *next;
-      dart_dephash_elem_t *prev;
-    };
-  };
-  dart_task_dep_t           taskdep;
-  taskref                   task;    // the task referred to by the dependency
-  dart_global_unit_t        origin;  // the unit this dependency originated from
-  dart_dephash_elem_t      *next_in_task; // list in the task struct
-};
-
-struct dart_dephash_head {
-  dart_tasklock_t lock;
-  dart_dephash_elem_t *head;
-};
-
 
 #ifdef USE_FREELIST
 static dart_stack_t freelist_head = DART_STACK_INITIALIZER;
@@ -100,29 +71,6 @@ static dart_ret_t
 dart_tasking_datadeps_match_delayed_local_datadep(
   const dart_task_dep_t * dep,
         dart_task_t     * task);
-
-static inline int hash_gptr(dart_gptr_t gptr)
-{
-  // use larger types to accomodate for the shifts below
-  // and unsigned to force logical shifts (instead of arithmetic)
-  // NOTE: we ignore the teamid here because gptr in dependencies contain
-  //       global unit IDs
-  uint32_t segid  = gptr.segid;
-  uint64_t hash   = gptr.addr_or_offs.offset;
-  uint64_t unitid = gptr.unitid; // 64-bit required for shift
-  // cut off the lower 2 bit, we assume that pointers are 4-byte aligned
-  hash >>= 2;
-  // mix in unit, team and segment ID
-  hash ^= (segid  << 16); // 16 bit segment ID
-  hash ^= (unitid << 32); // 24 bit unit ID
-  // using a prime number in modulo stirs reasonably well
-
-  DART_LOG_TRACE("hash_gptr(u:%lu, s:%d, o:%p) => (%lu)",
-                 unitid, segid, gptr.addr_or_offs.addr,
-                 (hash % DART_DEPHASH_SIZE));
-
-  return (hash % DART_DEPHASH_SIZE);
-}
 
 static inline bool release_local_dep_counter(dart_task_t *task) {
   int32_t num_local_deps  = DART_DEC_AND_FETCH32(&task->unresolved_deps);
@@ -197,11 +145,10 @@ dart_ret_t dart_tasking_datadeps_reset(dart_task_t *task)
 {
   if (task == NULL || task->local_deps == NULL) return DART_OK;
 
-  for (int i = 0; i < DART_DEPHASH_SIZE; ++i) {
-    dart_dephash_elem_t *elem = task->local_deps[i].head;
-    free_dephash_list_unsafe(elem);
+  if (dart__tasking__is_root_task(task)) {
+    hashtab_print_stats(dart__tasking__current_task()->local_deps);
   }
-  free(task->local_deps);
+  hashtab_destroy(task->local_deps);
   task->local_deps = NULL;
   free_dephash_list_unsafe(task->remote_successor);
 
@@ -248,7 +195,7 @@ dephash_allocate_elem(
 #endif // USE_FREELIST
 
   if (elem == NULL){
-    elem = calloc(1, sizeof(dart_dephash_elem_t));
+    elem = malloc(sizeof(dart_dephash_elem_t));
   }
 
   DART_ASSERT(task.local != NULL);
@@ -306,7 +253,7 @@ static void dephash_require_alloc(dart_task_t *task)
     LOCK_TASK(task);
     if (task->local_deps == NULL) {
       // allocate new dependency hash table
-      task->local_deps = calloc(DART_DEPHASH_SIZE, sizeof(dart_dephash_head_t));
+      task->local_deps = hashtab_new(DART_DEPHASH_SIZE, 0);
     }
     UNLOCK_TASK(task);
   }
@@ -317,9 +264,9 @@ static void dephash_require_alloc(dart_task_t *task)
  * The dependency is added to the front of the bucket.
  */
 static void dephash_add_local_nolock(
+  dart_dephash_tab_t    * hashtab,
   const dart_task_dep_t * dep,
-        dart_task_t     * task,
-        int               slot)
+        dart_task_t     * task)
 {
   taskref tr;
   tr.local = task;
@@ -330,27 +277,23 @@ static void dephash_add_local_nolock(
 
   dephash_require_alloc(parent);
   // put the new entry at the beginning of the list
-  dart_dephash_elem_t *head = parent->local_deps[slot].head;
-  DART_LOG_TRACE("Adding elem %p to slot %d with head %p", elem, slot, head);
-  elem->next = head;
-  elem->prev = NULL;
-  if (NULL != head) {
-    head->prev = elem;
-  }
-  parent->local_deps[slot].head = elem;
+  uint64_t hash = hash_gptr(dep->gptr);
+  hashtab_insert_elem_hash_nolock(hashtab, elem, hash);
 }
 
 static void dephash_add_local(
   const dart_task_dep_t * dep,
         dart_task_t     * task)
 {
-  int slot = hash_gptr(dep->gptr);
   dart_task_t *parent = task->parent;
 
   dephash_require_alloc(parent);
-  LOCK_TASK(&parent->local_deps[slot]);
-  dephash_add_local_nolock(dep, task, slot);
-  UNLOCK_TASK(&parent->local_deps[slot]);
+  taskref tr;
+  tr.local = task;
+  dart_dephash_elem_t *elem = dephash_allocate_elem(dep, tr, myguid);
+  DART_STACK_PUSH_MEMB(task->deps_owned, elem, next_in_task);
+  uint64_t hash = hash_gptr(dep->gptr);
+  hashtab_insert_elem_hash(parent->local_deps, elem, hash);
 }
 
 /**
@@ -360,28 +303,15 @@ static void dephash_remove_local(
   dart_task_t     * task)
 {
   dart_task_t *parent = task->parent;
-  dart_dephash_elem_t *elem;
   do {
+    dart_dephash_elem_t *elem;
     DART_STACK_POP_MEMB(task->deps_owned, elem, next_in_task);
     if (NULL == elem) break;
-    int slot = hash_gptr(elem->taskdep.gptr);
+    uint64_t hash = hash_gptr(elem->taskdep.gptr);
 
-    LOCK_TASK(&parent->local_deps[slot]);
     DART_LOG_TRACE("Removing elem %p (prev=%p, next=%p)", elem, elem->prev, elem->next);
     // remove from hash table bucket
-    if (elem->prev != NULL) {
-      elem->prev->next = elem->next;
-      if (elem->next != NULL) {
-        elem->next->prev = elem->prev;
-      }
-    } else {
-      // we have to change the head of the bucket
-      parent->local_deps[slot].head = elem->next;
-      if (elem->next != NULL) {
-        elem->next->prev = NULL;
-      }
-    }
-    UNLOCK_TASK(&parent->local_deps[slot]);
+    hashtab_remove_elem(parent->local_deps, elem, hash);
     dephash_recycle_elem(elem);
   } while (1);
   task->deps_owned = NULL;
@@ -476,11 +406,10 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
     dart_task_t *direct_dep_candidate = NULL;
     DART_LOG_DEBUG("Handling delayed remote dependency for task %p from unit %i",
                    rdep->task.local, origin.id);
-    dart_dephash_head_t *local_deps = root_task->local_deps;
-    if (local_deps != NULL) {
-      int slot = hash_gptr(rdep->taskdep.gptr);
-      LOCK_TASK(&local_deps[slot]);
-      for (dart_dephash_elem_t *local = local_deps[slot].head;
+    if (root_task->local_deps != NULL) {
+      uint64_t hash = hash_gptr(rdep->taskdep.gptr);
+      dart_dephash_head_t *bucket = hashtab_get_locked_bucket(root_task->local_deps, hash);
+      for (dart_dephash_elem_t *local = bucket->head;
                                 local != NULL;
                                 local = local->next) {
         dart_task_t *local_task = local->task.local;
@@ -553,7 +482,7 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
           }
         }
       }
-      UNLOCK_TASK(&local_deps[slot]);
+      hashtab_unlock_bucket(bucket);
     }
 
     if (candidate != NULL) {
@@ -636,11 +565,10 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
       "Allocated dummy task %p (ph:%d) for remote out dep on %p from task %p at unit %d",
       dummy_task, phase, rdep->taskdep.gptr.addr_or_offs.addr, rdep->task.remote, rdep->origin.id);
 
-    int slot = hash_gptr(rdep->taskdep.gptr);
-    dart_dephash_head_t *local_deps = root_task->local_deps;
-    LOCK_TASK(&local_deps[slot]);
+    uint64_t hash = hash_gptr(rdep->taskdep.gptr);
+    dart_dephash_head_t *bucket = hashtab_get_locked_bucket(root_task->local_deps, hash);
 
-    for (dart_dephash_elem_t *local = local_deps[slot].head;
+    for (dart_dephash_elem_t *local = bucket->head;
                               local != NULL;
                               local = local->next) {
       if (!DEP_ADDR_EQ(local->taskdep, rdep->taskdep)) continue;
@@ -673,7 +601,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
     dart_dephash_elem_t *local;
     if (prev_outdep == NULL) {
       DART_LOG_TRACE("Starting search for later dependencies from start of slot");
-      start = local_deps[slot].head;
+      start = bucket->head;
     } else {
       DART_LOG_TRACE("Starting search for later dependencies from phase %d", start->taskdep.phase);
     }
@@ -707,23 +635,9 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
       union taskref tr;
       tr.local = dummy_task;
       rdep->task = tr;
-      if (local != local_deps[slot].head) {
-        DART_LOG_TRACE("Inserting dummy task %p in the middle of the slot (rdep %p, local %p)", dummy_task, rdep, local);
-        rdep->next  = local;
-        rdep->prev  = local->prev;
-        if (NULL != local->prev) {
-          local->prev->next = rdep;
-        }
-        local->prev = rdep;
-      } else {
-        DART_LOG_TRACE("Inserting dummy task %p at the front of the slot (rdep %p, local_deps[%d] %p)", dummy_task, rdep, slot, local_deps[slot].head);
-        rdep->next = local_deps[slot].head;
-        if (local_deps[slot].head != NULL) {
-          local_deps[slot].head->prev = rdep;
-        }
-        local_deps[slot].head = rdep;
-        rdep->prev = NULL;
-      }
+      DART_LOG_TRACE("Inserting dummy task %p (rdep %p, local %p)",
+                     dummy_task, rdep, local);
+      hashtab_bucket_insert_before_elem_hash_nolock(bucket, local, rdep);
       // register this depdendency with the dummy task
       DART_STACK_PUSH_MEMB(dummy_task->deps_owned, rdep, next_in_task);
     } else {
@@ -732,7 +646,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
       dephash_recycle_elem(rdep);
       dart_tasking_datadeps_release_dummy_task(dummy_task);
     }
-    UNLOCK_TASK(&local_deps[slot]);
+    hashtab_unlock_bucket(bucket);
   }
 
   unhandled_remote_outdeps = NULL;
@@ -776,13 +690,11 @@ dart_tasking_datadeps_handle_local_direct(
   return DART_OK;
 }
 
-
 static dart_ret_t
 dart_tasking_datadeps_handle_copyin(
   const dart_task_dep_t * dep,
         dart_task_t     * task)
 {
-  int slot;
   dart_gptr_t dest_gptr;
 
   dest_gptr.addr_or_offs.addr = dep->copyin.dest;
@@ -790,18 +702,19 @@ dart_tasking_datadeps_handle_copyin(
   dest_gptr.segid             = DART_TASKING_DATADEPS_LOCAL_SEGID;
   dest_gptr.teamid            = 0;
   dest_gptr.unitid            = myguid.id;
-  slot = hash_gptr(dest_gptr);
   dart_dephash_elem_t *elem = NULL;
   int iter = 0;
   DART_LOG_TRACE("Handling copyin dep (unit %d, phase %d)",
                  dep->copyin.gptr.unitid, dep->phase);
 
+  uint64_t hash = hash_gptr(dest_gptr);
   do {
     dart_task_t *parent = task->parent;
     // check whether this is the first task with copyin
     if (parent->local_deps != NULL) {
-      LOCK_TASK(&parent->local_deps[slot]);
-      for (elem = parent->local_deps[slot].head;
+      dart_dephash_head_t *bucket = hashtab_get_locked_bucket(parent->local_deps, hash);
+
+      for (elem = bucket->head;
            elem != NULL; elem = elem->next) {
         if (elem->taskdep.gptr.addr_or_offs.addr == dep->copyin.dest) {
           if (elem->taskdep.phase < dep->phase) {
@@ -826,17 +739,20 @@ dart_tasking_datadeps_handle_copyin(
             in_dep.type  = DART_DEP_IN;
             in_dep.gptr  = dest_gptr;
             in_dep.phase = dep->phase;
-            dephash_add_local_nolock(&in_dep, task, slot);
+            taskref tr;
+            tr.local = task;
+            dart_dephash_elem_t *new_elem = dephash_allocate_elem(&in_dep, tr, myguid);
+            hashtab_bucket_insert_before_elem_hash_nolock(bucket, elem, new_elem);
 
             DART_LOG_TRACE("Copyin: task %p waits for copyin task %p", task, elem_task);
 
             // we're done
-            UNLOCK_TASK(&parent->local_deps[slot]);
+            hashtab_unlock_bucket(bucket);
             return DART_OK;
           }
         }
       }
-      UNLOCK_TASK(&parent->local_deps[slot]);
+      hashtab_unlock_bucket(bucket);
     }
 
     // this shouldn't happen
@@ -865,23 +781,20 @@ dart_tasking_datadeps_match_local_datadep(
   const dart_task_dep_t * dep,
         dart_task_t     * task)
 {
-  int slot;
-  slot = hash_gptr(dep->gptr);
   dart_task_t *parent = task->parent;
 
   // shortcut if no dependencies to match, yet
   if (parent->local_deps == NULL) return DART_OK;
 
-  // lock task to make sure the hash table is consistent
-  // TODO: more fine-grained locking on bucket level
-  LOCK_TASK(&parent->local_deps[slot]);
+  uint64_t hash = hash_gptr(dep->gptr);
+  dart_dephash_head_t *bucket = hashtab_get_locked_bucket(parent->local_deps, hash);
 
   /*
    * iterate over all dependent tasks until we find the first task with
    * OUT|INOUT dependency on the same pointer
    */
   dart_dephash_elem_t *prev = NULL;
-  for (dart_dephash_elem_t *elem = parent->local_deps[slot].head;
+  for (dart_dephash_elem_t *elem = bucket->head;
        elem != NULL; elem = elem->next)
   {
     DART_ASSERT_MSG(elem->prev == prev,
@@ -926,7 +839,7 @@ dart_tasking_datadeps_match_local_datadep(
         UNLOCK_TASK(elem_task);
       }
       if (IS_OUT_DEP(elem->taskdep)) {
-        UNLOCK_TASK(&parent->local_deps[slot]);
+        hashtab_unlock_bucket(bucket);
         // we can stop at the first OUT|INOUT dependency
         DART_LOG_TRACE("Stopping search for dependencies for task %p at "
                        "first OUT dependency encountered from task %p!",
@@ -936,7 +849,7 @@ dart_tasking_datadeps_match_local_datadep(
     }
   }
 
-  UNLOCK_TASK(&parent->local_deps[slot]);
+  hashtab_unlock_bucket(bucket);
 
   if (!IS_OUT_DEP(*dep)) {
     DART_LOG_TRACE("No matching output dependency found for local input "
@@ -958,9 +871,6 @@ dart_tasking_datadeps_match_delayed_local_datadep(
   const dart_task_dep_t * dep,
         dart_task_t     * task)
 {
-  int slot;
-  slot = hash_gptr(dep->gptr);
-
   dart_task_t *parent = task->parent;
 
   // shortcut if no dependencies to match, yet
@@ -970,12 +880,14 @@ dart_tasking_datadeps_match_delayed_local_datadep(
 
   DART_LOG_DEBUG("Handling delayed input dependency in phase %d", dep->phase);
 
+  uint64_t hash = hash_gptr(dep->gptr);
+  dart_dephash_head_t *bucket = hashtab_get_locked_bucket(parent->local_deps, hash);
+
   /*
    * iterate over all dependent tasks until we find the first task with
    * OUT|INOUT dependency on the same pointer
    */
-  LOCK_TASK(&parent->local_deps[slot]);
-  for (dart_dephash_elem_t *elem = parent->local_deps[slot].head;
+  for (dart_dephash_elem_t *elem = bucket->head;
        elem != NULL; elem = elem->next)
   {
     // skip dependencies that were created in a later phase
@@ -1033,29 +945,17 @@ dart_tasking_datadeps_match_delayed_local_datadep(
           tr.local = task;
           dart_dephash_elem_t *new_elem = dephash_allocate_elem(dep, tr, myguid);
           DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
-          if (elem->prev == NULL) {
-            // we are still at the head of the hash table slot, i.e.,
-            // our match was the very first task we encountered
-            DART_LOG_TRACE("Inserting delayed dependency at the beginning of the slot (new_elem %p, elem %p)", new_elem, elem);
-            new_elem->next                 = elem;
-            elem->prev                     = new_elem;
-            parent->local_deps[slot].head  = new_elem;
-            new_elem->prev                 = NULL;
-          } else {
-            DART_LOG_TRACE("Inserting delayed dependency in the middle (new_elem %p, elem %p)", new_elem, elem);
-            new_elem->next        = elem;
-            new_elem->prev        = elem->prev;
-            new_elem->prev->next  = new_elem;
-            elem->prev            = new_elem;
-          }
+
+          DART_LOG_TRACE("Inserting delayed dependency (new_elem %p, elem %p)", new_elem, elem);
+          hashtab_bucket_insert_before_elem_hash_nolock(bucket, elem, new_elem);
         }
         // we're done here
-        UNLOCK_TASK(&parent->local_deps[slot]);
+        hashtab_unlock_bucket(bucket);
         return DART_OK;
       }
     }
   }
-  UNLOCK_TASK(&parent->local_deps[slot]);
+  hashtab_unlock_bucket(bucket);
 
   if (!IS_OUT_DEP(*dep)) {
     DART_LOG_TRACE("No matching output dependency found for local input "
@@ -1133,7 +1033,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
         if (task->parent->state == DART_TASK_ROOT) {
           dart_tasking_remote_datadep(&dep, task);
           int32_t unresolved_deps = DART_INC_AND_FETCH32(&task->unresolved_remote_deps);
-          DART_LOG_INFO(
+          DART_LOG_TRACE(
             "Sent remote dependency request for task %p "
             "(unit=%i, team=%i, segid=%i, offset=%p, num_deps=%i)",
             task, guid.id, dep.gptr.teamid, dep.gptr.segid,
@@ -1182,7 +1082,7 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(
   }
   */
 
-  DART_LOG_INFO("Enqueuing remote task %p from unit %i for later resolution",
+  DART_LOG_TRACE("Enqueuing remote task %p from unit %i for later resolution",
     remote_task.remote, origin.id);
   // cache this request and resolve it later
   dart_dephash_elem_t *rs = dephash_allocate_elem(rdep, remote_task, origin);
