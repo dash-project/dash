@@ -66,8 +66,15 @@ enum dart_taskflags_t {
 
 
 struct dart_task_data {
-  struct dart_task_data     *next;            // next entry in a task list/queue
-  struct dart_task_data     *prev;            // previous entry in a task list/queue
+  union {
+    // atomic list used for free elements
+    DART_STACK_MEMBER_DEF;
+    // double linked list used in lists/queues
+    struct {
+      struct dart_task_data     *next;        // next entry in a task list/queue
+      struct dart_task_data     *prev;        // previous entry in a task list/queue
+    };
+  };
   int                        prio;
   uint16_t                   flags;
   int8_t                     state;           // one of dart_task_state_t, single byte sufficient

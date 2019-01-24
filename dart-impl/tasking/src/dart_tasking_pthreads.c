@@ -6,6 +6,7 @@
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/base/hwinfo.h>
 #include <dash/dart/base/env.h>
+#include <dash/dart/base/stack.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_ayudame.h>
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
@@ -54,6 +55,14 @@
 // the number of tasks to wait until remote progress is triggered (10ms)
 #define REMOTE_PROGRESS_INTERVAL_USEC  1E4
 
+// we know that the stack member entry is the first element of the struct
+// so we can cast directly
+#define DART_TASKLIST_ELEM_POP(__freelist) \
+  (dart_task_t*)((void*)dart__base__stack_pop(&__freelist))
+
+#define DART_TASKLIST_ELEM_PUSH(__freelist, __elem) \
+  dart__base__stack_push(&__freelist, &DART_STACK_MEMBER_GET(__elem))
+
 // true if threads should process tasks. Set to false to quit parallel processing
 static volatile bool parallel         = false;
 // true if the tasking subsystem has been initialized
@@ -79,9 +88,8 @@ static _Thread_local dart_thread_t* __tpd = NULL;
 static pthread_cond_t  task_avail_cond   = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// task life-cycle lists
-static dart_task_t *task_free_list        = NULL;
-static pthread_mutex_t task_free_mutex = PTHREAD_MUTEX_INITIALIZER;
+// task life-cycle list
+static dart_stack_t task_free_list = DART_STACK_INITIALIZER;
 
 static dart_thread_t **thread_pool;
 
@@ -537,15 +545,7 @@ dart_task_t * next_task(dart_thread_t *thread)
 static
 dart_task_t * allocate_task()
 {
-  dart_task_t *task = NULL;
-
-  if (task_free_list != NULL) {
-    pthread_mutex_lock(&task_free_mutex);
-    if (task_free_list != NULL) {
-      DART_STACK_POP(task_free_list, task);
-    }
-    pthread_mutex_unlock(&task_free_mutex);
-  }
+  dart_task_t *task = DART_TASKLIST_ELEM_POP(task_free_list);
 
   if (task == NULL) {
     task = malloc(sizeof(dart_task_t));
@@ -647,9 +647,7 @@ void dart__tasking__destroy_task(dart_task_t *task)
 
   dart_tasking_datadeps_reset(task);
 
-  pthread_mutex_lock(&task_free_mutex);
-  DART_STACK_PUSH(task_free_list, task);
-  pthread_mutex_unlock(&task_free_mutex);
+  DART_TASKLIST_ELEM_PUSH(task_free_list, task);
 }
 
 dart_task_t *
@@ -1608,14 +1606,11 @@ destroy_threadpool(bool print_stats)
 }
 
 static void
-free_tasklist(dart_task_t *tasklist)
+free_tasklist(dart_stack_t *tasklist)
 {
-  dart_task_t *task = tasklist;
-  while (task != NULL) {
-    dart_task_t *tmp = task;
-    task = task->next;
-    tmp->next = NULL;
-    free(tmp);
+  dart_task_t *task;
+  while (NULL != (task = DART_TASKLIST_ELEM_POP(*tasklist))) {
+    free(task);
   }
 }
 
@@ -1633,8 +1628,8 @@ dart__tasking__fini()
   dart__tasking__ayudame_fini();
 #endif // DART_ENABLE_AYUDAME
 
-  free_tasklist(task_free_list);
-  task_free_list = NULL;
+  free_tasklist(&task_free_list);
+
   if (threads_running) {
     stop_threads();
   }
