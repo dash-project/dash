@@ -347,6 +347,7 @@ void sort(
     if (!myid) {
       DASH_LOG_TRACE_RANGE("final global histogram", std::begin(global_histo), std::end(global_histo));
       DASH_LOG_TRACE_RANGE("prefix sum capacities", std::begin(partition_sizes_psum), std::end(partition_sizes_psum));
+      DASH_LOG_WARN("dash::sort", "partition borders found after N iterations", iter);
     }
     DASH_LOG_TRACE("local min and max element", min_max.first, min_max.second);
   }
