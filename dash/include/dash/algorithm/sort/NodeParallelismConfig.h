@@ -59,8 +59,7 @@ public:
 private:
   constexpr static bool hasNodeLevelParallelism() noexcept
   {
-#if defined(DASH_ENABLE_THREADSUPPORT) && \
-    (defined(DASH_ENABLE_PSTL) || defined(DASH_ENABLE_OPENMP))
+#if (defined(DASH_ENABLE_PSTL) || defined(DASH_ENABLE_OPENMP))
     return true;
 #endif
     return false;
