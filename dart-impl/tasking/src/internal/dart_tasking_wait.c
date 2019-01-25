@@ -60,11 +60,9 @@ void release_waithandle(dart_wait_handle_t *waithandle)
 void
 dart__task__wait_init()
 {
-#if defined(HAVE_RESCHEDULING_YIELD) && HAVE_RESCHEDULING_YIELD
   dart_tasking_taskqueue_init(&handle_list);
   dart_tasking_taskqueue_init(&handle_list_processing);
   dart_tasking_taskqueue_init(&handle_list_returning);
-#endif // HAVE_RESCHEDULING_YIELD
 
   for (int i = 0; i < WAIT_HANDLE_FREELIST_MAX_SIZE; ++i) {
     dart__base__stack_init(&waithandle_freelist[i]);
@@ -74,11 +72,9 @@ dart__task__wait_init()
 void
 dart__task__wait_fini()
 {
-#if defined(HAVE_RESCHEDULING_YIELD) && HAVE_RESCHEDULING_YIELD
   dart_tasking_taskqueue_finalize(&handle_list);
   dart_tasking_taskqueue_finalize(&handle_list_returning);
   dart_tasking_taskqueue_finalize(&handle_list_processing);
-#endif // HAVE_RESCHEDULING_YIELD
   dart_wait_handle_t *waithandle;
   for (int i = 0; i < WAIT_HANDLE_FREELIST_MAX_SIZE; ++i) {
     while (NULL != (waithandle = (dart_wait_handle_t *)
@@ -147,7 +143,7 @@ dart__task__wait_handle(
                    current_task, current_task->wait_handle);
     dart_task_yield(-1);
     if (current_task->wait_handle != NULL) {
-      DART_LOG_DEBUG("wait_handle: yield did not block task %p until completion, "
+      DART_LOG_WARN("wait_handle: yield did not block task %p until completion, "
                      "falling back to test-yield!", current_task);
       release_waithandle(current_task->wait_handle);
       current_task->wait_handle = NULL;
@@ -161,7 +157,7 @@ dart__task__wait_handle(
 
   return DART_OK;
 #else
-  return dart_waitall(handles, num_handles);
+  return dart_waitall(handles, num_handle);
 #endif // HAVE_RESCHEDULING_YIELD
 }
 
