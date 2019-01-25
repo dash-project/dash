@@ -76,7 +76,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, Projection projection);
 
 #include <dash/Exception.h>
 #include <dash/Meta.h>
-#include <dash/algorithm/Copy.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/sort/Communication.h>
 #include <dash/algorithm/sort/Histogram.h>
@@ -177,8 +176,6 @@ void sort(
 
   dash::impl::NodeParallelismConfig nodeLevelConfig{
       static_cast<uint32_t>(nthreads)};
-
-  impl::ThreadPool thread_pool{nodeLevelConfig.parallelism()};
 
   DASH_LOG_TRACE(
       "dash::sort",

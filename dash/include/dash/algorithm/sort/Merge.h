@@ -1,7 +1,7 @@
 #ifndef DASH__ALGORITHM__SORT__MERGE_H
 #define DASH__ALGORITHM__SORT__MERGE_H
 
-#include <dash/algorithm/Copy.h>
+#include <dash/Onesided.h>
 #include <dash/algorithm/sort/ThreadPool.h>
 #include <dash/algorithm/sort/Types.h>
 
@@ -226,7 +226,8 @@ inline auto psort__merge_tree(
         }
 
         merge(f, mi, l, d, depth);
-        DASH_LOG_TRACE("merged chunks", dep_l.first, dep_l.second,  dep_r.second, d);
+        DASH_LOG_TRACE(
+            "merged chunks", dep_l.first, dep_l.second, dep_r.second, d);
       });
 
       ChunkRange to_merge(f, l);
