@@ -1,3 +1,5 @@
+#if !defined(DART_TASKING_USE_OPENMP)
+
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/atomic.h>
 #include <dash/dart/base/assert.h>
@@ -1895,3 +1897,5 @@ void dart__tasking__utility_thread(
     DART_LOG_ERROR("Failed to create utility thread!");
   }
 }
+
+#endif // !defined(DART_TASKING_USE_OPENMP)

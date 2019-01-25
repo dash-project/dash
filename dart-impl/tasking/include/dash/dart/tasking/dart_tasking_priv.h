@@ -1,7 +1,17 @@
 #ifndef DART__INTERNAL__TASKING_H__
 #define DART__INTERNAL__TASKING_H__
 
+#ifdef USE_OPENMP
+#include <omp.h>
+#endif // USE_OPENMP
+
+// TODO: Make this a CMake variable?
+// this must be defined before dart_tasking_context.h is included
+#if !defined(DART_TASKING_USE_OPENMP)
 #define USE_UCONTEXT 1
+#endif // !defined(DART_TASKING_USE_OPENMP)
+
+
 #include <stdbool.h>
 #include <pthread.h>
 #include <stddef.h>
@@ -196,6 +206,10 @@ struct dart_task_data {
   task_list_t              * children;  // list of child tasks
 #endif //TRACK_CHILDREN
   unsigned char              inline_data[DART_TASKING_INLINE_DATA_SIZE]; // inline data passed to the action
+#ifdef DART_TASKING_USE_OPENMP
+  // TODO: check whether compiler supports detached tasks
+  //omp_event_handle_t         detach_handle;
+#endif // DART_TASKING_USE_OPENMP
 };
 #endif // 0
 
@@ -249,7 +263,8 @@ typedef struct dart_taskqueue {
 /* Number of tasks queued inside a thread */
 #define THREAD_QUEUE_SIZE 16
 
-struct dart_thread {
+#ifndef DART_TASKING_USE_OPENMP
+typedef struct {
   dart_task_t           * current_task;
   dart_task_t           * queue[THREAD_QUEUE_SIZE]; // array of tasks short-cut
   dart_task_t           * next_task;                // pointer to the next task executed in a yield
@@ -265,6 +280,24 @@ struct dart_thread {
   bool                    is_utility_thread; // whether the thread is a worker or utility thread
   double                  last_progress_ts;  // the timestamp of the last remote progress call
   int                     last_steal_thread_id;  // the timestamp of the last remote progress call
+} dart_thread_t;
+
+#else // DART_TASKING_USE_OPENMP
+
+typedef struct {
+  dart_stack_t            ctxlist;           // a free-list of contexts, written by all threads
+  context_list_t        * ctx_to_enter;      // the context to enter next
+  dart_task_t           * current_task;
+  uint64_t                taskcntr;
+  double                  last_progress_ts;  // the timestamp of the last remote progress call
+  int                     thread_id;
+  bool                    is_utility_thread; // whether the thread is a worker or utility thread
+} dart_thread_t;
+#endif // DART_TASKING_USE_OPENMP
+
+struct dart_wait_handle_s {
+  size_t              num_handle;
+  dart_handle_t       handle[];
 };
 
 dart_ret_t
