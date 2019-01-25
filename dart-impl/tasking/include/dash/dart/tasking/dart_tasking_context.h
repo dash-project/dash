@@ -8,10 +8,6 @@
 #include <setjmp.h>
 #include <dash/dart/base/macro.h>
 
-// TODO: Make this a CMake variable?
-#define USE_UCONTEXT 1
-
-
 typedef void (context_func_t) (void*);
 
 #ifdef USE_UCONTEXT

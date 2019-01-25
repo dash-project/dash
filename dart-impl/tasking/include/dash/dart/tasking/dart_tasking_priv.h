@@ -1,6 +1,7 @@
 #ifndef DART__INTERNAL__TASKING_H__
 #define DART__INTERNAL__TASKING_H__
 
+#define USE_UCONTEXT 1
 #include <stdbool.h>
 #include <pthread.h>
 #include <stddef.h>
@@ -21,6 +22,9 @@
 typedef struct dart_dephash_elem dart_dephash_elem_t;
 typedef struct dart_dephash_head dart_dephash_head_t;
 struct task_list;
+
+// whether to use thread-local task queues or a single queue
+//#define DART_TASK_THREADLOCAL_Q
 
 #ifdef USE_UCONTEXT
 #define HAVE_RESCHEDULING_YIELD 1

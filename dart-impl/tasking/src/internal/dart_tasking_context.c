@@ -100,6 +100,7 @@ void dart__tasking__context_init()
   }
 }
 
+#ifdef USE_UCONTEXT
 static void
 dart__tasking__context_entry(void)
 {
@@ -118,6 +119,7 @@ dart__tasking__context_entry(void)
   // fn should never return!
   DART_ASSERT_MSG(NULL, "task context invocation function returned!");
 }
+#endif // USE_UCONTEXT
 
 static context_list_t *
 dart__tasking__context_allocate()
@@ -183,8 +185,6 @@ dart__tasking__context_allocate()
 static void
 dart__tasking__context_free(context_list_t *ctxlist)
 {
-  DART_LOG_TRACE("Freeing context %p (sp:%p)",
-                 &ctxlist->ctx, ctxlist->ctx.ctx.uc_stack.ss_sp);
 #ifdef USE_MPROTECT
   void *ub_guard = ctxlist->stack + task_stack_size;
   if (mprotect(ub_guard, page_size, PROT_READ|PROT_EXEC|PROT_WRITE) != 0) {
@@ -342,14 +342,10 @@ dart__tasking__context_swap(context_t* old_ctx, context_t* new_ctx)
 
 void dart__tasking__context_cleanup()
 {
-#ifdef USE_UCONTEXT
   dart_thread_t* thread = dart__tasking__current_thread();
 
   context_list_t *ctxlist;
   while (NULL != (ctxlist = DART_CTX_ELEM_POP(thread->ctxlist))) {
     dart__tasking__context_free(ctxlist);
   }
-#else
-  DART_ASSERT_MSG(NULL, "Cannot call %s without UCONTEXT support!", __FUNCTION__);
-#endif
 }
