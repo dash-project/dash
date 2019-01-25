@@ -106,7 +106,7 @@ enum dart_copyin_wait_t {
   COPYIN_WAIT_UNDEFINED,
   COPYIN_WAIT_BLOCK,         // block the task
   COPYIN_WAIT_DETACH,        // detach the task
-  COPYIN_WAIT_DETACH_INLINE, // detach the inlined task
+  COPYIN_WAIT_DETACH_INLINE, // detach inlined task
   COPYIN_WAIT_YIELD          // test-yield cycle
 };
 
@@ -254,7 +254,6 @@ dart_tasking_copyin_create_task_sendrecv(
 
   int flags = (wait_type == COPYIN_WAIT_DETACH_INLINE)
               ? DART_TASK_NOYIELD : 0;
-
   dart_task_t *task;
   dart__tasking__create_task(
       &dart_tasking_copyin_recv_taskfn, &arg, sizeof(arg),
