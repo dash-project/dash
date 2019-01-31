@@ -30,6 +30,7 @@ dart_ret_t dart_group_create(
 {
     (*group) = allocate_group();
     (*group)->nmem = 0;
+    (*group)->nsplit = 0;
     for (int i = 0; i < MAXSIZE_GROUP; ++i)
     {
         ((*group)->g2l)[i] = -1;
@@ -206,8 +207,19 @@ dart_ret_t dart_group_split(
         {
             (gout[i]->g2l)[g->l2g[j]] = 1;
         }
+        
         group_rebuild(&gout[i]);
         ++(*nout);
+    }
+
+    for (int i = 0; i < n; ++i)
+    {
+        gout[i]->nsplit = (*nout);
+    }
+
+    for (int i = 0; i < n; ++i)
+    {
+        fprintf(stderr, "split group with nsplit: %d \n", gout[i]->nsplit);
     }
 
     return DART_OK;

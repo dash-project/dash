@@ -21,6 +21,9 @@ extern "C" {
 struct dart_group_struct {
     // current number of members in the group
     int nmem;
+    // number the group has been splitted
+    // initialized to -1
+    int nsplit;
     //
     // g2l is indexed by global unit ids, l2g is
     // indexed by local ids, both arrays are initialized to -1

@@ -24,8 +24,13 @@ dart_ret_t dart_team_get_group (dart_team_t teamid, dart_group_t *group)
  */
 dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_team_t *newteam)
 {
+    // SplitAddition
+    dart_global_unit_t myid;
+    dart_myid(&myid);
+    int32_t ismember;
+
     gaspi_group_t parent_gaspi_group;
-    gaspi_group_t new_gaspi_group;
+    gaspi_group_t new_gaspi_group, temp_group;
     uint16_t      index, unique_id;
     size_t        size;
     dart_team_t   max_teamid = -1;
@@ -45,7 +50,15 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
 
     parent_gaspi_group = dart_teams[unique_id].id;
 
-    DART_CHECK_ERROR(gaspi_group_create(&new_gaspi_group));
+    // gaspi_group_create needs to be called as often as groups are created
+
+    for( size_t i = 0; i < (group->nsplit); ++i )
+    {
+        DART_CHECK_ERROR(gaspi_group_create(&new_gaspi_group));
+        dart_group_ismember(group, myid, &ismember);
+        if(1 == ismember) fprintf(stderr, "I [%d] am a member of the group", myid.id);
+    }
+    
     size_t gsize;
     dart_group_size(group, &gsize);
     dart_global_unit_t * group_members = malloc(sizeof(dart_unit_t) * gsize);
@@ -57,7 +70,14 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
         DART_CHECK_ERROR(gaspi_group_add(new_gaspi_group, group_members[i].id));
     }
 
-    DART_CHECK_ERROR(gaspi_group_commit(new_gaspi_group, GASPI_BLOCK));
+    // If the rank isnt part of the group dont commit the group
+    // -> in gaspi a rank need to be part of the commited group
+    if(dart_group_ismember(group, myid, &ismember))
+    {
+        //printf("Hi, I [%d] may commit this group because im part of it\n", myid.id);
+        DART_CHECK_ERROR(gaspi_group_commit(new_gaspi_group, GASPI_BLOCK));
+    }
+
 
     *newteam = DART_TEAM_NULL;
 
@@ -75,7 +95,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
     }
     /* max_teamid is thought to be the new created team ID. */
     *newteam = max_teamid;
-    fprintf(stderr,"New team created: %d" , max_teamid);
+    fprintf(stderr,"New team created: %d by me: [%d] ismember: [%d]\n" , max_teamid, myid.id, ismember);
     dart_teams[index].id = new_gaspi_group;
     memcpy(&(dart_teams[index].group), group, sizeof(dart_group_t));
 
