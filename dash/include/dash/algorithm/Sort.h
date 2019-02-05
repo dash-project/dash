@@ -79,12 +79,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end, Projection projection);
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/sort/Communication.h>
 #include <dash/algorithm/sort/Histogram.h>
-#include <dash/algorithm/sort/Merge.h>
 #include <dash/algorithm/sort/NodeParallelismConfig.h>
 #include <dash/algorithm/sort/Partition.h>
 #include <dash/algorithm/sort/Sampling.h>
 #include <dash/algorithm/sort/Sort-inl.h>
-#include <dash/algorithm/sort/ThreadPool.h>
 #include <dash/algorithm/sort/Types.h>
 #include <dash/dart/if/dart.h>
 #include <dash/internal/Logging.h>
