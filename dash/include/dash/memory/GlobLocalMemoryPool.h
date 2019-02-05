@@ -5,8 +5,6 @@
 #include <dash/allocator/AllocationPolicy.h>
 #include <dash/memory/MemorySpaceBase.h>
 
-#include <mutex>
-
 namespace dash {
 
 /// Forward declarations
@@ -174,7 +172,6 @@ private:
   size_type                               m_capacity{};
   allocator_type                          m_allocator{};
   std::vector<std::pair<pointer, size_t>> m_segments;
-  std::mutex                              mx{};
 
 private:
   // alignment not used: Pools always allocate with alignof(max_align_t)
@@ -253,8 +250,6 @@ GlobLocalMemoryPool<LMemSpace>::do_allocate(
       "size: ",
       m_size);
 
-  std::lock_guard<std::mutex> guard{mx};
-
   if ((m_capacity - m_size) < nbytes) {
     throw std::bad_alloc{};
   }
@@ -294,8 +289,6 @@ inline void GlobLocalMemoryPool<LMemSpace>::do_deallocate(
 {
   DASH_LOG_DEBUG("< MemorySpace.do_deallocate");
 
-  std::lock_guard<std::mutex> guard{mx};
-
   auto it_seg = std::find_if(
       std::begin(m_segments),
       std::end(m_segments),
@@ -314,8 +307,6 @@ inline void GlobLocalMemoryPool<LMemSpace>::do_deallocate(
 template <class LMemSpace>
 inline void GlobLocalMemoryPool<LMemSpace>::release()
 {
-  std::lock_guard<std::mutex> guard{mx};
-
   for (auto it = std::begin(m_segments); it != std::end(m_segments); ++it) {
     do_segment_free(it);
   }
@@ -345,8 +336,8 @@ inline void GlobLocalMemoryPool<LMemSpace>::do_segment_free(
       static_cast<LocalMemorySpaceBase<
           typename memory_traits::memory_space_type_category>*>(
           m_allocator.resource()),
-      // We do not care about this parameter since local memory allocation
-      // happens only in DART and we do never free this memory in DASH
+      //We do not care about this parameter since local memory allocation
+      //happens only in DART and we do never free this memory in DASH
       nullptr,
       it_erase->second,
       max_align);
