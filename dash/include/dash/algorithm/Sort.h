@@ -702,25 +702,22 @@ void sort(
       nodeLevelConfig.parallelism());
   trace.exit_state("13:final_local_sort");
 
-  trace.enter_state("14:barrier");
-  team.barrier();
-  trace.exit_state("14:barrier");
 
-  trace.enter_state("15:final_local_copy");
+  trace.enter_state("14:final_local_copy");
   std::copy(
       local_data.buffer.get(),
       local_data.buffer.get() + n_l_elem,
       local_data.output);
-  trace.exit_state("15:final_local_copy");
+  trace.exit_state("14:final_local_copy");
 
   DASH_LOG_TRACE_RANGE(
       "finally sorted range",
       local_data.output,
       local_data.output + n_l_elem);
 
-  trace.enter_state("16:final_barrier");
+  trace.enter_state("15:final_barrier");
   team.barrier();
-  trace.exit_state("16:final_barrier");
+  trace.exit_state("15:final_barrier");
 }  // namespace dash
 
 namespace impl {
