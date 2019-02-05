@@ -13,8 +13,7 @@
 
 static struct dart_group_struct* allocate_group()
 {
-  struct dart_group_struct* group = malloc(sizeof(struct dart_group_struct));
-  return group;
+  return (struct dart_group_struct*) malloc(sizeof(struct dart_group_struct));
 };
 
 dart_ret_t dart_group_sizeof(size_t *size)
@@ -30,7 +29,7 @@ dart_ret_t dart_group_create(
 {
     (*group) = allocate_group();
     (*group)->nmem = 0;
-    (*group)->nsplit = 0;
+    (*group)->nsplit = 1;
     for (int i = 0; i < MAXSIZE_GROUP; ++i)
     {
         ((*group)->g2l)[i] = -1;
@@ -214,12 +213,7 @@ dart_ret_t dart_group_split(
 
     for (int i = 0; i < n; ++i)
     {
-        gout[i]->nsplit = (*nout);
-    }
-
-    for (int i = 0; i < n; ++i)
-    {
-        fprintf(stderr, "split group with nsplit: %d \n", gout[i]->nsplit);
+        gout[i]->nsplit = *nout;
     }
 
     return DART_OK;

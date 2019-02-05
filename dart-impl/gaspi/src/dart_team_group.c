@@ -27,7 +27,9 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
     // SplitAddition
     dart_global_unit_t myid;
     dart_myid(&myid);
-    int32_t ismember;
+    int32_t ismember_tmp; 
+    int32_t ismember = 0;
+
 
     gaspi_group_t parent_gaspi_group;
     gaspi_group_t new_gaspi_group, temp_group;
@@ -54,10 +56,21 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
 
     for( size_t i = 0; i < (group->nsplit); ++i )
     {
-        DART_CHECK_ERROR(gaspi_group_create(&new_gaspi_group));
-        dart_group_ismember(group, myid, &ismember);
-        if(1 == ismember) fprintf(stderr, "I [%d] am a member of the group", myid.id);
+        DART_CHECK_ERROR(gaspi_group_create(&temp_group));
+        dart_group_ismember(group, myid, &ismember_tmp);
+        if(ismember_tmp)
+        {
+            fprintf(stderr, "I [%d] am a member of the group\n", myid.id);
+            ismember = 1;
+            new_gaspi_group = temp_group;
+        }
     }
+
+    if(0==ismember)
+    {
+        fprintf(stderr,"Id: %d exits with member status: %d\n", myid.id, ismember);
+        return DART_OK;
+    } 
     
     size_t gsize;
     dart_group_size(group, &gsize);
@@ -70,14 +83,8 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
         DART_CHECK_ERROR(gaspi_group_add(new_gaspi_group, group_members[i].id));
     }
 
-    // If the rank isnt part of the group dont commit the group
-    // -> in gaspi a rank need to be part of the commited group
-    if(dart_group_ismember(group, myid, &ismember))
-    {
-        //printf("Hi, I [%d] may commit this group because im part of it\n", myid.id);
-        DART_CHECK_ERROR(gaspi_group_commit(new_gaspi_group, GASPI_BLOCK));
-    }
-
+    // -> in gaspi a rank needs to be part of the commited group
+    DART_CHECK_ERROR(gaspi_group_commit(new_gaspi_group, GASPI_BLOCK));
 
     *newteam = DART_TEAM_NULL;
 
