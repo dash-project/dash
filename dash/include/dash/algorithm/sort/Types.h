@@ -8,16 +8,6 @@
 #include <map>
 #include <vector>
 
-#define IDX_DIST(nunits) ((nunits)*0)
-#define IDX_SUPP(nunits) ((nunits)*1)
-// idx source disp
-#define IDX_DISP(nunits) ((nunits)*2)
-
-// original: send count
-#define IDX_SRC_COUNT(nunits) IDX_DIST(nunits)
-#define IDX_TARGET_COUNT(nunits) IDX_SUPP(nunits)
-#define NLT_NLE_BLOCK (2)
-
 namespace dash {
 
 namespace impl {
@@ -30,6 +20,7 @@ struct sort__final_strategy__sort {
 };
 
 
+constexpr size_t lower_upper_block = 2;
 constexpr int sort_sendrecv_tag = 0xdea110c;
 
 template <class T>

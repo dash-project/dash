@@ -135,7 +135,7 @@ inline void psort__init_partition_borders(
   }
 
   auto const get_border_idx = [](std::size_t const idx) {
-    return (idx % NLT_NLE_BLOCK) ? (idx / NLT_NLE_BLOCK) * NLT_NLE_BLOCK
+    return (idx % impl::lower_upper_block) ? (idx / impl::lower_upper_block) * impl::lower_upper_block
                                  : idx - 1;
   };
 
@@ -274,7 +274,7 @@ inline bool psort__validate_partitions(
 
   for (auto const& border_idx : valid_partitions) {
     auto const p_left  = splitters.left_partition[border_idx];
-    auto const nlt_idx = p_left * NLT_NLE_BLOCK;
+    auto const nlt_idx = p_left * impl::lower_upper_block;
 
     auto const peer_idx = p_left + 1;
 

@@ -25,7 +25,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
   // elements in this unit
   auto const sz = splitters.count() + 1;
   // Number of elements less than P
-  std::vector<std::size_t> l_nlt_nle(NLT_NLE_BLOCK * sz, 0);
+  std::vector<std::size_t> l_nlt_nle(impl::lower_upper_block * sz, 0);
 
   auto const n_l_elem = std::distance(data_lbegin, data_lend);
 
@@ -62,7 +62,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
       auto const p_left = splitters.left_partition[idx];
       DASH_ASSERT_NE(p_left, dash::team_unit_t{}, "invalid bounding unit");
 
-      auto const nlt_idx = p_left * NLT_NLE_BLOCK;
+      auto const nlt_idx = p_left * impl::lower_upper_block;
 
       l_nlt_nle[nlt_idx]     = std::distance(data_lbegin, lb_it);
       l_nlt_nle[nlt_idx + 1] = std::distance(data_lbegin, ub_it);
@@ -73,7 +73,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
 
     // fill trailing partitions with local capacity
     std::fill(
-        std::next(std::begin(l_nlt_nle), (p_left + 1) * NLT_NLE_BLOCK),
+        std::next(std::begin(l_nlt_nle), (p_left + 1) * impl::lower_upper_block),
         std::end(l_nlt_nle),
         n_l_elem);
   }

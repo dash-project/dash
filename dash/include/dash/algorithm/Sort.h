@@ -285,7 +285,7 @@ void sort(
     size_t iter = 0;
     bool   done = false;
 
-    std::vector<size_t> global_histo(nunits * NLT_NLE_BLOCK, 0);
+    std::vector<size_t> global_histo(nunits * impl::lower_upper_block, 0);
 
     do {
       ++iter;
@@ -323,14 +323,14 @@ void sort(
           // iterator past last valid partition
           std::next(
               std::begin(l_nlt_nle),
-              (valid_splitters.back() + 1) * NLT_NLE_BLOCK),
+              (valid_splitters.back() + 1) * impl::lower_upper_block),
           std::begin(global_histo),
           team.dart_id());
 
       DASH_LOG_TRACE_RANGE(
           "global histogram",
-          std::next(std::begin(global_histo), myid * NLT_NLE_BLOCK),
-          std::next(std::begin(global_histo), (myid + 1) * NLT_NLE_BLOCK));
+          std::next(std::begin(global_histo), myid * impl::lower_upper_block),
+          std::next(std::begin(global_histo), (myid + 1) * impl::lower_upper_block));
 
       done = impl::psort__validate_partitions(
           splitters, partition_sizes_psum, valid_splitters, global_histo);
@@ -418,7 +418,7 @@ void sort(
           // receive buffer
           g_partition_data.data(),
           // we send / receive 1 element to / from each process
-          NLT_NLE_BLOCK,
+          impl::lower_upper_block,
           // dtype
           dash::dart_datatype<size_t>::value,
           // teamid
@@ -462,8 +462,8 @@ void sort(
 
   DASH_LOG_TRACE_RANGE(
       "final partition distribution",
-      std::next(std::begin(g_partition_data), IDX_DIST(nunits)),
-      std::next(std::begin(g_partition_data), IDX_DIST(nunits) + nunits));
+      std::begin(g_partition_data),
+      std::next(std::begin(g_partition_data), nunits));
 
   trace.exit_state("7:calc_final_partition_dist");
 
@@ -500,7 +500,7 @@ void sort(
       neighbors.second);
 
   dart_sendrecv(
-      std::next(g_partition_data.data(), IDX_DIST(nunits)),
+      g_partition_data.data(),
       nunits,
       dash::dart_datatype<size_t>::value,
       impl::sort_sendrecv_tag,
@@ -602,9 +602,9 @@ void sort(
     if (myid) {
       std::transform(
           // in_first
-          std::next(g_partition_data.data(), IDX_DIST(nunits)),
+          g_partition_data.data(),
           // in_last
-          std::next(g_partition_data.data(), IDX_DIST(nunits) + nunits),
+          std::next(g_partition_data.data(), nunits),
           // in_second
           std::begin(source_displs),
           // out_first
@@ -614,8 +614,8 @@ void sort(
     }
     else {
       std::copy(
-          std::next(g_partition_data.data(), IDX_DIST(nunits)),
-          std::next(g_partition_data.data(), IDX_DIST(nunits) + nunits),
+          g_partition_data.data(),
+          std::next(g_partition_data.data(), nunits),
           std::begin(target_counts));
     }
   }
