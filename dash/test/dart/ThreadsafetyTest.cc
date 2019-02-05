@@ -221,7 +221,6 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 #endif //!defined(DASH_ENABLE_OPENMP)
 }
 
-#if 0
 
 TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
   using elem_t    = int;
@@ -374,6 +373,5 @@ TEST_F(ThreadsafetyTest, ConcurrentAlgorithm) {
   }
 #endif // !defined(DASH_ENABLE_OPENMP)
 }
-#endif
 
 #endif // DASH_ENABLE_THREADSUPPORT
