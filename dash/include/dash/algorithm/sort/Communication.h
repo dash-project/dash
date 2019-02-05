@@ -48,5 +48,55 @@ LocalOutputIter exclusive_scan(
   return std::next(out_first, nel);
 }
 
+namespace impl {
+template <class InputIt, class OutputIt>
+void alltoallv(
+    InputIt             input,
+    OutputIt            output,
+    std::vector<size_t> sendCounts,
+    std::vector<size_t> sendDispls,
+    std::vector<size_t> targetCounts,
+    std::vector<size_t> targetDispls,
+    dart_team_t         dartTeam)
+{
+  using value_type = typename std::iterator_traits<InputIt>::value_type;
+
+  // check whether value_type is supported by dart, else switch to byte
+  auto dart_value_t = dash::dart_datatype<value_type>::value;
+  if (dart_value_t == DART_TYPE_UNDEFINED) {
+    dart_value_t = DART_TYPE_BYTE;
+
+    auto to_bytes = [](auto v) { return v * sizeof(value_type); };
+
+    std::transform(
+        sendCounts.begin(), sendCounts.end(), sendCounts.begin(), to_bytes);
+    std::transform(
+        sendDispls.begin(), sendDispls.end(), sendDispls.begin(), to_bytes);
+    std::transform(
+        targetCounts.begin(),
+        targetCounts.end(),
+        targetCounts.begin(),
+        to_bytes);
+    std::transform(
+        targetDispls.begin(),
+        targetDispls.end(),
+        targetDispls.begin(),
+        to_bytes);
+  }
+
+  DASH_ASSERT_RETURNS(
+      dart_alltoallv(
+          input,
+          output,
+          sendCounts.data(),
+          sendDispls.data(),
+          targetCounts.data(),
+          targetDispls.data(),
+          dart_value_t,
+          dartTeam),
+      DART_OK);
+}
+}  // namespace impl
+
 }  // namespace dash
 #endif

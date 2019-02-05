@@ -2259,10 +2259,10 @@ dart_ret_t dart_alltoall(
 dart_ret_t dart_alltoallv(
     const void *    sendbuf,
     void *          recvbuf,
-    size_t *        send_counts,
-    size_t *        send_displ,
-    size_t *        recv_counts,
-    size_t *        recv_displ,
+    size_t const *        send_counts,
+    size_t const *        send_displ,
+    size_t const *        recv_counts,
+    size_t const *        recv_displ,
     dart_datatype_t dtype,
     dart_team_t     teamid)
 {
