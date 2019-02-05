@@ -29,6 +29,9 @@ struct sort__final_strategy__merge {
 struct sort__final_strategy__sort {
 };
 
+
+constexpr int sort_sendrecv_tag = 0xdea110c;
+
 template <class T>
 struct LocalData {
 private:

@@ -503,13 +503,13 @@ void sort(
       std::next(g_partition_data.data(), IDX_DIST(nunits)),
       nunits,
       dash::dart_datatype<size_t>::value,
-      101,
+      impl::sort_sendrecv_tag,
       // dest neighbor (right)
       neighbors.second,
       source_displs.data(),
       nunits,
       dash::dart_datatype<size_t>::value,
-      101,
+      impl::sort_sendrecv_tag,
       // source neighbor (left)
       neighbors.first);
 
