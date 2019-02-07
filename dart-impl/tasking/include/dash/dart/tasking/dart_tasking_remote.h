@@ -22,33 +22,22 @@ dart_tasking_remote_datadep(
   dart_task_t     *task) DART_INTERNAL;
 
 /**
- * Send a direct task dependency request \c unit to make sure
- * that \c local_task is only executed after \c remote_task has
- * finished and sent a release.
+ * Send a release for the remote task \c rtask to \c unit, potentially
+ * enqueuing rtask into the runnable list on the remote side.
  */
-dart_ret_t
-dart_tasking_remote_direct_taskdep(
-  dart_global_unit_t  unit,
-  dart_task_t        *local_task,
-  taskref             remote_task) DART_INTERNAL;
+dart_ret_t dart_tasking_remote_release_dep(
+  dart_global_unit_t     unit,
+  taskref                rtask,
+  uintptr_t              depref) DART_INTERNAL;
 
 /**
  * Send a release for the remote task \c rtask to \c unit, potentially
  * enqueuing rtask into the runnable list on the remote side.
  */
-dart_ret_t dart_tasking_remote_release(
-  dart_global_unit_t     unit,
-  taskref                rtask,
-  const dart_task_dep_t *dep) DART_INTERNAL;
-
-/**
- * Send a release for the remote task \c remote_task at \c unit together with
- * a reference to the local dummy task \c local_task.
- */
-dart_ret_t dart_tasking_remote_release_outdep(
-  dart_global_unit_t   unit,
-  dart_task_t        * local_task,
-  taskref              remote_task) DART_INTERNAL;
+dart_ret_t dart_tasking_remote_release_task(
+  dart_global_unit_t unit,
+  taskref            rtask,
+  uintptr_t          depref) DART_INTERNAL;
 
 /**
  * Send a request to the remote unit to create a task that will send us data

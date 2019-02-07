@@ -227,6 +227,9 @@ dart__tasking__task_complete() DART_INTERNAL;
 dart_taskref_t
 dart__tasking__current_task() DART_INTERNAL;
 
+dart_task_t*
+dart__tasking__root_task() DART_INTERNAL;
+
 void
 dart__tasking__mark_detached(dart_taskref_t task) DART_INTERNAL;
 

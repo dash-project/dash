@@ -160,6 +160,11 @@ double current_time_us() {
   return CLOCK_TIME_USEC(ts);
 }
 
+dart_task_t *
+dart__tasking__root_task()
+{
+  return &root_task;
+}
 
 void
 dart__tasking__mark_detached(dart_taskref_t task)
@@ -1323,7 +1328,8 @@ dart__tasking__perform_matching(dart_taskphase_t phase)
   dart_tasking_datadeps_handle_defered_remote();
   DART_LOG_DEBUG("task_complete: releasing deferred tasks of all threads");
   // make sure all newly incoming requests are served
-  dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
+  // TODO: this is not needed anymore
+  // dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
   // reset the active epoch
   dart__tasking__phase_set_runnable(phase);
   // release the deferred queue
