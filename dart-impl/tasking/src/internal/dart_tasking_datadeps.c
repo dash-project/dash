@@ -354,7 +354,7 @@ static void dephash_add_local_nolock(
 {
   dart_dephash_elem_t *new_elem = dephash_allocate_elem(dep, TASKREF(task), myguid);
 
-  DART_STACK_PUSH_MEMB(task->deps_owned, elem, next_in_task);
+  DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
 
   dart_task_t *parent = task->parent;
   dephash_require_alloc(parent);
@@ -895,10 +895,8 @@ dart_tasking_datadeps_handle_copyin(
             taskref tr;
             tr.local = task;
             dart_dephash_elem_t *new_elem = dephash_allocate_elem(&in_dep, tr, myguid);
-            DART_STACK_PUSH_MEMB(task->deps_owned, elem, next_in_task);
-            LOCK_TASK(elem);
-            DART_STACK_PUSH(elem->dep_list, new_elem);
-            UNLOCK_TASK(elem);
+            DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
+            register_at_out_dep(elem, new_elem);
 
             DART_LOG_TRACE("Copyin: task %p waits for copyin task %p", task, elem_task);
 
@@ -1013,6 +1011,7 @@ dart_tasking_datadeps_match_local_dependency(
         DART_LOG_TRACE("Making task %p a local successor of task %p "
                       "(num_deps: %i)",
                       task, elem->task.local, unresolved_deps);
+        register_at_out_dep_nolock(elem, new_elem);
       } else {
         DART_LOG_TRACE("Task of out dep %p already running, not waiting to finish",
                        elem);
