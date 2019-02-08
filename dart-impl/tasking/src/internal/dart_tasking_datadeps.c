@@ -234,6 +234,34 @@ dart_ret_t dart_tasking_datadeps_progress()
   return dart_tasking_remote_progress();
 }
 
+static void
+inline
+dephash_list_insert_elem_after_nolock(
+  dart_dephash_head_t *head,
+  dart_dephash_elem_t *elem,
+  dart_dephash_elem_t *prev)
+{
+  if (head->head == NULL) {
+    // insert into empty bucket
+    head->head = elem;
+    elem->prev = NULL;
+    elem->next = NULL;
+  } else if (prev == NULL) {
+    // insert at front of bucket
+    elem->next = head->head;
+    head->head->prev = elem;
+    elem->prev = NULL;
+    head->head = elem;
+  } else {
+    elem->next = prev->next;
+    elem->prev = prev;
+    prev->next = elem;
+    if (elem->next != NULL) {
+      elem->next->prev = elem;
+    }
+  }
+}
+
 /**
  * Allocate a new element for the dependency hash, possibly from a free-list
  */
@@ -253,7 +281,6 @@ dephash_allocate_elem(
     elem = malloc(sizeof(dart_dephash_elem_t));
   }
 
-  DART_ASSERT(task.local != NULL);
   elem->task    = task;
   elem->origin  = origin;
   elem->dep     = *dep;
@@ -352,7 +379,8 @@ static void dephash_require_alloc(dart_task_t *task)
  * Add a task with dependency to the parent's dependency hash table.
  * The dependency is added to the front of the bucket.
  */
-static void dephash_add_local_nolock(
+static void
+dephash_add_local_nolock(
   const dart_task_dep_t * dep,
         dart_task_t     * task,
         int               slot)
@@ -363,15 +391,10 @@ static void dephash_add_local_nolock(
 
   dart_task_t *parent = task->parent;
   dephash_require_alloc(parent);
+  DART_LOG_TRACE("Adding elem %p to slot %d with head %p",
+                 new_elem, slot, parent->local_deps[slot].head);
   // put the new entry at the beginning of the list
-  dart_dephash_elem_t *head = parent->local_deps[slot].head;
-  DART_LOG_TRACE("Adding elem %p to slot %d with head %p", elem, slot, head);
-  elem->next = head;
-  elem->prev = NULL;
-  if (NULL != head) {
-    head->prev = elem;
-  }
-  parent->local_deps[slot].head = elem;
+  dephash_list_insert_elem_after_nolock(&parent->local_deps[slot], new_elem, NULL);
 }
 
 static void dephash_add_local_out(
@@ -407,6 +430,7 @@ static void dephash_remove_dep_from_bucket_nolock(
       elem->next->prev = NULL;
     }
   }
+  elem->next = elem->prev = NULL;
 }
 
 static void
@@ -623,20 +647,11 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
       if (local == NULL) {
         // create an empty output dependency and register this dependency with it
         dart_dephash_elem_t *out_dep = dephash_allocate_elem(&rdep->dep,
-                                                             rdep->task,
+                                                             TASKREF(NULL),
                                                              rdep->origin);
         // output depdendencies live in the previous phase
         --(out_dep->dep.phase);
-        out_dep->task.local = NULL; // there is no task with this output dependency
-        if (prev != NULL) {
-          // inserting at the end of the bucket
-          prev->next = out_dep;
-          out_dep->prev = prev;
-        } else {
-          // inserting at the head of the bucket
-          local_deps[slot].head = out_dep;
-          out_dep->prev = NULL;
-        }
+        dephash_list_insert_elem_after_nolock(&local_deps[slot], out_dep, prev);
         local = out_dep;
         DART_LOG_TRACE("Inserting fake output dep %p for remote input dep from task "
                        "%p, unit %d, phase %d, slot %d",
@@ -652,10 +667,10 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
       UNLOCK_TASK(&local_deps[slot]);
 
       if (runnable) {
-        // send a release
-        DART_LOG_TRACE("Remote task %p from unit %d is immediately runnable",
-                       rdep->task.local, rdep->origin.id);
-        dart_tasking_remote_release_task(rdep->origin, rdep->task, (uintptr_t)rdep);
+        DART_LOG_TRACE("Delayed dep %p of task %p from unit %d is immediately runnable",
+                       rdep, rdep->task.local, rdep->origin.id);
+        // release the dependency
+        release_dependency(rdep);
       }
     }
   }
@@ -664,33 +679,6 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
   dart__base__mutex_unlock(&unhandled_remote_mutex);
 
   return DART_OK;
-}
-
-static void
-dephash_list_insert_elem_after_nolock(
-  dart_dephash_head_t *head,
-  dart_dephash_elem_t *elem,
-  dart_dephash_elem_t *prev)
-{
-  if (head->head == NULL) {
-    // insert into empty bucket
-    head->head = elem;
-    elem->prev = NULL;
-    elem->next = NULL;
-  } else if (prev == NULL) {
-    // insert at front of bucket
-    elem->next = head->head;
-    head->head->prev = elem;
-    elem->prev = NULL;
-    head->head = elem;
-  } else {
-    elem->next = prev->next;
-    elem->prev = prev;
-    prev->next = elem;
-    if (elem->next != NULL) {
-      elem->next->prev = elem;
-    }
-  }
 }
 
 dart_ret_t
