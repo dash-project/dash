@@ -476,12 +476,18 @@ static void dephash_release_out_dependency(
   DART_LOG_TRACE("Releasing output dependency %p (num_consumers %d)",
                  elem, elem->num_consumers);
   LOCK_TASK(elem);
+  DART_ASSERT_MSG(elem->dep_list == NULL || elem->num_consumers > 0, "Consumer-less output dependency has dependencies: %p", elem->dep_list);
   if (elem->dep_list != NULL) {
     do {
       dart_dephash_elem_t *in_dep;
 
       DART_STACK_POP(elem->dep_list, in_dep);
       if (NULL == in_dep) break;
+      DART_LOG_TRACE("  -> Releasing input dependency %p from %p",
+                    in_dep, elem);
+      DART_ASSERT_MSG(in_dep->dep.type == DART_DEP_IN,
+                      "Invalid dependency type %d in dependency %p",
+                      in_dep->dep.type, in_dep);
       release_dependency(in_dep);
       // NOTE: keep the dependency object in place, it will be cleaned up
       //       by the owning task
