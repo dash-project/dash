@@ -516,26 +516,31 @@ static void dephash_release_in_dependency(
   // decrement the counter of the associated output dependency and release the
   // next output dependency if all input dependencies have completed
   dart_dephash_elem_t *out_dep = elem->dep_list;
-  int32_t num_consumers = DART_DEC_AND_FETCH32(&out_dep->num_consumers);
-  DART_LOG_TRACE("Releasing input dependency %p from output dependency %p (nc %d)",
-                 elem, out_dep, num_consumers);
-  DART_ASSERT_MSG(num_consumers >= 0, "Found negative number of consumers for "
-                  "dependency %p: %d", elem, num_consumers);
-  dephash_recycle_elem(elem);
-  if (num_consumers == 0){
-    // TODO: do we need to lock the element here too?
-    int slot = hash_gptr(elem->dep.gptr);
-    LOCK_TASK(&local_deps[slot]);
+  if (out_dep != NULL) {
+    int32_t num_consumers = DART_DEC_AND_FETCH32(&out_dep->num_consumers);
+    DART_LOG_TRACE("Releasing input dependency %p (output dependency %p with nc %d)",
+                  elem, out_dep, num_consumers);
+    DART_ASSERT_MSG(num_consumers >= 0, "Found negative number of consumers for "
+                    "dependency %p: %d", elem, num_consumers);
+    dephash_recycle_elem(elem);
+    if (num_consumers == 0){
+      // TODO: do we need to lock the element here too?
+      int slot = hash_gptr(elem->dep.gptr);
+      LOCK_TASK(&local_deps[slot]);
 
-    // release the next output dependency
-    dephash_release_next_out_dependency(out_dep);
+      // release the next output dependency
+      dephash_release_next_out_dependency(out_dep);
 
-    // remove the output dependency from the bucket
-    dephash_remove_dep_from_bucket_nolock(out_dep, local_deps, slot);
-    UNLOCK_TASK(&local_deps[slot]);
+      // remove the output dependency from the bucket
+      dephash_remove_dep_from_bucket_nolock(out_dep, local_deps, slot);
+      UNLOCK_TASK(&local_deps[slot]);
 
-    // finally recycle the output dependency
-    dephash_recycle_elem(out_dep);
+      // finally recycle the output dependency
+      dephash_recycle_elem(out_dep);
+    }
+  } else {
+    DART_LOG_TRACE("Skipping input dependency %p as it has no output dependency!", elem);
+    dephash_recycle_elem(elem);
   }
 }
 
@@ -1009,8 +1014,15 @@ dart_tasking_datadeps_match_local_dependency(
         DART_LOG_TRACE("Task of out dep %p already running, not waiting to finish",
                        elem);
       }
-      register_at_out_dep_nolock(elem, new_elem);
       UNLOCK_TASK(elem);
+    }
+  } else {
+    if (elem != NULL) {
+      int32_t unresolved_deps = DART_INC_AND_FETCH32(
+                                    &task->unresolved_deps);
+      DART_LOG_TRACE("Making task %p a local successor of task %p "
+                    "(num_deps: %i)",
+                    task, elem->task.local, unresolved_deps);
     }
   }
 
@@ -1314,18 +1326,20 @@ static dart_ret_t release_remote_dependencies(dart_task_t *task)
 {
   DART_LOG_TRACE("Releasing remote dependencies for task %p (rs:%p)",
                  task, task->remote_successor);
-  dart_dephash_elem_t *rs = task->remote_successor;
-  while (rs != NULL) {
-    dart_dephash_elem_t *tmp = rs;
-    rs = rs->next;
+  do {
+    dart_dephash_elem_t *rs;
+    DART_STACK_POP(task->remote_successor, rs);
+    if (rs == NULL) {
+      break;
+    }
 
     // send the release
     dart_global_unit_t guid;
-    guid.id = tmp->dep.gptr.unitid;
-    uintptr_t depref = tmp->dep.gptr.addr_or_offs.offset;
-    dart_tasking_remote_release_dep(guid, tmp->task, depref);
-    dephash_recycle_elem(tmp);
-  }
+    guid.id = rs->dep.gptr.unitid;
+    uintptr_t depref = rs->dep.gptr.addr_or_offs.offset;
+    dart_tasking_remote_release_dep(guid, rs->task, depref);
+    dephash_recycle_elem(rs);
+  } while (1);
   task->remote_successor = NULL;
   return DART_OK;
 }
