@@ -107,9 +107,6 @@ release_remote_dependencies(dart_task_t *task);
 static void
 dephash_recycle_elem(dart_dephash_elem_t *elem);
 
-static void
-dephash_recycle_elem_unsafe(dart_dephash_elem_t *elem);
-
 static dart_ret_t
 dart_tasking_datadeps_match_delayed_local_indep(
   const dart_task_dep_t * dep,
@@ -327,24 +324,6 @@ static void dephash_recycle_elem(dart_dephash_elem_t *elem)
     elem->prev = NULL;
     DART_LOG_TRACE("Pushing elem %p (prev=%p, next=%p) to freelist (head %p)",
                    elem, elem->prev, elem->next, elem_freelist_head.head.node);
-    DART_DEPHASH_ELEM_PUSH(elem_freelist_head, elem);
-#else
-    free(elem);
-#endif // USE_FREELIST
-  }
-}
-
-/**
- * Deallocate an element
- */
-static void dephash_recycle_elem_unsafe(dart_dephash_elem_t *elem)
-{
-  if (elem != NULL) {
-    //memset(elem, 0, sizeof(*elem));
-#ifdef USE_FREELIST
-    elem->next = NULL;
-    elem->prev = NULL;
-    DART_LOG_TRACE("Recycling elem %p (prev=%p, next=%p)", elem, elem->prev, elem->next);
     DART_DEPHASH_ELEM_PUSH(elem_freelist_head, elem);
 #else
     free(elem);
