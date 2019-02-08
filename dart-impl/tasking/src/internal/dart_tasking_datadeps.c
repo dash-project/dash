@@ -373,13 +373,11 @@ static void dephash_add_local_nolock(
         dart_task_t     * task,
         int               slot)
 {
-  taskref tr;
-  tr.local = task;
-  dart_task_t *parent = task->parent;
-  dart_dephash_elem_t *elem = dephash_allocate_elem(dep, tr, myguid);
+  dart_dephash_elem_t *new_elem = dephash_allocate_elem(dep, TASKREF(task), myguid);
 
   DART_STACK_PUSH_MEMB(task->deps_owned, elem, next_in_task);
 
+  dart_task_t *parent = task->parent;
   dephash_require_alloc(parent);
   // put the new entry at the beginning of the list
   dart_dephash_elem_t *head = parent->local_deps[slot].head;
@@ -996,9 +994,7 @@ dart_tasking_datadeps_match_local_dependency(
   }
 
   if (dep->type == DART_DEP_IN) {
-    taskref tr;
-    tr.local = task;
-    dart_dephash_elem_t *new_elem = dephash_allocate_elem(dep, tr, myguid);
+    dart_dephash_elem_t *new_elem = dephash_allocate_elem(dep, TASKREF(task), myguid);
     DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
     if (elem == NULL) {
       // couldn't find matching output dependency
@@ -1010,7 +1006,7 @@ dart_tasking_datadeps_match_local_dependency(
         // create a dummy output dependency and register with it
         dart_task_dep_t out_dep = *dep;
         out_dep.type = DART_DEP_OUT;
-        dart_dephash_elem_t *out_elem = dephash_allocate_elem(dep, tr, myguid);
+        dart_dephash_elem_t *out_elem = dephash_allocate_elem(dep, TASKREF(task), myguid);
         out_elem->task.local = NULL;
         // use this elem below
         elem = out_elem;
@@ -1089,9 +1085,8 @@ dart_tasking_datadeps_match_delayed_local_indep(
                       "Cannot insert existing task with delayed dependency!");
 
       DART_ASSERT(IS_ACTIVE_TASK(elem_task));
-      taskref tr;
-      tr.local = task;
-      dart_dephash_elem_t *new_elem = dephash_allocate_elem(dep, tr, myguid);
+      dart_dephash_elem_t *new_elem;
+      new_elem = dephash_allocate_elem(dep, TASKREF(task), myguid);
 
       LOCK_TASK(elem);
       if (elem->task.local != NULL) {
@@ -1301,10 +1296,10 @@ dart_ret_t dart_tasking_datadeps_release_remote_task(
     dart_task_dep_t dep;
     dep.gptr.unitid = unit.id;
     dep.gptr.addr_or_offs.offset = elem;
-    taskref tr;
-    tr.local = local_task;
-    dart_dephash_elem_t *new_elem = dephash_allocate_elem(&dep, tr, unit);
+    dart_dephash_elem_t *new_elem = dephash_allocate_elem(&dep, TASKREF(NULL), unit);
     DART_STACK_PUSH(local_task->remote_successor, new_elem);
+    DART_LOG_TRACE("Storing dependency %p from unit %d in dep object %p",
+                   (void*)elem, unit.id, new_elem);
   }
 
   // release the task if it is runnable

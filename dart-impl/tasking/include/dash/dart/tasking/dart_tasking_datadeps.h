@@ -23,6 +23,8 @@ typedef union taskref {
   remote_task_t        remote;
 } taskref;
 
+#define TASKREF(_ptr) (union taskref){.local = _ptr}
+
 extern dart_taskqueue_t local_deferred_tasks DART_INTERNAL;
 
 /**
