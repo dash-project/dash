@@ -75,6 +75,7 @@ static          bool threads_running  = false;
 static volatile bool worker_poll_remote = false;
 
 static int num_threads;
+static int num_utility_threads = 0;
 
 // whether or not to respect numa placement
 static bool respect_numa = false;
@@ -1669,7 +1670,13 @@ static void* utility_thread_main(void *data)
   void      *fn_data      = ut->data;
 
   if (bind_threads) {
-    dart__tasking__affinity_set_utility(ut->pthread, -1);
+    int thread_id = ++num_utility_threads;
+    if (dart__tasking__affinity_num_cores() > (num_threads + thread_id)) {
+      printf("Binding utility thread like a regular thread!\n");
+      dart__tasking__affinity_set(ut->pthread, thread_id + num_threads);
+    } else {
+      dart__tasking__affinity_set_utility(ut->pthread, -thread_id);
+    }
   }
 
   dart_thread_t *thread = calloc(1, sizeof(*thread));

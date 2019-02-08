@@ -114,6 +114,7 @@ dart__tasking__affinity_ptr_numa_node(const void *ptr)
 static hwloc_topology_t topology;
 static hwloc_cpuset_t   ccpuset;
 static hwloc_cpuset_t   cpuset_used; // << set of used CPUS
+static uint32_t         num_cores = 1;
 
 void
 dart__tasking__affinity_init()
@@ -132,11 +133,12 @@ dart__tasking__affinity_init()
                     DART_THREAD_AFFINITY_VERBOSE_ENVSTR, false);
 #endif // DART_ENABLE_LOGGING
 
+  num_cores = hwloc_bitmap_weight(ccpuset);
 
   if (print_binding) {
     DART_LOG_INFO_ALWAYS(
       "Using hwloc to set affinity (print: %d)", print_binding);
-    int num_cpus = hwloc_bitmap_weight(ccpuset);
+    int num_cpus = num_cores;
     size_t len = num_cpus * 8;
     char* buf = malloc(sizeof(char) * len);
     unsigned int entry = hwloc_bitmap_first(ccpuset);
@@ -282,6 +284,12 @@ dart__tasking__affinity_core_numa_node(int core_id)
   }
   // NUMA domain 0 is the default
   return 0;
+}
+
+uint32_t
+dart__tasking__affinity_num_cores()
+{
+  return num_cores;
 }
 
 
