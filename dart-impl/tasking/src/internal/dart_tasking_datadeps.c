@@ -194,17 +194,22 @@ dart_ret_t dart_tasking_datadeps_reset(dart_task_t *task)
 {
   if (task == NULL || task->local_deps == NULL) return DART_OK;
 
+  DART_LOG_TRACE("Cleaning up dependency objects of task %p", task);
+
+#ifdef DART_ENABLE_ASSERTIONS
   for (int i = 0; i < DART_DEPHASH_SIZE; ++i) {
-    dart_dephash_elem_t *elem = task->local_deps[i].head;
-    free_dephash_list(elem);
+    DART_ASSERT_MSG(task->local_deps[i].head == NULL,
+                    "Found non-empty hash-map while tearing down hash table of "
+                    "task %p (elem %p)", task, task->local_deps[i].head);
   }
+  DART_ASSERT_MSG(task->remote_successor == NULL,
+                  "Found pending remote successors of task %p (elem %p)",
+                  task, task->remote_successor);
+#endif // DART_ENABLE_ASSERTIONS
+
   free(task->local_deps);
   task->local_deps = NULL;
-  free_dephash_list(task->remote_successor);
 
-  task->remote_successor = NULL;
-  task->unresolved_deps  = 0;
-  task->unresolved_remote_deps = 0;
   return DART_OK;
 }
 
