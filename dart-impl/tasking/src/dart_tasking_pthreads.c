@@ -629,7 +629,6 @@ dart_task_t * create_task(
 void dart__tasking__destroy_task(dart_task_t *task)
 {
   if (DART_TASK_HAS_FLAG(task, DART_TASK_DATA_ALLOCATED)) {
-    DART_TASK_UNSET_FLAG(task, DART_TASK_DATA_ALLOCATED);
     free(task->data);
   }
 
@@ -638,19 +637,9 @@ void dart__tasking__destroy_task(dart_task_t *task)
     dart__tasking__phase_take_task(task->phase);
   }
 
-  // reset some of the fields
-  task->data             = NULL;
-  DART_TASK_UNSET_FLAG(task, DART_TASK_HAS_REF);
-  task->fn               = NULL;
-  task->parent           = NULL;
-  task->prev             = NULL;
-  task->remote_successor = NULL;
-  task->successor        = NULL;
-  task->state            = DART_TASK_DESTROYED;
-  task->phase            = DART_PHASE_ANY;
-  task->descr            = NULL;
-
   dart_tasking_datadeps_reset(task);
+
+  task->state = DART_TASK_DESTROYED;
 
   DART_TASKLIST_ELEM_PUSH(task_free_list, task);
 }
