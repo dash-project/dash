@@ -15,11 +15,6 @@
 //#define DART_DEPHASH_SIZE 1023
 #define DART_DEPHASH_SIZE 511
 
-// if we have support for TCmalloc we don't have to manage memory on our own
-//#if !defined(DART_ENABLE_TCMALLOC)
-#define USE_FREELIST
-//#endif // DART_ENABLE_TCMALLOC
-
 /**
  * TODO: Extract implementation of list and hash table
  */
@@ -68,6 +63,7 @@ struct dart_dephash_elem {
   taskref                   task;           // task this dependency belongs to
   dart_global_unit_t        origin;         // the unit owning the task
   uint32_t                  num_consumers;  // For OUT: the number of consumers still not completed
+  uint16_t                  owner_thread;   // the thread that owns the element
   dart_tasklock_t           lock;           // lock used for element-wise locking
 };
 
@@ -79,10 +75,46 @@ struct dart_dephash_head {
   dart_dephash_elem_t *head;
 };
 
+/**
+ * Dependency hash element pool to speed up dependency handling.
+ */
+#define DART_DEPHASH_ELEM_POOL_SIZE (1024)
 
-#ifdef USE_FREELIST
-static dart_stack_t elem_freelist_head = DART_STACK_INITIALIZER;
-#endif
+typedef struct dart_dephash_elem_pool dart_dephash_elem_pool_t;
+
+struct dart_dephash_elem_pool {
+  DART_STACK_MEMBER_DEF;
+  uint32_t                  pos;
+  dart_dephash_elem_t       elems[DART_DEPHASH_ELEM_POOL_SIZE];
+};
+
+/**
+ * Per-thread memory pool.
+ */
+_Thread_local static dart_dephash_elem_pool_t *dephash_elem_pool = NULL;
+
+/**
+ * List of allocated dephash elem pools.
+ */
+static dart_stack_t dephash_elem_pool_list = DART_STACK_INITIALIZER;
+
+#define DART_DEPHASH_ELEM_POOL_POP(__freelist) \
+  (dart_dephash_elem_pool_t*)((void*)dart__base__stack_pop(&__freelist))
+
+#define DART_DEPHASH_ELEM_POOL_PUSH(__freelist, __elem) \
+  dart__base__stack_push(&__freelist, &DART_STACK_MEMBER_GET(__elem))
+
+/**
+ * Per-thread free-list for dependency elements. The elements are never
+ * deallocated but stored in the free list for later re-use.
+ */
+_Thread_local static dart_stack_t dephash_elem_freelist = DART_STACK_INITIALIZER;
+
+/**
+ * Array of pointers to the thread-local dephash_elem_freelist, needed to return
+ * elements to the correct owner.
+ */
+static dart_stack_t **dephash_elem_freelist_list;
 
 // list of incoming remote dependency requests defered to matching step
 static dart_dephash_elem_t *unhandled_remote_indeps  = NULL;
@@ -175,7 +207,8 @@ dart_ret_t dart_tasking_datadeps_init()
 {
   dart_myid(&myguid);
   dart_tasking_taskqueue_init(&local_deferred_tasks);
-
+  dephash_elem_freelist_list = calloc(dart__tasking__num_threads(),
+                                        sizeof(*dephash_elem_freelist_list));
   return dart_tasking_remote_init();
 }
 
@@ -216,12 +249,12 @@ dart_ret_t dart_tasking_datadeps_reset(dart_task_t *task)
 dart_ret_t dart_tasking_datadeps_fini()
 {
   dart_tasking_datadeps_reset(dart__tasking__current_task());
-#ifdef USE_FREELIST
-  dart_dephash_elem_t *elem;
-  while ((elem = DART_DEPHASH_ELEM_POP(elem_freelist_head))!= NULL) {
-    free(elem);
+  dart_dephash_elem_pool_t *pool;
+  while (NULL != (pool = DART_DEPHASH_ELEM_POOL_POP(dephash_elem_pool_list))) {
+    free(pool);
   }
-#endif // USE_FREELIST
+  free(dephash_elem_freelist_list);
+  dephash_elem_freelist_list = NULL;
   dart_tasking_taskqueue_finalize(&local_deferred_tasks);
   return dart_tasking_remote_fini();
 }
@@ -273,12 +306,26 @@ dephash_allocate_elem(
 {
   // take an element from the free list if possible
   dart_dephash_elem_t *elem = NULL;
-#ifdef USE_FREELIST
-  elem = DART_DEPHASH_ELEM_POP(elem_freelist_head);
-#endif // USE_FREELIST
+  elem = DART_DEPHASH_ELEM_POP(dephash_elem_freelist);
 
   if (elem == NULL){
-    elem = malloc(sizeof(dart_dephash_elem_t));
+    int thread_id = dart__tasking__thread_num();
+    DART_ASSERT(thread_id >= 0 && thread_id < UINT16_MAX);
+    // attempt to take an element from the pool
+    if (!(dephash_elem_pool->pos < DART_DEPHASH_ELEM_POOL_SIZE)) {
+      // allocate a new pool and take from that
+      dephash_elem_pool = malloc(sizeof(*dephash_elem_pool));
+      dephash_elem_pool->pos = 0;
+      // make sure this pool is registered for deallocation
+      DART_DEPHASH_ELEM_POOL_PUSH(dephash_elem_pool_list, dephash_elem_pool);
+      // upon first allocation, we also have to make sure that our freelist is
+      // accessible from other threads
+      if (dephash_elem_freelist_list[thread_id] == NULL) {
+        dephash_elem_freelist_list[thread_id] = &dephash_elem_freelist;
+      }
+    }
+    elem = &dephash_elem_pool->elems[dephash_elem_pool->pos++];
+    elem->owner_thread = thread_id;
   }
 
   elem->task    = task;
@@ -350,16 +397,12 @@ deregister_in_dep(
 static void dephash_recycle_elem(dart_dephash_elem_t *elem)
 {
   if (elem != NULL) {
-    //memset(elem, 0, sizeof(*elem));
-#ifdef USE_FREELIST
     elem->next = NULL;
     elem->prev = NULL;
-    DART_LOG_TRACE("Pushing elem %p (prev=%p, next=%p) to freelist (head %p)",
-                   elem, elem->prev, elem->next, elem_freelist_head.head.node);
-    DART_DEPHASH_ELEM_PUSH(elem_freelist_head, elem);
-#else
-    free(elem);
-#endif // USE_FREELIST
+    dart_stack_t *lifo = dephash_elem_freelist_list[elem->owner_thread];
+    DART_LOG_TRACE("Pushing elem %p (prev=%p, next=%p) to freelist (head %p, thread %d)",
+                   elem, elem->prev, elem->next, lifo->head.node, elem->owner_thread);
+    DART_DEPHASH_ELEM_PUSH(*lifo, elem);
   }
 }
 
