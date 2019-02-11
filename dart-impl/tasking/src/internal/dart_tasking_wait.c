@@ -96,7 +96,7 @@ dart__task__wait_handle(dart_handle_t *handles, size_t num_handle)
 #endif // HAVE_RESCHEDULING_YIELD
 }
 
-#define NUM_CHUNK_HANDLE 16
+#define NUM_CHUNK_HANDLE 64
 
 static void process_handle_chunk(
   dart_task_t   **tasks,
@@ -151,15 +151,18 @@ dart__task__wait_progress()
       int num_tasks = 0;
       dart_handle_t handle[NUM_CHUNK_HANDLE];
       int num_handle = 0;
-      while ((task = dart_tasking_taskqueue_pop(&handle_list)) != NULL) {
+      dart_tasking_taskqueue_lock(&handle_list);
+      while ((task = dart_tasking_taskqueue_pop_unsafe(&handle_list)) != NULL) {
         if (task->wait_handle->num_handle > NUM_CHUNK_HANDLE) {
+          dart_tasking_taskqueue_unlock(&handle_list);
           process_handle_chunk(&task, 1,
                               task->wait_handle->handle,
                               task->wait_handle->num_handle);
+          dart_tasking_taskqueue_lock(&handle_list);
         } else {
           if ((num_handle + task->wait_handle->num_handle) > NUM_CHUNK_HANDLE) {
             // put back into queue and try again after we processed the current chunk
-            dart_tasking_taskqueue_push(&handle_list, task);
+            dart_tasking_taskqueue_push_unsafe(&handle_list, task);
             break;
           }
 
@@ -169,14 +172,17 @@ dart__task__wait_progress()
           }
         }
       }
+      dart_tasking_taskqueue_unlock(&handle_list);
       if (num_handle) {
         process_handle_chunk(tasks, num_tasks, handle, num_handle);
       }
     }
     // move the remaining tasks to the main queue
-    dart_tasking_taskqueue_lock(&handle_list);
-    dart_tasking_taskqueue_move_unsafe(&handle_list, &handle_list_tmp);
-    dart_tasking_taskqueue_unlock(&handle_list);
+    if (handle_list_tmp.num_elem > 0) {
+      dart_tasking_taskqueue_lock(&handle_list);
+      dart_tasking_taskqueue_move_unsafe(&handle_list, &handle_list_tmp);
+      dart_tasking_taskqueue_unlock(&handle_list);
+    }
     dart_tasking_taskqueue_unlock(&handle_list_tmp);
   }
 }
