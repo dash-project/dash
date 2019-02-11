@@ -207,7 +207,8 @@ dart_ret_t dart_tasking_datadeps_init()
 {
   dart_myid(&myguid);
   dart_tasking_taskqueue_init(&local_deferred_tasks);
-  dephash_elem_freelist_list = calloc(dart__tasking__num_threads(),
+  int num_threads = dart__tasking__num_threads() + DART_TASKING_MAX_UTILITY_THREADS;
+  dephash_elem_freelist_list = calloc(num_threads,
                                         sizeof(*dephash_elem_freelist_list));
   return dart_tasking_remote_init();
 }
@@ -310,9 +311,14 @@ dephash_allocate_elem(
 
   if (elem == NULL){
     int thread_id = dart__tasking__thread_num();
+    if (thread_id < 0) {
+      // utility threads carry negative thread IDs so we need to adjust
+      thread_id = -thread_id + dart__tasking__num_threads();
+    }
     DART_ASSERT(thread_id >= 0 && thread_id < UINT16_MAX);
     // attempt to take an element from the pool
-    if (!(dephash_elem_pool->pos < DART_DEPHASH_ELEM_POOL_SIZE)) {
+    if (dephash_elem_pool == NULL ||
+        !(dephash_elem_pool->pos < DART_DEPHASH_ELEM_POOL_SIZE)) {
       // allocate a new pool and take from that
       dephash_elem_pool = malloc(sizeof(*dephash_elem_pool));
       dephash_elem_pool->pos = 0;
