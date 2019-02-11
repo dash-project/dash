@@ -52,42 +52,25 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
 
     parent_gaspi_group = dart_teams[unique_id].id;
 
+    dart_group_ismember(group, myid, &ismember_tmp);
     // gaspi_group_create needs to be called as often as groups are created
-
     for( size_t i = 0; i < (group->nsplit); ++i )
     {
         DART_CHECK_ERROR(gaspi_group_create(&temp_group));
-        dart_group_ismember(group, myid, &ismember_tmp);
-        if(ismember_tmp)
+        
+        if(ismember_tmp && group->sibling == i)
         {
-            fprintf(stderr, "I [%d] am a member of the group\n", myid.id);
+            fprintf(stderr, "I [%d] am a member of the group [%d, %d]\n", myid.id, group->l2g[0], group->l2g[1]);
             ismember = 1;
             new_gaspi_group = temp_group;
         }
     }
 
-    if(0==ismember)
+    /*if(0==ismember)
     {
         fprintf(stderr,"Id: %d exits with member status: %d\n", myid.id, ismember);
         return DART_OK;
-    } 
-    
-    size_t gsize;
-    dart_group_size(group, &gsize);
-    dart_global_unit_t * group_members = malloc(sizeof(dart_unit_t) * gsize);
-    assert(group_members);
-
-    DART_CHECK_ERROR(dart_group_getmembers(group, group_members));
-    for(size_t i = 0 ; i < gsize ; ++i)
-    {
-        DART_CHECK_ERROR(gaspi_group_add(new_gaspi_group, group_members[i].id));
-    }
-
-    // -> in gaspi a rank needs to be part of the commited group
-    DART_CHECK_ERROR(gaspi_group_commit(new_gaspi_group, GASPI_BLOCK));
-
-    *newteam = DART_TEAM_NULL;
-
+    }*/
     /* Get the maximum next_availteamid among all the units belonging to the parent team specified by 'teamid'. */
     DART_CHECK_ERROR(gaspi_allreduce(&dart_next_availteamid,
                                      &max_teamid,
@@ -95,18 +78,38 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
 
     dart_next_availteamid = max_teamid + 1;
 
-    result = dart_adapt_teamlist_alloc (max_teamid, &index);
-    if (result == -1)
-    {
-        return DART_ERR_OTHER;
-    }
-    /* max_teamid is thought to be the new created team ID. */
-    *newteam = max_teamid;
-    fprintf(stderr,"New team created: %d by me: [%d] ismember: [%d]\n" , max_teamid, myid.id, ismember);
-    dart_teams[index].id = new_gaspi_group;
-    memcpy(&(dart_teams[index].group), group, sizeof(dart_group_t));
+    *newteam = DART_TEAM_NULL;
 
-    free(group_members);
+    if(ismember)
+    {
+        size_t gsize;
+        dart_group_size(group, &gsize);
+        dart_global_unit_t * group_members = malloc(sizeof(dart_unit_t) * gsize);
+        assert(group_members);
+
+        DART_CHECK_ERROR(dart_group_getmembers(group, group_members));
+        for(size_t i = 0 ; i < gsize ; ++i)
+        {
+            DART_CHECK_ERROR(gaspi_group_add(new_gaspi_group, group_members[i].id));
+        }
+
+        // -> in gaspi a rank needs to be part of the commited group
+        DART_CHECK_ERROR(gaspi_group_commit(new_gaspi_group, GASPI_BLOCK));
+
+        result = dart_adapt_teamlist_alloc (max_teamid, &index);
+        if (result == -1)
+        {
+            return DART_ERR_OTHER;
+        }
+        /* max_teamid is thought to be the new created team ID. */
+        *newteam = max_teamid;
+        fprintf(stderr,"New team created: %d by me: [%d] ismember: [%d]\n" , max_teamid, myid.id, ismember);
+        dart_teams[index].id = new_gaspi_group;
+        memcpy(&(dart_teams[index].group), &group, sizeof(dart_group_t));
+        //dart_teams[index].group = group;
+        free(group_members);
+    }
+
     return DART_OK;
 }
 /**

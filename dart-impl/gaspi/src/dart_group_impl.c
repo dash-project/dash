@@ -11,9 +11,9 @@
 #include <dash/dart/base/assert.h>
 #include <dash/dart/base/locality.h>
 
-static struct dart_group_struct* allocate_group()
+static dart_group_t allocate_group()
 {
-  return (struct dart_group_struct*) malloc(sizeof(struct dart_group_struct));
+  return (dart_group_t) malloc(sizeof(struct dart_group_struct));
 };
 
 dart_ret_t dart_group_sizeof(size_t *size)
@@ -30,6 +30,7 @@ dart_ret_t dart_group_create(
     (*group) = allocate_group();
     (*group)->nmem = 0;
     (*group)->nsplit = 1;
+    (*group)->sibling = 0;
     for (int i = 0; i < MAXSIZE_GROUP; ++i)
     {
         ((*group)->g2l)[i] = -1;
@@ -214,6 +215,7 @@ dart_ret_t dart_group_split(
     for (int i = 0; i < n; ++i)
     {
         gout[i]->nsplit = *nout;
+        gout[i]->sibling = i;
     }
 
     return DART_OK;
