@@ -134,6 +134,11 @@ struct dart_task_data {
     }                                \
   } while (0)
 
+/**
+ * The maximum number of utility threads allowed. Adjust if adding potential new
+ * utlity thread!
+ */
+#define DART_TASKING_MAX_UTILITY_THREADS 1
 
 /*
  * Special priority signalling to immediately execute the task when ready.

@@ -897,7 +897,12 @@ void* thread_main(void *data)
   DART_LOG_INFO("Thread %d starting up", tid->threadid);
   int core_id = 0;
   if (bind_threads) {
-    core_id = dart__tasking__affinity_set(tid->pthread, tid->threadid);
+    // leave room for utility threads if we have enough cores
+    if (dart__tasking__affinity_num_cores() > (num_utility_threads + num_threads)) {
+      dart__tasking__affinity_set(tid->pthread, tid->threadid + num_utility_threads);
+    } else {
+      dart__tasking__affinity_set(tid->pthread, tid->threadid);
+    }
   }
 
   dart_thread_t *thread = malloc(sizeof(dart_thread_t));
@@ -1669,18 +1674,22 @@ static void* utility_thread_main(void *data)
   void     (*fn) (void *) = ut->fn;
   void      *fn_data      = ut->data;
 
+  int thread_id = ++num_utility_threads;
+  DART_ASSERT_MSG(DART_TASKING_MAX_UTILITY_THREADS >= thread_id,
+                  "Too many utility threads detected (%d), please adjust "
+                  "DART_TASKING_MAX_UTILITY_THREADS (%d)",
+                  thread_id, DART_TASKING_MAX_UTILITY_THREADS);
   if (bind_threads) {
-    int thread_id = ++num_utility_threads;
     if (dart__tasking__affinity_num_cores() > (num_threads + thread_id)) {
       printf("Binding utility thread like a regular thread!\n");
-      dart__tasking__affinity_set(ut->pthread, thread_id + num_threads);
+      dart__tasking__affinity_set(ut->pthread, thread_id);
     } else {
       dart__tasking__affinity_set_utility(ut->pthread, -thread_id);
     }
   }
 
   dart_thread_t *thread = calloc(1, sizeof(*thread));
-  dart_thread_init(thread, -1);
+  dart_thread_init(thread, -thread_id);
   thread->is_utility_thread = true;
 
   __tpd = thread;

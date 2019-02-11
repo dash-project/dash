@@ -115,6 +115,7 @@ static hwloc_topology_t topology;
 static hwloc_cpuset_t   ccpuset;
 static hwloc_cpuset_t   cpuset_used; // << set of used CPUS
 static uint32_t         num_cores = 1;
+static uint32_t         num_numa_nodes = 1;
 
 void
 dart__tasking__affinity_init()
@@ -133,12 +134,17 @@ dart__tasking__affinity_init()
                     DART_THREAD_AFFINITY_VERBOSE_ENVSTR, false);
 #endif // DART_ENABLE_LOGGING
 
-  num_cores = hwloc_bitmap_weight(ccpuset);
+  num_cores = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_CORE);
+  num_numa_nodes = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NUMANODE);
+  if (num_numa_nodes == 0) num_numa_nodes = 1;
+
+  DART_LOG_INFO("Found %d cores (%d cpus) on %d NUMA nodes", num_cores,
+                hwloc_bitmap_weight(ccpuset), num_numa_nodes);
 
   if (print_binding) {
     DART_LOG_INFO_ALWAYS(
       "Using hwloc to set affinity (print: %d)", print_binding);
-    int num_cpus = num_cores;
+    int num_cpus = hwloc_bitmap_weight(ccpuset);
     size_t len = num_cpus * 8;
     char* buf = malloc(sizeof(char) * len);
     unsigned int entry = hwloc_bitmap_first(ccpuset);
@@ -262,15 +268,7 @@ dart__tasking__affinity_set_utility(pthread_t pthread, int dart_thread_id)
 int
 dart__tasking__affinity_num_numa_nodes()
 {
-  int nnumanodes = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NUMANODE);
-
-  if (nnumanodes < 0) {
-    DART_LOG_ERROR("Call to hwloc_get_nbobjs_by_type(HWLOC_OBJ_NUMANODE) failed!");
-  }
-
-  if (nnumanodes == 0) nnumanodes = 1;
-
-  return nnumanodes;
+  return num_numa_nodes;
 }
 
 int
