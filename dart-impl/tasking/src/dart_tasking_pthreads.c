@@ -154,8 +154,11 @@ void handle_task(dart_task_t *task, dart_thread_t *thread);
 static
 void remote_progress(dart_thread_t *thread, bool force);
 
+static uint64_t acc_matching_time_us = 0;
+static uint64_t acc_idle_time_us     = 0;
+
 static inline
-double current_time_us() {
+uint64_t current_time_us() {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return CLOCK_TIME_USEC(ts);
@@ -934,6 +937,7 @@ void* thread_main(void *data)
 
   struct timespec begin_idle_ts;
   bool in_idle = false;
+  int64_t start_idle_ts;
   // sleep-time: 100us
   const struct timespec sleeptime = {0, IDLE_THREAD_GRACE_SLEEP_USEC*1000};
   // enter work loop
@@ -946,9 +950,10 @@ void* thread_main(void *data)
     dart_task_t *task = next_task(thread);
 
     if (!in_idle && task == NULL) {
+      start_idle_ts = current_time_us();
       EVENT_ENTER(EVENT_IDLE);
-    }
-    if (in_idle && task != NULL) {
+    } else if (in_idle && task != NULL) {
+      DART_FETCH_AND_ADD64(&acc_idle_time_us, current_time_us() - start_idle_ts);
       EVENT_EXIT(EVENT_IDLE);
     }
     handle_task(task, thread);
@@ -1316,6 +1321,7 @@ dart__tasking__perform_matching(dart_taskphase_t phase)
     // nothing to be done for one unit
     return;
   }
+  uint64_t start_ts = current_time_us();
   //printf("Performing matching at phase %d\n", phase);
   // make sure all incoming requests are served
   dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
@@ -1331,6 +1337,8 @@ dart__tasking__perform_matching(dart_taskphase_t phase)
   dart_tasking_datadeps_handle_defered_local();
   // wakeup all thread to execute potentially available tasks
   wakeup_thread_all();
+  uint64_t end_ts = current_time_us() - start_ts;
+  DART_FETCH_AND_ADD64(&acc_matching_time_us, end_ts);
 }
 
 
@@ -1589,6 +1597,8 @@ destroy_threadpool(bool print_stats)
                       i, thread_pool[i]->taskcntr);
       }
     }
+    DART_LOG_INFO("Accumulated matching time: %lu us", acc_matching_time_us);
+    DART_LOG_INFO("Accumulated idle time:     %lu us", acc_idle_time_us);
     DART_LOG_INFO("######################");
   }
 #endif // DART_ENABLE_LOGGING
