@@ -1213,7 +1213,7 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
                      local_deferred_tasks.num_elem);
       if (task->state == DART_TASK_CREATED || task->state == DART_TASK_QUEUED) {
         task->state = DART_TASK_DEFERRED;
-        dart_tasking_taskqueue_push(&local_deferred_tasks, task);
+        dart_tasking_taskqueue_pushback(&local_deferred_tasks, task);
         enqueued = true;
       }
     }
