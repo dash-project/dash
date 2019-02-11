@@ -313,7 +313,7 @@ dephash_allocate_elem(
     int thread_id = dart__tasking__thread_num();
     if (thread_id < 0) {
       // utility threads carry negative thread IDs so we need to adjust
-      thread_id = -thread_id + dart__tasking__num_threads();
+      thread_id = -thread_id + dart__tasking__num_threads() - 1;
     }
     DART_ASSERT(thread_id >= 0 && thread_id < UINT16_MAX);
     // attempt to take an element from the pool
