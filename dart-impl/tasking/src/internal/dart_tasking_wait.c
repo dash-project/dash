@@ -205,7 +205,7 @@ dart__task__detach_handle(
   dart__tasking__mark_detached(task);
 
   int num_nn_handles = 0;
-  for (int i = 0; i < num_nn_handles; ++i) {
+  for (int i = 0; i < num_handle; ++i) {
     if (handles[i]) ++num_nn_handles;
   }
 
