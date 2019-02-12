@@ -14,6 +14,19 @@
 static dart_taskqueue_t handle_list;
 static dart_taskqueue_t handle_list_tmp;
 
+struct dart_wait_handle_s {
+  union {
+    DART_STACK_MEMBER_DEF;
+    struct {
+      size_t              num_handle;
+      dart_handle_t       handle[];
+    };
+  };
+};
+
+
+#define WAIT_HANDLE_FREELIST_MAX_SIZE 16
+static dart_stack_t waithandle_freelist[WAIT_HANDLE_FREELIST_MAX_SIZE];
 
 void
 dart__task__wait_init()
@@ -22,6 +35,36 @@ dart__task__wait_init()
   dart_tasking_taskqueue_init(&handle_list);
   dart_tasking_taskqueue_init(&handle_list_tmp);
 #endif // HAVE_RESCHEDULING_YIELD
+
+  for (int i = 0; i < WAIT_HANDLE_FREELIST_MAX_SIZE; ++i) {
+    dart__base__stack_init(&waithandle_freelist[i]);
+  }
+}
+
+static inline
+dart_wait_handle_t *allocate_waithandle(int num_handle)
+{
+  dart_wait_handle_t * waithandle = NULL;
+  DART_ASSERT_MSG(num_handle > 0, "Refusing to allocate empty waithandle!");
+  if (num_handle > WAIT_HANDLE_FREELIST_MAX_SIZE ||
+      (NULL != (waithandle = (dart_wait_handle_t *)
+                  dart__base__stack_pop(&waithandle_freelist[num_handle-1])))) {
+    waithandle = allocate_waithandle(num_handle);
+  }
+  return waithandle;
+}
+
+static inline
+dart_wait_handle_t *release_waithandle(dart_wait_handle_t *waithandle)
+{
+  DART_ASSERT_MSG(waithandle->num_handle > 0,
+                  "Refusing to release empty waithandle!");
+  if (waithandle->num_handle > WAIT_HANDLE_FREELIST_MAX_SIZE) {
+    free(waithandle);
+  } else {
+    dart__base__stack_push(&waithandle_freelist[waithandle->num_handle-1],
+                           &DART_STACK_MEMBER_GET(waithandle));
+  }
 }
 
 void
@@ -67,8 +110,7 @@ dart__task__wait_handle(dart_handle_t *handles, size_t num_handle)
     current_task->wait_handle = NULL;
     test_yield(handles, num_handle);
   } else {
-    dart_wait_handle_t *waithandle = malloc(sizeof(*waithandle) +
-                                            sizeof(dart_handle_t)*num_handle);
+    dart_wait_handle_t *waithandle = allocate_waithandle(num_handle);
     memcpy(waithandle->handle, handles, sizeof(*handles)*num_handle);
     waithandle->num_handle    = num_handle;
     current_task->wait_handle = waithandle;
@@ -80,7 +122,7 @@ dart__task__wait_handle(dart_handle_t *handles, size_t num_handle)
     if (current_task->wait_handle != NULL) {
       DART_LOG_DEBUG("wait_handle: yield did not block task %p until completion, "
                      "falling back to test-yield!", current_task);
-      free(current_task->wait_handle);
+      release_waithandle(current_task->wait_handle);
       current_task->wait_handle = NULL;
       current_task->state = DART_TASK_SUSPENDED;
       test_yield(handles, num_handle);
@@ -119,7 +161,7 @@ static void process_handle_chunk(
       ++c;
     }
     if (task_completed) {
-      free(task->wait_handle);
+      release_waithandle(task->wait_handle);
       task->wait_handle = NULL;
       if (task->state != DART_TASK_DETACHED) {
         // all transfers finished, the task can be requeued
@@ -192,7 +234,7 @@ dart__task__wait_enqueue(dart_task_t *task)
 {
   DART_LOG_TRACE("Enqueueing blocked task %p \n", task);
   if (task->wait_handle == NULL || task->wait_handle->num_handle == 0) {
-    free(task->wait_handle);
+    release_waithandle(task->wait_handle);
     dart__tasking__release_detached(task);
   } else {
     dart_tasking_taskqueue_pushback(&handle_list, task);
@@ -217,8 +259,7 @@ dart__task__detach_handle(
 
   if (num_nn_handles) {
     // register the task for waiting
-    dart_wait_handle_t *waithandle = malloc(sizeof(*waithandle) +
-                                            sizeof(dart_handle_t)*num_nn_handles);
+    dart_wait_handle_t *waithandle = allocate_waithandle(num_nn_handles);
     int c = 0;
     for (int i = 0; i < num_handle; ++i) {
       if (handles[i]) waithandle->handle[c++] = handles[i];

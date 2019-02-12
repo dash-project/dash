@@ -186,11 +186,6 @@ typedef struct {
   bool                    is_utility_thread; // whether the thread is a worker or utility thread
 } dart_thread_t;
 
-struct dart_wait_handle_s {
-  size_t              num_handle;
-  dart_handle_t       handle[];
-};
-
 dart_ret_t
 dart__tasking__init() DART_INTERNAL;
 
