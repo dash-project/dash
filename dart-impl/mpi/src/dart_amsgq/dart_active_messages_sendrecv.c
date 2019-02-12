@@ -31,12 +31,6 @@
 
 static int amsgq_mpi_tag = 10001;
 
-// on MPICH and it's derivatives ISSEND seems broken
-#ifdef MPICH
-#define IS_ISSEND_BROKEN 1
-#endif // MPICH
-
-
 struct dart_amsgq_impl_data {
   MPI_Request *recv_reqs;
   char *      *recv_bufs;
@@ -128,6 +122,14 @@ dart_amsg_sendrecv_openq(
   }
   struct dart_amsgq_impl_data* res = calloc(1, sizeof(*res));
   MPI_Comm_dup(team_data->comm, &res->comm);
+
+  // signal MPI that we don't care about the order of messages
+  MPI_Info info;
+  MPI_Info_create(&info);
+  MPI_Info_set(info, "mpi_assert_allow_overtaking", "true");
+  MPI_Comm_set_info(res->comm, info);
+  MPI_Info_free(&info);
+
   dart__base__mutex_init(&res->send_mutex);
   dart__base__mutex_init(&res->processing_mutex);
   res->msg_size    = msg_size;
@@ -329,10 +331,7 @@ dart_amsg_sendrevc_process_blocking(
       }
     }
   } while (!(barrier_flag && send_flag));
-#ifdef IS_ISSEND_BROKEN
-  // if Issend is broken we need another round of synchronization
-  MPI_Barrier(amsgq->comm);
-#endif
+
   amsg_sendrecv_process_internal(amsgq, true, true);
   // final synchronization
   // TODO: I don't think this is needed here!
