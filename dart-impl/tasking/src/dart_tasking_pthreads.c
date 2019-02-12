@@ -154,8 +154,11 @@ void handle_task(dart_task_t *task, dart_thread_t *thread);
 static
 void remote_progress(dart_thread_t *thread, bool force);
 
-static uint64_t acc_matching_time_us = 0;
-static uint64_t acc_idle_time_us     = 0;
+static int64_t acc_matching_time_us = 0;
+static int64_t acc_idle_time_us     = 0;
+static int64_t acc_post_time_us     = 0;
+_Thread_local static int64_t thread_acc_idle_time_us = 0;
+_Thread_local static int64_t thread_idle_start_ts    = 0;
 
 static inline
 uint64_t current_time_us() {
@@ -684,6 +687,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 {
   if (task != NULL)
   {
+    int64_t postprocessing_start_ts;
     DART_LOG_DEBUG("Thread %i executing task %p ('%s')",
                   thread->thread_id, task, task->descr);
 
@@ -699,7 +703,13 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     UNLOCK_TASK(task);
 
     // start execution, change to another task in between
+    if (thread_idle_start_ts) {
+      int64_t idle_time = current_time_us() - thread_idle_start_ts;
+      DART_FETCH_AND_ADD64(&acc_idle_time_us, idle_time);
+      thread_acc_idle_time_us += idle_time;
+    }
     invoke_task(task, thread);
+    thread_idle_start_ts = postprocessing_start_ts = current_time_us();
 
     // we're coming back into this task here
     dart_task_t *prev_task = dart_task_current_task();
@@ -773,6 +783,8 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     }
     // return to previous task
     set_current_task(current_task);
+    DART_FETCH_AND_ADD64(&acc_post_time_us,
+                         current_time_us() - postprocessing_start_ts);
   }
 }
 
@@ -937,7 +949,6 @@ void* thread_main(void *data)
 
   struct timespec begin_idle_ts;
   bool in_idle = false;
-  int64_t start_idle_ts;
   // sleep-time: 100us
   const struct timespec sleeptime = {0, IDLE_THREAD_GRACE_SLEEP_USEC*1000};
   // enter work loop
@@ -950,10 +961,8 @@ void* thread_main(void *data)
     dart_task_t *task = next_task(thread);
 
     if (!in_idle && task == NULL) {
-      start_idle_ts = current_time_us();
       EVENT_ENTER(EVENT_IDLE);
     } else if (in_idle && task != NULL) {
-      DART_FETCH_AND_ADD64(&acc_idle_time_us, current_time_us() - start_idle_ts);
       EVENT_EXIT(EVENT_IDLE);
     }
     handle_task(task, thread);
@@ -1597,8 +1606,10 @@ destroy_threadpool(bool print_stats)
                       i, thread_pool[i]->taskcntr);
       }
     }
-    DART_LOG_INFO("Accumulated matching time: %lu us", acc_matching_time_us);
-    DART_LOG_INFO("Accumulated idle time:     %lu us", acc_idle_time_us);
+    DART_LOG_INFO("Accumulated matching time:           %lu us", acc_matching_time_us);
+    DART_LOG_INFO("Accumulated idle time:               %lu us", acc_idle_time_us);
+    DART_LOG_INFO("Thread 0 idle time:                  %lu us", thread_acc_idle_time_us);
+    DART_LOG_INFO("Accumulated postprocessing time:     %lu us", acc_post_time_us);
     DART_LOG_INFO("######################");
   }
 #endif // DART_ENABLE_LOGGING
