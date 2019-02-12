@@ -28,6 +28,32 @@ struct dart_wait_handle_s {
 #define WAIT_HANDLE_FREELIST_MAX_SIZE 16
 static dart_stack_t waithandle_freelist[WAIT_HANDLE_FREELIST_MAX_SIZE];
 
+static inline
+dart_wait_handle_t *allocate_waithandle(int num_handle)
+{
+  dart_wait_handle_t * waithandle = NULL;
+  DART_ASSERT_MSG(num_handle > 0, "Refusing to allocate empty waithandle!");
+  if (num_handle > WAIT_HANDLE_FREELIST_MAX_SIZE ||
+      (NULL == (waithandle = (dart_wait_handle_t *)
+                  dart__base__stack_pop(&waithandle_freelist[num_handle-1])))) {
+    waithandle = malloc(sizeof(*waithandle) + num_handle*sizeof(dart_handle_t));
+  }
+  return waithandle;
+}
+
+static inline
+void release_waithandle(dart_wait_handle_t *waithandle)
+{
+  DART_ASSERT_MSG(waithandle->num_handle > 0,
+                  "Refusing to release empty waithandle!");
+  if (waithandle->num_handle > WAIT_HANDLE_FREELIST_MAX_SIZE) {
+    free(waithandle);
+  } else {
+    dart__base__stack_push(&waithandle_freelist[waithandle->num_handle-1],
+                           &DART_STACK_MEMBER_GET(waithandle));
+  }
+}
+
 void
 dart__task__wait_init()
 {
@@ -41,32 +67,6 @@ dart__task__wait_init()
   }
 }
 
-static inline
-dart_wait_handle_t *allocate_waithandle(int num_handle)
-{
-  dart_wait_handle_t * waithandle = NULL;
-  DART_ASSERT_MSG(num_handle > 0, "Refusing to allocate empty waithandle!");
-  if (num_handle > WAIT_HANDLE_FREELIST_MAX_SIZE ||
-      (NULL != (waithandle = (dart_wait_handle_t *)
-                  dart__base__stack_pop(&waithandle_freelist[num_handle-1])))) {
-    waithandle = allocate_waithandle(num_handle);
-  }
-  return waithandle;
-}
-
-static inline
-dart_wait_handle_t *release_waithandle(dart_wait_handle_t *waithandle)
-{
-  DART_ASSERT_MSG(waithandle->num_handle > 0,
-                  "Refusing to release empty waithandle!");
-  if (waithandle->num_handle > WAIT_HANDLE_FREELIST_MAX_SIZE) {
-    free(waithandle);
-  } else {
-    dart__base__stack_push(&waithandle_freelist[waithandle->num_handle-1],
-                           &DART_STACK_MEMBER_GET(waithandle));
-  }
-}
-
 void
 dart__task__wait_fini()
 {
@@ -74,6 +74,13 @@ dart__task__wait_fini()
   dart_tasking_taskqueue_finalize(&handle_list);
   dart_tasking_taskqueue_finalize(&handle_list_tmp);
 #endif // HAVE_RESCHEDULING_YIELD
+  dart_wait_handle_t *waithandle;
+  for (int i = 0; i < WAIT_HANDLE_FREELIST_MAX_SIZE; ++i) {
+    while (NULL != (waithandle = (dart_wait_handle_t *)
+                    dart__base__stack_pop(&waithandle_freelist[i]))) {
+      free(waithandle);
+    }
+  }
 }
 
 static void
