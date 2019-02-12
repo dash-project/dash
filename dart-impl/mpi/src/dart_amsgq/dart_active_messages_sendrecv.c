@@ -113,7 +113,7 @@ dart_amsg_sendrecv_openq(
 {
   *queue = NULL;
   bool direct_send = dart__base__env__bool(DART_AMSGQ_SENDRECV_DIRECT_ENVSTR,
-                                    false);
+                                    true);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
