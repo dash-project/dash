@@ -22,6 +22,7 @@
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/math.h>
+#include <dash/dart/base/stack.h>
 
 #include <stdio.h>
 #include <mpi.h>
@@ -92,12 +93,42 @@
 /** DART handle type for non-blocking one-sided operations. */
 struct dart_handle_struct
 {
-  MPI_Request reqs[2];   // a large transfer might consist of two operations
-  MPI_Win     win;
-  dart_unit_t dest;
-  uint8_t     num_reqs;
-  bool        needs_flush;
+  union {
+    // used to store handles in a lock-less lifo, keep as first element!
+    DART_STACK_MEMBER_DEF;
+    struct {
+      MPI_Request reqs[2];   // a large transfer might consist of two operations
+      MPI_Win     win;
+      dart_unit_t dest;
+      uint8_t     num_reqs;
+      bool        needs_flush;
+    };
+  };
 };
+
+static dart_stack_t handle_free_list = DART_STACK_INITIALIZER;
+
+#define DART_HANDLE_FREELIST_POP() \
+  (dart_handle_t)((void*)dart__base__stack_pop(&handle_free_list))
+
+#define DART_HANDLE_FREELIST_PUSH(_handle) \
+  (dart__base__stack_push(&handle_free_list, &DART_STACK_MEMBER_GET(_handle)))
+
+static inline
+dart_handle_t allocate_handle()
+{
+  dart_handle_t handle = DART_HANDLE_FREELIST_POP();
+  if (NULL == handle) {
+    handle = malloc(sizeof(*handle));
+  }
+  return handle;
+}
+
+static inline
+void release_handle(dart_handle_t handle)
+{
+  DART_HANDLE_FREELIST_PUSH(handle);
+}
 
 /**
  * Help to check for return of MPI call.
@@ -909,9 +940,10 @@ dart_ret_t dart_get_handle(
 
   MPI_Win win  = seginfo->win;
 
-  dart_handle_t handle = calloc(1, sizeof(struct dart_handle_struct));
+  dart_handle_t handle = allocate_handle();
   handle->dest         = team_unit_id.id;
   handle->win          = win;
+  handle->num_reqs     = 0;
   handle->needs_flush  = false;
 
 
@@ -984,9 +1016,10 @@ dart_ret_t dart_put_handle(
   MPI_Win win  = seginfo->win;
 
   // chunk up the put
-  dart_handle_t handle   = calloc(1, sizeof(struct dart_handle_struct));
+  dart_handle_t handle   = allocate_handle();
   handle->dest           = team_unit_id.id;
   handle->win            = win;
+  handle->num_reqs       = 0;
   handle->needs_flush    = true;
 
   dart_ret_t ret = DART_OK;
@@ -1362,7 +1395,7 @@ dart_ret_t dart_wait_local(
     } else {
       DART_LOG_TRACE("dart_wait_local:     handle->num_reqs == 0");
     }
-    free(handle);
+    release_handle(handle);
     *handleptr = DART_HANDLE_NULL;
   }
   DART_LOG_DEBUG("dart_wait_local > finished");
@@ -1396,7 +1429,7 @@ dart_ret_t dart_wait(
       DART_LOG_TRACE("dart_wait:     handle->num_reqs == 0");
     }
     /* Free handle resource */
-    free(handle);
+    release_handle(handle);
     *handleptr = DART_HANDLE_NULL;
   }
   DART_LOG_DEBUG("dart_wait > finished");
@@ -1463,7 +1496,7 @@ dart_ret_t dart_waitall_local(
         DART_LOG_TRACE("dart_waitall_local: free handle[%zu] %p",
                        i, (void*)(handles[i]));
         // free the handle
-        free(handles[i]);
+        release_handle(handles[i]);
         handles[i] = DART_HANDLE_NULL;
       }
     }
@@ -1582,7 +1615,7 @@ dart_ret_t dart_waitall(
         DART_LOG_TRACE("dart_waitall: -- free handle[%zu]: %p",
                        i, (void*)(handles[i]));
         // free the handle
-        free(handles[i]);
+        release_handle(handles[i]);
         handles[i] = DART_HANDLE_NULL;
       }
     }
@@ -1648,7 +1681,7 @@ dart_ret_t dart_test_local(
 
   if (flag) {
     // deallocate handle
-    free(handle);
+    release_handle(handle);
     *handleptr = DART_HANDLE_NULL;
     *is_finished = 1;
   }
@@ -1685,7 +1718,7 @@ dart_ret_t dart_test(
       );
     }
     // deallocate handle
-    free(handle);
+    release_handle(handle);
     *handleptr = DART_HANDLE_NULL;
     *is_finished = 1;
   }
@@ -1732,7 +1765,7 @@ dart_ret_t dart_testall_local(
       for (size_t i = 0; i < n; i++) {
         if (handles[i] != DART_HANDLE_NULL) {
           // free the handle
-          free(handles[i]);
+          release_handle(handles[i]);
           handles[i] = DART_HANDLE_NULL;
         }
       }
@@ -1793,7 +1826,7 @@ dart_ret_t dart_testall(
       for (size_t i = 0; i < n; i++) {
         if (handles[i] != DART_HANDLE_NULL) {
           // free the handle
-          free(handles[i]);
+          release_handle(handles[i]);
           handles[i] = DART_HANDLE_NULL;
         }
       }
@@ -1862,7 +1895,7 @@ dart_ret_t dart_testsome(
             FREE_TMP(2 * n * sizeof(int), r_idx);
             return DART_ERR_OTHER;
           }
-          free(handles[i]);
+          release_handle(handles[i]);
           handles[i] = DART_HANDLE_NULL;
           flags[i] = 1;
         }
@@ -1880,7 +1913,7 @@ dart_ret_t dart_handle_free(
   dart_handle_t * handleptr)
 {
   if (handleptr != NULL && *handleptr != DART_HANDLE_NULL) {
-    free(*handleptr);
+    release_handle(*handleptr);
     *handleptr = DART_HANDLE_NULL;
   }
   return DART_OK;
@@ -2510,7 +2543,7 @@ dart_ret_t dart_send_handle(
         &request),
     "MPI_Isend");
 
-  *handle = malloc(sizeof(struct dart_handle_struct));
+  *handle = allocate_handle();
   (*handle)->needs_flush = false;
   (*handle)->dest = unit.id;
   (*handle)->num_reqs = 1;
@@ -2569,7 +2602,7 @@ dart_ret_t dart_recv_handle(
         &request),
     "MPI_Irecv");
 
-  *handle = malloc(sizeof(struct dart_handle_struct));
+  *handle = allocate_handle();
   (*handle)->needs_flush = false;
   (*handle)->dest = unit.id;
   (*handle)->num_reqs = 1;
