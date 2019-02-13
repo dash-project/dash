@@ -327,6 +327,7 @@ flush_buffer(dart_amsgq_t amsgq, bool blocking)
           continue;
         }
 
+        DART_INC_AND_FETCH32(&cache->is_processing);
         dart_ret_t ret;
         dart_team_unit_t t = {target};
         do {
