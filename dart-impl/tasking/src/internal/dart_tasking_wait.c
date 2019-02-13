@@ -11,8 +11,9 @@
 #include <stdlib.h>
 #include <alloca.h>
 
-static dart_taskqueue_t handle_list;
-static dart_taskqueue_t handle_list_tmp;
+static dart_taskqueue_t handle_list;            // queue of tasks needing progress
+static dart_taskqueue_t handle_list_returning;  // queue of tasks returning to the handle_list
+static dart_taskqueue_t handle_list_processing; // queue of tasks currently being processed
 
 struct dart_wait_handle_s {
   union {
@@ -59,7 +60,8 @@ dart__task__wait_init()
 {
 #if defined(HAVE_RESCHEDULING_YIELD) && HAVE_RESCHEDULING_YIELD
   dart_tasking_taskqueue_init(&handle_list);
-  dart_tasking_taskqueue_init(&handle_list_tmp);
+  dart_tasking_taskqueue_init(&handle_list_processing);
+  dart_tasking_taskqueue_init(&handle_list_returning);
 #endif // HAVE_RESCHEDULING_YIELD
 
   for (int i = 0; i < WAIT_HANDLE_FREELIST_MAX_SIZE; ++i) {
@@ -72,7 +74,8 @@ dart__task__wait_fini()
 {
 #if defined(HAVE_RESCHEDULING_YIELD) && HAVE_RESCHEDULING_YIELD
   dart_tasking_taskqueue_finalize(&handle_list);
-  dart_tasking_taskqueue_finalize(&handle_list_tmp);
+  dart_tasking_taskqueue_finalize(&handle_list_returning);
+  dart_tasking_taskqueue_finalize(&handle_list_processing);
 #endif // HAVE_RESCHEDULING_YIELD
   dart_wait_handle_t *waithandle;
   for (int i = 0; i < WAIT_HANDLE_FREELIST_MAX_SIZE; ++i) {
@@ -180,7 +183,7 @@ static void process_handle_chunk(
         dart__tasking__release_detached(task);
       }
     } else {
-      dart_tasking_taskqueue_pushback_unsafe(&handle_list_tmp, task);
+      dart_tasking_taskqueue_pushback_unsafe(&handle_list_returning, task);
     }
   }
 }
@@ -189,29 +192,28 @@ void
 dart__task__wait_progress()
 {
   if (handle_list.num_elem > 0 &&
-      dart_tasking_taskqueue_trylock(&handle_list_tmp) == DART_OK) {
+      dart_tasking_taskqueue_trylock(&handle_list_returning) == DART_OK) {
     dart_task_t *task;
     // check each task from the handle_list and put it into a temporary
     // list if necessary
-
-    while (handle_list.num_elem > 0) {
+    dart_tasking_taskqueue_lock(&handle_list);
+    dart_tasking_taskqueue_move(&handle_list_processing, &handle_list);
+    dart_tasking_taskqueue_unlock(&handle_list);
+    while (handle_list_processing.num_elem > 0) {
       // collect tasks and their handles to process as chunk
       dart_task_t *tasks[NUM_CHUNK_HANDLE];
       int num_tasks = 0;
       dart_handle_t handle[NUM_CHUNK_HANDLE];
       int num_handle = 0;
-      dart_tasking_taskqueue_lock(&handle_list);
-      while ((task = dart_tasking_taskqueue_pop_unsafe(&handle_list)) != NULL) {
+      while ((task = dart_tasking_taskqueue_pop_unsafe(&handle_list_processing)) != NULL) {
         if (task->wait_handle->num_handle > NUM_CHUNK_HANDLE) {
-          dart_tasking_taskqueue_unlock(&handle_list);
           process_handle_chunk(&task, 1,
                               task->wait_handle->handle,
                               task->wait_handle->num_handle);
-          dart_tasking_taskqueue_lock(&handle_list);
         } else {
           if ((num_handle + task->wait_handle->num_handle) > NUM_CHUNK_HANDLE) {
             // put back into queue and try again after we processed the current chunk
-            dart_tasking_taskqueue_push_unsafe(&handle_list, task);
+            dart_tasking_taskqueue_push_unsafe(&handle_list_processing, task);
             break;
           }
 
@@ -221,18 +223,17 @@ dart__task__wait_progress()
           }
         }
       }
-      dart_tasking_taskqueue_unlock(&handle_list);
       if (num_handle) {
         process_handle_chunk(tasks, num_tasks, handle, num_handle);
       }
     }
     // move the remaining tasks to the main queue
-    if (handle_list_tmp.num_elem > 0) {
+    if (handle_list_returning.num_elem > 0) {
       dart_tasking_taskqueue_lock(&handle_list);
-      dart_tasking_taskqueue_move_unsafe(&handle_list, &handle_list_tmp);
+      dart_tasking_taskqueue_move_unsafe(&handle_list, &handle_list_returning);
       dart_tasking_taskqueue_unlock(&handle_list);
     }
-    dart_tasking_taskqueue_unlock(&handle_list_tmp);
+    dart_tasking_taskqueue_unlock(&handle_list_returning);
   }
 }
 
