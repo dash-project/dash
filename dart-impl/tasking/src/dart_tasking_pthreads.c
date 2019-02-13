@@ -41,9 +41,6 @@
   CRAYPAT_EXIT(_ev); \
 } while (0)
 
-#define CLOCK_TIME_USEC(ts) \
-  ((ts).tv_sec*1E6 + (ts).tv_nsec/1E3)
-
 #define CLOCK_DIFF_USEC(start, end)  \
   (uint64_t)((((end).tv_sec - (start).tv_sec)*1E6 + ((end).tv_nsec - (start).tv_nsec)/1E3))
 // the grace period after which idle thread go to sleep
@@ -159,13 +156,6 @@ static int64_t acc_idle_time_us     = 0;
 static int64_t acc_post_time_us     = 0;
 _Thread_local static int64_t thread_acc_idle_time_us = 0;
 _Thread_local static int64_t thread_idle_start_ts    = 0;
-
-static inline
-uint64_t current_time_us() {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return CLOCK_TIME_USEC(ts);
-}
 
 dart_task_t *
 dart__tasking__root_task()
@@ -1610,6 +1600,7 @@ void dart__tasking__print_stats()
   DART_LOG_INFO_ALWAYS("Accumulated postprocessing time:     %lu us",
                        acc_post_time_us);
   dart__dephash__print_stats(&root_task);
+  dart_tasking_remote_print_stats();
   DART_LOG_INFO_ALWAYS("##############################################");
 }
 

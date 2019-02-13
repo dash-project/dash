@@ -13,6 +13,8 @@ dart_ret_t dart_tasking_remote_init() DART_INTERNAL;
 
 dart_ret_t dart_tasking_remote_fini() DART_INTERNAL;
 
+void dart_tasking_remote_print_stats() DART_INTERNAL;
+
 /**
  * Send a remote data dependency request for dependency \c dep of \c task
  */

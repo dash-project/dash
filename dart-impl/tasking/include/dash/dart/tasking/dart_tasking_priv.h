@@ -288,4 +288,15 @@ void dart__tasking__utility_thread(
   void  *data
 ) DART_INTERNAL;
 
+
+#define CLOCK_TIME_USEC(ts) \
+  (((uint64_t)(ts).tv_sec)*1000*1000 + (ts).tv_nsec/1000)
+
+static inline
+uint64_t current_time_us() {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return CLOCK_TIME_USEC(ts);
+}
+
 #endif /* DART__INTERNAL__TASKING_H__ */

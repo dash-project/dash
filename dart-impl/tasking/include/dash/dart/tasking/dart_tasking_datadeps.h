@@ -172,6 +172,6 @@ dart_ret_t dart_tasking_datadeps_progress() DART_INTERNAL;
 /**
  * Print statistics of the hash table of parent task \c task.
  */
-void dart__dephash__print_stats(const dart_task_t *task);
+void dart__dephash__print_stats(const dart_task_t *task) DART_INTERNAL;
 
 #endif /* DART_TASKING_DATADEPS_H_ */

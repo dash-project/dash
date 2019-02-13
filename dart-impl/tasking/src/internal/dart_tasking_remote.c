@@ -25,6 +25,10 @@ static dart_amsgq_t amsgq;
 
 static bool initialized = false;
 
+static uint64_t progress_processing_us   = 0;
+static uint64_t progress_sending_us      = 0;
+static uint64_t progress_waitprogress_us = 0;
+static uint64_t progress_commtasks_us    = 0;
 
 struct remote_data_dep {
   /** Global pointer to the data \c rtask depends on */
@@ -198,6 +202,9 @@ static void
 process_operation_list()
 {
   remote_operation_t *op;
+
+  if (dart__base__stack_empty(&operation_list)) return;
+
   // capture the state of the current operation list
   dart_stack_t oplist;
   dart__base__stack_move_to(&operation_list, &oplist);
@@ -236,24 +243,36 @@ static void thread_progress_main(void *data)
   printf("Progress thread starting up (sleep_us=%d)\n", sleep_us);
 
   while (progress_thread) {
-    //printf("Remote progress thread polling for new messages\n");
+    uint64_t ts2;
+    uint64_t ts1 = current_time_us();
     // process the message list
     process_operation_list();
     // flush the buffer
     dart_amsg_flush_buffer(amsgq);
-    // put the buffer on the wire
+    ts2 = current_time_us();
+    progress_sending_us += ts2 - ts1;
+
+    // process incoming messages
     dart_amsg_process(amsgq);
+    ts1 = current_time_us();
+    progress_processing_us += ts1 - ts2;
 
     // execute communication tasks we have
-    dart_task_t *ct;
-    while (NULL != (ct = dart_tasking_taskqueue_pop(&comm_tasks))) {
-      // mark as inlined, no need to allocate a context
-      DART_TASK_SET_FLAG(ct, DART_TASK_IS_INLINED);
-      dart__tasking__handle_task(ct);
+    if (handle_comm_tasks) {
+      dart_task_t *ct;
+      while (NULL != (ct = dart_tasking_taskqueue_pop(&comm_tasks))) {
+        // mark as inlined, no need to allocate a context
+        DART_TASK_SET_FLAG(ct, DART_TASK_IS_INLINED);
+        dart__tasking__handle_task(ct);
+      }
     }
+    ts2 = current_time_us();
+    progress_sending_us += ts2 - ts1;
 
     // progress blocked tasks' communication
     dart__task__wait_progress();
+    ts1 = current_time_us();
+    progress_waitprogress_us += ts1 - ts2;
 
     if (sleep_us > 0) {
       nanosleep(&ts, NULL);
@@ -306,6 +325,18 @@ dart_ret_t dart_tasking_remote_fini()
     }
   }
   return DART_OK;
+}
+
+void dart_tasking_remote_print_stats()
+{
+  DART_LOG_INFO_ALWAYS("Progress thread: sending            %lu us",
+                       progress_sending_us);
+  DART_LOG_INFO_ALWAYS("Progress thread: processsing        %lu us",
+                       progress_processing_us);
+  DART_LOG_INFO_ALWAYS("Progress thread: waitprogress       %lu us",
+                       progress_waitprogress_us);
+  DART_LOG_INFO_ALWAYS("Progress thread: commtasks          %lu us",
+                       progress_commtasks_us);
 }
 
 /**
