@@ -197,7 +197,7 @@ dart__task__wait_progress()
     // check each task from the handle_list and put it into a temporary
     // list if necessary
     dart_tasking_taskqueue_lock(&handle_list);
-    dart_tasking_taskqueue_move(&handle_list_processing, &handle_list);
+    dart_tasking_taskqueue_move_unsafe(&handle_list_processing, &handle_list);
     dart_tasking_taskqueue_unlock(&handle_list);
     while (handle_list_processing.num_elem > 0) {
       // collect tasks and their handles to process as chunk
