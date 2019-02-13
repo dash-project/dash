@@ -169,4 +169,9 @@ dart_tasking_datadeps_localize_gptr(dart_gptr_t gptr)
  */
 dart_ret_t dart_tasking_datadeps_progress() DART_INTERNAL;
 
+/**
+ * Print statistics of the hash table of parent task \c task.
+ */
+void dart__dephash__print_stats(const dart_task_t *task);
+
 #endif /* DART_TASKING_DATADEPS_H_ */

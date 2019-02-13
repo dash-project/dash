@@ -1440,8 +1440,10 @@ dart__tasking__task_complete()
     EXTRAE_ENTER(EVENT_TASK);
   }
 
-  dart_tasking_datadeps_reset(thread->current_task);
-
+  // the root-task will be destroyed during tear-down
+  if (!is_root_task) {
+    dart_tasking_datadeps_reset(thread->current_task);
+  }
 
   return DART_OK;
 }
@@ -1651,6 +1653,8 @@ dart__tasking__fini()
 #endif // DART_ENABLE_AYUDAME
 
   free_tasklist(&task_free_list);
+
+  dart_tasking_datadeps_reset(&root_task);
 
   if (threads_running) {
     stop_threads();
