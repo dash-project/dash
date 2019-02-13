@@ -85,17 +85,12 @@ union remote_operation_u {
   struct remote_sendrequest          sendreq;
 };
 
-enum remote_op_type {
-  REMOTE_OP_DATADEP,
-  REMOTE_OP_TASKDEP,
-  REMOTE_OP_DEPCANCEL,
-  REMOTE_OP_RELEASE,
-  REMOTE_OP_SENDREQ
-};
-
 typedef
 struct remote_operation_t {
-  DART_STACK_MEMBER_DEF;
+  union {
+    DART_STACK_MEMBER_DEF;
+    struct remote_operation_t *next;
+  };
   union remote_operation_u op;
   dart_task_action_t       fn;
   dart_team_unit_t         team_unit;
@@ -142,6 +137,34 @@ remote_operation_t* allocate_op()
   return op;
 }
 
+static inline
+void send_direct(remote_operation_t *op)
+{
+  while (1) {
+    int ret;
+    DART_LOG_TRACE("Sending op %p to unit %d to buffer", op, op->team_unit.id);
+    ret = dart_amsg_buffered_send(
+            op->team_unit,
+            amsgq,
+            op->fn,
+            &op->op,
+            op->size);
+    if (ret == DART_OK) {
+      // the message was successfully sent
+      break;
+    } else  if (ret == DART_ERR_AGAIN) {
+      // cannot be sent at the moment, just try again
+      dart_amsg_process(amsgq);
+      continue;
+    } else {
+      // at this point wen can only abort!
+      DART_ASSERT_MSG(ret != DART_ERR_AGAIN,
+                      "Failed to send active message to unit %i",
+                      op->team_unit.id);
+    }
+  }
+}
+
 static void
 process_operation_list()
 {
@@ -149,31 +172,18 @@ process_operation_list()
   // capture the state of the current operation list
   dart_stack_t oplist;
   dart__base__stack_move_to(&operation_list, &oplist);
-  // read operations until the list is empty
+  remote_operation_t *reverse_list = NULL;
+
+  // reverse the list to get the oldest entry first
   while (NULL != (op = DART_OPLIST_ELEM_POP_NOLOCK(oplist))) {
-    while (1) {
-      int ret;
-      DART_LOG_TRACE("Sending op %p to unit %d to buffer", op, op->team_unit.id);
-      ret = dart_amsg_buffered_send(
-              op->team_unit,
-              amsgq,
-              op->fn,
-              &op->op,
-              op->size);
-      if (ret == DART_OK) {
-        // the message was successfully sent
-        break;
-      } else  if (ret == DART_ERR_AGAIN) {
-        // cannot be sent at the moment, just try again
-        dart_amsg_process(amsgq);
-        continue;
-      } else {
-        // at this point wen can only abort!
-        DART_ASSERT_MSG(ret != DART_ERR_AGAIN,
-                        "Failed to send active message to unit %i",
-                        op->team_unit.id);
-      }
-    }
+    DART_STACK_PUSH(reverse_list, op);
+  }
+
+  // process operations until the list is empty
+  while (1) {
+    DART_STACK_POP(reverse_list, op);
+    if (op == NULL) break;
+    send_direct(op);
     DART_OPLIST_ELEM_PUSH(operation_freelist, op);
   }
 }
