@@ -99,6 +99,9 @@ struct remote_operation_t {
 #define DART_OPLIST_ELEM_POP(__list) \
   (remote_operation_t*)((void*)dart__base__stack_pop(&__list))
 
+#define DART_OPLIST_ELEM_POP_NOLOCK(__list) \
+  (remote_operation_t*)((void*)dart__base__stack_pop_nolock(&__list))
+
 #define DART_OPLIST_ELEM_PUSH(__list, __elem) \
   dart__base__stack_push(&__list, &DART_STACK_MEMBER_GET(__elem))
 
@@ -137,8 +140,11 @@ static void
 process_operation_list()
 {
   remote_operation_t *op;
+  // capture the state of the current operation list
+  dart_stack_t oplist;
+  dart__base__stack_move_to(&operation_list, &oplist);
   // read operations until the list is empty
-  while (NULL != (op = DART_OPLIST_ELEM_POP(operation_list))) {
+  while (NULL != (op = DART_OPLIST_ELEM_POP_NOLOCK(oplist))) {
     while (1) {
       int ret;
       DART_LOG_TRACE("Sending op %p to unit %d to buffer", op, op->team_unit.id);
