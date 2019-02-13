@@ -63,6 +63,11 @@ struct remote_task_release {
   dart_global_unit_t unit;
 };
 
+struct remote_dep_release {
+  // reference to the corresponding hash elem on the reporting side
+  uintptr_t dep;
+};
+
 struct remote_sendrequest {
   dart_gptr_t            src_gptr;
   int32_t                num_bytes;
@@ -75,7 +80,8 @@ union remote_operation_u {
   struct remote_data_dep             data_dep;
   struct remote_task_dep             task_dep;
   struct remote_task_dep_cancelation dep_cancel;
-  struct remote_task_release         release;
+  struct remote_task_release         task_release;
+  struct remote_dep_release          dep_release;
   struct remote_sendrequest          sendreq;
 };
 
@@ -336,16 +342,16 @@ dart_ret_t dart_tasking_remote_release_task(
   response.dep  = depref;
   dart_myid(&response.unit);
   dart_team_unit_t team_unit;
-  dart_team_unit_g2l(DART_TEAM_ALL, unit, &team_unit);
+  team_unit.id = unit.id;
 
   DART_ASSERT(rtask.remote != NULL);
 
   if (progress_thread) {
     remote_operation_t *op = allocate_op();
-    op->fn            = &release_remote_task;
-    op->size          = sizeof(response);
-    op->team_unit     = team_unit;
-    op->op.release    = response;
+    op->fn                 = &release_remote_task;
+    op->size               = sizeof(response);
+    op->team_unit          = team_unit;
+    op->op.task_release    = response;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
     DART_LOG_TRACE("Enqueued remote task release to unit %i "
         "(fn=%p, rtask=%p, depref=%p), op %p",
@@ -390,19 +396,17 @@ dart_ret_t dart_tasking_remote_release_dep(
   taskref                 rtask,
   uintptr_t               depref)
 {
-  struct remote_task_release response;
-  response.task.local = NULL;
-  response.dep        = depref;
-  response.unit.id    = -1;
+  struct remote_dep_release response;
+  response.dep = depref;
   dart_team_unit_t team_unit;
-  dart_team_unit_g2l(DART_TEAM_ALL, unit, &team_unit);
+  team_unit.id = unit.id;
 
   if (progress_thread) {
     remote_operation_t *op = allocate_op();
-    op->fn            = &release_remote_dependency;
-    op->size          = sizeof(response);
-    op->team_unit     = team_unit;
-    op->op.release    = response;
+    op->fn             = &release_remote_dependency;
+    op->size           = sizeof(response);
+    op->team_unit      = team_unit;
+    op->op.dep_release = response;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
     DART_LOG_TRACE("Enqueued remote dependency release to unit %i "
                    "(fn=%p, task=%p, depref=%p), op %p",
@@ -566,8 +570,7 @@ enqueue_from_remote(void *data)
  */
 static void release_remote_dependency(void *data)
 {
-  struct remote_task_release *response = (struct remote_task_release *)data;
-  DART_ASSERT(response->task.local == NULL);
+  struct remote_dep_release *response = (struct remote_dep_release *)data;
   DART_LOG_TRACE("release_remote_dependency : Received remote dependency "
                  "release for dependency object %p",
                  (dart_dephash_elem_t*)response->dep);
