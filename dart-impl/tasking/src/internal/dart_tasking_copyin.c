@@ -15,6 +15,8 @@
 #define DEFAULT_WAIT_TYPE COPYIN_WAIT_YIELD
 #endif
 
+#define COPYIN_TASK_PRIO (INT_MAX-1)
+
 enum dart_copyin_t {
   COPYIN_IMPL_UNDEFINED,
   COPYIN_IMPL_GET,
@@ -162,7 +164,7 @@ dart_tasking_copyin_create_task_sendrecv(
                  arg.unit, tag, dep->phase);
 
   dart_task_prio_t prio = (wait_type == COPYIN_WAIT_DETACH_INLINE)
-                            ? DART_PRIO_INLINE : DART_PRIO_HIGH;
+                            ? DART_PRIO_INLINE : COPYIN_TASK_PRIO;
 
   dart_task_t *task;
   dart__tasking__create_task(
@@ -204,7 +206,7 @@ dart_tasking_copyin_create_task_get(
   arg.unit      = 0; // not needed
 
   dart_task_prio_t prio = (wait_type == COPYIN_WAIT_DETACH_INLINE)
-                            ? DART_PRIO_INLINE : DART_PRIO_HIGH;
+                            ? DART_PRIO_INLINE : COPYIN_TASK_PRIO;
 
   dart_task_t *task;
   dart__tasking__create_task(
@@ -287,7 +289,7 @@ dart_tasking_copyin_create_delayed_tasks()
     DART_LOG_TRACE("Copyin: creating task to send to unit %d with tag %d",
                   ct->arg.unit, ct->arg.tag);
     dart_task_prio_t prio = (wait_type == COPYIN_WAIT_DETACH_INLINE)
-                              ? DART_PRIO_INLINE : DART_PRIO_HIGH;
+                              ? DART_PRIO_INLINE : COPYIN_TASK_PRIO;
 
     dart_task_create(&dart_tasking_copyin_send_taskfn, &ct->arg, sizeof(ct->arg),
                      &ct->in_dep, 1, prio, "COPYIN (SEND)");
@@ -376,6 +378,6 @@ wait_for_handle(dart_handle_t *handle)
       if (flag) break;
       dart_task_yield(-1);
     }
-    task->prio = DART_PRIO_HIGH;
+    task->prio = COPYIN_TASK_PRIO;
   }
 }
