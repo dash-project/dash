@@ -95,6 +95,7 @@ struct remote_operation_t {
   dart_task_action_t       fn;
   dart_team_unit_t         team_unit;
   uint32_t                 size; // the size of op
+  bool                     direct_send;
 } remote_operation_t;
 
 #define DART_OPLIST_ELEM_POP(__list) \
@@ -143,6 +144,34 @@ void send_direct(remote_operation_t *op)
   while (1) {
     int ret;
     DART_LOG_TRACE("Sending op %p to unit %d to buffer", op, op->team_unit.id);
+    ret = dart_amsg_trysend(
+            op->team_unit,
+            amsgq,
+            op->fn,
+            &op->op,
+            op->size);
+    if (ret == DART_OK) {
+      // the message was successfully sent
+      break;
+    } else  if (ret == DART_ERR_AGAIN) {
+      // cannot be sent at the moment, just try again
+      dart_amsg_process(amsgq);
+      continue;
+    } else {
+      // at this point wen can only abort!
+      DART_ASSERT_MSG(ret != DART_ERR_AGAIN,
+                      "Failed to send active message to unit %i",
+                      op->team_unit.id);
+    }
+  }
+}
+
+static inline
+void send_buffered(remote_operation_t *op)
+{
+  while (1) {
+    int ret;
+    DART_LOG_TRACE("Sending op %p to unit %d to buffer", op, op->team_unit.id);
     ret = dart_amsg_buffered_send(
             op->team_unit,
             amsgq,
@@ -183,7 +212,11 @@ process_operation_list()
   while (1) {
     DART_STACK_POP(reverse_list, op);
     if (op == NULL) break;
-    send_direct(op);
+    if (op->direct_send) {
+      send_direct(op);
+    } else {
+      send_buffered(op);
+    }
     DART_OPLIST_ELEM_PUSH(operation_freelist, op);
   }
 }
@@ -299,6 +332,7 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
     op->size          = sizeof(rdep);
     op->team_unit     = team_unit;
     op->op.data_dep   = rdep;
+    op->direct_send   = false;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
     DART_LOG_TRACE("Enqueued remote dependency request to unit %d "
                    "(segid=%i, offset=%p, fn=%p, task=%p), op=%p",
@@ -362,6 +396,7 @@ dart_ret_t dart_tasking_remote_release_task(
     op->size               = sizeof(response);
     op->team_unit          = team_unit;
     op->op.task_release    = response;
+    op->direct_send        = true;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
     DART_LOG_TRACE("Enqueued remote task release to unit %i "
         "(fn=%p, rtask=%p, depref=%p), op %p",
@@ -417,6 +452,7 @@ dart_ret_t dart_tasking_remote_release_dep(
     op->size           = sizeof(response);
     op->team_unit      = team_unit;
     op->op.dep_release = response;
+    op->direct_send    = true;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
     DART_LOG_TRACE("Enqueued remote dependency release to unit %i "
                    "(fn=%p, task=%p, depref=%p), op %p",
@@ -476,6 +512,7 @@ dart_ret_t dart_tasking_remote_sendrequest(
     op->size          = sizeof(request);
     op->team_unit     = DART_TEAM_UNIT_ID(unit.id);
     op->op.sendreq    = request;
+    op->direct_send   = false;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
     return DART_OK;
   }
