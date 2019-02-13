@@ -29,6 +29,7 @@ static uint64_t progress_processing_us   = 0;
 static uint64_t progress_sending_us      = 0;
 static uint64_t progress_waitprogress_us = 0;
 static uint64_t progress_commtasks_us    = 0;
+static uint64_t progress_iteration_count = 0;
 
 struct remote_data_dep {
   /** Global pointer to the data \c rtask depends on */
@@ -277,6 +278,7 @@ static void thread_progress_main(void *data)
     if (sleep_us > 0) {
       nanosleep(&ts, NULL);
     }
+    ++progress_iteration_count;
   }
   progress_thread = -1;
 }
@@ -337,6 +339,8 @@ void dart_tasking_remote_print_stats()
                        progress_waitprogress_us);
   DART_LOG_INFO_ALWAYS("Progress thread: commtasks          %lu us",
                        progress_commtasks_us);
+  DART_LOG_INFO_ALWAYS("Progress thread: iterations         %lu",
+                       progress_iteration_count);
 }
 
 /**
