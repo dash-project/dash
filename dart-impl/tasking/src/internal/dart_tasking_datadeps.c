@@ -12,6 +12,8 @@
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_copyin.h>
 
+#include <stdint.h>
+
 //#define DART_DEPHASH_SIZE 1023
 #define DART_DEPHASH_SIZE 511
 
@@ -71,8 +73,9 @@ struct dart_dephash_elem {
  * Represents the head of a bucket in the dependency hash table.
  */
 struct dart_dephash_head {
-  dart_tasklock_t lock;
   dart_dephash_elem_t *head;
+  dart_tasklock_t      lock;
+  uint32_t             num_outdeps;
 };
 
 /**
@@ -294,6 +297,7 @@ dephash_list_insert_elem_after_nolock(
       elem->next->prev = elem;
     }
   }
+  ++head->num_outdeps;
 }
 
 /**
@@ -453,7 +457,6 @@ static void dephash_add_local_out(
   int slot = hash_gptr(dep->gptr);
   dart_task_t *parent = task->parent;
 
-  dephash_require_alloc(parent);
   LOCK_TASK(&parent->local_deps[slot]);
   dephash_add_local_nolock(dep, task, slot);
   UNLOCK_TASK(&parent->local_deps[slot]);
@@ -480,6 +483,32 @@ static void dephash_remove_dep_from_bucket_nolock(
     }
   }
   elem->next = elem->prev = NULL;
+}
+
+void dart__dephash__print_stats(const dart_task_t *task)
+{
+  uint32_t max_elems = 0;
+  uint32_t min_elems = UINT32_MAX;
+  uint32_t sum_elems = 0;
+  uint32_t empty     = 0;
+  uint32_t n = 0;
+  double mean = 0.0, M2 = 0.0;
+  for (uint32_t i = 0; i < DART_DEPHASH_SIZE; ++i) {
+    uint32_t nb = task->local_deps[i].num_outdeps;
+    double delta, delta2;
+    n++;
+    delta  = nb - mean;
+    mean  += delta / n;
+    delta2 = nb - mean;
+    M2    += delta2*delta2;
+    if (nb > max_elems) max_elems = nb;
+    if (nb < min_elems) min_elems = nb;
+    sum_elems += nb;
+    if (nb == 0) ++empty;
+  }
+  DART_LOG_INFO_ALWAYS(
+    "Task %p hash table: entries:%d, sum: %d, min: %d, max: %d, empty: %d, mean: %g, variance: %g\n",
+    task, DART_DEPHASH_SIZE, sum_elems, min_elems, max_elems, empty, mean, M2/(n-1));
 }
 
 static void

@@ -134,7 +134,7 @@ static dart_task_t root_task = {
     .descr            = "root_task"};
 
 static void
-destroy_threadpool(bool print_stats);
+destroy_threadpool();
 
 static inline
 void set_current_task(dart_task_t *t);
@@ -1592,29 +1592,29 @@ stop_threads()
   threads_running = false;
 }
 
+void dart__tasking__print_stats()
+{
+  DART_LOG_INFO("##############################################");
+  for (int i = 0; i < num_threads; ++i) {
+    if (thread_pool[i]) {
+      DART_LOG_INFO("Thread %i executed %lu tasks",
+                    i, thread_pool[i]->taskcntr);
+    }
+  }
+  DART_LOG_INFO("Accumulated matching time:           %lu us", acc_matching_time_us);
+  DART_LOG_INFO("Accumulated idle time:               %lu us", acc_idle_time_us);
+  DART_LOG_INFO("Thread 0 idle time:                  %lu us", thread_acc_idle_time_us);
+  DART_LOG_INFO("Accumulated postprocessing time:     %lu us", acc_post_time_us);
+  dart__dephash__print_stats(&root_task);
+  DART_LOG_INFO("##############################################");
+}
+
 static void
-destroy_threadpool(bool print_stats)
+destroy_threadpool()
 {
   for (int i = 1; i < num_threads; i++) {
     dart_thread_finalize(thread_pool[i]);
   }
-
-#ifdef DART_ENABLE_LOGGING
-  if (print_stats) {
-    DART_LOG_INFO("######################");
-    for (int i = 0; i < num_threads; ++i) {
-      if (thread_pool[i]) {
-        DART_LOG_INFO("Thread %i executed %lu tasks",
-                      i, thread_pool[i]->taskcntr);
-      }
-    }
-    DART_LOG_INFO("Accumulated matching time:           %lu us", acc_matching_time_us);
-    DART_LOG_INFO("Accumulated idle time:               %lu us", acc_idle_time_us);
-    DART_LOG_INFO("Thread 0 idle time:                  %lu us", thread_acc_idle_time_us);
-    DART_LOG_INFO("Accumulated postprocessing time:     %lu us", acc_post_time_us);
-    DART_LOG_INFO("######################");
-  }
-#endif // DART_ENABLE_LOGGING
 
   // unset thread-private data
   __tpd = NULL;
@@ -1646,6 +1646,8 @@ dart__tasking__fini()
     return DART_ERR_INVAL;
   }
 
+  dart__tasking__print_stats();
+
   DART_LOG_DEBUG("dart__tasking__fini(): Tearing down task subsystem");
 
 #ifdef DART_ENABLE_AYUDAME
@@ -1661,7 +1663,7 @@ dart__tasking__fini()
   }
   dart_tasking_datadeps_fini();
   dart__tasking__context_cleanup();
-  destroy_threadpool(true);
+  destroy_threadpool();
 
 #ifndef DART_TASK_THREADLOCAL_Q
   for (int i = 0; i < num_numa_nodes; ++i) {
