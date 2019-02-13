@@ -1594,19 +1594,23 @@ stop_threads()
 
 void dart__tasking__print_stats()
 {
-  DART_LOG_INFO("##############################################");
+  DART_LOG_INFO_ALWAYS("##############################################");
   for (int i = 0; i < num_threads; ++i) {
     if (thread_pool[i]) {
       DART_LOG_INFO("Thread %i executed %lu tasks",
                     i, thread_pool[i]->taskcntr);
     }
   }
-  DART_LOG_INFO("Accumulated matching time:           %lu us", acc_matching_time_us);
-  DART_LOG_INFO("Accumulated idle time:               %lu us", acc_idle_time_us);
-  DART_LOG_INFO("Thread 0 idle time:                  %lu us", thread_acc_idle_time_us);
-  DART_LOG_INFO("Accumulated postprocessing time:     %lu us", acc_post_time_us);
+  DART_LOG_INFO_ALWAYS("Accumulated matching time:           %lu us",
+                       acc_matching_time_us);
+  DART_LOG_INFO_ALWAYS("Accumulated idle time:               %lu us",
+                       acc_idle_time_us);
+  DART_LOG_INFO_ALWAYS("Thread 0 idle time:                  %lu us",
+                       thread_acc_idle_time_us);
+  DART_LOG_INFO_ALWAYS("Accumulated postprocessing time:     %lu us",
+                       acc_post_time_us);
   dart__dephash__print_stats(&root_task);
-  DART_LOG_INFO("##############################################");
+  DART_LOG_INFO_ALWAYS("##############################################");
 }
 
 static void
