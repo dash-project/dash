@@ -7,12 +7,13 @@
 #include <dash/dart/tasking/dart_tasking_phase.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 
-static dart_taskphase_t creation_phase = DART_PHASE_FIRST;
-static dart_taskphase_t runnable_phase = DART_PHASE_FIRST;
-static dart_taskphase_t max_active_phases = INT_MAX;
+static dart_taskphase_t creation_phase        = DART_PHASE_FIRST;
+static dart_taskphase_t runnable_phase        = DART_PHASE_FIRST;
+static dart_taskphase_t max_active_phases     = INT_MAX;
 static dart_taskphase_t max_active_phases_mod = INT_MAX;
-static dart_taskphase_t num_active_phases = 0;
-static int32_t *phase_task_counts = NULL;
+static dart_taskphase_t num_active_phases     = 0;
+static dart_taskphase_t num_active_phases_lb  = 0;
+static int32_t *phase_task_counts             = NULL;
 static size_t num_units;
 
 
@@ -51,6 +52,12 @@ dart__tasking__phase_advance()
           }
           // give us some wiggle-room in case not all phases create tasks
           max_active_phases_mod = 1.2*max_active_phases;
+
+          // if we reach the phase limit, we wait for 50% of them to be processed
+          num_active_phases_lb = dart__base__env__number(
+                                  DART_MATCHING_PHASE_LB_ENVSTR,
+                                  max_active_phases / 2);
+
           phase_task_counts = calloc(sizeof(*phase_task_counts), max_active_phases_mod);
         }
         matching_factor = dart__base__env__float(
@@ -91,17 +98,20 @@ dart__tasking__phase_advance()
   if (phase_task_counts != NULL) {
     // contribute to task execution until we are free to create tasks again
     int entry = creation_phase%max_active_phases_mod;
-    while (DART_FETCH32(&num_active_phases) == max_active_phases
-        || DART_FETCH32(&phase_task_counts[entry]) > 0) {
-      /*
-      DART_LOG_TRACE("Waiting for phase %d to become available "
-                    "(entry: %d, active phases: %d, in phase %d: %d)",
-                    creation_phase, entry, num_active_phases,
-                    creation_phase, phase_task_counts[entry]);
-      */
-      dart__tasking__yield(0);
+    if (DART_FETCH32(&num_active_phases) == max_active_phases
+        || DART_FETCH32(&phase_task_counts[entry]) > 0)
+    {
+      while (DART_FETCH32(&num_active_phases) > num_active_phases_lb
+          || DART_FETCH32(&phase_task_counts[entry]) > 0) {
+        /*
+        DART_LOG_TRACE("Waiting for phase %d to become available "
+                      "(entry: %d, active phases: %d, in phase %d: %d)",
+                      creation_phase, entry, num_active_phases,
+                      creation_phase, phase_task_counts[entry]);
+        */
+        dart__tasking__yield(0);
+      }
     }
-
     DART_ASSERT_MSG(
       DART_FETCH32(&phase_task_counts[entry]) == 0,
       "Active tasks in new phase %d are %d, entry %d should be zero",

@@ -53,7 +53,7 @@
 /**
  * Name of the environment variable specifying the factor by which the matching
  * interval is multiplied after each match,
- * This can be used to ensure ensure quick availability of tasks while limiting
+ * This can be used to ensure quick availability of tasks while limiting
  * the number of later task matching steps.
  * The default value is one, i.e., the matching factor will not be increased.
  * The interval will be capped at the configured maximum number of active phases,
@@ -63,6 +63,16 @@
  * Default: 1.
  */
 #define DART_MATCHING_PHASE_INTERVAL_FACTOR_ENVSTR "DART_MATCHING_PHASE_INTERVAL_FACTOR"
+
+/**
+ * Name of the environment variable specifying the lower bound of phases at which
+ * task creation is resumed after the upper bound specified by
+ * \ref DART_MATCHING_PHASE_MAX_ACTIVE_ENVSTR has been reached.
+ *
+ * Type: integral positive value.
+ * Default: 50% of \ref DART_MATCHING_PHASE_MAX_ACTIVE_ENVSTR.
+ */
+#define DART_MATCHING_PHASE_LB_ENVSTR "DART_MATCHING_PHASE_LB"
 
 /**
  * Name of the environment variable specifying the number of phases after which
