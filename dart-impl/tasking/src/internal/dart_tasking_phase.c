@@ -16,7 +16,6 @@ static dart_taskphase_t num_active_phases_lb  = 0;
 static int32_t *phase_task_counts             = NULL;
 static dart_taskphase_t matching_interval     = INT_MIN;
 static dart_taskphase_t phases_remaining      = INT_MAX;
-static dart_mutex_t     allocation_mutex      = DART_MUTEX_INITIALIZER;
 static float            matching_factor       = 1.0;
 /*
  * by default, each phase's is 1 but it increases if previous phase(s)
@@ -47,7 +46,6 @@ static void do_matching()
 
 static void do_init()
 {
-  dart__base__mutex_lock(&allocation_mutex);
   dart_team_size(DART_TEAM_ALL, &num_units);
   if (num_units == 1) {
     // disable matching
@@ -94,7 +92,6 @@ static void do_init()
       DART_LOG_TRACE("Intermediate task matching disabled");
     }
   }
-  dart__base__mutex_unlock(&allocation_mutex);
 }
 
 static inline void
