@@ -40,7 +40,6 @@ int main(int argc, char * argv[])
 
   // Init MPI
 #ifdef MPI_SUPPORT
-printf("FOOBAR SUCKERS");
 #ifdef DASH_ENABLE_THREADSUPPORT
   int thread_required = MPI_THREAD_MULTIPLE;
   int thread_provided; // ignored here
@@ -77,7 +76,7 @@ gaspi_proc_num(&gaspi_team_size);
   ::testing::InitGoogleTest(&argc, argv);
 
 #ifdef GASPI_SUPPORT
-bool loop = 1;
+bool loop = 0;
 if(0==gaspi_myid)
 {
   while( loop ){}

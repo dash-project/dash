@@ -58,7 +58,6 @@ dart_ret_t dart_team_memalloc_aligned(
   dart_datatype_t   dtype,
   dart_gptr_t      *gptr)
 {
-    printf("entering gaspi_memalloc alligned with nelm: %d \n", nelem);
     size_t nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
     size_t teamsize;
     dart_unit_t gptr_unitid = -1;
@@ -96,7 +95,6 @@ dart_ret_t dart_team_memalloc_aligned(
 
     dart_global_unit_t myid;
     dart_myid(&myid);
-    printf("my_id: %d | seg_id: %d | nbytes: %d | gaspi_group: %d \n", myid, gaspi_seg_id, nbytes, gaspi_group );
     
     if( nbytes == 0 )
     {
@@ -170,7 +168,6 @@ dart_ret_t dart_team_memfree(dart_gptr_t gptr)
     }
     gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);*/
     // ==============
-    printf(">>>>> team_memfree for segs:%d and seg_id:%d <<<<<\n", segs, seg_id);
     if(seg_stack_isfull(&dart_free_coll_seg_ids))
     {
         printf(">>>>> ERROR because of full seg_stack in dart_team_memfree\n");

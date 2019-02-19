@@ -103,10 +103,10 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
         }
         /* max_teamid is thought to be the new created team ID. */
         *newteam = max_teamid;
-        fprintf(stderr,"New team created: %d by me: [%d] ismember: [%d]\n" , max_teamid, myid.id, ismember);
+        fprintf(stderr,"New team created: %d by: [%d] \n" , max_teamid, myid.id);
         dart_teams[index].id = new_gaspi_group;
-        memcpy(&(dart_teams[index].group), &group, sizeof(dart_group_t));
-        //dart_teams[index].group = group;
+        dart_teams[index].group = (dart_group_t) malloc(sizeof(struct dart_group_struct));
+        memcpy(dart_teams[index].group, group, sizeof(struct dart_group_struct));
         free(group_members);
     }
 
