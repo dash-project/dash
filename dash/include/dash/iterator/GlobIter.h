@@ -321,6 +321,10 @@ public:
       DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", idx);
       DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", offset);
     }
+
+    if (offset == 1) {
+      return static_cast<dart_gptr_t>(_globmem->end());
+    }
     // Global index to local index and unit:
     local_pos_t local_pos = _pattern->local(idx);
     DASH_LOG_TRACE("GlobIter.dart_gptr",

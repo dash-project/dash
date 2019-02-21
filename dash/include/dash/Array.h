@@ -912,6 +912,8 @@ public:
     other.m_lsize  = 0;
     other.m_size   = 0;
 
+    other.m_team->unregister_deallocator(&other, std::bind(&Array::deallocate, &other));
+
     // Register deallocator of this array instance at the team
     // instance that has been used to initialized it:
     m_team->register_deallocator(this, std::bind(&Array::deallocate, this));
@@ -986,6 +988,8 @@ public:
     other.m_lend    = nullptr;
     other.m_lsize   = 0;
     other.m_size    = 0;
+
+    other.m_team->unregister_deallocator(&other, std::bind(&Array::deallocate, &other));
 
     m_team->register_deallocator(this, std::bind(&Array::deallocate, this));
 
