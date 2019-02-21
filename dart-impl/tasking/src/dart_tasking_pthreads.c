@@ -128,7 +128,11 @@ static dart_task_t root_task = {
     .prio             = DART_PRIO_DEFAULT,
     .num_children     = 0,
     .state            = DART_TASK_ROOT,
-    .descr            = "root_task"};
+    .descr            = "root_task"
+#ifdef DART_DEBUG
+    , .children       = NULL
+#endif
+};
 
 static void
 destroy_threadpool();
@@ -620,6 +624,13 @@ dart_task_t * create_task(
     task->descr = descr;
   }
 
+#ifdef DART_DEBUG
+  LOCK_TASK(task->parent);
+  dart_tasking_tasklist_prepend(&task->parent->children, task);
+  UNLOCK_TASK(task->parent);
+  task->children = NULL;
+#endif // DART_DEBUG
+
   return task;
 }
 
@@ -633,6 +644,12 @@ void dart__tasking__destroy_task(dart_task_t *task)
   if (dart__tasking__is_root_task(task->parent)) {
     dart__tasking__phase_take_task(task->phase);
   }
+
+#ifdef DART_DEBUG
+  LOCK_TASK(task->parent);
+  dart_tasking_tasklist_remove(&task->parent->children, task);
+  UNLOCK_TASK(task->parent);
+#endif // DART_DEBUG
 
   dart_tasking_datadeps_reset(task);
 

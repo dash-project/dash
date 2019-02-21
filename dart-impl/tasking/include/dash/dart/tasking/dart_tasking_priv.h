@@ -64,6 +64,16 @@ enum dart_taskflags_t {
 #define DART_TASK_UNSET_FLAG(_task, _flag)  (_task)->flags &= ~(_flag)
 #define DART_TASK_HAS_FLAG(_task, _flag)    ((_task)->flags &   (_flag))
 
+typedef struct task_list {
+  struct task_list      *next;
+  dart_task_t           *task;
+} task_list_t;
+
+struct task_deque{
+  dart_task_t * head;
+  dart_task_t * tail;
+};
+
 
 struct dart_task_data {
   union {
@@ -111,6 +121,9 @@ struct dart_task_data {
   const char                *descr;           // the description of the task
   dart_taskphase_t           phase;
   int                        num_children;
+#ifdef DART_DEBUG
+  task_list_t              * children;  // list of child tasks
+#endif //DART_DEBUG
 };
 
 #define DART_STACK_PUSH(_head, _elem) \
@@ -148,16 +161,6 @@ struct dart_task_data {
  * TODO: expose this to the user?
  */
 #define DART_PRIO_INLINE (__DART_PRIO_COUNT)
-
-typedef struct task_list {
-  struct task_list      *next;
-  dart_task_t           *task;
-} task_list_t;
-
-struct task_deque{
-  dart_task_t * head;
-  dart_task_t * tail;
-};
 
 typedef struct dart_taskqueue {
   size_t              num_elem;
