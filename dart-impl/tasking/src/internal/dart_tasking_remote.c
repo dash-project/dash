@@ -331,16 +331,18 @@ dart_ret_t dart_tasking_remote_fini()
 
 void dart_tasking_remote_print_stats()
 {
-  DART_LOG_INFO_ALWAYS("Progress thread: sending            %lu us",
-                       progress_sending_us);
-  DART_LOG_INFO_ALWAYS("Progress thread: processsing        %lu us",
-                       progress_processing_us);
-  DART_LOG_INFO_ALWAYS("Progress thread: waitprogress       %lu us",
-                       progress_waitprogress_us);
-  DART_LOG_INFO_ALWAYS("Progress thread: commtasks          %lu us",
-                       progress_commtasks_us);
-  DART_LOG_INFO_ALWAYS("Progress thread: iterations         %lu",
-                       progress_iteration_count);
+  if (progress_thread) {
+    DART_LOG_INFO_ALWAYS("Progress thread: sending            %lu us",
+                        progress_sending_us);
+    DART_LOG_INFO_ALWAYS("Progress thread: processsing        %lu us",
+                        progress_processing_us);
+    DART_LOG_INFO_ALWAYS("Progress thread: waitprogress       %lu us",
+                        progress_waitprogress_us);
+    DART_LOG_INFO_ALWAYS("Progress thread: commtasks          %lu us",
+                        progress_commtasks_us);
+    DART_LOG_INFO_ALWAYS("Progress thread: iterations         %lu",
+                        progress_iteration_count);
+  }
 }
 
 /**
