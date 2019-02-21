@@ -78,6 +78,11 @@ struct dart_dephash_head {
   uint32_t             num_outdeps;
 };
 
+#define DART_DEPHASH_HEAD_INITIALIZER { \
+  .head = NULL,                         \
+  .lock = TASKLOCK_INITIALIZER,         \
+  .num_outdeps = 0}
+
 /**
  * Dependency hash element pool to speed up dependency handling.
  */
@@ -121,7 +126,8 @@ static dart_stack_t **dephash_elem_freelist_list;
 
 // list of incoming remote dependency requests defered to matching step
 static dart_dephash_elem_t *unhandled_remote_indeps  = NULL;
-static dart_dephash_elem_t *unhandled_remote_outdeps = NULL;
+//static dart_dephash_elem_t *unhandled_remote_outdeps = NULL;
+static dart_dephash_head_t  unhandled_remote_outdeps = DART_DEPHASH_HEAD_INITIALIZER;
 static dart_mutex_t         unhandled_remote_mutex   = DART_MUTEX_INITIALIZER;
 
 // list of tasks that have been deferred because they are in a phase
@@ -298,6 +304,24 @@ dephash_list_insert_elem_after_nolock(
     }
   }
   ++head->num_outdeps;
+}
+
+
+static void
+inline
+dephash_list_insert_elem_sorted_phase_desc_nolock(
+  dart_dephash_head_t *head,
+  dart_dephash_elem_t *elem)
+{
+  dart_dephash_elem_t *next, *iter;
+  for (iter = head->head; iter != NULL; iter = next) {
+    next = iter->next;
+    if (iter->dep.phase <= elem->dep.phase) {
+      break;
+    }
+  }
+  dart_dephash_elem_t *prev = iter ? iter->prev : NULL;
+  dephash_list_insert_elem_after_nolock(head, elem, prev);
 }
 
 /**
@@ -1307,7 +1331,12 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(
   if (rdep->type == DART_DEP_IN) {
     DART_STACK_PUSH(unhandled_remote_indeps, rs);
   } else {
-    DART_STACK_PUSH(unhandled_remote_outdeps, rs);
+    /**
+     * store the dependency in phase-descending order so we can later insert
+     * them into the hash table, starting with the highest phase, to match
+     * input dependencies that had not been assigned an output dependency before.
+     */
+    dephash_list_insert_elem_sorted_phase_desc_nolock(&unhandled_remote_outdeps, rs);
   }
   dart__base__mutex_unlock(&unhandled_remote_mutex);
   return DART_OK;
