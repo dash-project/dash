@@ -145,7 +145,7 @@ dart__tasking__phase_advance()
   }
 
   int32_t num_tasks_prev_phase = -1;
-  if (creation_phase >= 0) {
+  if (creation_phase >= 0 && NULL != phase_task_counts) {
     num_tasks_prev_phase = phase_task_counts[creation_phase % max_active_phases_mod];
     DART_ASSERT(num_tasks_prev_phase >= 0);
   }
