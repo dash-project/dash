@@ -377,8 +377,8 @@ dart__tasking__yield(int delay)
     DART_LOG_TRACE("Yield: got back into task %p", get_current_task());
     DART_ASSERT(get_current_task() == current_task);
   } else {
-    DART_LOG_TRACE("Yield: no task to yield to from task %p",
-                    current_task);
+    //DART_LOG_TRACE("Yield: no task to yield to from task %p",
+    //                current_task);
   }
 
 
@@ -586,13 +586,15 @@ dart_task_t * create_task(
   task->wait_handle   = NULL;
   task->numaptr       = NULL;
 
+  DART_LOG_TRACE("Task %p: data %p, data_size %zu, fn %p",
+                 task, data, data_size, fn);
+
   if (data_size) {
     DART_TASK_SET_FLAG(task, DART_TASK_DATA_ALLOCATED);
     task->data           = malloc(data_size);
     memcpy(task->data, data, data_size);
   } else {
     task->data           = data;
-    DART_TASK_UNSET_FLAG(task, DART_TASK_DATA_ALLOCATED);
   }
 
   if (task->parent->state == DART_TASK_ROOT) {
@@ -712,7 +714,6 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     // start execution, change to another task in between
     if (thread_idle_start_ts) {
       int64_t idle_time = current_time_us() - thread_idle_start_ts;
-      DART_FETCH_AND_ADD64(&acc_idle_time_us, idle_time);
       thread_acc_idle_time_us += idle_time;
     }
     invoke_task(task, thread);
@@ -1009,6 +1010,8 @@ void* thread_main(void *data)
       in_idle = false;
     }
   }
+
+  DART_FETCH_AND_ADD64(&acc_idle_time_us, thread_acc_idle_time_us);
 
   DART_ASSERT_MSG(
     thread == get_current_thread(), "Detected invalid thread return!");
@@ -1610,7 +1613,7 @@ void dart__tasking__print_stats()
   }
   DART_LOG_INFO_ALWAYS("Accumulated matching time:           %lu us",
                        acc_matching_time_us);
-  DART_LOG_INFO_ALWAYS("Accumulated idle time:               %lu us",
+  DART_LOG_INFO_ALWAYS("Accumulated worker idle time:        %lu us",
                        acc_idle_time_us);
   DART_LOG_INFO_ALWAYS("Thread 0 idle time:                  %lu us",
                        thread_acc_idle_time_us);
@@ -1658,9 +1661,13 @@ dart__tasking__fini()
     return DART_ERR_INVAL;
   }
 
-  dart__tasking__print_stats();
-
   DART_LOG_DEBUG("dart__tasking__fini(): Tearing down task subsystem");
+
+  if (threads_running) {
+    stop_threads();
+  }
+
+  dart__tasking__print_stats();
 
 #ifdef DART_ENABLE_AYUDAME
   dart__tasking__ayudame_fini();
@@ -1670,9 +1677,6 @@ dart__tasking__fini()
 
   dart_tasking_datadeps_reset(&root_task);
 
-  if (threads_running) {
-    stop_threads();
-  }
   dart_tasking_datadeps_fini();
   dart__tasking__context_cleanup();
   destroy_threadpool();
