@@ -49,6 +49,8 @@ typedef int32_t dart_tasklock_t;
 
 typedef atomic_flag dart_tasklock_t;
 
+#define TASKLOCK_INITIALIZER ATOMIC_FLAG_INIT
+
 #define TASKLOCK_INIT(__task) do {    \
   atomic_flag_clear(&(__task)->lock); \
 } while (0)
