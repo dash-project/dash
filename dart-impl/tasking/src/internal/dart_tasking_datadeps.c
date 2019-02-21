@@ -66,7 +66,7 @@ struct dart_dephash_elem {
   dart_global_unit_t        origin;         // the unit owning the task
   uint32_t                  num_consumers;  // For OUT: the number of consumers still not completed
   uint16_t                  owner_thread;   // the thread that owns the element
-  dart_tasklock_t           lock;           // lock used for element-wise locking
+  //dart_tasklock_t           lock;           // lock used for element-wise locking
 };
 
 /**
@@ -367,7 +367,7 @@ dephash_allocate_elem(
   elem->dep     = *dep;
   elem->num_consumers = 0;
   elem->dep_list = NULL;
-  TASKLOCK_INIT(elem);
+  //TASKLOCK_INIT(elem);
   elem->next = elem->prev = NULL;
 
   DART_LOG_TRACE("Allocated elem %p (task %p)", elem, task.local);
@@ -384,20 +384,10 @@ register_at_out_dep_nolock(
   // register this dependency
   DART_STACK_PUSH(out_elem->dep_list, in_elem);
   int nc = DART_INC_AND_FETCH32(&out_elem->num_consumers);
-  DART_LOG_TRACE("Registered in dep %p with out dep %p (num_consumers: %d)",
-                 in_elem, out_elem, nc);
+  DART_LOG_TRACE("Registered in dep %p with out dep %p of task %p (num_consumers: %d)",
+                 in_elem, out_elem, out_elem->task.local, nc);
   DART_ASSERT_MSG(nc > 0, "Dependency %p has negative number of consumers: %d!",
                   out_elem, nc);
-}
-
-static void
-register_at_out_dep(
-  dart_dephash_elem_t *out_elem,
-  dart_dephash_elem_t *in_elem)
-{
-  LOCK_TASK(out_elem);
-  register_at_out_dep_nolock(out_elem, in_elem);
-  UNLOCK_TASK(out_elem);
 }
 
 static int32_t
@@ -413,17 +403,6 @@ deregister_in_dep_nolock(
                   out_elem, nc);
   return nc;
 }
-
-static void
-deregister_in_dep(
-  dart_dephash_elem_t *out_elem,
-  dart_dephash_elem_t *in_elem)
-{
-  LOCK_TASK(out_elem);
-  deregister_in_dep_nolock(in_elem);
-  UNLOCK_TASK(out_elem);
-}
-
 
 /**
  * Deallocate an element
@@ -580,7 +559,9 @@ static void dephash_release_out_dependency(
 {
   DART_LOG_TRACE("Releasing output dependency %p (num_consumers %d)",
                  elem, elem->num_consumers);
-  LOCK_TASK(elem);
+  //LOCK_TASK(elem);
+  int slot = hash_gptr(elem->dep.gptr);
+  LOCK_TASK(&local_deps[slot]);
   DART_ASSERT_MSG(elem->dep_list == NULL || elem->num_consumers > 0,
                   "Consumer-less output dependency has dependencies: %p",
                   elem->dep_list);
@@ -588,7 +569,7 @@ static void dephash_release_out_dependency(
     dart_dephash_elem_t *dep_list = elem->dep_list;
     elem->task.local = NULL;
     elem->dep_list   = NULL;
-    UNLOCK_TASK(elem);
+    //UNLOCK_TASK(elem);
     do {
       dart_dephash_elem_t *in_dep;
 
@@ -604,7 +585,7 @@ static void dephash_release_out_dependency(
       //       by the owning task
     } while (1);
   } else {
-    UNLOCK_TASK(elem);
+    //UNLOCK_TASK(elem);
     // if there are no active input dependencies we can immediately release the next
     // output dependency
     int32_t num_consumers = elem->num_consumers;
@@ -621,6 +602,7 @@ static void dephash_release_out_dependency(
     // recycle dephash element
     dephash_recycle_elem(elem);
   }
+  UNLOCK_TASK(&local_deps[slot]);
 
 }
 
@@ -851,7 +833,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
     } else {
       DART_LOG_TRACE("Inserting dependency %p before dep %p", rdep, local);
       // check if this dependency is a better match than the next one
-      LOCK_TASK(local);
+      //LOCK_TASK(local);
       if (local->task.local == NULL) {
         DART_LOG_WARN("Task already completed, cannot steal tasks!");
       } else {
@@ -881,7 +863,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
           in_dep = next;
         }
       }
-      UNLOCK_TASK(local);
+      //UNLOCK_TASK(local);
     }
 
     UNLOCK_TASK(&local_deps[slot]);
@@ -901,14 +883,14 @@ dart_tasking_datadeps_release_runnable_remote_outdeps(
     do {
       DART_STACK_POP_MEMB(release_candidates, elem, next_in_task);
       if (elem == NULL) break;
-      LOCK_TASK(elem);
+      //LOCK_TASK(elem);
       // if the element has no next element in the bucket it means that
       // it is runnable
       if (elem->next == NULL) {
         // safe to send a remote release now
         dart_tasking_remote_release_task(elem->origin, elem->task, (uintptr_t)elem);
       }
-      UNLOCK_TASK(elem);
+      //UNLOCK_TASK(elem);
     } while (1);
   }
 }
@@ -1114,7 +1096,7 @@ dart_tasking_datadeps_match_local_dependency(
                        "(ndeps: %d)", new_elem, task, ndeps);
       }
     } else {
-      LOCK_TASK(elem);
+      //LOCK_TASK(elem);
       if (!(elem->task.local == NULL && elem->dep_list == NULL)) {
         int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                       &task->unresolved_deps);
@@ -1126,7 +1108,7 @@ dart_tasking_datadeps_match_local_dependency(
         DART_LOG_TRACE("Task of out dep %p already running, not waiting to finish",
                        elem);
       }
-      UNLOCK_TASK(elem);
+      //UNLOCK_TASK(elem);
     }
   } else {
     if (elem != NULL) {
@@ -1183,7 +1165,7 @@ dart_tasking_datadeps_match_delayed_local_indep(
       dart_dephash_elem_t *new_elem;
       new_elem = dephash_allocate_elem(dep, TASKREF(task), myguid);
 
-      LOCK_TASK(elem);
+      //LOCK_TASK(elem);
       if (elem->task.local != NULL) {
         int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                       &task->unresolved_deps);
@@ -1193,7 +1175,7 @@ dart_tasking_datadeps_match_delayed_local_indep(
                       elem_task->state, unresolved_deps);
       }
       register_at_out_dep_nolock(elem, new_elem);
-      UNLOCK_TASK(elem);
+      //UNLOCK_TASK(elem);
       // we're done here
       break;
     }
