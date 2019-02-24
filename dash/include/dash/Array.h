@@ -972,7 +972,7 @@ public:
     m_data = std::move(__tmp);
 
 
-    //TODO rko: we have to provide a propery dash::swap for iterators;
+    //TODO rko: we have to provide a proper dash::swap for iterators;
     this->m_begin = iterator{&m_globmem, m_pattern, other.m_begin.pos()};
     this->m_end = iterator{&m_globmem, m_pattern, other.m_end.pos()};
 
