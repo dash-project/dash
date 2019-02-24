@@ -76,7 +76,7 @@ public:
 
   const_iterator begin() const noexcept {
     // TODO FIXME
-    //CoevenIter is not const correct, so we need a hack and unpack a nonconst
+    //CoeventIter is not const correct, so we need a hack and unpack a nonconst
     //pointer from a const iterator to make the comiler happy.
     //return const_iterator(static_cast<const_pointer>(_event_counts.begin()));
     auto dart_ptr = _event_counts.begin().dart_gptr();

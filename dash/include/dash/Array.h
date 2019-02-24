@@ -971,8 +971,11 @@ public:
                             m_allocator, m_pattern.local_size()}};
     m_data = std::move(__tmp);
 
-    this->m_begin     = other.m_begin;
-    this->m_end       = other.m_end;
+
+    //TODO rko: we have to provide a propery dash::swap for iterators;
+    this->m_begin = iterator{&m_globmem, m_pattern, other.m_begin.pos()};
+    this->m_end = iterator{&m_globmem, m_pattern, other.m_end.pos()};
+
     this->m_lbegin    = other.m_lbegin;
     this->m_lcapacity = other.m_lcapacity;
     this->m_lend      = other.m_lend;

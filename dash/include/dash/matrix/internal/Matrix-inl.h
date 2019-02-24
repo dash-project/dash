@@ -143,7 +143,7 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
   _team      = other._team;
   _size      = other._size;
   _lcapacity = other._lcapacity;
-  _begin     = other._begin;
+  _begin = iterator{&_glob_mem, _pattern, other._begin.pos()};
   _lbegin    = other._lbegin;
   _lend      = other._lend;
   _ref       = other._ref;
