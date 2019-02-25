@@ -245,8 +245,8 @@ dart_ret_t dart_tasking_datadeps_reset(dart_task_t *task)
 #ifdef DART_ENABLE_ASSERTIONS
   for (int i = 0; i < DART_DEPHASH_SIZE; ++i) {
     DART_ASSERT_MSG(task->local_deps[i].head == NULL,
-                    "Found non-empty hash-map while tearing down hash table of "
-                    "task %p (elem %p)", task, task->local_deps[i].head);
+                    "Found non-empty bucket while tearing down hash table of "
+                    "task %p (elem %p, i %d)", task, task->local_deps[i].head, i);
   }
   DART_ASSERT_MSG(task->remote_successor == NULL,
                   "Found pending remote successors of task %p (elem %p)",
@@ -626,12 +626,12 @@ static void dephash_release_in_dependency(
     DART_ASSERT_MSG(out_dep->task.local == NULL, "Output dependency %p is still active!", out_dep);
     dephash_recycle_elem(elem);
     if (num_consumers == 0){
-      int slot = hash_gptr(elem->dep.gptr);
+      int slot = hash_gptr(out_dep->dep.gptr);
       LOCK_TASK(&local_deps[slot]);
       if (out_dep->num_consumers == 0){
         // release the next output dependency
         DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep",
-                       elem);
+                       out_dep);
         dephash_release_next_out_dependency_nolock(out_dep);
 
         // remove the output dependency from the bucket
