@@ -67,9 +67,6 @@ TEST_F(SortTest, ArrayBlockedFullRange)
 
   array.barrier();
 
-  int wait = 0;
-  while(wait);
-
   perform_test(array.begin(), array.end());
 }
 
