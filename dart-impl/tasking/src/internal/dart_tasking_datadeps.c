@@ -705,6 +705,7 @@ dart_tasking_datadeps_handle_defered_local()
 
 dart_ret_t
 dart_tasking_datadeps_handle_defered_remote_indeps(
+  dart_taskphase_t      matching_phase,
   dart_dephash_elem_t **release_candidates)
 {
   dart_dephash_elem_t *rdep;
@@ -716,8 +717,15 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
 
   dart_task_t *root_task = dart__tasking__root_task();
   dart_dephash_elem_t *next = unhandled_remote_indeps;
+  unhandled_remote_indeps = NULL;
   while ((rdep = next) != NULL) {
     next = rdep->next;
+
+    if (rdep->dep.phase > matching_phase) {
+      // Skip any dependency we cannot handle yet
+      DART_STACK_PUSH(unhandled_remote_indeps, rdep);
+      continue;
+    }
 
     if (rdep->dep.type == DART_DEP_DELAYED_IN) {
       // dispatch handling of delayed local dependencies
@@ -795,13 +803,12 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
     }
   }
 
-  unhandled_remote_indeps = NULL;
-
   return DART_OK;
 }
 
 dart_ret_t
-dart_tasking_datadeps_handle_defered_remote_outdeps()
+dart_tasking_datadeps_handle_defered_remote_outdeps(
+  dart_taskphase_t matching_phase)
 {
   DART_LOG_DEBUG("Handling previously unhandled remote output dependencies: %p",
                  unhandled_remote_outdeps.head);
@@ -809,12 +816,20 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
   dart_task_t *root_task = dart__tasking__root_task();
   dephash_require_alloc(root_task);
   dart_dephash_elem_t *next = unhandled_remote_outdeps.head;
-
+  unhandled_remote_outdeps.head        = NULL;
+  unhandled_remote_outdeps.num_outdeps = 0;
   // iterate over all delayed remote output deps
   dart_dephash_elem_t *rdep;
   while ((rdep = next) != NULL) {
     next = rdep->next;
     bool runnable = false;
+
+    if (rdep->dep.phase > matching_phase) {
+      // Skip any dependency we cannot handle yet
+      dephash_list_insert_elem_sorted_phase_desc_nolock(
+        &unhandled_remote_outdeps, rdep);
+      continue;
+    }
 
     DART_LOG_TRACE("Handling remote dependency %p", rdep);
 
@@ -924,8 +939,6 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
 
     UNLOCK_TASK(&local_deps[slot]);
   }
-  unhandled_remote_outdeps.head = NULL;
-  unhandled_remote_outdeps.num_outdeps = 0;
 
   return DART_OK;
 }
@@ -954,7 +967,7 @@ dart_tasking_datadeps_release_runnable_remote_indeps(
 }
 
 dart_ret_t
-dart_tasking_datadeps_handle_defered_remote()
+dart_tasking_datadeps_handle_defered_remote(dart_taskphase_t matching_phase)
 {
   /**
   * List of dephash elements representing remote tasks that were deemed to be
@@ -967,10 +980,11 @@ dart_tasking_datadeps_handle_defered_remote()
 
   dart__base__mutex_lock(&unhandled_remote_mutex);
   // insert the deferred remote input dependencies
-  dart_tasking_datadeps_handle_defered_remote_indeps(&release_candidates);
+  dart_tasking_datadeps_handle_defered_remote_indeps(
+    matching_phase, &release_candidates);
 
   // match the remote output dependencies
-  dart_tasking_datadeps_handle_defered_remote_outdeps();
+  dart_tasking_datadeps_handle_defered_remote_outdeps(matching_phase);
   dart__base__mutex_unlock(&unhandled_remote_mutex);
 
   // check whether we can release any task with remote input deps

@@ -1349,7 +1349,7 @@ dart__tasking__perform_matching(dart_taskphase_t phase)
   // make sure all incoming requests are served
   dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
   // release unhandled remote dependencies
-  dart_tasking_datadeps_handle_defered_remote();
+  dart_tasking_datadeps_handle_defered_remote(phase);
   DART_LOG_DEBUG("task_complete: releasing deferred tasks of all threads");
   // make sure all newly incoming requests are served
   // TODO: this is not needed anymore

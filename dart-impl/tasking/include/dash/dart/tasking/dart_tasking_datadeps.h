@@ -115,7 +115,8 @@ dart_ret_t dart_tasking_datadeps_cancel_remote_deps() DART_INTERNAL;
  * to avoid deadlocks.
  */
 dart_ret_t
-dart_tasking_datadeps_handle_defered_remote() DART_INTERNAL;
+dart_tasking_datadeps_handle_defered_remote(
+  dart_taskphase_t matching_phase) DART_INTERNAL;
 
 /**
  * Release local tasks whose releases have been deferred.
