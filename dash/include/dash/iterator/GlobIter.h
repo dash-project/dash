@@ -290,7 +290,7 @@ public:
    */
   inline reference operator*()
   {
-    return this->operator[](_idx);
+    return reference{this->dart_gptr()};
   }
 
   /**
@@ -300,7 +300,7 @@ public:
    */
   inline const_reference operator*() const
   {
-    return this->operator[](_idx);
+    return const_reference{this->dart_gptr()};
   }
 
   /**
@@ -311,16 +311,9 @@ public:
     /// The global position of the element
     index_type g_index)
   {
-    typedef typename pattern_type::local_index_t
-      local_pos_t;
-    // Global index to local index and unit:
-    local_pos_t local_pos = _pattern->local(g_index);
-    // Global reference to element at given position:
-    DASH_LOG_TRACE("GlobIter.[]",
-                   "(index:", g_index, ") ->",
-                   "(unit:", local_pos.unit, " index:", local_pos.index, " _idx: ", _idx, ")");
-    auto const dart_ptr = _get_pointer_at(local_pos);
-    return reference(dart_ptr);
+    auto p = *this;
+    p += g_index;
+    return reference(p.dart_gptr());
   }
 
   /**
@@ -331,16 +324,9 @@ public:
     /// The global position of the element
     index_type g_index) const
   {
-    typedef typename pattern_type::local_index_t
-      local_pos_t;
-    // Global index to local index and unit:
-    local_pos_t local_pos = _pattern->local(g_index);
-    // Global reference to element at given position:
-    DASH_LOG_TRACE("GlobIter.[]",
-                   "(index:", g_index, ") ->",
-                   "(unit:", local_pos.unit, " index:", local_pos.index, ")");
-    auto const dart_ptr = _get_pointer_at(local_pos);
-    return const_reference(dart_ptr);
+    auto p = *this;
+    p += g_index;
+    return const_reference(p.dart_gptr());
   }
 
   /**
