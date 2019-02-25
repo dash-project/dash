@@ -26,6 +26,9 @@ struct task_list;
 #define HAVE_RESCHEDULING_YIELD 1
 #endif // USE_UCONTEXT
 
+// disable re-use of objects, can help in debugging
+//#define DART_TASKING_DONOT_REUSE
+
 typedef enum {
   DART_TASK_ROOT     = -1, // special state assigned to the root task
   DART_TASK_FINISHED =  0, // comparison with 0

@@ -551,7 +551,10 @@ dart_task_t * next_task(dart_thread_t *thread)
 static
 dart_task_t * allocate_task()
 {
-  dart_task_t *task = DART_TASKLIST_ELEM_POP(task_free_list);
+  dart_task_t *task = NULL;
+#ifndef DART_TASKING_DONOT_REUSE
+  task = DART_TASKLIST_ELEM_POP(task_free_list);
+#endif // !DART_TASKING_DONOT_REUSE
 
   if (task == NULL) {
     task = malloc(sizeof(dart_task_t));

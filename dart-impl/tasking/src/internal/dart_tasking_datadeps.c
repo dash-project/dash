@@ -338,7 +338,10 @@ dephash_allocate_elem(
 {
   // take an element from the free list if possible
   dart_dephash_elem_t *elem = NULL;
+
+#ifndef DART_TASKING_DONOT_REUSE
   elem = DART_DEPHASH_ELEM_POP(dephash_elem_freelist);
+#endif // !DART_TASKING_DONOT_REUSE
 
   if (elem == NULL){
     int thread_id = dart__tasking__thread_num();
