@@ -1457,11 +1457,6 @@ dart__tasking__task_complete()
     EXTRAE_ENTER(EVENT_TASK);
   }
 
-  // the root-task will be destroyed during tear-down
-  if (!is_root_task) {
-    dart_tasking_datadeps_reset(thread->current_task);
-  }
-
   return DART_OK;
 }
 
