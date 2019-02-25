@@ -112,16 +112,16 @@ wait_for_active_phases(int32_t num_tasks_prev_phase)
     if (num_active_phases == max_active_phases
         || phase_task_counts[entry] > 0)
     {
+      DART_LOG_TRACE("Waiting for phase %d to become available "
+                    "(entry: %d, active phases: %d, in phase %d: %d)",
+                    creation_phase, entry, num_active_phases,
+                    creation_phase, phase_task_counts[entry]);
       while (num_active_phases > num_active_phases_lb
           || phase_task_counts[entry] > 0) {
-        /*
-        DART_LOG_TRACE("Waiting for phase %d to become available "
-                      "(entry: %d, active phases: %d, in phase %d: %d)",
-                      creation_phase, entry, num_active_phases,
-                      creation_phase, phase_task_counts[entry]);
-        */
         dart__tasking__yield(0);
       }
+      DART_LOG_TRACE("Resuming task creation in phase %d",
+                    creation_phase);
     }
     DART_ASSERT_MSG(
       DART_FETCH32(&phase_task_counts[entry]) == 0,
@@ -157,6 +157,8 @@ dart__tasking__phase_advance()
   ++creation_phase;
   wait_for_active_phases(num_tasks_prev_phase);
   DART_FETCH_AND_INC32(&num_active_phases);
+
+  DART_LOG_TRACE("Entering phase %d", creation_phase);
 }
 
 dart_taskphase_t
