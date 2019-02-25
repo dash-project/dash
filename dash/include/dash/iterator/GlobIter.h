@@ -343,20 +343,10 @@ public:
    */
   local_type local() const
   {
-    if (_idx > _max_idx) {
-      //If the index is beyond global end -> return nullptr
-      return nullptr;
-    }
 
-    DASH_LOG_TRACE_VAR("GlobIter.local=", _idx);
-    // Global index to local index and unit:
-    auto local_pos = _pattern->local(_idx);
+    auto local_pos = lpos();
 
-    DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.index);
-
-    if (_globmem->team().myid() != local_pos.unit) {
-      // iterator points not to memory in current unit -> return nullptr
+    if (local_pos.unit != _pattern->team().myid()) {
       return nullptr;
     }
 
@@ -375,17 +365,19 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobIter.lpos()", _idx);
 
-    using local_pos_t = typename pattern_type::local_index_t;
+    index_type idx = _idx;
+    index_type offset = 0;
 
     // Convert iterator position (_idx) to local index and unit.
-    if (_idx > _max_idx) {
-      //If we are beyond the last possible index
-      //we construct a 'NULL' position at the global memory's end
-      return local_pos_t{static_cast<team_unit_t>(_globmem->end().get_unit()),
-                         0};
+    if (idx > _max_idx) {
+      idx    = _max_idx;
+      offset = _idx - _max_idx;
+      DASH_ASSERT_EQ(offset, 1, "invalid index");
     }
     // Global index to local index and unit:
-    auto local_pos = _pattern->local(_idx);
+    auto local_pos = _pattern->local(idx);
+    // Add the offset
+    local_pos.index += offset;
 
     DASH_LOG_TRACE(
         "GlobIter.lpos >",

@@ -426,7 +426,7 @@ public:
   }
 
   constexpr auto get_unit() const noexcept {
-    return m_dart_pointer.unitid;
+    return team_unit_t{m_dart_pointer.unitid};
   }
 
   /**
