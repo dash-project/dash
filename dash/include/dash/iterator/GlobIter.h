@@ -42,30 +42,17 @@ template <
     class PointerType =
         typename GlobMemType::void_pointer::template rebind<ElementType>,
     class ReferenceType = GlobRef<ElementType> >
-class GlobIter : public std::iterator<
-                     std::random_access_iterator_tag,
-                     ElementType,
-                     typename PatternType::index_type,
-                     PointerType,
-                     ReferenceType> {
- private:
-  typedef GlobIter<
-      ElementType,
-      PatternType,
-      GlobMemType,
-      PointerType,
-      ReferenceType>
-      self_t;
-
-  typedef typename std::remove_const<ElementType>::type nonconst_value_type;
-
+class GlobIter {
  public:
-  typedef ElementType value_type;
+  /// Iterator Traits
+  using iterator_category = std::random_access_iterator_tag;
+  using value_type        = ElementType;
+  using difference_type   = typename PatternType::index_type;
+  using pointer           = PointerType;
+  using reference         = ReferenceType;
 
-  typedef ReferenceType                      reference;
   typedef typename ReferenceType::const_type const_reference;
 
-  typedef PointerType                      pointer;
   typedef typename PointerType::const_type const_pointer;
 
   typedef typename pointer::local_type local_type;
@@ -77,12 +64,22 @@ class GlobIter : public std::iterator<
 
  private:
   typedef GlobIter<
+      ElementType,
+      PatternType,
+      GlobMemType,
+      PointerType,
+      ReferenceType>
+      self_t;
+
+  typedef GlobIter<
       const ElementType,
       PatternType,
       GlobMemType,
       const_pointer,
       const_reference>
       self_const_t;
+
+  typedef typename std::remove_const<ElementType>::type nonconst_value_type;
 
  public:
   typedef std::integral_constant<bool, false> has_view;
@@ -103,9 +100,9 @@ class GlobIter : public std::iterator<
 
  protected:
   /// Global memory used to dereference iterated values.
-  GlobMemType* _globmem = nullptr;
+  GlobMemType * _globmem = nullptr;
   /// Pattern that specifies the iteration order (access pattern).
-  const PatternType* _pattern = nullptr;
+  PatternType const * _pattern = nullptr;
   /// Current position of the iterator in global canonical index space.
   index_type _idx = 0;
   /// Maximum position allowed for this iterator.
@@ -119,8 +116,8 @@ class GlobIter : public std::iterator<
    * the element order specified by the given pattern.
    */
   DASH_CONSTEXPR GlobIter(
-      GlobMemType*       gmem,
-      const PatternType& pat,
+      GlobMemType *       gmem,
+      PatternType const & pat,
       index_type         position = 0) DASH_NOEXCEPT
     : _globmem(gmem),
       _pattern(&pat),
@@ -129,63 +126,29 @@ class GlobIter : public std::iterator<
   {
   }
 
-  /**
-   * Copy constructor.
-   */
-  template <class Ptr_, class Ref_>
+  template <
+      class ElementType_,
+      class PointerType_,
+      class ReferenceType_,
+      typename = typename std::enable_if<
+          // We always allow GlobPtr<T> -> GlobPtr<void> or the other way)
+          // or if From is assignable to To (value_type)
+          std::is_assignable<
+              typename dash::remove_atomic<ElementType_>::type,
+              typename dash::remove_atomic<value_type>::type>::value>
+
+      ::type>
   DASH_CONSTEXPR GlobIter(const GlobIter<
-                          nonconst_value_type,
-                          PatternType,
-                          GlobMemType,
-                          Ptr_,
-                          Ref_>& other) DASH_NOEXCEPT
+                     ElementType_,
+                     PatternType,
+                     GlobMemType,
+                     PointerType_,
+                     ReferenceType_>& other) DASH_NOEXCEPT
     : _globmem(other._globmem),
       _pattern(other._pattern),
       _idx(other._idx),
       _max_idx(other._max_idx)
   {
-  }
-
-  /**
-   * Move constructor.
-   */
-  template <class Ptr_, class Ref_>
-  DASH_CONSTEXPR GlobIter(
-      GlobIter<nonconst_value_type, PatternType, GlobMemType, Ptr_, Ref_>&&
-          other) DASH_NOEXCEPT : _globmem(other._globmem),
-                                 _pattern(other._pattern),
-                                 _idx(other._idx),
-                                 _max_idx(other._max_idx)
-  {
-  }
-
-  /**
-   * Assignment operator.
-   */
-  template <typename T_, class Ptr_, class Ref_>
-  self_t& operator=(const GlobIter<T_, PatternType, GlobMemType, Ptr_, Ref_>&
-                        other) DASH_NOEXCEPT
-  {
-    _globmem = other._globmem;
-    _pattern = other._pattern;
-    _idx     = other._idx;
-    _max_idx = other._max_idx;
-    return *this;
-  }
-
-  /**
-   * Move-assignment operator.
-   */
-  template <typename T_, class Ptr_, class Ref_>
-  self_t& operator=(GlobIter<T_, PatternType, GlobMemType, Ptr_, Ref_>&&
-                        other) DASH_NOEXCEPT
-  {
-    _globmem = other._globmem;
-    _pattern = other._pattern;
-    _idx     = other._idx;
-    _max_idx = other._max_idx;
-    // no ownership to transfer
-    return *this;
   }
 
   /**
@@ -322,7 +285,6 @@ class GlobIter : public std::iterator<
 
     auto* lbegin = dash::local_begin(
         static_cast<pointer>(_globmem->begin()), _pattern->team().myid());
-
     DASH_ASSERT(lbegin);
 
     return std::next(lbegin, local_pos.index);

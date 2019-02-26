@@ -1047,7 +1047,8 @@ public:
    */
   constexpr const_iterator begin() const noexcept
   {
-    return (const_cast<iterator &>(m_begin));
+    return const_iterator(
+        const_cast<memory_type *>(&m_globmem), m_pattern, m_begin.pos());
   }
 
   /**
@@ -1060,8 +1061,10 @@ public:
   /**
    * Global pointer to the end of the array.
    */
-  constexpr const_iterator end() const noexcept {
-    return (const_cast<iterator &>(m_end));
+  constexpr const_iterator end() const noexcept
+  {
+    return const_iterator(
+        const_cast<memory_type *>(&m_globmem), m_pattern, m_end.pos());
   }
 
   /**
