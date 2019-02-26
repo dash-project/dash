@@ -618,12 +618,13 @@ static void dephash_release_in_dependency(
   // next output dependency if all input dependencies have completed
   dart_dephash_elem_t *out_dep = elem->dep_list;
   if (out_dep != NULL) {
+    DART_ASSERT_MSG(out_dep->task.local == NULL,
+                    "Output dependency %p is still active!", out_dep);
     int32_t num_consumers = DART_DEC_AND_FETCH32(&out_dep->num_consumers);
     DART_LOG_TRACE("Releasing input dependency %p (output dependency %p with nc %d)",
                   elem, out_dep, num_consumers);
     DART_ASSERT_MSG(num_consumers >= 0, "Found negative number of consumers for "
                     "dependency %p: %d", elem, num_consumers);
-    DART_ASSERT_MSG(out_dep->task.local == NULL, "Output dependency %p is still active!", out_dep);
     dephash_recycle_elem(elem);
     if (num_consumers == 0){
       int slot = hash_gptr(out_dep->dep.gptr);
