@@ -241,6 +241,7 @@ dart__tasking__get_taskqueue_numa(dart_thread_t *thread, void *numaptr)
     }
     q = &task_queue[numa_node];
   }
+  return q;
 }
 
 static void
