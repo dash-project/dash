@@ -479,7 +479,8 @@ constexpr typename Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::const_iterato
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::end() const noexcept
 {
-  return const_iterator(_begin + _size);
+    return const_iterator(
+        const_cast<GlobMem_t *>(&_glob_mem), _pattern, _begin.pos() + _size);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
