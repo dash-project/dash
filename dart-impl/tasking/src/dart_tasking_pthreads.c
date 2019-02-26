@@ -75,7 +75,8 @@ static int num_threads;
 static int num_utility_threads = 0;
 
 // whether or not to respect numa placement
-static bool respect_numa = false;
+static bool respect_numa  = false;
+static bool threadlocal_q = true;
 // the number of numa nodes
 static int num_numa_nodes = 1;
 
@@ -93,9 +94,7 @@ static dart_thread_t **thread_pool;
 
 static bool bind_threads = false;
 
-#ifndef DART_TASK_THREADLOCAL_Q
 static dart_taskqueue_t *task_queue;
-#endif // DART_TASK_THREADLOCAL_Q
 
 static size_t num_units;
 
@@ -214,15 +213,34 @@ dart_taskqueue_t *
 dart__tasking__get_taskqueue()
 {
   dart_thread_t *thread = get_current_thread();
-#ifdef DART_TASK_THREADLOCAL_Q
-  // fall-back in case we are called from the progress thread
-  if (thread == NULL) thread = thread_pool[0];
-  dart_taskqueue_t *q = &thread->queue;
-#else
-  dart_taskqueue_t *q = &task_queue[thread->numa_id];
-#endif // DART_TASK_THREADLOCAL_Q
+  dart_taskqueue_t *q;
+  if (threadlocal_q) {
+    // fall-back in case we are called from the progress thread
+    if (thread == NULL) thread = thread_pool[0];
+    q = &thread->queue;
+  } else {
+    q = &task_queue[thread->numa_id];
+  }
 
   return q;
+}
+
+static inline
+dart_taskqueue_t *
+dart__tasking__get_taskqueue_numa(dart_thread_t *thread, void *numaptr)
+{
+  dart_taskqueue_t *q;
+  if (threadlocal_q) {
+    q = &thread->queue;
+    // fall-back in case we are called from the progress thread
+    if (thread->is_utility_thread) q = &thread_pool[0]->queue;
+  } else {
+    int numa_node = 0;
+    if (respect_numa && numaptr != NULL) {
+      numa_node = dart__tasking__affinity_ptr_numa_node(numaptr);
+    }
+    q = &task_queue[numa_node];
+  }
 }
 
 static void
@@ -248,13 +266,7 @@ static
 void requeue_task(dart_task_t *task)
 {
   dart_thread_t *thread = get_current_thread();
-#ifdef DART_TASK_THREADLOCAL_Q
-  // fall-back in case we are called from the progress thread
-  if (thread == NULL) thread = thread_pool[0];
-  dart_taskqueue_t *q = &thread->queue;
-#else
-  dart_taskqueue_t *q = &task_queue[thread->numa_id];
-#endif // DART_TASK_THREADLOCAL_Q
+  dart_taskqueue_t *q = dart__tasking__get_taskqueue();
   int delay = thread->delay;
   if (delay == 0) {
     dart_tasking_taskqueue_push(q, task);
@@ -515,36 +527,37 @@ dart_task_t * next_task(dart_thread_t *thread)
     thread->next_task = NULL;
     return task;
   }
-#ifdef DART_TASK_THREADLOCAL_Q
-  dart_task_t *task = dart_tasking_taskqueue_pop(&thread->queue);
-  if (task == NULL) {
-    // try to steal from another thread, round-robbing starting at the last
-    // successful thread
-    int target = thread->last_steal_thread;
-    for (int i = 0; i < num_threads; ++i) {
-      dart_thread_t *target_thread = thread_pool[target];
-      if (dart__likely(target_thread != NULL)) {
-        task = dart_tasking_taskqueue_pop(&target_thread->queue);
-        if (task != NULL) {
-          DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
-          thread->last_steal_thread = target;
-          break;
+
+  dart_task_t *task;
+  if (threadlocal_q) {
+    task = dart_tasking_taskqueue_pop(&thread->queue);
+    if (task == NULL) {
+      // try to steal from another thread, round-robbing starting at the last
+      // successful thread
+      int target = thread->last_steal_thread;
+      for (int i = 0; i < num_threads; ++i) {
+        dart_thread_t *target_thread = thread_pool[target];
+        if (dart__likely(target_thread != NULL)) {
+          task = dart_tasking_taskqueue_pop(&target_thread->queue);
+          if (task != NULL) {
+            DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
+            thread->last_steal_thread = target;
+            break;
+          }
         }
+        target = (target + 1) % num_threads;
       }
-      target = (target + 1) % num_threads;
     }
+  } else {
+    int i = 0;
+    // try to get a task from the taskqeue on our NUMA domain and fall-back to
+    // other domains
+    do {
+      task = dart_tasking_taskqueue_pop(
+                &task_queue[(thread->numa_id + i) % num_numa_nodes]);
+      ++i;
+    } while (task == NULL && i < num_numa_nodes);
   }
-#else
-  int i = 0;
-  dart_task_t *task = NULL;
-  // try to get a task from the taskqeue on our NUMA domain and fall-back to
-  // other domains
-  do {
-    task = dart_tasking_taskqueue_pop(
-              &task_queue[(thread->numa_id + i) % num_numa_nodes]);
-    ++i;
-  } while (task == NULL && i < num_numa_nodes);
-#endif // DART_TASK_THREADLOCAL_Q
   return task;
 }
 
@@ -898,12 +911,11 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->is_utility_thread = false;
   thread->ctx_to_enter      = NULL;
   dart__base__stack_init(&thread->ctxlist);
-#ifdef DART_TASK_THREADLOCAL_Q
+
   thread->last_steal_thread = 0;
   dart_tasking_taskqueue_init(&thread->queue);
   DART_LOG_TRACE("Thread %i (%p) has task queue %p",
-    threadnum, thread, &thread->queue);
-#endif // DART_TASK_THREADLOCAL_Q
+                 threadnum, thread, &thread->queue);
 
   if (threadnum == 0)
     DART_LOG_INFO("sizeof(dart_task_t) = %zu", sizeof(dart_task_t));
@@ -1037,9 +1049,7 @@ void dart_thread_finalize(dart_thread_t *thread)
     thread->thread_id = -1;
     thread->current_task = NULL;
 
-#ifdef DART_TASK_THREADLOCAL_Q
     dart_tasking_taskqueue_finalize(&thread->queue);
-#endif // DART_TASK_THREADLOCAL_Q
   }
 }
 
@@ -1110,9 +1120,11 @@ dart__tasking__init()
                                                 thread_idle_env,
                                                 DART_THREAD_IDLE_USLEEP);
 
-  respect_numa = dart__base__env__bool(DART_THREAD_PLACE_NUMA_ENVSTR, false);
-
-  //printf("respect_numa: %d\n", respect_numa);
+  respect_numa  = dart__base__env__bool(DART_THREAD_PLACE_NUMA_ENVSTR, false);
+  threadlocal_q = dart__base__env__bool(DART_TASK_SCHEDULE_THREADLOCAL_Q_ENVSTR,
+                                        true);
+  // NUMA-aware scheduling disables thread-local queues
+  threadlocal_q ^= respect_numa;
 
   num_threads = determine_num_threads();
   DART_LOG_INFO("Using %i threads", num_threads);
@@ -1132,7 +1144,6 @@ dart__tasking__init()
   // initialize thread affinity
   dart__tasking__affinity_init();
 
-#ifndef DART_TASK_THREADLOCAL_Q
   if (respect_numa) {
     num_numa_nodes = dart__tasking__affinity_num_numa_nodes();
   }
@@ -1140,7 +1151,6 @@ dart__tasking__init()
   for (int i = 0; i < num_numa_nodes; ++i) {
     dart_tasking_taskqueue_init(&task_queue[i]);
   }
-#endif // DART_TASK_THREADLOCAL_Q
 
   // keep threads running
   parallel = true;
@@ -1260,17 +1270,7 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
 
     dart_thread_t *thread = get_current_thread();
 
-#ifdef DART_TASK_THREADLOCAL_Q
-    dart_taskqueue_t *q = &thread->queue;
-    // fall-back in case we are called from the progress thread
-    if (thread->is_utility_thread) q = &thread_pool[0]->queue;
-#else
-    int numa_node = 0;
-    if (respect_numa && task->numaptr != NULL) {
-      numa_node = dart__tasking__affinity_ptr_numa_node(task->numaptr);
-    }
-    dart_taskqueue_t *q = &task_queue[numa_node];
-#endif // DART_TASK_THREADLOCAL_Q
+    dart_taskqueue_t *q = dart__tasking__get_taskqueue_numa(thread, task->numaptr);
 
     if (thread->is_releasing_deps && !thread->is_utility_thread) {
       // short-cut and avoid enqueuing the task
@@ -1683,11 +1683,9 @@ dart__tasking__fini()
   dart__tasking__context_cleanup();
   destroy_threadpool();
 
-#ifndef DART_TASK_THREADLOCAL_Q
   for (int i = 0; i < num_numa_nodes; ++i) {
     dart_tasking_taskqueue_finalize(&task_queue[i]);
   }
-#endif
 
   dart__task__wait_fini();
 

@@ -19,9 +19,6 @@ typedef struct dart_dephash_elem dart_dephash_elem_t;
 typedef struct dart_dephash_head dart_dephash_head_t;
 struct task_list;
 
-// whether to use thread-local task queues or a single queue
-//#define DART_TASK_THREADLOCAL_Q
-
 #ifdef USE_UCONTEXT
 #define HAVE_RESCHEDULING_YIELD 1
 #endif // USE_UCONTEXT
@@ -173,10 +170,8 @@ typedef struct dart_taskqueue {
 
 typedef struct {
   dart_task_t           * current_task;
-#ifdef DART_TASK_THREADLOCAL_Q
   struct dart_taskqueue   queue;
   int                     last_steal_thread;
-#endif // DART_TASK_THREADLOCAL_Q
   uint64_t                taskcntr;
   pthread_t               pthread;
   context_t               retctx;            // the thread-specific context to return to eventually

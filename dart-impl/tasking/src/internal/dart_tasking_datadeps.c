@@ -139,12 +139,6 @@ dart_taskqueue_t            local_deferred_tasks; // visible outside this TU
 
 static dart_global_unit_t myguid;
 
-#ifndef DART_TASK_THREADLOCAL_Q
-// forward declaration
-extern dart_taskqueue_t task_queue DART_INTERNAL;
-#endif // DART_TASK_THREADLOCAL_Q
-
-
 static dart_ret_t
 release_remote_dependencies(dart_task_t *task);
 
