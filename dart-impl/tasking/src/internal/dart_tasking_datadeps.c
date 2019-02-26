@@ -618,6 +618,8 @@ static void dephash_release_in_dependency(
   // next output dependency if all input dependencies have completed
   dart_dephash_elem_t *out_dep = elem->dep_list;
   if (out_dep != NULL) {
+    dart_dephash_elem_t *out_prev = out_dep->prev;
+    dart_dephash_elem_t *out_next = out_dep->next;
     DART_ASSERT_MSG(out_dep->task.local == NULL,
                     "Output dependency %p is still active!", out_dep);
     int32_t num_consumers = DART_DEC_AND_FETCH32(&out_dep->num_consumers);
@@ -630,16 +632,23 @@ static void dephash_release_in_dependency(
       int slot = hash_gptr(out_dep->dep.gptr);
       LOCK_TASK(&local_deps[slot]);
       if (out_dep->num_consumers == 0){
-        // release the next output dependency
-        DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep",
-                       out_dep);
-        dephash_release_next_out_dependency_nolock(out_dep);
+        // make sure that the element has not been removed by someone else
+        if (out_dep->prev == out_prev && out_dep->next == out_next)
+        {
+          // release the next output dependency
+          DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep",
+                        out_dep);
+          dephash_release_next_out_dependency_nolock(out_dep);
 
-        // remove the output dependency from the bucket
-        dephash_remove_dep_from_bucket_nolock(out_dep, local_deps, slot);
+          // remove the output dependency from the bucket
+          dephash_remove_dep_from_bucket_nolock(out_dep, local_deps, slot);
 
-        // finally recycle the output dependency
-        dephash_recycle_elem(out_dep);
+          // finally recycle the output dependency
+          dephash_recycle_elem(out_dep);
+        } else {
+          DART_LOG_WARN("Cowardly refusing to release dependency object %p "
+                         "which seems to have moved already", out_dep);
+        }
       }
       UNLOCK_TASK(&local_deps[slot]);
     }
