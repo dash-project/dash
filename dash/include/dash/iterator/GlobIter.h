@@ -100,9 +100,9 @@ class GlobIter {
 
  protected:
   /// Global memory used to dereference iterated values.
-  GlobMemType * _globmem = nullptr;
+  GlobMemType* _globmem = nullptr;
   /// Pattern that specifies the iteration order (access pattern).
-  PatternType const * _pattern = nullptr;
+  PatternType const* _pattern = nullptr;
   /// Current position of the iterator in global canonical index space.
   index_type _idx = 0;
   /// Maximum position allowed for this iterator.
@@ -116,8 +116,8 @@ class GlobIter {
    * the element order specified by the given pattern.
    */
   DASH_CONSTEXPR GlobIter(
-      GlobMemType *       gmem,
-      PatternType const & pat,
+      GlobMemType*       gmem,
+      PatternType const& pat,
       index_type         position = 0) DASH_NOEXCEPT
     : _globmem(gmem),
       _pattern(&pat),
@@ -131,19 +131,19 @@ class GlobIter {
       class PointerType_,
       class ReferenceType_,
       typename = typename std::enable_if<
-          // We always allow GlobPtr<T> -> GlobPtr<void> or the other way)
-          // or if From is assignable to To (value_type)
+          // Converstion works only if ElementType_ & is assignable to
+          // value_type &
           std::is_assignable<
               typename dash::remove_atomic<ElementType_>::type,
               typename dash::remove_atomic<value_type>::type>::value>
 
       ::type>
   DASH_CONSTEXPR GlobIter(const GlobIter<
-                     ElementType_,
-                     PatternType,
-                     GlobMemType,
-                     PointerType_,
-                     ReferenceType_>& other) DASH_NOEXCEPT
+                          ElementType_,
+                          PatternType,
+                          GlobMemType,
+                          PointerType_,
+                          ReferenceType_>& other) DASH_NOEXCEPT
     : _globmem(other._globmem),
       _pattern(other._pattern),
       _idx(other._idx),
