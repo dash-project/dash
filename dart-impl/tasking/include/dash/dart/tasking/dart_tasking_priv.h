@@ -168,23 +168,23 @@ typedef struct dart_taskqueue {
   dart_mutex_t        mutex;
 } dart_taskqueue_t;
 
+#define THREAD_QUEUE_SIZE 16
+
 typedef struct {
   dart_task_t           * current_task;
-  struct dart_taskqueue   queue;
-  int                     last_steal_thread;
+  dart_task_t           * queue[THREAD_QUEUE_SIZE]; // array of tasks short-cut
+  dart_task_t           * next_task;                // pointer to the next task executed in a yield
   uint64_t                taskcntr;
   pthread_t               pthread;
   context_t               retctx;            // the thread-specific context to return to eventually
   dart_stack_t            ctxlist;           // a free-list of contexts, written by all threads
   context_list_t        * ctx_to_enter;      // the context to enter next
   int                     thread_id;
-  int                     core_id;
-  int                     numa_id;
   int                     delay;             // delay in case this task yields
-  double                  last_progress_ts;  // the timestamp of the last remote progress call
-  dart_task_t           * next_task;         // short-cut on the next task to execute
-  bool                    is_releasing_deps; // whether the thread is currently releasing dependencies
+  int16_t                 core_id;
+  int8_t                  numa_id;
   bool                    is_utility_thread; // whether the thread is a worker or utility thread
+  double                  last_progress_ts;  // the timestamp of the last remote progress call
 } dart_thread_t;
 
 dart_ret_t
