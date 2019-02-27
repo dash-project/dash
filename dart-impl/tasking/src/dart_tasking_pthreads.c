@@ -490,10 +490,10 @@ dart_task_t * next_task_thread(dart_thread_t *target_thread)
 {
   dart_task_t *task = NULL;
   for (int i = 0; i < THREAD_QUEUE_SIZE; ++i) {
-    task = target_thread->queue[i];
+    dart_task_t *tmp = target_thread->queue[i];
     if (task != NULL) {
-      task = DART_COMPARE_AND_SWAPPTR(&target_thread->queue[i], task, NULL);
-      if (task) {
+      task = DART_COMPARE_AND_SWAPPTR(&target_thread->queue[i], tmp, NULL);
+      if (task == tmp) {
         DART_LOG_TRACE("Taking task %p from slot %d of thread %d",
                       task, i, target_thread->thread_id);
         break;
