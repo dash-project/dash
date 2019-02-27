@@ -934,7 +934,7 @@ void* thread_main(void *data)
     }
   }
 
-  dart_thread_t *thread = malloc(sizeof(dart_thread_t));
+  dart_thread_t *thread = calloc(1, sizeof(dart_thread_t));
 
   DART_LOG_DEBUG("Thread %d: %p", tid->threadid, thread);
 
