@@ -8,6 +8,7 @@
 #include <dash/dart/base/env.h>
 #include <dash/dart/base/stack.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
+#include <dash/dart/tasking/dart_tasking_signal.h>
 #include <dash/dart/tasking/dart_tasking_ayudame.h>
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_tasklist.h>
@@ -1167,6 +1168,9 @@ dart__tasking__init()
   dart_tasking_copyin_init();
 
   dart__tasking__cancellation_init();
+
+  // install signal handler
+  dart__tasking__install_signalhandler();
 
   initialized = true;
 
