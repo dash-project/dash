@@ -1,20 +1,18 @@
-
 #include "../TestBase.h"
 #include "../TestLogHelpers.h"
 #include "GlobRefTest.h"
 
 #include <dash/Array.h>
-#include <dash/algorithm/Fill.h>
 #include <dash/algorithm/Copy.h>
-
+#include <dash/algorithm/Fill.h>
 
 TEST_F(GlobRefTest, ArithmeticOps)
 {
   using value_t = int;
   using array_t = dash::Array<value_t>;
-  array_t arr(dash::size());
-  int neighbor = (dash::myid() + 1) % dash::size();
-  dash::GlobRef<value_t> gref = arr[neighbor];
+  array_t                arr(dash::size());
+  int                    neighbor = (dash::myid() + 1) % dash::size();
+  dash::GlobRef<value_t> gref     = arr[neighbor];
 
   auto address_of_ref = dash::addressof<typename array_t::memory_type>(gref);
 
@@ -57,4 +55,52 @@ TEST_F(GlobRefTest, ArithmeticOps)
 
   ASSERT_EQ_U(gref -= 1, 1);
   ASSERT_EQ_U(gref, 1);
+}
+
+struct Parent {
+  int x;
+};
+
+struct Child : public Parent {
+  int y;
+};
+
+namespace dash {
+template <>
+struct is_container_compatible<Child> : public std::true_type {
+};
+}  // namespace dash
+
+TEST_F(GlobRefTest, InheritanceTest)
+{
+  dash::Array<Child> array{100};
+
+  Child child;
+  child.x = 12;
+  child.y = 34;
+
+  dash::fill(array.begin(), array.end(), child);
+
+  array.barrier();
+
+  auto lpos = array.pattern().local(10);
+
+  if (lpos.unit == static_cast<dash::team_unit_t>(dash::myid())) {
+    child.x                 = 56;
+    child.y                 = 123;
+    array.local[lpos.index] = child;
+  }
+
+  array.barrier();
+
+  auto asChild = array[10].get();
+
+  /*
+   * Here we explicitly cast it as Parent. In consequence, we read only 4
+   * bytes (i.e., sizeof Parent), instead of 8.
+   */
+  auto asParent = static_cast<dash::GlobRef<Parent>>(array[10]).get();
+
+  EXPECT_EQ_U(asParent.x, 56);
+  EXPECT_EQ_U(asChild.y, 123);
 }

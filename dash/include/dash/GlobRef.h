@@ -71,32 +71,36 @@ public:
   {
   }
 
+  // clang-format off
   /**
    * Copy constructor, implicit if at least one of the following conditions is
    * satisfied:
-   *    1) value_type and _T are exactly the same types (including const and
+   *    1) value_type and _From are exactly the same types (including const and
    *    volatile qualifiers
-   *    2) value_type and _T are the same types after removing const and
+   *    2) value_type and _From are the same types after removing const and
    *    volatile qualifiers and value_type itself is const.
    */
+  // clang-format on
   template <
-      typename _T,
-      long = internal::enable_implicit_copy_ctor<value_type, _T>::value>
-  constexpr GlobRef(const GlobRef<_T>& gref)
+      typename _From,
+      long = internal::enable_implicit_copy_ctor<value_type, _From>::value>
+  constexpr GlobRef(const GlobRef<_From>& gref)
     : GlobRef(gref.dart_gptr())
   {
   }
 
+  // clang-format off
   /**
    * Copy constructor, explicit if the following conditions are satisfied.
-   *    1) value_type and _T are the same types after excluding const and
+   *    1) value_type and _From are the same types after excluding const and
    *    volatile qualifiers
-   *    2) value_type is const and _T is non-const
+   *    2) value_type is const and _From is non-const
    */
+  // clang-format on
   template <
-      typename _T,
-      int = internal::enable_explicit_copy_ctor<value_type, _T>::value>
-  explicit constexpr GlobRef(const GlobRef<_T>& gref)
+      typename _From,
+      int = internal::enable_explicit_copy_ctor<value_type, _From>::value>
+  explicit constexpr GlobRef(const GlobRef<_From>& gref)
     : GlobRef(gref.dart_gptr())
   {
   }
@@ -106,17 +110,17 @@ public:
    * avoid unintendet conversion
    */
   template <
-      typename _T,
-      long = internal::enable_implicit_copy_ctor<value_type, _T>::value>
-  constexpr GlobRef(const GlobAsyncRef<_T>& gref)
+      typename _From,
+      long = internal::enable_implicit_copy_ctor<value_type, _From>::value>
+  constexpr GlobRef(const GlobAsyncRef<_From>& gref)
     : _gptr(gref.dart_gptr())
   {
   }
 
   template <
-      typename _T,
-      int = internal::enable_explicit_copy_ctor<value_type, _T>::value>
-  explicit constexpr GlobRef(const GlobAsyncRef<_T>& gref)
+      typename _From,
+      int = internal::enable_explicit_copy_ctor<value_type, _From>::value>
+  explicit constexpr GlobRef(const GlobAsyncRef<_From>& gref)
     : GlobRef(gref.dart_gptr())
   {
   }

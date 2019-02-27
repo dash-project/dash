@@ -263,8 +263,11 @@ dart__mpi__get_basic(
   }
 
   if (remainder > 0) {
-    DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %zu)",
-        dest_ptr, remainder);
+    DART_LOG_TRACE(
+        "dart_get:  MPI_Get (dest %p, size %zu, bytes: %zu)",
+        dest_ptr,
+        remainder,
+        remainder * dart__mpi__datatype_sizeof(dtype));
     CHECK_MPI_RET(
         dart__mpi__get(dest_ptr,
           remainder,

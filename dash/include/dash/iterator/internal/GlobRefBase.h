@@ -30,9 +30,9 @@ using common_condition = std::is_same<
 template <class LHS, class RHS>
 using enable_explicit_copy_ctor = null_v<
     typename std::enable_if<
-        common_condition<LHS, RHS>::value &&
+        (common_condition<LHS, RHS>::value &&
         !std::is_const<LHS>::value &&
-        std::is_const<RHS>::value,
+        std::is_const<RHS>::value) || std::is_base_of<LHS, RHS>::value,
       LHS>::type>;
 
 template <class LHS, class RHS>
