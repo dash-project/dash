@@ -77,7 +77,6 @@ static int num_utility_threads = 0;
 
 // whether or not to respect numa placement
 static bool respect_numa  = false;
-static bool threadlocal_q = true;
 // the number of numa nodes
 static int num_numa_nodes = 1;
 
@@ -1110,10 +1109,6 @@ dart__tasking__init()
                                                 DART_THREAD_IDLE_USLEEP);
 
   respect_numa  = dart__base__env__bool(DART_THREAD_PLACE_NUMA_ENVSTR, false);
-  threadlocal_q = dart__base__env__bool(DART_TASK_SCHEDULE_THREADLOCAL_Q_ENVSTR,
-                                        true);
-  // NUMA-aware scheduling disables thread-local queues
-  threadlocal_q ^= respect_numa;
 
   num_threads = determine_num_threads();
   DART_LOG_INFO("Using %i threads", num_threads);

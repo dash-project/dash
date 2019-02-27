@@ -144,12 +144,4 @@
  */
 #define DART_THREAD_PLACE_NUMA_ENVSTR    "DART_TASK_SCHEDULE_NUMA"
 
-/**
- * Name of the environment variable specifying whether the runtime should
- * use thread-local task queues.
- *
- * Type: Boolean value.
- */
-#define DART_TASK_SCHEDULE_THREADLOCAL_Q_ENVSTR "DART_TASK_SCHEDULE_THREADLOCAL_Q"
-
 #endif // DART__BASE__INTERNAL__TASKING_ENVSTR_H__
