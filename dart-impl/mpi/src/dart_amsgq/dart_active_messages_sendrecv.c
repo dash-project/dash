@@ -203,14 +203,14 @@ dart_amsg_sendrecv_trysend(
 
     memcpy(sendbuf, data, data_size);
 
-    ret = MPI_Isend(
+    ret = MPI_Issend(
                 sendbuf, data_size,
                 MPI_BYTE, target.id, amsgq->tag, amsgq->comm,
                 &amsgq->send_reqs[idx]);
 
     dart__base__mutex_unlock(&amsgq->send_mutex);
   } else {
-    ret = MPI_Send(
+    ret = MPI_Ssend(
                 data, data_size,
                 MPI_BYTE, target.id, amsgq->tag, amsgq->comm);
   }
