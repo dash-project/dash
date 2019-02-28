@@ -70,6 +70,8 @@ struct dart_dephash_elem {
   uint16_t                  owner_thread;   // the thread that owns the element
   //dart_tasklock_t           lock;           // lock used for element-wise locking
   bool                      is_dummy;       // whether an output dependency is not backed by a task
+  int16_t                   use_cnt;        // incremented everytime the element is allocated,
+                                            // needed to detect race conditions when freeing an output dependency
 };
 
 /**
@@ -370,6 +372,7 @@ dephash_allocate_elem(
   //TASKLOCK_INIT(elem);
   elem->next = elem->prev = NULL;
   elem->is_dummy = false;
+  ++elem->use_cnt;
 
   DART_LOG_TRACE("Allocated elem %p (task %p)", elem, task.local);
 
@@ -623,26 +626,29 @@ static void dephash_release_in_dependency(
                     "dependency %p: %d", elem, num_consumers);
     dephash_recycle_elem(elem);
     if (num_consumers == 0){
+      uint16_t use_cnt = out_dep->use_cnt;
       int slot = hash_gptr(out_dep->dep.gptr);
       LOCK_TASK(&local_deps[slot]);
-      if (out_dep->num_consumers == 0){
-        // make sure that the element has not been removed by someone else
-        if (out_dep->prev == out_prev && out_dep->next == out_next)
-        {
-          // release the next output dependency
-          DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep",
-                        out_dep);
-          dephash_release_next_out_dependency_nolock(out_dep);
+      /*
+       * TODO: There is a potential race condition here: another task might insert
+       *       a new input dependency consuming this output dependency, then
+       *       run the task, and release the dependency again. Now we have two
+       *       threads with num_consumers == 0, ready to remove the element.
+       *       Possible solution: checking the use_cnt for whether the dependency
+       *                          had been free'd already.
+       */
+      if (out_dep->num_consumers == 0 && use_cnt == out_dep->use_cnt){
+        // release the next output dependency
+        DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep",
+                      out_dep);
+        ++out_dep->use_cnt;
+        dephash_release_next_out_dependency_nolock(out_dep);
 
-          // remove the output dependency from the bucket
-          dephash_remove_dep_from_bucket_nolock(out_dep, local_deps, slot);
+        // remove the output dependency from the bucket
+        dephash_remove_dep_from_bucket_nolock(out_dep, local_deps, slot);
 
-          // finally recycle the output dependency
-          dephash_recycle_elem(out_dep);
-        } else {
-          DART_LOG_WARN("Cowardly refusing to release dependency object %p "
-                         "which seems to have moved already", out_dep);
-        }
+        // finally recycle the output dependency
+        dephash_recycle_elem(out_dep);
       }
       UNLOCK_TASK(&local_deps[slot]);
     }
