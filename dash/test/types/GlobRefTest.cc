@@ -67,42 +67,6 @@ struct Child : public Parent {
   int y;
 };
 
-namespace dash {
-template <>
-struct is_container_compatible<Child> : public std::true_type {
-};
-}  // namespace dash
-
-static_assert(std::is_trivially_copy_constructible<Child>::value, "");
-static_assert(std::is_trivially_default_constructible<Child>::value, "");
-static_assert(
-    std::is_convertible<
-        std::add_lvalue_reference<Child const>::type,
-        std::add_lvalue_reference<const Parent>::type>::value,
-    "");
-static_assert(std::is_assignable<int&, const int>::value, "");
-
-// clang-format off
-
-template <class LHS, class RHS>
-using common_condition = std::is_same<
-    typename std::remove_cv<LHS>::type,
-    typename std::remove_cv<RHS>::type>;
-
-template <class LHS, class RHS>
-using enable_explicit_copy_ctor = std::integral_constant<bool,
-        common_condition<LHS, RHS>::value &&
-        !std::is_const<LHS>::value &&
-        std::is_const<RHS>::value>;
-
-template <class LHS, class RHS>
-using enable_implicit_copy_ctor = std::integral_constant<bool,
-        std::is_convertible<LHS, RHS>::value ||
-        (common_condition<LHS, RHS>::value &&
-        std::is_const<LHS>::value)>;
-
-// clang-format on
-
 TEST_F(GlobRefTest, ConstCorrectness)
 {
   dash::Array<int>     dArray{100};
