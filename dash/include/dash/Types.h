@@ -235,12 +235,8 @@ struct dart_punned_datatype {
 template <class T>
 struct is_container_compatible :
   public std::integral_constant<bool,
-              std::is_standard_layout<T>::value
-#ifdef DASH_HAVE_STD_TRIVIALLY_COPYABLE
+              std::is_default_constructible<T>::value
               && std::is_trivially_copyable<T>::value
-#elif defined DASH_HAVE_TRIVIAL_COPY_INTRINSIC
-              && __has_trivial_copy(T)
-#endif
          >
 { };
 

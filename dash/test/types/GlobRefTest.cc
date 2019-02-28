@@ -10,7 +10,9 @@ TEST_F(GlobRefTest, ArithmeticOps)
 {
   using value_t = int;
   using array_t = dash::Array<value_t>;
-  array_t                arr(dash::size());
+
+  array_t arr(dash::size());
+
   int                    neighbor = (dash::myid() + 1) % dash::size();
   dash::GlobRef<value_t> gref     = arr[neighbor];
 
@@ -71,36 +73,102 @@ struct is_container_compatible<Child> : public std::true_type {
 };
 }  // namespace dash
 
+static_assert(std::is_trivially_copy_constructible<Child>::value, "");
+static_assert(std::is_trivially_default_constructible<Child>::value, "");
+static_assert(
+    std::is_convertible<
+        std::add_lvalue_reference<Child const>::type,
+        std::add_lvalue_reference<const Parent>::type>::value,
+    "");
+static_assert(std::is_assignable<int&, const int>::value, "");
+
+// clang-format off
+
+template <class LHS, class RHS>
+using common_condition = std::is_same<
+    typename std::remove_cv<LHS>::type,
+    typename std::remove_cv<RHS>::type>;
+
+template <class LHS, class RHS>
+using enable_explicit_copy_ctor = std::integral_constant<bool,
+        common_condition<LHS, RHS>::value &&
+        !std::is_const<LHS>::value &&
+        std::is_const<RHS>::value>;
+
+template <class LHS, class RHS>
+using enable_implicit_copy_ctor = std::integral_constant<bool,
+        std::is_convertible<LHS, RHS>::value ||
+        (common_condition<LHS, RHS>::value &&
+        std::is_const<LHS>::value)>;
+
+// clang-format on
+
+TEST_F(GlobRefTest, ConstCorrectness)
+{
+  dash::Array<int>     dArray{100};
+  std::array<int, 100> stdArray{};
+
+  // OK
+  int&               ref  = stdArray[0];
+  dash::GlobRef<int> gref = dArray[0];
+
+  // OK as well
+  int const&               cref  = ref;
+  dash::GlobRef<const int> cgref = gref;
+
+  // NOT OK, because...
+  // We must not assign a non-const to const -> Compilation error
+  // int&               ref2  = cref;
+  // dash::GlobRef<int> gref2 = cgref;
+}
+
 TEST_F(GlobRefTest, InheritanceTest)
 {
-  dash::Array<Child> array{100};
+  dash::Array<Child>     dArray{100};
+  std::array<Child, 100> stdArray{};
 
   Child child;
   child.x = 12;
   child.y = 34;
 
-  dash::fill(array.begin(), array.end(), child);
+  dash::fill(dArray.begin(), dArray.end(), child);
+  std::fill(stdArray.begin(), stdArray.end(), child);
 
-  array.barrier();
+  dArray.barrier();
 
-  auto lpos = array.pattern().local(10);
+  auto lpos = dArray.pattern().local(10);
 
-  if (lpos.unit == static_cast<dash::team_unit_t>(dash::myid())) {
-    child.x                 = 56;
-    child.y                 = 123;
-    array.local[lpos.index] = child;
+  child.x = 56;
+  child.y = 123;
+  if (lpos.unit == dash::team_unit_t{dash::myid()}) {
+    dArray.local[lpos.index] = child;
   }
 
-  array.barrier();
+  stdArray[lpos.index] = child;
 
-  auto asChild = array[10].get();
+  dArray.barrier();
+
+  Child&               asChild_array  = stdArray[10];
+  dash::GlobRef<Child> asChild_darray = dArray[10];
 
   /*
    * Here we explicitly cast it as Parent. In consequence, we read only 4
    * bytes (i.e., sizeof Parent), instead of 8.
    */
-  auto asParent = static_cast<dash::GlobRef<Parent>>(array[10]).get();
+  Parent&               asParent_array  = stdArray[10];
+  dash::GlobRef<Parent> asParent_darray = dArray[10];
 
-  EXPECT_EQ_U(asParent.x, 56);
-  EXPECT_EQ_U(asChild.y, 123);
+  // static downcast is allowed with non-virtual base classes:
+  // see https://en.cppreference.com/w/cpp/language/static_cast, point 2
+  Child& asChild_array2 = static_cast<Child&>(asParent_array);
+  //TODO rko: Still to implement -> add in traits
+  //dash::GlobRef<Child> asChild_darray2 = static_cast<dash::GlobRef<Child>>(asParent_darray);
+
+  EXPECT_EQ_U(asParent_array.x, 56);
+  EXPECT_EQ_U(asChild_array.y, 123);
+
+  EXPECT_EQ_U(static_cast<Child>(asChild_darray).y, 123);
+  //Look into the logs and grep for dart_get_blocking to see that we really
+  //get only 4 bytes instead of 8.
+  EXPECT_EQ_U(static_cast<Parent>(asParent_darray).x, 56);
 }

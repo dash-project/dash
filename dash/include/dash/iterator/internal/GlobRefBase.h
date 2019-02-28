@@ -27,20 +27,32 @@ using common_condition = std::is_same<
     typename std::remove_cv<LHS>::type,
     typename std::remove_cv<RHS>::type>;
 
-template <class LHS, class RHS>
-using enable_explicit_copy_ctor = null_v<
-    typename std::enable_if<
-        (common_condition<LHS, RHS>::value &&
-        !std::is_const<LHS>::value &&
-        std::is_const<RHS>::value) || std::is_base_of<LHS, RHS>::value,
-      LHS>::type>;
+/*
+ * A type is implicitly convertible to the other if
+ * we can
+ */
+template<class LHS, class RHS>
+using is_implicitly_convertible = std::is_convertible<
+        typename std::add_lvalue_reference<RHS>::type,
+        typename std::add_lvalue_reference<LHS>::type>;
 
 template <class LHS, class RHS>
 using enable_implicit_copy_ctor = null_v<
     typename std::enable_if<
-        std::is_same<LHS, RHS>::value ||
-        (common_condition<LHS, RHS>::value &&
-        std::is_const<LHS>::value),
+      is_implicitly_convertible<LHS, RHS>::value,
+      LHS>::type>;
+
+template <class LHS, class RHS>
+using enable_explicit_copy_ctor = null_v<
+    typename std::enable_if<
+      // 1) not implicitly convertible
+      !is_implicitly_convertible<LHS, RHS>::value &&
+      // 2.1) follows the rules of const correctness
+      std::is_assignable<
+        typename std::add_lvalue_reference<LHS>::type, RHS>
+        ::value &&
+      // 2.2) TODO: RHS is base of LHS and RHS must not be polymorphic...
+      true,
       LHS>::type>;
 
 // clang-format on
