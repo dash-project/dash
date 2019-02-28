@@ -491,19 +491,16 @@ dart_task_t * get_current_task()
 static
 dart_task_t * next_task_thread(dart_thread_t *target_thread)
 {
-  dart_task_t *task = NULL;
   for (int i = 0; i < THREAD_QUEUE_SIZE; ++i) {
-    dart_task_t *tmp = target_thread->queue[i];
-    if (tmp != NULL) {
-      task = DART_COMPARE_AND_SWAPPTR(&target_thread->queue[i], tmp, NULL);
-      if (task == tmp) {
-        DART_LOG_TRACE("Taking task %p from slot %d of thread %d",
-                      task, i, target_thread->thread_id);
-        break;
-      }
+    dart_task_t *task = target_thread->queue[i];
+    if (task != NULL &&
+        DART_COMPARE_AND_SWAPPTR(&target_thread->queue[i], task, NULL)) {
+      DART_LOG_TRACE("Taking task %p from slot %d of thread %d",
+                    task, i, target_thread->thread_id);
+      return task;
     }
   }
-  return task;
+  return NULL;
 }
 
 /**
@@ -512,19 +509,16 @@ dart_task_t * next_task_thread(dart_thread_t *target_thread)
 static
 dart_task_t * next_task_thread_back(dart_thread_t *target_thread)
 {
-  dart_task_t *task = NULL;
   for (int i = THREAD_QUEUE_SIZE-1; i >= 0; --i) {
-    dart_task_t *tmp = target_thread->queue[i];
-    if (tmp != NULL) {
-      task = DART_COMPARE_AND_SWAPPTR(&target_thread->queue[i], tmp, NULL);
-      if (task == tmp) {
-        DART_LOG_TRACE("Taking task %p from slot %d of thread %d",
-                      task, i, target_thread->thread_id);
-        break;
-      }
+    dart_task_t *task = target_thread->queue[i];
+    if (task != NULL &&
+        DART_COMPARE_AND_SWAPPTR(&target_thread->queue[i], task, NULL)) {
+      DART_LOG_TRACE("Taking task %p from slot %d of thread %d",
+                    task, i, target_thread->thread_id);
+      return task;
     }
   }
-  return task;
+  return NULL;
 }
 
 static
@@ -1294,7 +1288,7 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
       if (numa_node == thread->numa_id) {
         for (int i = 0; i < THREAD_QUEUE_SIZE; ++i) {
           if (thread->queue[i] == NULL &&
-              DART_COMPARE_AND_SWAPPTR(&thread->queue[i], NULL, task) == NULL) {
+              DART_COMPARE_AND_SWAPPTR(&thread->queue[i], NULL, task)) {
             DART_LOG_TRACE("Putting task %p into slot %d of thread %d",
                           task, i, thread->thread_id);
             return;
