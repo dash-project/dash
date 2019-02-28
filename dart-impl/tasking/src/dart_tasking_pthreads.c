@@ -485,13 +485,37 @@ dart_task_t * get_current_task()
   return get_current_thread()->current_task;
 }
 
+/**
+ * Try to get a task from the thread-local queue.
+ */
 static
 dart_task_t * next_task_thread(dart_thread_t *target_thread)
 {
   dart_task_t *task = NULL;
   for (int i = 0; i < THREAD_QUEUE_SIZE; ++i) {
     dart_task_t *tmp = target_thread->queue[i];
-    if (task != NULL) {
+    if (tmp != NULL) {
+      task = DART_COMPARE_AND_SWAPPTR(&target_thread->queue[i], tmp, NULL);
+      if (task == tmp) {
+        DART_LOG_TRACE("Taking task %p from slot %d of thread %d",
+                      task, i, target_thread->thread_id);
+        break;
+      }
+    }
+  }
+  return task;
+}
+
+/**
+ * Try to get a task from the back of the thread-local queue.
+ */
+static
+dart_task_t * next_task_thread_back(dart_thread_t *target_thread)
+{
+  dart_task_t *task = NULL;
+  for (int i = THREAD_QUEUE_SIZE-1; i >= 0; --i) {
+    dart_task_t *tmp = target_thread->queue[i];
+    if (tmp != NULL) {
       task = DART_COMPARE_AND_SWAPPTR(&target_thread->queue[i], tmp, NULL);
       if (task == tmp) {
         DART_LOG_TRACE("Taking task %p from slot %d of thread %d",
@@ -516,13 +540,15 @@ dart_task_t * next_task(dart_thread_t *thread)
   if (task != NULL) return task;
 
   // if still not successful, try to steal from another thread on the same NUMA node
-  for (int i = 0; i < num_threads; ++i) {
-    dart_thread_t *target_thread = thread_pool[i];
+  for (int target = (thread->thread_id + 1) % num_threads;
+        target   != thread->thread_id;
+        target    = (++target == num_threads) ? 0 : target) {
+    dart_thread_t *target_thread = thread_pool[target];
     if (dart__likely(target_thread != NULL) &&
         target_thread->numa_id == thread->numa_id) {
-      task = next_task_thread(thread_pool[i]);
+      task = next_task_thread_back(thread_pool[target]);
       if (task != NULL) {
-        DART_LOG_DEBUG("Stole task %p from thread %i", task, i);
+        DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
         return task;
       }
     }
@@ -541,12 +567,14 @@ dart_task_t * next_task(dart_thread_t *thread)
 
   // still no luck, try again with threads on other NUMA nodes
   if (num_numa_nodes > 1) {
-    for (int i = 0; i < num_threads; ++i) {
-      dart_thread_t *target_thread = thread_pool[i];
+    for (int target = (thread->thread_id + 1) % num_threads;
+         target    != thread->thread_id;
+         target     = (++target == num_threads) ? 0 : target) {
+      dart_thread_t *target_thread = thread_pool[target];
       if (dart__likely(target_thread != NULL)) {
-        task = next_task_thread(thread_pool[i]);
+        task = next_task_thread_back(thread_pool[target]);
         if (task != NULL) {
-          DART_LOG_DEBUG("Stole task %p from thread %i", task, i);
+          DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
           return task;
         }
       }
