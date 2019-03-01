@@ -33,7 +33,7 @@ typedef int32_t dart_tasklock_t;
 
 #define LOCK_TASK(__task) do {\
   int cnt = 0; \
-  while (DART_COMPARE_AND_SWAP32(&(__task)->lock, 0, 1) != 0) \
+  while (!DART_COMPARE_AND_SWAP32(&(__task)->lock, 0, 1)) \
   { if (++cnt == 1000) { sched_yield(); cnt = 0; } } \
 } while(0)
 

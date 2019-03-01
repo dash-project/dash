@@ -626,7 +626,7 @@ static void dephash_release_in_dependency(
                     "dependency %p: %d", elem, num_consumers);
     dephash_recycle_elem(elem);
     if (num_consumers == 0){
-      uint16_t use_cnt = out_dep->use_cnt;
+      int16_t use_cnt = out_dep->use_cnt;
       int slot = hash_gptr(out_dep->dep.gptr);
       LOCK_TASK(&local_deps[slot]);
       /*
@@ -649,6 +649,11 @@ static void dephash_release_in_dependency(
 
         // finally recycle the output dependency
         dephash_recycle_elem(out_dep);
+      } else {
+        DART_LOG_TRACE("Refusing release of output dependency %p "
+                       "(nc %d, use_cnt %d vs %d)",
+                       out_dep, out_dep->num_consumers,
+                       out_dep->use_cnt, use_cnt);
       }
       UNLOCK_TASK(&local_deps[slot]);
     }
