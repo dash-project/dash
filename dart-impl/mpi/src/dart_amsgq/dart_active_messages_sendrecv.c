@@ -301,6 +301,8 @@ dart_amsg_sendrevc_process_blocking(
 
   dart__base__mutex_lock(&amsgq->processing_mutex);
 
+  DART_LOG_TRACE("Starting blocking processing of message queue %p", amsgq);
+
   int         barrier_flag = 0;
   int         send_flag = 0;
   do {
@@ -332,10 +334,20 @@ dart_amsg_sendrevc_process_blocking(
     }
   } while (!(barrier_flag && send_flag));
 
+  /**
+   * final processing of any message that was sent between our last processing
+   * and the completion of the Ibarrier.
+   */
   amsg_sendrecv_process_internal(amsgq, true, true);
-  // final synchronization
-  // TODO: I don't think this is needed here!
-  //MPI_Barrier(team_data->comm);
+
+  /**
+   * final synchronization
+   * NOTE: this is needed to ensure that the above processing does not pick up
+   *       messages that were sent after the completion of the Ibarrier.
+   */
+  MPI_Barrier(amsgq->comm);
+
+  DART_LOG_TRACE("Finished blocking processing of message queue %p", amsgq);
 
   dart__base__mutex_unlock(&amsgq->processing_mutex);
   return DART_OK;
