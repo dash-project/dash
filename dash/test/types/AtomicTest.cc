@@ -652,8 +652,8 @@ TEST_F(AtomicTest, ConstTest) {
   // assignment const -> const
   dash::GlobRef<dash::Atomic<const int>> gref2 = carr[0];
   // explicit conversion const->non-const
-  dash::GlobRef<dash::Atomic<int>> gref3 =
-                        static_cast<dash::GlobRef<dash::Atomic<int>>>(carr[0]);
+  //dash::GlobRef<dash::Atomic<int>> gref3 =
+  //                      static_cast<dash::GlobRef<dash::Atomic<int>>>(carr[0]);
 
   // should fail!
   //gref1.add(1);
@@ -670,8 +670,8 @@ TEST_F(AtomicTest, ConstTest) {
   // assignment const -> const
   dash::GlobAsyncRef<dash::Atomic<const int>> agref2 = carr.async[0];
   // explicit conversion const->non-const
-  dash::GlobAsyncRef<dash::Atomic<int>> agref3 =
-                        static_cast<dash::GlobAsyncRef<dash::Atomic<int>>>(carr.async[0]);
+  //dash::GlobAsyncRef<dash::Atomic<int>> agref3 =
+  //                      static_cast<dash::GlobAsyncRef<dash::Atomic<int>>>(carr.async[0]);
 
   // should fail!
   //agref1.add(1);

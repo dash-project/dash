@@ -169,7 +169,7 @@ TEST_F(GlobAsyncRefTest, ConstTest)
   // assignment const -> const
   dash::GlobRef<const int> gref2 = carr[0];
   // explicit conversion const->non-const
-  dash::GlobRef<int> gref3(carr[0]);
+  //dash::GlobRef<int> gref3(carr[0]);
 
   // should fail!
   //gref1.set(0);
@@ -186,8 +186,8 @@ TEST_F(GlobAsyncRefTest, ConstTest)
   // assignment const -> const
   dash::GlobAsyncRef<const int> agref2 = carr.async[0];
   // explicit conversion const->non-const
-  dash::GlobAsyncRef<int> agref3 =
-                            static_cast<dash::GlobAsyncRef<int>>(carr.async[0]);
+  //dash::GlobAsyncRef<int> agref3 =
+  //                          static_cast<dash::GlobAsyncRef<int>>(carr.async[0]);
 
   dash::GlobAsyncRef<const int> agref4 = gref1;
   dash::GlobAsyncRef<const int> agref5{gref1};
