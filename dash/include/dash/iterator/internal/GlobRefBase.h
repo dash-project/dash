@@ -22,11 +22,6 @@ struct null_v : std::integral_constant<int, 0> {
 
 // clang-format off
 
-template <class LHS, class RHS>
-using common_condition = std::is_same<
-    typename std::remove_cv<LHS>::type,
-    typename std::remove_cv<RHS>::type>;
-
 /*
  * A type is implicitly convertible to the other if
  * we can
@@ -42,17 +37,18 @@ using enable_implicit_copy_ctor = null_v<
       is_implicitly_convertible<LHS, RHS>::value,
       LHS>::type>;
 
+
 template <class LHS, class RHS>
 using enable_explicit_copy_ctor = null_v<
     typename std::enable_if<
       // 1) not implicitly convertible
       !is_implicitly_convertible<LHS, RHS>::value &&
       // 2.1) follows the rules of const correctness
-      std::is_assignable<
+      (std::is_constructible<
         typename std::add_lvalue_reference<LHS>::type, RHS>
-        ::value &&
-      // 2.2) TODO: RHS is base of LHS and RHS must not be polymorphic...
-      true,
+        ::value ||
+      // 2.2) RHS is base of LHS and RHS must not be polymorphic...
+      std::is_base_of<RHS, LHS>::value || !std::is_polymorphic<RHS>::value),
       LHS>::type>;
 
 // clang-format on

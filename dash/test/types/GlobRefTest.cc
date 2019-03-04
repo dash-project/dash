@@ -86,7 +86,7 @@ TEST_F(GlobRefTest, ConstCorrectness)
   // dash::GlobRef<int> gref2 = cgref;
 }
 
-TEST_F(GlobRefTest, InheritanceTest)
+TEST_F(GlobRefTest, InheritanceConversionTest)
 {
   dash::Array<Child>     dArray{100};
   std::array<Child, 100> stdArray{};
@@ -112,27 +112,46 @@ TEST_F(GlobRefTest, InheritanceTest)
 
   dArray.barrier();
 
-  Child&               asChild_array  = stdArray[10];
-  dash::GlobRef<Child> asChild_darray = dArray[10];
+  Child&               child_stdArray = stdArray[10];
+  dash::GlobRef<Child> child_dArray   = dArray[10];
 
   /*
    * Here we explicitly cast it as Parent. In consequence, we read only 4
    * bytes (i.e., sizeof Parent), instead of 8.
    */
-  Parent&               asParent_array  = stdArray[10];
-  dash::GlobRef<Parent> asParent_darray = dArray[10];
+  Parent&               upcastParent_stdArray = stdArray[10];
+  dash::GlobRef<Parent> upcastParent_dArray   = dArray[10];
+
+  auto const  val  = child;
+  auto const& cref = val;
+  // Child & ref = cref;
+
+  // Why can we assign a const val to
+  auto& r_auto = val;
+  // But this does not work anymore...
+  // Child& r_Child = val;
+
+  // The reason this works is the following
+  static_assert(std::is_same<Child const&, decltype(r_auto)>::value, "");
+  // static_assert(std::is_constructible<Child &, Child const &>::value, "");
+
+  Parent const& r_upcast   = r_auto;
+  Child const&  r_downcast = static_cast<Child const&>(r_upcast);
 
   // static downcast is allowed with non-virtual base classes:
   // see https://en.cppreference.com/w/cpp/language/static_cast, point 2
-  Child& asChild_array2 = static_cast<Child&>(asParent_array);
-  //TODO rko: Still to implement -> add in traits
-  //dash::GlobRef<Child> asChild_darray2 = static_cast<dash::GlobRef<Child>>(asParent_darray);
+  Child& downcastChild_stdArray = static_cast<Child&>(upcastParent_stdArray);
+  dash::GlobRef<Child> downcastChild_dArray =
+      static_cast<dash::GlobRef<Child>>(upcastParent_dArray);
 
-  EXPECT_EQ_U(asParent_array.x, 56);
-  EXPECT_EQ_U(asChild_array.y, 123);
+  EXPECT_EQ_U(child_stdArray.y, 123);
+  EXPECT_EQ_U(static_cast<Child>(child_dArray).y, 123);
 
-  EXPECT_EQ_U(static_cast<Child>(asChild_darray).y, 123);
-  //Look into the logs and grep for dart_get_blocking to see that we really
-  //get only 4 bytes instead of 8.
-  EXPECT_EQ_U(static_cast<Parent>(asParent_darray).x, 56);
+  EXPECT_EQ_U(upcastParent_stdArray.x, 56);
+  EXPECT_EQ_U(downcastChild_stdArray.y, 123);
+
+  // Look into the logs and grep for dart_get_blocking to see that we really
+  // get only 4 bytes instead of 8.
+  EXPECT_EQ_U(static_cast<Parent>(upcastParent_dArray).x, 56);
+  EXPECT_EQ_U(static_cast<Child>(downcastChild_dArray).y, 123);
 }
