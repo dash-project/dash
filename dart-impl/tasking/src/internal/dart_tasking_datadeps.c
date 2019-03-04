@@ -65,13 +65,34 @@ struct dart_dephash_elem {
   dart_dephash_elem_t      *dep_list;       // For OUT: start of list of assigned IN dependencies
                                             // For IN:  back-pointer to OUT dependency
   taskref                   task;           // task this dependency belongs to
+  /*
+   * TODO: this needs reconsideration, try to use atomics instead of locking
+   *       the bucket and only lock the bucket when removing an element.
+   * *Possible solution*
+   *
+   * When registering with an out dep:
+   * CAS num_consumers *and* use_cnt to increment both and abort if
+   * num_consumers is -1.
+   *
+   * When deregistering from an output dependency:
+   * decrement num_consumers and if 0 CAS use_cnt *and* num_consumers to signal
+   * ownership of the element (num_consumer=-1) and detect whether someone else
+   * has registered with the outdep in between (in which case we do not remove
+   * the object). Needs thorough testing!
+  union {
+    struct {
+      int32_t               num_consumers;  // For OUT: the number of consumers still not completed
+      int32_t               use_cnt;        // incremented everytime an input dependency is registered with an output dependency,
+                                            // needed to detect race conditions when freeing an output dependency
+    };
+    uint64_t                refcnt_value;   // value used for CAS operations on the above values
+  };
+  */
+  int32_t                   num_consumers;
   dart_global_unit_t        origin;         // the unit owning the task
-  uint32_t                  num_consumers;  // For OUT: the number of consumers still not completed
   uint16_t                  owner_thread;   // the thread that owns the element
   //dart_tasklock_t           lock;           // lock used for element-wise locking
   bool                      is_dummy;       // whether an output dependency is not backed by a task
-  int16_t                   use_cnt;        // incremented everytime the element is allocated,
-                                            // needed to detect race conditions when freeing an output dependency
 };
 
 /**
@@ -372,7 +393,6 @@ dephash_allocate_elem(
   //TASKLOCK_INIT(elem);
   elem->next = elem->prev = NULL;
   elem->is_dummy = false;
-  ++elem->use_cnt;
 
   DART_LOG_TRACE("Allocated elem %p (task %p)", elem, task.local);
 
@@ -387,7 +407,8 @@ register_at_out_dep_nolock(
   in_elem->dep_list = out_elem;
   // register this dependency
   DART_STACK_PUSH(out_elem->dep_list, in_elem);
-  int nc = DART_INC_AND_FETCH32(&out_elem->num_consumers);
+  //int nc = DART_INC_AND_FETCH32(&out_elem->num_consumers);
+  int nc = ++out_elem->num_consumers;
   DART_LOG_TRACE("Registered in dep %p with out dep %p of task %p (num_consumers: %d)",
                  in_elem, out_elem, out_elem->task.local, nc);
   DART_ASSERT_MSG(nc > 0, "Dependency %p has negative number of consumers: %d!",
@@ -400,7 +421,8 @@ deregister_in_dep_nolock(
 {
   dart_dephash_elem_t *out_elem = in_elem->dep_list;
   in_elem->dep_list = NULL;
-  int32_t nc = DART_DEC_AND_FETCH32(&out_elem->num_consumers);
+  //int32_t nc = DART_DEC_AND_FETCH32(&out_elem->num_consumers);
+  int nc = --out_elem->num_consumers;
   DART_LOG_TRACE("Deregistered in dep %p from out dep %p (consumers: %d)",
                  in_elem, out_elem, nc);
   DART_ASSERT_MSG(nc >= 0, "Dependency %p has negative number of consumers: %d",
@@ -615,48 +637,33 @@ static void dephash_release_in_dependency(
   // next output dependency if all input dependencies have completed
   dart_dephash_elem_t *out_dep = elem->dep_list;
   if (out_dep != NULL) {
-    dart_dephash_elem_t *out_prev = out_dep->prev;
-    dart_dephash_elem_t *out_next = out_dep->next;
     DART_ASSERT_MSG(out_dep->task.local == NULL,
                     "Output dependency %p is still active!", out_dep);
-    int32_t num_consumers = DART_DEC_AND_FETCH32(&out_dep->num_consumers);
+    int slot = hash_gptr(out_dep->dep.gptr);
+    /**
+     * Be safe here: lock the bucket to avoid race conditions.
+     */
+    LOCK_TASK(&local_deps[slot]);
+    //int32_t num_consumers = DART_DEC_AND_FETCH32(&out_dep->num_consumers);
+    int32_t num_consumers = --out_dep->num_consumers;
     DART_LOG_TRACE("Releasing input dependency %p (output dependency %p with nc %d)",
                   elem, out_dep, num_consumers);
     DART_ASSERT_MSG(num_consumers >= 0, "Found negative number of consumers for "
                     "dependency %p: %d", elem, num_consumers);
     dephash_recycle_elem(elem);
     if (num_consumers == 0){
-      int16_t use_cnt = out_dep->use_cnt;
-      int slot = hash_gptr(out_dep->dep.gptr);
-      LOCK_TASK(&local_deps[slot]);
-      /*
-       * TODO: There is a potential race condition here: another task might insert
-       *       a new input dependency consuming this output dependency, then
-       *       run the task, and release the dependency again. Now we have two
-       *       threads with num_consumers == 0, ready to remove the element.
-       *       Possible solution: checking the use_cnt for whether the dependency
-       *                          had been free'd already.
-       */
-      if (out_dep->num_consumers == 0 && use_cnt == out_dep->use_cnt){
-        // release the next output dependency
-        DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep",
-                      out_dep);
-        ++out_dep->use_cnt;
-        dephash_release_next_out_dependency_nolock(out_dep);
+      // release the next output dependency
+      DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep",
+                    out_dep);
+      dephash_release_next_out_dependency_nolock(out_dep);
 
-        // remove the output dependency from the bucket
-        dephash_remove_dep_from_bucket_nolock(out_dep, local_deps, slot);
+      // remove the output dependency from the bucket
+      dephash_remove_dep_from_bucket_nolock(out_dep, local_deps, slot);
 
-        // finally recycle the output dependency
-        dephash_recycle_elem(out_dep);
-      } else {
-        DART_LOG_TRACE("Refusing release of output dependency %p "
-                       "(nc %d, use_cnt %d vs %d)",
-                       out_dep, out_dep->num_consumers,
-                       out_dep->use_cnt, use_cnt);
-      }
-      UNLOCK_TASK(&local_deps[slot]);
+      // finally recycle the output dependency
+      dephash_recycle_elem(out_dep);
     }
+    UNLOCK_TASK(&local_deps[slot]);
   } else {
     DART_LOG_TRACE("Skipping input dependency %p as it has no output dependency!", elem);
     dephash_recycle_elem(elem);
@@ -1194,7 +1201,8 @@ dart_tasking_datadeps_match_local_dependency(
                       task, elem->task.local, unresolved_deps, elem);
         register_at_out_dep_nolock(elem, new_elem);
       } else {
-        DART_INC_AND_FETCH32(&elem->num_consumers);
+        //DART_INC_AND_FETCH32(&elem->num_consumers);
+        elem->num_consumers++;
         // register the output dependency with the input dependency for later release
         new_elem->dep_list = elem;
         DART_LOG_TRACE("Task of out dep %p already running, not waiting to finish",
