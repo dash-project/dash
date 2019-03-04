@@ -128,12 +128,12 @@ TEST_F(GlobRefTest, InheritanceConversionTest)
 
   // Why can we assign a const val to
   auto& r_auto = val;
+  // The reason this works is the following
+  // so auto include the const modifer as well.
+  static_assert(std::is_same<Child const&, decltype(r_auto)>::value, "");
+
   // But this does not work anymore...
   // Child& r_Child = val;
-
-  // The reason this works is the following
-  static_assert(std::is_same<Child const&, decltype(r_auto)>::value, "");
-  // static_assert(std::is_constructible<Child &, Child const &>::value, "");
 
   Parent const& r_upcast   = r_auto;
   Child const&  r_downcast = static_cast<Child const&>(r_upcast);
@@ -154,4 +154,10 @@ TEST_F(GlobRefTest, InheritanceConversionTest)
   // get only 4 bytes instead of 8.
   EXPECT_EQ_U(static_cast<Parent>(upcastParent_dArray).x, 56);
   EXPECT_EQ_U(static_cast<Child>(downcastChild_dArray).y, 123);
+}
+
+
+TEST_F(GlobRefTest, TypeTraits)
+{
+  //static_assert(!
 }
