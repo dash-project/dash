@@ -528,7 +528,7 @@ private:
  * The region extent applies to all dimensions.
  */
 template <dim_t NumDimensions>
-class RegionSpec : public Dimensional<uint8_t, NumDimensions> {
+class RegionSpec {
 private:
   using Self_t = RegionSpec<NumDimensions>;
 
