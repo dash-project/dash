@@ -124,43 +124,43 @@ public:
   /**
    * Copy constructor, implicit if at least one of the following conditions is
    * satisfied:
-   *    1) value_type and _T are exactly the same types (including const and
+   *    1) value_type and From are exactly the same types (including const and
    *    volatile qualifiers
-   *    2) value_type and _T are the same types after removing const and volatile
+   *    2) value_type and From are the same types after removing const and volatile
    *    qualifiers and value_type itself is const.
    */
-  template<typename _T,
-           int = internal::enable_implicit_copy_ctor<value_type, _T>::value>
-  GlobAsyncRef(const GlobAsyncRef<_T>& gref)
+  template<typename From,
+           int = detail::enable_implicit_copy_ctor<From, value_type>::value>
+  GlobAsyncRef(const GlobAsyncRef<From>& gref)
   : GlobAsyncRef(gref.dart_gptr())
   { }
 
   /**
    * Copy constructor, explicit if the following conditions are satisfied.
-   *    1) value_type and _T are the same types after excluding const and
+   *    1) value_type and From are the same types after excluding const and
    *    volatile qualifiers
-   *    2) value_type is const and _T is non-const
+   *    2) value_type is const and From is non-const
    */
   template <
-      typename _T,
-      long = internal::enable_explicit_copy_ctor<value_type, _T>::value>
-  explicit GlobAsyncRef(const GlobAsyncRef<_T>& gref)
+      typename From,
+      long = detail::enable_explicit_copy_ctor<From, value_type>::value>
+  explicit GlobAsyncRef(const GlobAsyncRef<From>& gref)
     : GlobAsyncRef(gref.dart_gptr())
   {
   }
 
   template <
-      typename _T,
-      int = internal::enable_implicit_copy_ctor<value_type, _T>::value>
-  GlobAsyncRef(const GlobRef<_T>& gref)
+      typename From,
+      int = detail::enable_implicit_copy_ctor<From, value_type>::value>
+  GlobAsyncRef(const GlobRef<From>& gref)
     : GlobAsyncRef(gref.dart_gptr())
   {
   }
 
   template <
-      typename _T,
-      long = internal::enable_explicit_copy_ctor<value_type, _T>::value>
-  explicit GlobAsyncRef(const GlobRef<_T>& gref)
+      typename From,
+      long = detail::enable_explicit_copy_ctor<From, value_type>::value>
+  explicit GlobAsyncRef(const GlobRef<From>& gref)
     : GlobAsyncRef(gref.dart_gptr())
   {
   }
@@ -192,20 +192,20 @@ public:
    * specified offset
    */
   template<typename MEMTYPE>
-  GlobAsyncRef<typename internal::add_const_from_type<T, MEMTYPE>::type>
+  GlobAsyncRef<typename detail::add_const_from_type<T, MEMTYPE>::type>
   member(size_t offs) const {
-    return GlobAsyncRef<typename internal::add_const_from_type<T, MEMTYPE>::type>(*this, offs);
+    return GlobAsyncRef<typename detail::add_const_from_type<T, MEMTYPE>::type>(*this, offs);
   }
 
   /**
    * Get the member via pointer to member
    */
   template<class MEMTYPE, class P=T>
-  GlobAsyncRef<typename internal::add_const_from_type<T, MEMTYPE>::type>
+  GlobAsyncRef<typename detail::add_const_from_type<T, MEMTYPE>::type>
   member(
     const MEMTYPE P::*mem) const {
     auto offs = (size_t) & (reinterpret_cast<P*>(0)->*mem);
-    return member<typename internal::add_const_from_type<T, MEMTYPE>::type>(offs);
+    return member<typename detail::add_const_from_type<T, MEMTYPE>::type>(offs);
   }
 
   /**

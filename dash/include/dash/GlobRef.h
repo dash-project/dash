@@ -83,11 +83,10 @@ public:
   // clang-format on
   template <
       typename _From,
-      long = internal::enable_implicit_copy_ctor<value_type, _From>::value>
+      long = detail::enable_implicit_copy_ctor<_From, value_type>::value>
   constexpr GlobRef(const GlobRef<_From>& gref)
     : GlobRef(gref.dart_gptr())
-  {
-  }
+  {}
 
   // clang-format off
   /**
@@ -99,7 +98,7 @@ public:
   // clang-format on
   template <
       typename _From,
-      int = internal::enable_explicit_copy_ctor<value_type, _From>::value>
+      int = detail::enable_explicit_copy_ctor<_From, value_type>::value>
   explicit constexpr GlobRef(const GlobRef<_From>& gref)
     : GlobRef(gref.dart_gptr())
   {
@@ -111,7 +110,7 @@ public:
    */
   template <
       typename _From,
-      long = internal::enable_implicit_copy_ctor<value_type, _From>::value>
+      long = detail::enable_implicit_copy_ctor<_From, value_type>::value>
   constexpr GlobRef(const GlobAsyncRef<_From>& gref)
     : _gptr(gref.dart_gptr())
   {
@@ -119,7 +118,7 @@ public:
 
   template <
       typename _From,
-      int = internal::enable_explicit_copy_ctor<value_type, _From>::value>
+      int = detail::enable_explicit_copy_ctor<_From, value_type>::value>
   explicit constexpr GlobRef(const GlobAsyncRef<_From>& gref)
     : GlobRef(gref.dart_gptr())
   {
@@ -367,26 +366,27 @@ public:
    * Get a global ref to a member of a certain type at the
    * specified offset
    */
-  template<typename MEMTYPE>
-  GlobRef<typename internal::add_const_from_type<T, MEMTYPE>::type>
-  member(size_t offs) const {
+  template <typename MEMTYPE>
+  auto member(size_t offs) const DASH_NOEXCEPT
+  {
+    using ref_t = GlobRef<typename std::conditional<
+        std::is_const<value_type>::value,
+        typename std::add_const<MEMTYPE>::type,
+        MEMTYPE>::type>;
+
     dart_gptr_t dartptr = _gptr;
-    DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&dartptr, offs),
-      DART_OK);
-    return GlobRef<typename internal::add_const_from_type<T, MEMTYPE>::type>(dartptr);
+    DASH_ASSERT_RETURNS(dart_gptr_incaddr(&dartptr, offs), DART_OK);
+
+    return ref_t{dartptr};
   }
 
   /**
    * Get the member via pointer to member
    */
-  template<class MEMTYPE, class P=T>
-  GlobRef<typename internal::add_const_from_type<T, MEMTYPE>::type>
-  member(
-    const MEMTYPE P::*mem) const {
-    // TODO: Thaaaat ... looks hacky.
-    auto offs = (size_t) & (reinterpret_cast<P*>(0)->*mem);
-    return member<typename internal::add_const_from_type<T, MEMTYPE>::type>(offs);
+  template <class MEMTYPE, class P = T>
+  auto member(const MEMTYPE P::*mem) const DASH_NOEXCEPT
+  {
+    return member<MEMTYPE>(detail::offset_of(mem));
   }
 
   /**

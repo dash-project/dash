@@ -73,12 +73,21 @@ TEST_F(GlobRefTest, ConstCorrectness)
   std::array<int, 100> stdArray{};
 
   // OK
-  int&               ref  = stdArray[0];
+  int &              ref  = stdArray[0];
   dash::GlobRef<int> gref = dArray[0];
 
   // OK as well
-  int const&               cref  = ref;
-  dash::GlobRef<const int> cgref = gref;
+  int const &cref = ref;
+  //
+  //
+  dash::GlobRef<const int> cgref{gref};
+  //
+  //
+
+  static_assert(
+      dash::detail::is_implicitly_convertible<int, const int>::value, "");
+  static_assert(
+      !dash::detail::is_implicitly_convertible<int const, int>::value, "");
 
   // NOT OK, because...
   // We must not assign a non-const to const -> Compilation error
@@ -112,35 +121,36 @@ TEST_F(GlobRefTest, InheritanceConversionTest)
 
   dArray.barrier();
 
-  Child&               child_stdArray = stdArray[10];
+  Child &              child_stdArray = stdArray[10];
   dash::GlobRef<Child> child_dArray   = dArray[10];
 
   /*
    * Here we explicitly cast it as Parent. In consequence, we read only 4
    * bytes (i.e., sizeof Parent), instead of 8.
    */
-  Parent&               upcastParent_stdArray = stdArray[10];
+  Parent &              upcastParent_stdArray = stdArray[10];
   dash::GlobRef<Parent> upcastParent_dArray   = dArray[10];
 
   auto const  val  = child;
-  auto const& cref = val;
-  // Child & ref = cref;
+  auto const &cref = val;
 
   // Why can we assign a const val to
-  auto& r_auto = val;
+  auto &r_auto = val;
   // The reason this works is the following
-  // so auto include the const modifer as well.
-  static_assert(std::is_same<Child const&, decltype(r_auto)>::value, "");
+  static_assert(std::is_same<Child const &, decltype(r_auto)>::value, "");
+  // => auto type deduction includes the const modifer as well.
+  // However, the following is malformed.
+  // Child & ref = cref;
 
   // But this does not work anymore...
   // Child& r_Child = val;
 
-  Parent const& r_upcast   = r_auto;
-  Child const&  r_downcast = static_cast<Child const&>(r_upcast);
+  Parent const &r_upcast   = r_auto;
+  Child const & r_downcast = static_cast<Child const &>(r_upcast);
 
   // static downcast is allowed with non-virtual base classes:
   // see https://en.cppreference.com/w/cpp/language/static_cast, point 2
-  Child& downcastChild_stdArray = static_cast<Child&>(upcastParent_stdArray);
+  Child &downcastChild_stdArray = static_cast<Child &>(upcastParent_stdArray);
   dash::GlobRef<Child> downcastChild_dArray =
       static_cast<dash::GlobRef<Child>>(upcastParent_dArray);
 
@@ -156,8 +166,69 @@ TEST_F(GlobRefTest, InheritanceConversionTest)
   EXPECT_EQ_U(static_cast<Child>(downcastChild_dArray).y, 123);
 }
 
+template <class T>
+using dash_ref = dash::GlobRef<T>;
 
-TEST_F(GlobRefTest, TypeTraits)
+TEST_F(GlobRefTest, ConversionRules)
 {
-  //static_assert(!
+  static_assert(
+      std::is_convertible<dash_ref<int>, dash_ref<const int>>::value, "1.1");
+  static_assert(std::is_convertible<int &, const int &>::value, "1.2");
+
+  static_assert(
+      !std::is_convertible<dash_ref<const int>, dash_ref<int>>::value, "2.1");
+  static_assert(!std::is_convertible<const int &, int &>::value, "2.2");
+
+  static_assert(
+      !std::is_convertible<dash_ref<int>, dash_ref<double>>::value, "3.1");
+  static_assert(!std::is_convertible<int &, double &>::value, "3.2");
+
+  static_assert(
+      std::is_convertible<dash_ref<Child>, dash_ref<Parent>>::value, "4.1");
+  static_assert(std::is_convertible<Child &, Parent &>::value, "4.2");
+
+  static_assert(
+      std::is_convertible<dash_ref<Child>, dash_ref<const Parent>>::value,
+      "5.1");
+  static_assert(std::is_convertible<Child &, const Parent &>::value, "5.2");
+
+  static_assert(!std::is_convertible<const Child &, Parent &>::value, "6.1");
+
+  static_assert(
+      !std::is_convertible<dash_ref<const Child>, dash_ref<Parent>>::value,
+      "7.1");
+  static_assert(!std::is_convertible<const Child &, Parent &>::value, "7.2");
+  static_assert(
+      !dash::detail::is_explicitly_convertible<const Child &, Parent &>::
+          value,
+      "7.3");
+  static_assert(
+      !dash::detail::is_explicitly_convertible<
+          dash_ref<const Child>,
+          dash_ref<Parent>>::value,
+      "7.4");
+
+  static_assert(!std::is_convertible<Parent &, Child const &>::value, "8.1");
+  static_assert(
+      !std::is_convertible<dash_ref<Parent>, dash_ref<const Child>>::value,
+      "8.2");
+  static_assert(
+      dash::detail::is_explicitly_convertible<Parent &, Child const &>::value,
+      "8.3");
+  static_assert(
+      dash::detail::is_explicitly_convertible<
+          dash_ref<Parent>,
+          dash_ref<const Child>>::value,
+      "8.4");
+
+  static_assert(!std::is_convertible<Parent &, Child &>::value, "9.1");
+  static_assert(
+      !std::is_convertible<dash_ref<Parent>, dash_ref<Child>>::value, "9.2");
+  static_assert(
+      dash::detail::is_explicitly_convertible<Parent &, Child &>::value,
+      "9.3");
+  static_assert(
+      dash::detail::
+          is_explicitly_convertible<dash_ref<Parent>, dash_ref<Child>>::value,
+      "9.4");
 }
