@@ -193,42 +193,41 @@ TEST_F(GlobRefTest, ConversionRules)
   static_assert(std::is_convertible<Child &, const Parent &>::value, "5.2");
 
   static_assert(!std::is_convertible<const Child &, Parent &>::value, "6.1");
-
   static_assert(
       !std::is_convertible<dash_ref<const Child>, dash_ref<Parent>>::value,
-      "7.1");
-  static_assert(!std::is_convertible<const Child &, Parent &>::value, "7.2");
+      "6.2");
+
   static_assert(
       !dash::detail::is_explicitly_convertible<const Child &, Parent &>::
           value,
-      "7.3");
+      "6.3");
   static_assert(
       !dash::detail::is_explicitly_convertible<
           dash_ref<const Child>,
           dash_ref<Parent>>::value,
-      "7.4");
+      "6.4");
 
-  static_assert(!std::is_convertible<Parent &, Child const &>::value, "8.1");
+  static_assert(!std::is_convertible<Parent &, Child const &>::value, "7.1");
   static_assert(
       !std::is_convertible<dash_ref<Parent>, dash_ref<const Child>>::value,
-      "8.2");
+      "7.2");
   static_assert(
       dash::detail::is_explicitly_convertible<Parent &, Child const &>::value,
-      "8.3");
+      "7.3");
   static_assert(
       dash::detail::is_explicitly_convertible<
           dash_ref<Parent>,
           dash_ref<const Child>>::value,
-      "8.4");
+      "7.4");
 
-  static_assert(!std::is_convertible<Parent &, Child &>::value, "9.1");
+  static_assert(!std::is_convertible<Parent &, Child &>::value, "8.1");
   static_assert(
-      !std::is_convertible<dash_ref<Parent>, dash_ref<Child>>::value, "9.2");
+      !std::is_convertible<dash_ref<Parent>, dash_ref<Child>>::value, "8.2");
   static_assert(
       dash::detail::is_explicitly_convertible<Parent &, Child &>::value,
-      "9.3");
+      "8.3");
   static_assert(
       dash::detail::
           is_explicitly_convertible<dash_ref<Parent>, dash_ref<Child>>::value,
-      "9.4");
+      "8.4");
 }
