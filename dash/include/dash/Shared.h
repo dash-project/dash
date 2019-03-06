@@ -241,7 +241,7 @@ public:
     DASH_LOG_DEBUG_VAR("Shared.cget", m_owner);
     DASH_LOG_DEBUG_VAR("Shared.get", m_glob_pointer);
     DASH_ASSERT(static_cast<bool>(m_glob_pointer));
-    return reference(m_glob_pointer.dart_gptr());
+    return reference(m_glob_pointer);
   }
 
   /**
@@ -253,7 +253,7 @@ public:
     DASH_LOG_DEBUG_VAR("Shared.get", m_owner);
     DASH_LOG_DEBUG_VAR("Shared.get", m_glob_pointer);
     DASH_ASSERT(m_glob_pointer);
-    return const_reference(m_glob_pointer.dart_gptr());
+    return const_reference(m_glob_pointer);
   }
 
   /**

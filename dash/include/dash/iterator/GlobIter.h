@@ -370,6 +370,7 @@ public:
                    "(index:", g_index, ") ->",
                    "(unit:", local_pos.unit, " index:", local_pos.index, ")");
     auto const dart_ptr = _get_pointer_at(local_pos);
+
     return reference(dart_ptr);
   }
 
@@ -675,8 +676,7 @@ public:
 
 private:
 
-  dart_gptr_t _get_pointer_at(typename pattern_type::local_index_t pos) const {
-
+  auto _get_pointer_at(typename pattern_type::local_index_t pos) const {
     auto dart_pointer = static_cast<dart_gptr_t>(_globmem->begin());
 
     DASH_ASSERT(pos.index >= 0);
