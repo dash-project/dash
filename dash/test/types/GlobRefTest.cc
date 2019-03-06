@@ -169,65 +169,68 @@ TEST_F(GlobRefTest, InheritanceConversionTest)
 template <class T>
 using dash_ref = dash::GlobRef<T>;
 
+template <
+    class LHS,
+    class RHS,
+    bool expected_implicit,
+    bool expected_explicit>
+struct StandardConformabilityTester {
+  static constexpr void test()
+  {
+    static_assert(
+        // First check if the implicit conversion rules match...
+        std::is_convertible<LHS &, RHS &>::value == expected_implicit &&
+            std::is_convertible<dash_ref<LHS>, dash_ref<RHS>>::value ==
+                expected_implicit &&
+            // Then the explicit rules...
+            dash::detail::is_explicitly_convertible<LHS &, RHS &>::value ==
+                expected_explicit &&
+            dash::detail::is_explicitly_convertible<
+                dash_ref<LHS>,
+                dash_ref<RHS>>::value == expected_explicit,
+        "");
+  }
+};
+
+template <class LHS, class RHS, bool _ignore>
+struct StandardConformabilityTester<LHS, RHS, true, _ignore> {
+  static constexpr void test()
+  {
+    // If we can implicitly convert we do not consider explicit conversion
+    // rules
+    static_assert(
+        std::is_convertible<LHS &, RHS &>::value &&
+            std::is_convertible<dash_ref<LHS>, dash_ref<RHS>>::value,
+        "");
+  }
+};
+
 TEST_F(GlobRefTest, ConversionRules)
 {
-  static_assert(
-      std::is_convertible<dash_ref<int>, dash_ref<const int>>::value, "1.1");
-  static_assert(std::is_convertible<int &, const int &>::value, "1.2");
+  constexpr bool ignore = true;
 
-  static_assert(
-      !std::is_convertible<dash_ref<const int>, dash_ref<int>>::value, "2.1");
-  static_assert(!std::is_convertible<const int &, int &>::value, "2.2");
+  // Rule 1: T &-> const T &
+  StandardConformabilityTester<int, const int, true, ignore>::test();
+  // Rule 2: const T & -> int &
+  // Conversion Fails due to const correctness
+  StandardConformabilityTester<const int, int, false, false>::test();
 
-  static_assert(
-      !std::is_convertible<dash_ref<int>, dash_ref<double>>::value, "3.1");
-  static_assert(!std::is_convertible<int &, double &>::value, "3.2");
+  // Rule 3: T & -> U & if T and U are not related (FAILS)
+  StandardConformabilityTester<int, double, false, false>::test();
 
-  static_assert(
-      std::is_convertible<dash_ref<Child>, dash_ref<Parent>>::value, "4.1");
-  static_assert(std::is_convertible<Child &, Parent &>::value, "4.2");
+  // Rule 4: Child & -> Parent & (Upcast)
+  StandardConformabilityTester<Child, Parent, true, ignore>::test();
 
-  static_assert(
-      std::is_convertible<dash_ref<Child>, dash_ref<const Parent>>::value,
-      "5.1");
-  static_assert(std::is_convertible<Child &, const Parent &>::value, "5.2");
+  // Rule 5.1: Child & -> const Parent & (Upcast to const)
+  // Rule 5.2: const Child & -> Parent & (FAILS, const correctness)
+  StandardConformabilityTester<Child, const Parent, true, ignore>::test();
+  StandardConformabilityTester<const Child, Parent, false, false>::test();
 
-  static_assert(!std::is_convertible<const Child &, Parent &>::value, "6.1");
-  static_assert(
-      !std::is_convertible<dash_ref<const Child>, dash_ref<Parent>>::value,
-      "6.2");
+  // Rule 6.1: Parent & -> const Child &
+  // Rule 6.2: Parent & -> Child &
+  // Explicit downcast (VALID)
+  // see https://en.cppreference.com/w/cpp/language/static_cast
+  StandardConformabilityTester<Parent, const Child, false, true>::test();
+  StandardConformabilityTester<Parent, Child, false, true>::test();
 
-  static_assert(
-      !dash::detail::is_explicitly_convertible<const Child &, Parent &>::
-          value,
-      "6.3");
-  static_assert(
-      !dash::detail::is_explicitly_convertible<
-          dash_ref<const Child>,
-          dash_ref<Parent>>::value,
-      "6.4");
-
-  static_assert(!std::is_convertible<Parent &, Child const &>::value, "7.1");
-  static_assert(
-      !std::is_convertible<dash_ref<Parent>, dash_ref<const Child>>::value,
-      "7.2");
-  static_assert(
-      dash::detail::is_explicitly_convertible<Parent &, Child const &>::value,
-      "7.3");
-  static_assert(
-      dash::detail::is_explicitly_convertible<
-          dash_ref<Parent>,
-          dash_ref<const Child>>::value,
-      "7.4");
-
-  static_assert(!std::is_convertible<Parent &, Child &>::value, "8.1");
-  static_assert(
-      !std::is_convertible<dash_ref<Parent>, dash_ref<Child>>::value, "8.2");
-  static_assert(
-      dash::detail::is_explicitly_convertible<Parent &, Child &>::value,
-      "8.3");
-  static_assert(
-      dash::detail::
-          is_explicitly_convertible<dash_ref<Parent>, dash_ref<Child>>::value,
-      "8.4");
 }
