@@ -5,6 +5,8 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/gaspi/dart_team_private.h>
 
+gaspi_group_t gaspi_group_id_top;
+
 dart_team_t dart_next_availteamid;
 
 dart_team_struct_t dart_teams[DART_MAX_TEAM_NUMBER];

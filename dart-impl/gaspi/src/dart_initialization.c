@@ -54,6 +54,7 @@ dart_ret_t dart_init(int *argc, char ***argv)
 
     dart_memid = 1;
     dart_next_availteamid = DART_TEAM_ALL;
+    gaspi_group_id_top = 0;
 
     uint16_t index;
     int result = dart_adapt_teamlist_alloc(DART_TEAM_ALL, &index);

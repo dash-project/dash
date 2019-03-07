@@ -157,6 +157,8 @@ typedef struct dart_team_struct{
     dart_group_t group;
 }dart_team_struct_t;
 
+extern gaspi_group_t gaspi_group_id_top;
+
 extern seg_stack_t dart_free_coll_seg_ids;
 extern gaspi_segment_id_t dart_gaspi_segment_cnt;
 extern dart_team_t dart_next_availteamid;

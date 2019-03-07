@@ -115,7 +115,6 @@ Team::split(
         sub_groups[i],
         &newteam),
       DART_OK);
-    barrier();
     DASH_ASSERT_RETURNS(
       dart_group_destroy(&sub_groups[i]),
       DART_OK);

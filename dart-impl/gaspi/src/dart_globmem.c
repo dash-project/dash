@@ -60,7 +60,6 @@ dart_ret_t dart_team_memalloc_aligned(
 {
     size_t nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
     size_t teamsize;
-    dart_unit_t gptr_unitid = -1;
     dart_team_unit_t unitid;
     DART_CHECK_ERROR(dart_team_myid(teamid, &unitid));
     DART_CHECK_ERROR(dart_team_size(teamid, &teamsize));
@@ -80,32 +79,24 @@ dart_ret_t dart_team_memalloc_aligned(
 
     gaspi_group = dart_teams[index].id;
 
-    dart_unit_t localid = 0;
-    if(index == 0)
-    {
-        gptr_unitid = localid;
-    }
-    else
-    {
-        gptr_unitid = dart_teams[index].group->l2g[0];
-    }
-
     /* get a free gaspi segment id */
     DART_CHECK_ERROR_GOTO(dart_error_label, seg_stack_pop(&dart_free_coll_seg_ids, &gaspi_seg_id));
 
     dart_global_unit_t myid;
     dart_myid(&myid);
-    
+
+    // GPI2 can't allocate 0 bytes
     if( nbytes == 0 )
     {
         nbytes = 1;
     }
-        /* Create the gaspi-segment with memory allocation */
-        DART_CHECK_ERROR_GOTO(dart_error_label, gaspi_segment_create(gaspi_seg_id,
-                                                                    nbytes,
-                                                                    gaspi_group,
-                                                                    GASPI_BLOCK,
-                                                                    GASPI_MEM_INITIALIZED));
+
+    /* Create the gaspi-segment with memory allocation */
+    DART_CHECK_ERROR_GOTO(dart_error_label, gaspi_segment_create(gaspi_seg_id,
+                                                                nbytes,
+                                                                gaspi_group,
+                                                                GASPI_BLOCK,
+                                                                GASPI_MEM_INITIALIZED));
 
     /**
      * collect the other segment numbers of the team
@@ -117,13 +108,14 @@ dart_ret_t dart_team_memalloc_aligned(
                                                            1,
                                                            DART_TYPE_BYTE,
                                                            teamid));
+
     /* -- Updating infos on gptr -- */
-    gptr->unitid = gptr_unitid;
+    gptr->unitid = unitid.id;
     gptr->segid = dart_memid; /* Segid equals to dart_memid (always a positive integer), identifies an unique collective global memory. */
     gptr->flags = index; /* For collective allocation, the flag is marked as 'index' */
     gptr->teamid = teamid;
     gptr->addr_or_offs.offset = 0;
-
+    
     /* -- Updating the translation table of teamid with the created (segment) infos -- */
     info_t item;
     item.seg_id           = dart_memid;
@@ -175,7 +167,7 @@ dart_ret_t dart_team_memfree(dart_gptr_t gptr)
 
     DART_CHECK_ERROR(gaspi_segment_delete(segs));
     DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, segs));
-    
+
     /* Remove the related correspondence relation record from the related translation table. */
     if(dart_adapt_transtable_remove(seg_id) == -1)
     {
@@ -218,13 +210,13 @@ dart_ret_t dart_team_memderegister(dart_gptr_t gptr)
 
 dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 {
-    dart_global_unit_t myid;
     int16_t     seg_id = gptr.segid;
     uint64_t    offset = gptr.addr_or_offs.offset;
 
-    DART_CHECK_ERROR(dart_myid (&myid));
+    dart_team_unit_t unitid;
+    DART_CHECK_ERROR(dart_team_myid(gptr.teamid, &unitid));
 
-    if (myid.id == gptr.unitid)
+    if (unitid.id == gptr.unitid)
     {
         if (seg_id)
         {
@@ -238,7 +230,7 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
         }
         else
         {
-            if (myid.id == gptr.unitid)
+            if (unitid.id == gptr.unitid)
             {
                 *addr = offset + dart_mempool_localalloc;
             }
@@ -302,12 +294,10 @@ dart_ret_t dart_team_memregister(
 {
     size_t nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
     size_t teamsize;
-    dart_unit_t gptr_unitid = -1;
     dart_team_unit_t unitid;
     DART_CHECK_ERROR(dart_team_myid(teamid, &unitid));
     DART_CHECK_ERROR(dart_team_size(teamid, &teamsize));
 
-    gaspi_group_t        gaspi_group;
     gaspi_segment_id_t   gaspi_seg_id;
     gaspi_segment_id_t * gaspi_seg_ids = (gaspi_segment_id_t *) malloc(sizeof(gaspi_segment_id_t) * teamsize);
     assert(gaspi_seg_ids);
@@ -319,17 +309,6 @@ dart_ret_t dart_team_memregister(
         goto dart_error_label;
     }
 
-    gaspi_group = dart_teams[index].id;
-
-    dart_unit_t localid = 0;
-    if(index == 0)
-    {
-        gptr_unitid = localid;
-    }
-    else
-    {
-        gptr_unitid = dart_teams[index].group->l2g[0];
-    }
     gaspi_memory_description_t segment_descrition = 0;
     /* get a free gaspi segment id */
     DART_CHECK_ERROR_GOTO(dart_error_label, seg_stack_pop(&dart_free_coll_seg_ids, &gaspi_seg_id));
@@ -340,17 +319,17 @@ dart_ret_t dart_team_memregister(
                                                                  nbytes,
                                                                  segment_descrition));
     /**
-                                                                  * collect the other segment numbers of the team
-                                                                  * gaspi_segemt_id_t is currently defined as unsigned char.
-                                                                  * therefore DART_TYPE_BYTE is used as it has the same size
-                                                                  */
+     * collect the other segment numbers of the team
+     * gaspi_segemt_id_t is currently defined as unsigned char.
+     * therefore DART_TYPE_BYTE is used as it has the same size
+     */
     DART_CHECK_ERROR_GOTO(dart_error_label, dart_allgather(&gaspi_seg_id,
                                                            gaspi_seg_ids,
                                                            1,
                                                            DART_TYPE_BYTE,
                                                            teamid));
     /* -- Updating infos on gptr -- */
-    gptr->unitid = gptr_unitid;
+    gptr->unitid = unitid.id;
     gptr->segid  = dart_memid; /* Segid equals to dart_memid (always a positive integer), identifies an unique collective global memory. */
     gptr->flags  = index; /* For collective allocation, the flag is marked as 'index' */
     gptr->teamid = teamid;
