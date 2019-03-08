@@ -637,24 +637,25 @@ TEST_F(GraphTest, Construction)
   DASH_LOG_DEBUG("GraphTest.Construction", "construction finished");
 
   int unrecognized_edges = 0;
-  if(dash::myid() == 0) {
-    for(auto it = g.vertices().begin(); it != g.vertices().end(); ++it) {
+  if (dash::myid() == 0) {
+    for (auto it = g.vertices().begin(); it != g.vertices().end(); ++it) {
       auto v = g[it];
-      for(auto e_it = v.out_edges().begin(); e_it != v.out_edges().end(); 
+      for (auto e_it = v.out_edges().begin(); e_it != v.out_edges().end(); 
           ++e_it) {
         auto e = g[e_it];
-        //TODO: use map for faster runtime
+        //TODO: use std::map
         bool unrecognized = true;
-        for(auto el_it = edge_list.begin(); el_it != edge_list.end(); 
-            ++el_it) {
-          if(el_it->first == e.source().pos() 
+        for (auto el_it = edge_list.begin();
+             el_it != edge_list.end(); 
+             ++el_it) {
+          if (   el_it->first  == e.source().pos() 
               && el_it->second == e.target().pos()) {
             edge_list.erase(el_it);
             unrecognized = false;
             break;
           }
         }
-        if(unrecognized) {
+        if(unrecognized) { 
           ++unrecognized_edges;
         }
       }

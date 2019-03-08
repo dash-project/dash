@@ -2168,6 +2168,10 @@ dart_ret_t dart_allgatherv(
   return DART_OK;
 }
 
+#if 0
+/*
+ * Implementation from branch feat-graph, to be discussed
+ */
 dart_ret_t dart_alltoall(
   const void      * sendbuf,
   void            * recvbuf,
@@ -2219,7 +2223,12 @@ dart_ret_t dart_alltoall(
                  teamid, nelem);
   return DART_OK;
 }
+#endif
 
+#if 0
+/*
+ * Implementation from branch feat-graph, to be discussed
+ */
 dart_ret_t dart_alltoallv(
   const void      * sendbuf,
   const size_t    * nsendcounts,
@@ -2230,14 +2239,15 @@ dart_ret_t dart_alltoallv(
   const size_t    * recvdispls,
   dart_team_t       teamid)
 {
-  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
   MPI_Comm     comm;
   int          comm_size;
   DART_LOG_TRACE("dart_alltoallv() team:%d nsendelem:%"PRIu64"",
-                 teamid, nsendelem);
+                 teamid, nsendcounts);
 
   if (teamid == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_alltoallv ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    DART_LOG_ERROR(
+      "dart_alltoallv ! failed: team may not be DART_UNDEFINED_TEAM_ID");
     return DART_ERR_INVAL;
   }
 
@@ -2257,13 +2267,17 @@ dart_ret_t dart_alltoallv(
   int *irecvdispls  = malloc(sizeof(int) * comm_size);
   for (int i = 0; i < comm_size; i++) {
     if (nsendcounts[i] > INT_MAX || senddispls[i] > INT_MAX) {
-      DART_LOG_ERROR("dart_alltoallv ! failed: nsendcounts[%i] > INT_MAX || senddispls[%i] > INT_MAX", i, i);
+      DART_LOG_ERROR(
+        "dart_alltoallv ! failed: "
+        "nsendcounts[%i] > INT_MAX || senddispls[%i] > INT_MAX", i, i);
       free(insendcounts);
       free(isenddispls);
       return DART_ERR_INVAL;
     }
     if (nrecvcounts[i] > INT_MAX || recvdispls[i] > INT_MAX) {
-      DART_LOG_ERROR("dart_alltoallv ! failed: nrecvcounts[%i] > INT_MAX || recvdispls[%i] > INT_MAX", i, i);
+      DART_LOG_ERROR(
+        "dart_alltoallv ! failed: "
+        "nrecvcounts[%i] > INT_MAX || recvdispls[%i] > INT_MAX", i, i);
       free(inrecvcounts);
       free(irecvdispls);
       return DART_ERR_INVAL;
@@ -2298,6 +2312,7 @@ dart_ret_t dart_alltoallv(
   DART_LOG_TRACE("dart_alltoallv > team:%d", teamid);
   return DART_OK;
 }
+#endif
 
 dart_ret_t dart_allreduce(
   const void       * sendbuf,
