@@ -58,7 +58,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
                                      &max_teamid,
                                      1, GASPI_OP_MAX, GASPI_TYPE_INT, parent_gaspi_group, GASPI_BLOCK));
 
-    dart_next_availteamid = max_teamid + 1;
+    
 
     // TODO: Only relevant for splitting
     //       find more efficient method -> each split group can have the same group id, this solution creates for
@@ -72,6 +72,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
     if(!ismember)
         return DART_OK;
     
+    dart_next_availteamid = max_teamid + 1;
     
     *newteam = DART_TEAM_NULL;
     size_t gsize;
@@ -86,7 +87,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
         DART_CHECK_ERROR(gaspi_group_create(&new_gaspi_group));
     }
     gaspi_group_id_top = new_gaspi_group;
-    
+
     DART_CHECK_ERROR(dart_group_getmembers(group, group_members));
     for(size_t i = 0 ; i < gsize ; ++i)
     {
@@ -105,6 +106,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
     dart_teams[index].id = new_gaspi_group;
     dart_teams[index].group = (dart_group_t) malloc(sizeof(struct dart_group_struct));
     memcpy(dart_teams[index].group, group, sizeof(struct dart_group_struct));
+
     free(group_members);
 
 

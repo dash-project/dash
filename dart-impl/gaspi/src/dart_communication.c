@@ -670,22 +670,22 @@ dart_ret_t dart_get_blocking(
       DART_LOG_ERROR("Types for dst and src have to be same. No type conversion is performed!");
       return DART_ERR_INVAL;
     }
-    size_t             nbytes = dart_gaspi_datatype_sizeof(src_type) * nelem;
+    size_t nbytes = dart_gaspi_datatype_sizeof(src_type) * nelem;
 
     DART_CHECK_ERROR(dart_myid(&my_unit));
-
+    dart_unit_t global_target_unit = target_unit;
     if(src_seg_id)
     {
-        dart_unit_t rel_target_unit;
-        DART_CHECK_ERROR(unit_g2l(src_index, target_unit, &rel_target_unit));
-        if(dart_adapt_transtable_get_gaspi_seg_id(src_seg_id, rel_target_unit, &src_gaspi_seg) == -1)
+        //dart_team_unit_l2g(gptr.teamid, target_unit, &global_target_unit);
+        DART_CHECK_ERROR(unit_l2g(src_index, &global_target_unit, target_unit));
+        if(dart_adapt_transtable_get_gaspi_seg_id(src_seg_id, target_unit, &src_gaspi_seg) == -1)
         {
             fprintf(stderr, "Can't find given source segment id in dart_get_blocking\n");
             return DART_ERR_NOTFOUND;
         }
     }
 
-    if(my_unit.id == target_unit)
+    if(my_unit.id == global_target_unit)
     {
         gaspi_pointer_t src_seg_ptr = NULL;
         DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(src_gaspi_seg, &src_seg_ptr));
@@ -697,15 +697,15 @@ dart_ret_t dart_get_blocking(
         return DART_OK;
     }
 
-    DART_CHECK_ERROR(dart_memalloc(nbytes, src_type, &dest_gptr));
-
+    //DART_CHECK_ERROR(dart_memalloc(nbytes, src_type, &dest_gptr));
+    gaspi_segment_use(dart_onesided_seg,dest,nbytes,dart_teams[src_index].id,GASPI_BLOCK,1);
     dest_offset = dest_gptr.addr_or_offs.offset;
 
     DART_CHECK_ERROR_GOTO(dart_error_label, dart_get_minimal_queue(&queue));
 
-    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, gaspi_read(dest_gaspi_seg,
+    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, gaspi_read(dart_onesided_seg,
                                                              dest_offset,
-                                                             target_unit,
+                                                             global_target_unit,
                                                              src_gaspi_seg,
                                                              src_offset,
                                                              nbytes,
@@ -714,11 +714,11 @@ dart_ret_t dart_get_blocking(
 
     DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, gaspi_wait(queue, GASPI_BLOCK));
 
-    DART_CHECK_ERROR_GOTO(dart_error_label, dart_gptr_getaddr(dest_gptr, &dest_ptr));
+    //DART_CHECK_ERROR_GOTO(dart_error_label, dart_gptr_getaddr(dest_gptr, &dest_ptr));
+    gaspi_segment_delete(dart_onesided_seg);
+    //memcpy(dest, dest_ptr, nbytes);
 
-    memcpy(dest, dest_ptr, nbytes);
-
-    DART_CHECK_ERROR(dart_memfree(dest_gptr));
+    //DART_CHECK_ERROR(dart_memfree(dest_gptr));
 
     return DART_OK;
 
@@ -1512,8 +1512,8 @@ dart_ret_t dart_get_handle(
      //no wait operation
      //TODO could be fatal because segemtn is deleted before communication is done
      //delete segment and push to stack
-     DART_CHECK_GASPI_ERROR((gaspi_segment_delete(free_id)));
-     DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, free_id));
+     //DART_CHECK_GASPI_ERROR((gaspi_segment_delete(free_id)));
+     //DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, free_id));
    }
     handle->index         = dest_index;
     handle->queue         = queue;

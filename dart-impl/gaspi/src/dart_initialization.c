@@ -19,6 +19,7 @@ gaspi_pointer_t dart_gaspi_buffer_ptr;
 const gaspi_segment_id_t dart_gaspi_buffer_id = 0;
 /*********************************************************/
 const gaspi_segment_id_t dart_fallback_seg = 2;
+const gaspi_segment_id_t dart_onesided_seg = 3;
 bool dart_fallback_seg_is_allocated;
 /***************** non-collective memory *****************/
 #define DART_BUDDY_ORDER 24
@@ -29,7 +30,7 @@ char * dart_mempool_localalloc;
 /* Help to do memory management work for local allocation/free */
 struct dart_buddy* dart_localpool;
 /******************* collective memory *******************/
-const gaspi_segment_id_t dart_coll_seg_id_begin = 3;
+const gaspi_segment_id_t dart_coll_seg_id_begin = 4;
 const size_t dart_coll_seg_count = 28;
 /*********************************************************/
 static int _init_by_dart = 0;

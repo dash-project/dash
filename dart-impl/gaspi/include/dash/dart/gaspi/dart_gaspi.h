@@ -18,6 +18,7 @@ extern "C" {
 extern gaspi_rank_t dart_gaspi_rank_num;
 extern gaspi_rank_t dart_gaspi_rank;
 extern const gaspi_segment_id_t dart_gaspi_buffer_id;
+extern const gaspi_segment_id_t dart_onesided_seg;
 extern gaspi_pointer_t dart_gaspi_buffer_ptr;
 extern const gaspi_segment_id_t dart_mempool_seg_localalloc;
 extern const gaspi_segment_id_t dart_fallback_seg;
