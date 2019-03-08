@@ -338,7 +338,7 @@ public:
         DASH_LOG_TRACE("LocalityDomain.scope_domains",
                        "scope_domains[", sd, "]", ":",
                        dart_scope_domains[sd]->domain_tag);
-        scope_domains.push_back(self_t(*dart_scope_domains[sd]));
+        scope_domains.emplace_back(*dart_scope_domains[sd]);
       }
       free(dart_scope_domains);
     }
@@ -494,7 +494,7 @@ private:
     const std::vector<std::string> & group_domain_tags)
   {
     _groups.clear();
-    for (auto gdt : group_domain_tags) {
+    for (const auto& gdt : group_domain_tags) {
       _groups.push_back(find(gdt));
     }
   }

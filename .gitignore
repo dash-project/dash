@@ -11,6 +11,7 @@ build.analyze*
 build-ci*
 compile_commands.json
 dash/include/dash/util/StaticConfig.h
+dash/include/dash/Version.h
 *.o
 *.a
 *.so
@@ -22,18 +23,11 @@ dash/include/dash/util/StaticConfig.h
 *.out
 ipm/*/GEN.*
 my.*.sh
-.syntastic*
-.clang*
 tags
 *.orig*
 *.bac*
 *.mine*
 RELEASE/*
-dash/include/dash/util/StaticConfig.h
-.includes
-.ctagsignore
-.gutctags
 cscope.files
-.ycm_*
 TAGS
-*.kdev4*
+.*

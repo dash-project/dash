@@ -80,40 +80,6 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
   }
 }
 
-TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
-{
-  typedef int value_t;
-  const size_t block_size    = 10;
-  const size_t num_elem_copy = 2 * block_size;
-  size_t num_elem_total      = dash::size() * block_size;
-  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
-  if (dash::size() < 2) {
-    return;
-  }
-  // Array to store local copy:
-  int local_array[num_elem_copy];
-  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (size_t l = 0; l < block_size; ++l) {
-    array.local[l] = ((dash::myid() + 1) * 1000) + l;
-  }
-  array.barrier();
-  // Copy values from first two blocks:
-  dash::dart_storage<value_t> ds(num_elem_copy);
-  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
-  dart_get_blocking(
-    local_array,                      // lptr dest
-    array.begin().dart_gptr(),        // gptr start
-    ds.nelem,                         // number of elements
-    ds.dtype,                         // src data type
-    ds.dtype                          // dst data type
-  );
-  // Fails for elements in second block, i.e. for l < num_elem_copy:
-  for (size_t l = 0; l < block_size; ++l) {
-    value_t expected = array[l];
-    ASSERT_EQ_U(expected, local_array[l]);
-  }
-}
-
 TEST_F(DARTOnesidedTest, GetHandleAllRemote)
 {
   typedef int value_t;
@@ -125,7 +91,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
     return;
   }
   // Array to store local copy:
-  int * local_array = new int[num_elem_copy];
+  auto *local_array = new int[num_elem_copy];
   // Array of handles, one for each dart_get_handle:
   std::vector<dart_handle_t> handles;
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
@@ -197,7 +163,7 @@ TEST_F(DARTOnesidedTest, StridedGetSimple) {
   }
 
   dash::barrier();
-  int *buf = new int[num_elem_per_unit];
+  auto *buf = new int[num_elem_per_unit];
 
   dart_unit_t neighbor = (dash::myid() + 1) % dash::size();
   gptr.unitid = neighbor;
@@ -261,7 +227,7 @@ TEST_F(DARTOnesidedTest, StridedPutSimple) {
   dart_unit_t neighbor = (dash::myid() + 1) % dash::size();
   gptr.unitid = neighbor;
 
-  int *buf = new int[num_elem_per_unit];
+  auto *buf = new int[num_elem_per_unit];
   for (int i = 0; i < num_elem_per_unit; ++i) {
     buf[i] = i;
   }
@@ -333,7 +299,7 @@ TEST_F(DARTOnesidedTest, BlockedStridedToStrided) {
   dash::barrier();
 
   // global-to-local strided-to-contig
-  int *buf = new int[num_elem_per_unit];
+  auto *buf = new int[num_elem_per_unit];
   memset(buf, 0, sizeof(int)*num_elem_per_unit);
 
   dart_datatype_t to_type;
@@ -409,7 +375,7 @@ TEST_F(DARTOnesidedTest, IndexedGetSimple) {
 
   dash::barrier();
 
-  int *buf = new int[num_elem_per_unit];
+  auto *buf = new int[num_elem_per_unit];
   memset(buf, 0, sizeof(int)*num_elem_per_unit);
 
   // indexed-to-contig
@@ -481,7 +447,7 @@ TEST_F(DARTOnesidedTest, IndexedPutSimple) {
 
   dash::barrier();
 
-  int *buf = new int[num_elem_per_unit];
+  auto *buf = new int[num_elem_per_unit];
   for (int i = 0; i < num_elem_per_unit; ++i) {
     buf[i] = i;
   }
@@ -583,13 +549,13 @@ TEST_F(DARTOnesidedTest, IndexedToIndexedGet) {
 
   dash::barrier();
 
-  int *buf = new int[num_elem_per_unit];
+  auto *buf = new int[num_elem_per_unit];
   memset(buf, 0, sizeof(int)*num_elem_per_unit);
 
-  int *index_map_to = new int[num_elem_per_unit];
+  auto *index_map_to = new int[num_elem_per_unit];
   memset(index_map_to, 0, sizeof(int)*num_elem_per_unit);
 
-  int *index_map_from = new int[num_elem_per_unit];
+  auto *index_map_from = new int[num_elem_per_unit];
   memset(index_map_from, 0, sizeof(int)*num_elem_per_unit);
 
   // populate the flat list of indices to copy from

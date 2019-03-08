@@ -149,6 +149,8 @@
   } \
 } while(0)
 
+#define DASH_ASSERT_NOEXCEPT
+
 #else  // DASH_ENABLE_ASSERTIONS
 
 #define DASH_ASSERT(expr) do { } while (0)
@@ -186,6 +188,8 @@
           dash__unused(val); \
           dash__unused(max); \
         } while (0)
+
+#define DASH_ASSERT_NOEXCEPT noexcept
 
 #endif // DASH_ENABLE_ASSERTIONS
 

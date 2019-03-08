@@ -9,8 +9,8 @@ MPICXX_VERSION := $(shell mpicxx --version 2>/dev/null)
 DART_IF = ../../dart-if
 
 ifeq ($(CRAYOS_VERSION),)
-CC      = mpicc  $(OPT_FLAGS) -std=c99
-CXX     = mpicxx $(OPT_FLAGS) -std=c++11
+CC      = mpicc.mpich  $(OPT_FLAGS) -std=c99 -D_XOPEN_SOURCE=600
+CXX     = mpicxx.mpich $(OPT_FLAGS) -std=c++11
 #CXX     = mpicxx $(OPT_FLAGS) -std=c++11 -Wmissing-braces
 
 ifndef MPICXX_VERSION

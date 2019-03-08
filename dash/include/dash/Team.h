@@ -16,6 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <type_traits>
+#include <utility>
 
 
 namespace dash {
@@ -76,12 +77,12 @@ public:
 
   inline iterator begin()
   {
-    return iterator(0);
+    return {0};
   }
 
   inline iterator end()
   {
-    return iterator(size());
+    return {static_cast<int>(size())};
   }
 
 public:
@@ -108,12 +109,11 @@ private:
 
   bool get_group() const
   {
-    if (dash::is_initialized() && !_has_group) {
+    if (dash::is_initialized() && _group != DART_GROUP_NULL) {
       DASH_LOG_DEBUG("Team.get_group()");
       dart_team_get_group(_dartid, &_group);
-      _has_group = true;
     }
-    return _has_group;
+    return _group != DART_GROUP_NULL;
   }
 
 protected:
@@ -131,21 +131,19 @@ public:
    * Move-constructor.
    */
   Team(Team && t)
+  : _dartid(t._dartid),
+    _myid(t._myid),
+    _size(t._size),
+    _parent(t._parent),
+    _child(t._child),
+    _position(t._position),
+    _num_siblings(t._num_siblings),
+    _group(t._group),
+    _deallocs(std::move(t._deallocs))
   {
-    if (this != &t) {
-      // Free existing resources
-      free();
-      // Take ownership of data from source
-      _deallocs = std::move(t._deallocs);
-      std::swap(_parent,    t._parent);
-      std::swap(_has_group, t._has_group);
-      std::swap(_group,     t._group);
-      std::swap(_dartid,    t._dartid);
-      _position     = t._position;
-      _num_siblings = t._num_siblings;
-      _myid         = t._myid;
-      _size         = t._size;
-    }
+    t._parent = nullptr;
+    t._group  = nullptr;
+    t._dartid = DART_TEAM_NULL;
   }
 
   /**
@@ -159,7 +157,6 @@ public:
       // Take ownership of data from source
       _deallocs = std::move(t._deallocs);
       std::swap(_parent,    t._parent);
-      std::swap(_has_group, t._has_group);
       std::swap(_group,     t._group);
       std::swap(_dartid,    t._dartid);
       _position     = t._position;
@@ -184,8 +181,11 @@ public:
       Team::unregister_team(this);
     }
 
-    if (_has_group)
-      dart_group_destroy(&_group);
+    if (_group != DART_GROUP_NULL) {
+      if (DART_OK != dart_group_destroy(&_group)) {
+        DASH_LOG_ERROR("Failed to destroy DART group!");
+      }
+    }
 
     if (_child) {
       delete(_child);
@@ -197,6 +197,14 @@ public:
     }
 
     free();
+
+    if (DART_TEAM_NULL != _dartid &&
+        DART_TEAM_ALL  != _dartid) {
+      if (DART_OK != dart_team_destroy(&_dartid))
+      {
+        DASH_LOG_ERROR("Failed to destroy DART group!");
+      }
+    }
   }
 
   /**
@@ -239,6 +247,14 @@ public:
   }
 
   /**
+   * Initialize the global team.
+   */
+  static void initialize()
+  {
+    Team::All().init_team();
+  }
+
+  /**
    * Finalize all teams.
    * Frees global memory allocated by \c dash::Team::All().
    */
@@ -258,6 +274,7 @@ public:
     }
 
     Team::All().free();
+    Team::All().reset_team();
   }
 
   /**
@@ -272,7 +289,7 @@ public:
     Deallocator::dealloc_function dealloc)
   {
     DASH_LOG_DEBUG_VAR("Team.register_deallocator()", object);
-    _deallocs.push_back(Deallocator { object, dealloc });
+    _deallocs.push_back(Deallocator { object, std::move(dealloc) });
   }
 
   /**
@@ -287,7 +304,7 @@ public:
     Deallocator::dealloc_function dealloc)
   {
     DASH_LOG_DEBUG_VAR("Team.unregister_deallocator()", object);
-    _deallocs.remove(Deallocator { object, dealloc });
+    _deallocs.remove(Deallocator { object, std::move(dealloc) });
   }
 
   /**
@@ -297,11 +314,12 @@ public:
   void free()
   {
     DASH_LOG_DEBUG("Team.free()");
-    for (auto dealloc = _deallocs.rbegin();
-         dealloc != _deallocs.rend();
-         ++dealloc) {
+    std::list<Deallocator>::iterator next = _deallocs.begin();
+    std::list<Deallocator>::iterator dealloc;
+    while ((dealloc = next) != _deallocs.end()) {
       barrier();
       // List changes in iterations
+      ++next;
       DASH_LOG_DEBUG_VAR("Team.free", dealloc->object);
       (dealloc->deallocator)();
     }
@@ -469,13 +487,6 @@ public:
 
   inline team_unit_t myid() const
   {
-    if (_myid == -1 && dash::is_initialized() && _dartid != DART_TEAM_NULL) {
-      DASH_ASSERT_RETURNS(
-        dart_team_myid(_dartid, &_myid),
-        DART_OK);
-    } else if (!dash::is_initialized()) {
-      _myid = -1;
-    }
     return _myid;
   }
 
@@ -486,13 +497,6 @@ public:
    */
   inline size_t size() const
   {
-    if (_size == 0 && dash::is_initialized() && _dartid != DART_TEAM_NULL) {
-      DASH_ASSERT_RETURNS(
-        dart_team_size(_dartid, &_size),
-        DART_OK);
-    } else if (!dash::is_initialized()) {
-      _size = 0;
-    }
     return _size;
   }
 
@@ -584,16 +588,32 @@ private:
     }
   }
 
+  void init_team()
+  {
+    DASH_ASSERT_RETURNS(
+      dart_team_size(_dartid, &_size),
+      DART_OK);
+
+    DASH_ASSERT_RETURNS(
+      dart_team_myid(_dartid, &_myid),
+      DART_OK);
+  }
+
+  void reset_team()
+  {
+    _myid = UNDEFINED_TEAM_UNIT_ID;
+    _size = 0;
+  }
+
 private:
 
   dart_team_t             _dartid;
+  mutable team_unit_t     _myid         = UNDEFINED_TEAM_UNIT_ID;
+  mutable size_t          _size         = 0;
   Team                  * _parent       = nullptr;
   Team                  * _child        = nullptr;
   size_t                  _position     = 0;
   size_t                  _num_siblings = 0;
-  mutable size_t          _size         = 0;
-  mutable team_unit_t     _myid         = UNDEFINED_TEAM_UNIT_ID;
-  mutable bool            _has_group    = false;
   mutable dart_group_t    _group        = DART_GROUP_NULL;
 
   /// Deallocation list for freeing memory acquired via

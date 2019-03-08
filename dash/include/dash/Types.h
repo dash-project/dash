@@ -1,11 +1,14 @@
 #ifndef DASH__TYPES_H_
 #define DASH__TYPES_H_
 
-#include <array>
-#include <type_traits>
-
 #include <dash/dart/if/dart_types.h>
 #include <dash/internal/Unit.h>
+
+#include <cpp17/cstddef.h>
+
+#include <array>
+#include <cstddef>
+#include <type_traits>
 
 
 namespace dash {
@@ -140,11 +143,6 @@ struct dart_datatype<unsigned int> {
 };
 
 template<>
-struct dart_datatype<float> {
-  static constexpr const dart_datatype_t value = DART_TYPE_FLOAT;
-};
-
-template<>
 struct dart_datatype<long> {
   static constexpr const dart_datatype_t value = DART_TYPE_LONG;
 };
@@ -155,15 +153,35 @@ struct dart_datatype<unsigned long> {
 };
 
 template<>
+struct dart_datatype<long long> {
+  static constexpr const dart_datatype_t value = DART_TYPE_LONGLONG;
+};
+
+template<>
+struct dart_datatype<unsigned long long> {
+  static constexpr const dart_datatype_t value = DART_TYPE_ULONGLONG;
+};
+
+template<>
+struct dart_datatype<float> {
+  static constexpr const dart_datatype_t value = DART_TYPE_FLOAT;
+};
+
+template<>
 struct dart_datatype<double> {
   static constexpr const dart_datatype_t value = DART_TYPE_DOUBLE;
 };
 
-template<typename T>
-struct dart_datatype<const T> : dart_datatype<T> { };
+template<>
+struct dart_datatype<long double> {
+  static constexpr const dart_datatype_t value = DART_TYPE_LONG_DOUBLE;
+};
 
 template<typename T>
-struct dart_datatype<volatile T> : dart_datatype<T> { };
+struct dart_datatype<const    T> : public dart_datatype<T> { };
+
+template<typename T>
+struct dart_datatype<volatile T> : public dart_datatype<T> { };
 
 
 namespace internal {
@@ -232,11 +250,7 @@ struct is_container_compatible :
  */
 template <typename T>
 struct is_atomic_compatible
-: public std::integral_constant<
-           bool,
-              dash::is_container_compatible<T>::value
-           && sizeof(T) <= sizeof(std::size_t)
-         >
+: public std::integral_constant<bool, std::is_arithmetic<T>::value>
 { };
 
 /**
@@ -332,6 +346,8 @@ constexpr team_unit_t   UNDEFINED_TEAM_UNIT_ID{DART_UNDEFINED_UNIT_ID};
  * This is a typed version of \ref DART_UNDEFINED_UNIT_ID.
  */
 constexpr global_unit_t UNDEFINED_GLOBAL_UNIT_ID{DART_UNDEFINED_UNIT_ID};
+
+typedef typename std::max_align_t max_align_t;
 
 } // namespace dash
 

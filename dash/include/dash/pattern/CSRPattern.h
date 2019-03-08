@@ -16,6 +16,7 @@
 
 #include <functional>
 #include <array>
+#include <utility>
 #include <vector>
 #include <type_traits>
 
@@ -113,7 +114,7 @@ public:
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
     team_unit_t                            unit;
-    IndexType                             index;
+    IndexType                             index{};
   } local_index_t;
   typedef struct {
     team_unit_t                            unit;
@@ -998,10 +999,15 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_size(
-    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const noexcept
+
+  constexpr SizeType local_size() const noexcept
   {
     return _local_size;
+  }
+
+  constexpr SizeType local_size(team_unit_t unit) const noexcept
+  {
+    return _local_sizes[unit.id];
   }
 
   /**
@@ -1146,25 +1152,19 @@ private:
   {}
 
   CSRPattern(
-    const std::vector<size_type> & local_sizes,
-    const PatternArguments_t     & arguments)
-  : _size(arguments.sizespec().size()),
-    _local_sizes(local_sizes),
-    _block_offsets(initialize_block_offsets(
-        _local_sizes)),
-    _memory_layout(std::array<SizeType, 1> {{ _size }}),
-    _blockspec(initialize_blockspec(
-        _local_sizes)),
-    _distspec(arguments.distspec()),
-    _team(&arguments.team()),
-    _teamspec(arguments.teamspec()),
-    _nunits(_team->size()),
-    _local_size(
-        initialize_local_extent(
-          _team->myid(),
-          _local_sizes)),
-    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
-    _local_capacity(initialize_local_capacity(_local_sizes))
+      std::vector<size_type> local_sizes, const PatternArguments_t &arguments)
+    : _size(arguments.sizespec().size())
+    , _local_sizes(std::move(local_sizes))
+    , _block_offsets(initialize_block_offsets(_local_sizes))
+    , _memory_layout(std::array<SizeType, 1>{{_size}})
+    , _blockspec(initialize_blockspec(_local_sizes))
+    , _distspec(arguments.distspec())
+    , _team(&arguments.team())
+    , _teamspec(arguments.teamspec())
+    , _nunits(_team->size())
+    , _local_size(initialize_local_extent(_team->myid(), _local_sizes))
+    , _local_memory_layout(std::array<SizeType, 1>{{_local_size}})
+    , _local_capacity(initialize_local_capacity(_local_sizes))
   {}
 
   /**

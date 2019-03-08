@@ -22,7 +22,7 @@ TEST_F(SharedTest, SingleWriteMultiRead)
     shared.set(shared_value_1);
   }
   dash::barrier();
-  value_t actual_1 = static_cast<value_t>(shared.get());
+  auto actual_1 = static_cast<value_t>(shared.get());
   LOG_MESSAGE("read first shared value: %d", actual_1);
   EXPECT_EQ_U(shared_value_1, actual_1);
   // Wait for validation at all units
@@ -38,7 +38,7 @@ TEST_F(SharedTest, SingleWriteMultiRead)
     shared.set(shared_value_2);
   }
   dash::barrier();
-  value_t actual_2 = static_cast<value_t>(shared.get());
+  auto actual_2 = static_cast<value_t>(shared.get());
   LOG_MESSAGE("read second shared value: %d", actual_2);
   EXPECT_EQ_U(shared_value_2, actual_2);
 }
@@ -57,14 +57,38 @@ TEST_F(SharedTest, SpecifyOwner)
                          : dash::size() / 2);
   dash::global_unit_t owner_b(dash::size() - 1);
 
-  value_t  value_a     = 1000;
-  value_t  value_b     = 2000;
+  value_t  value_a_init =  100;
+  value_t  value_b_init =  200;
+  value_t  value_a      = 1000;
+  value_t  value_b      = 2000;
   dash::team_unit_t l_owner_a(owner_a);
   dash::team_unit_t l_owner_b(owner_b);
-  shared_t shared_at_a(l_owner_a);
-  shared_t shared_at_b(l_owner_b);
 
   // Initialize shared values:
+  DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
+                 "initialize shared value at unit", owner_a, "(a)",
+                 "with", value_a_init);
+  shared_t shared_at_a(value_a_init, l_owner_a);
+  DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
+                 "initialize shared value at unit", owner_b, "(b)",
+                 "with", value_b_init);
+  shared_t shared_at_b(value_b_init, l_owner_b);
+
+  auto get_a_init = static_cast<value_t>(shared_at_a.get());
+  DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
+                 "shared value at unit", owner_a, " (a):", get_a_init);
+  auto get_b_init = static_cast<value_t>(shared_at_b.get());
+  DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
+                 "shared value at unit", owner_b, " (b):", get_b_init);
+  EXPECT_EQ_U(value_a_init, get_a_init);
+  EXPECT_EQ_U(value_b_init, get_b_init);
+
+  // Wait for validation of read shared values at all units before setting
+  // new values:
+  shared_at_a.barrier();
+  shared_at_b.barrier();
+
+  // Overwrite shared values local:
   if (dash::myid() == owner_a) {
     DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                    "setting shared value at unit", owner_a, "(a)",
@@ -80,10 +104,10 @@ TEST_F(SharedTest, SpecifyOwner)
   shared_at_a.barrier();
   shared_at_b.barrier();
 
-  value_t get_a = static_cast<value_t>(shared_at_a.get());
+  auto get_a = static_cast<value_t>(shared_at_a.get());
   DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                  "shared value at unit", owner_a, " (a):", get_a);
-  value_t get_b = static_cast<value_t>(shared_at_b.get());
+  auto get_b = static_cast<value_t>(shared_at_b.get());
   DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                  "shared value at unit", owner_b, " (b):", get_b);
   EXPECT_EQ_U(value_a, get_a);
@@ -94,7 +118,7 @@ TEST_F(SharedTest, SpecifyOwner)
   shared_at_a.barrier();
   shared_at_b.barrier();
 
-  // Overwrite shared values:
+  // Overwrite shared values remote:
   if (dash::myid() == owner_a) {
     DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                    "setting shared value at unit", owner_b, "(b)",
@@ -110,10 +134,10 @@ TEST_F(SharedTest, SpecifyOwner)
   shared_at_a.barrier();
   shared_at_b.barrier();
 
-  value_t new_a = static_cast<value_t>(shared_at_a.get());
+  auto new_a = static_cast<value_t>(shared_at_a.get());
   DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                  "shared value at unit", owner_a, " (a):", new_a);
-  value_t new_b = static_cast<value_t>(shared_at_b.get());
+  auto new_b = static_cast<value_t>(shared_at_b.get());
   DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                  "shared value at unit", owner_b, " (b):", new_b);
   EXPECT_EQ_U(value_b, new_a);
@@ -162,10 +186,12 @@ TEST_F(SharedTest, CompositeValue)
                       static_cast<short>(1 + dash::myid()) };
   value_t  exp_val  { 'a', 'b', 'c', 'd',
                       static_cast<short>(dash::size()) };
+  shared = shared_t(init_val);
+  shared.barrier();
 
-  if (dash::myid().id == 0) {
-    shared.set(init_val);
-  }
+  value_t shared_init = shared.get();
+  EXPECT_EQ_U(init_val, shared_init);
+
   shared.barrier();
 
   if (dash::myid().id == dash::size() - 1) {
@@ -219,3 +245,79 @@ TEST_F(SharedTest, AtomicAdd)
   shared.barrier();
 }
 
+TEST_F(SharedTest, AtomicMinMax)
+{
+  using value_t  = int32_t;
+  using shared_t = dash::Shared<dash::Atomic<value_t>>;
+
+  auto&    team = dash::Team::All();
+  shared_t g_min(std::numeric_limits<value_t>::max(), dash::team_unit_t{0}, team);
+  shared_t g_max(std::numeric_limits<value_t>::min(), dash::team_unit_t{0}, team);
+
+  auto const start_min = static_cast<value_t>(g_min.get());
+  auto const start_max = static_cast<value_t>(g_max.get());
+
+  EXPECT_GE_U(start_min, 0);
+  EXPECT_LE_U(start_max, std::numeric_limits<value_t>::max());
+
+  team.barrier();
+
+  g_min.get().fetch_op(dash::min<value_t>(), 0);
+  g_max.get().fetch_op(dash::max<value_t>(), std::numeric_limits<value_t>::max());
+
+  team.barrier();
+
+  auto const min = static_cast<value_t>(g_min.get());
+  auto const max = static_cast<value_t>(g_max.get());
+
+  EXPECT_EQ_U(0, min);
+  EXPECT_EQ_U(std::numeric_limits<value_t>::max(), max);
+}
+
+
+dash::Shared<int32_t> shared_delayed{};
+
+TEST_F(SharedTest, DelayedAllocation)
+{
+  EXPECT_TRUE_U(shared_delayed.init(100));
+
+  if (dash::myid() == 0) {
+    EXPECT_TRUE_U(shared_delayed.local());
+    EXPECT_EQ_U(100, *shared_delayed.local());
+  } else {
+    EXPECT_FALSE_U(shared_delayed.local());
+  }
+
+  auto val = shared_delayed.get();
+  EXPECT_EQ_U(100, val);
+
+  shared_delayed.barrier();
+
+  if (dash::myid() == 0) {
+    *shared_delayed.local() = 1000;
+  }
+
+  shared_delayed.barrier();
+
+  val = shared_delayed.get();
+  EXPECT_EQ_U(1000, val);
+
+  dash::Shared<int32_t> anotherShared{42};
+  anotherShared.barrier();
+
+  dash::swap(shared_delayed, anotherShared);
+
+  shared_delayed.barrier();
+
+  EXPECT_EQ_U(42, static_cast<int32_t>(shared_delayed.get()));
+
+
+  /* if these two shared variables are in two different teams we have to wait for
+  this team as well to be ready */
+
+  //anotherShared.barrier();
+  EXPECT_EQ_U(1000, static_cast<int32_t>(anotherShared.get()));
+
+  shared_delayed.barrier();
+  anotherShared.barrier();
+}

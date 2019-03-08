@@ -36,9 +36,9 @@ using element_t     = unsigned char;
 using Pattern_t     = dash::Pattern<2>;
 using index_t       = typename Pattern_t::index_type;
 using Array_t       = dash::NArray<element_t, 2, index_t, Pattern_t>;
-using StencilSpec_t = dash::StencilSpec<2,4>;
-using Stencil_t     = dash::Stencil<2>;
-using HaloWrapper_t = dash::HaloMatrixWrapper<Array_t, StencilSpec_t>;
+using StencilP_t    = dash::halo::StencilPoint<2>;
+using StencilSpec_t = dash::halo::StencilSpec<StencilP_t,4>;
+using HaloWrapper_t = dash::halo::HaloMatrixWrapper<Array_t>;
 
 void write_pgm(const std::string & filename, const Array_t & data){
   if(dash::myid() == 0){
@@ -119,7 +119,9 @@ void draw_circle(Array_t * dataptr, index_t x0, index_t y0, int r){
   }
 }
 
-void smooth(HaloWrapper_t & halo_old, HaloWrapper_t & halo_new){
+template<typename StencilOpT>
+void smooth(HaloWrapper_t & halo_old, HaloWrapper_t & halo_new,
+            StencilOpT& op_old, StencilOpT& op_new){
 
   const auto & pattern = halo_old.matrix().pattern();
 
@@ -149,8 +151,8 @@ void smooth(HaloWrapper_t & halo_old, HaloWrapper_t & halo_new){
   halo_old.wait();
 
   // Calculation of boundary Halo elements
-  auto bend = halo_old.bend();
-  for(auto it = halo_old.bbegin(); it != bend; ++it)
+  auto bend = op_old.boundary.end();
+  for(auto it = op_old.boundary.begin(); it != bend; ++it)
   {
     auto core = *it;
     *(nlptr+it.lpos()) = (0.40 * core) +
@@ -180,11 +182,18 @@ int main(int argc, char* argv[])
   Array_t data_old(pattern);
   Array_t data_new(pattern);
 
-  StencilSpec_t stencil_spec({ Stencil_t(-1, 0), Stencil_t(1, 0), Stencil_t( 0, -1), Stencil_t(0, 1)});
+  StencilSpec_t stencil_spec( StencilP_t(-1, 0), StencilP_t(1, 0), StencilP_t( 0, -1), StencilP_t(0, 1));
+
   HaloWrapper_t halo_old(data_old, stencil_spec);
   HaloWrapper_t halo_new(data_new, stencil_spec);
   auto* halo_old_ptr = &halo_old;
   auto* halo_new_ptr = &halo_new;
+
+  auto stencil_op_old = halo_old.stencil_operator(stencil_spec);
+  auto stencil_op_new = halo_new.stencil_operator(stencil_spec);
+
+  decltype(stencil_op_old)* op_old_ptr = &stencil_op_old;
+  decltype(stencil_op_new)* op_new_ptr = &stencil_op_new;
 
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);
@@ -210,9 +219,10 @@ int main(int argc, char* argv[])
   for(int i=0; i<niter; ++i){
     // switch references
 
-    smooth(*halo_old_ptr, *halo_new_ptr);
+    smooth(*halo_old_ptr, *halo_new_ptr, *op_old_ptr, *op_new_ptr);
 
     std::swap(halo_old_ptr, halo_new_ptr);
+    std::swap(op_old_ptr, op_new_ptr);
 
     dash::barrier();
   }

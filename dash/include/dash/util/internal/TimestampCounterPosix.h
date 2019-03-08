@@ -4,7 +4,7 @@
 #include <dash/util/Timer.h>
 #include <dash/util/Timestamp.h>
 
-#include <stdint.h>
+#include <cstdint>
 #include <iostream>
 
 #include <dash/internal/Config.h>
@@ -96,9 +96,8 @@ public:
 public:
 
   inline TimestampCounterPosix()
-  {
-    value = static_cast<counter_t>(ArchCycleCount());
-  }
+  : value(static_cast<counter_t>(ArchCycleCount()))
+  { }
 
   inline TimestampCounterPosix(
     const TimestampCounterPosix & other)
@@ -119,7 +118,7 @@ public:
     return *this;
   }
 
-  inline const counter_t & Value() const
+  inline const counter_t& Value() const override
   {
     return value;
   }

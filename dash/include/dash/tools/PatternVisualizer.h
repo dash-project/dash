@@ -7,7 +7,7 @@
 #include <array>
 #include <iomanip>
 #include <string>
-
+#include <utility>
 #if 0
 #define PATTERN_VISUALIZER_HSV
 #endif
@@ -80,12 +80,15 @@ public:
    * The pattern instance is constant. For a different pattern a new
    * PatternVisualizer has to be constructed.
    */
-  PatternVisualizer(const PatternT & pat,
-                    /// An optional title
-                    const std::string & title = "",
-                    /// An optional describtion, currently not used
-                    const std::string & descr = "")
-  : _pattern(pat), _title(title), _descr(descr)
+  PatternVisualizer(
+      const PatternT& pat,
+      /// An optional title
+      std::string title = "",
+      /// An optional describtion, currently not used
+      std::string descr = "")
+    : _pattern(pat)
+    , _title(std::move(title))
+    , _descr(std::move(descr))
   {
     _tile_base_size  = 10;
     _block_base_size = 26;
@@ -160,8 +163,8 @@ public:
     os << " xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n";
 
     // typeset title line
-    os << "<text x=\"10\" y=\"15\" ";
-    os << " fill=\"grey\" font-size=\"" << _fontsz_title << "\">";
+    os << R"(<text x="10" y="15" )";
+    os << R"( fill="grey" font-size=")" << _fontsz_title << "\">";
     os << title;
     os << "</text>\n";
 
@@ -213,9 +216,9 @@ public:
     int leny   = sz.grid_height * sz.gridy + sz.grid_base;
 
     os << "<defs>\n";
-    os << "<marker id=\"arrowhead\" orient=\"auto\"";
-    os << " markerWidth=\"6\" markerHeight=\"6\"";
-    os << " refX=\"0\" refY=\"0\"";
+    os << R"(<marker id="arrowhead" orient="auto")";
+    os << R"( markerWidth="6" markerHeight="6")";
+    os << R"( refX="0" refY="0")";
     os << " viewBox=\"-10 -15 30 30\">\n";
     os << "<path d=\"";
     os << "M " << -10 << " " << -15 << " ";
@@ -238,7 +241,7 @@ public:
     os << "/>";
 
     os << "<text x=\"" << startx + lenx/3 << "\" y=\"" << starty - _fontsz/2 << "\" ";
-    os << " fill=\"grey\" font-size=\"" << _fontsz << "\" >";
+    os << R"( fill="grey" font-size=")" << _fontsz << "\" >";
     os << "Dimension " << dimx << std::endl;
     os << "</text>" << std::endl;
 
@@ -252,7 +255,7 @@ public:
 
     os << "<text x=\"" << startx - _fontsz/2 << "\" y=\"" << starty + leny/3 << "\" ";
     os << " transform=\"rotate(-90," << startx - _fontsz/2 << "," << starty + leny/3 << ")\" ";
-    os << " fill=\"grey\" font-size=\"" << _fontsz << "\" >";
+    os << R"( fill="grey" font-size=")" << _fontsz << "\" >";
     os << "Dimension " << dimy << std::endl;
     os << "</text>" << std::endl;
   }
@@ -278,7 +281,7 @@ public:
       starty += sz.tileszy - 2;
       startx += sz.tileszx + 1;
       os << "<text x=\"" << startx << "\" y=\"" << starty << "\" ";
-      os << " fill=\"grey\" font-size=\"" << _fontsz << "\"";
+      os << R"( fill="grey" font-size=")" << _fontsz << "\"";
       os << " >";
       os << "Unit " << unit << std::endl;
       os << "</text>" << std::endl;
@@ -414,7 +417,7 @@ public:
         os << std::endl;
       }
 
-      os << "<circle cx=\"" << endx << "\" cy=\"" << endy << "\" r=\"1.5\" ";
+      os << "<circle cx=\"" << endx << "\" cy=\"" << endy << R"(" r="1.5" )";
       os << " style=\"stroke:#E0E0E0;stroke-width:1;fill:#E0E0E0\" />";
       os << std::endl;
 

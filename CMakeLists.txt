@@ -2,27 +2,7 @@ project(project_dash)
 
 cmake_minimum_required (VERSION 2.8)
 
-if(POLICY CMP0054)
-  cmake_policy(SET CMP0054 OLD)
-endif(POLICY CMP0054)
-if(POLICY CMP0053)
-  cmake_policy(SET CMP0053 OLD)
-endif(POLICY CMP0053)
-if(POLICY CMP0007)
-  cmake_policy(SET CMP0007 OLD)
-endif(POLICY CMP0007)
-if(POLICY CMP0003)
-  cmake_policy(SET CMP0003 OLD)
-endif(POLICY CMP0003)
-if(POLICY CMP0060)
-  cmake_policy(SET CMP0060 OLD)
-endif(POLICY CMP0060)
-if(POLICY CMP0004)
-  cmake_policy(SET CMP0004 OLD)
-endif(POLICY CMP0004)
-if(POLICY CMP0016)
-  cmake_policy(SET CMP0016 OLD)
-endif(POLICY CMP0016)
+# required for Ninja builds
 if(POLICY CMP0058)
   cmake_policy(SET CMP0058 NEW)
 endif()
@@ -36,9 +16,10 @@ endif()
 ## Build options
 option(BUILD_TESTS
        "Whether tests should be built" on)
+option(INSTALL_TESTS
+       "Whether tests should be installed" off)
 option(BUILD_COVERAGE_TESTS
-       "Whether tests are built with code coverage (lcov) support.
-        Implies BUILD_TESTS. Requires GCC." off)
+       "Whether tests are built with code coverage (lcov) support. Implies BUILD_TESTS. Requires GCC." off)
 option(BUILD_DOCS
        "Whether doxygen documentation should be installed" off)
 option(BUILD_EXAMPLES
@@ -102,13 +83,19 @@ option(ENABLE_PLASMA
        "Specify whether PLASMA features are enabled" on)
 option(ENABLE_HDF5
        "Specify whether HDF5 features are enabled" on)
+option(ENABLE_MEMKIND
+       "Specify whether Memkind features are enabled" on)
 option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
 
 if (BUILD_COVERAGE_TESTS)
-  set(BUILD_TESTS TRUE CACHE BOOLEAN
-      "Whether tests are built with code coverage (lcov) support.
-       Implies BUILD_TESTS. Requires GCC." on)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
+  # This has to be done globally as otherwise linking might fail
+  append_coverage_compiler_flags()
+
+  set(BUILD_TESTS ON CACHE BOOL
+    "Whether tests are built with code coverage (lcov) support.
+    Implies BUILD_TESTS. Requires GCC.")
 endif()
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/CMakeEnvCheck.cmake)
@@ -125,7 +112,7 @@ if (ENABLE_THREADSUPPORT)
 endif()
 
 if (ENABLE_COMPTIME_RED)
-  include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
+    #include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
 endif()
 
 # Load build modules to locate libraries after environment setup
@@ -138,6 +125,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Memkind.cmake)
 
 if (ENABLE_MKL)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
@@ -153,21 +141,22 @@ endif()
 # prepare StaticConfig.h generation
 include(${CMAKE_SOURCE_DIR}/CMakeExt/GenerateConfig.cmake)
 
-## Version number
 set(DASH_VERSION_MAJOR 0 CACHE STRING "DASH major version number.")
-set(DASH_VERSION_MINOR 3 CACHE STRING "DASH minor version number.")
+set(DASH_VERSION_MINOR 4 CACHE STRING "DASH minor version number.")
 set(DASH_VERSION_PATCH 0 CACHE STRING "DASH patch version number.")
 mark_as_advanced(
   DASH_VERSION_MAJOR
   DASH_VERSION_MINOR
   DASH_VERSION_PATCH)
-
 set(DASH_VERSION
     "${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
     CACHE STRING INTERNAL FORCE)
 set(DASH_VERSIONED_PROJECT_NAME
     "dash-${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
     CACHE STRING INTERNAL FORCE)
+
+# check the git commit hash
+include (CMakeExt/Gitcommit.cmake)
 
 set(CMAKE_RULE_MESSAGES OFF)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
@@ -250,7 +239,6 @@ message(EMPH "Build shared libraries:   (BUILD_SHARED_LIBS)              "
 
 message(INFO "Build tests:              (BUILD_TESTS)                    "
         ${BUILD_TESTS})
-
 message(INFO "Host system identifier:   (ENVIRONMENT_TYPE)               "
         ${DASH_ENV_HOST_SYSTEM_ID})
 message(INFO "Strict compiler warnings: (ENABLE_DEV_COMPILER_WARNINGS)   "
@@ -301,11 +289,13 @@ message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
         ${ENABLE_PLASMA})
 message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
+message(INFO "Memkind support:          (ENABLE_MEMKIND)                    "
+        ${ENABLE_MEMKIND})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
 message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
-if (MPI_FOUND)
+if (DEFINED MPI_IMPL_ID)
   message(INFO "MPI implementation:       " ${MPI_IMPL_ID})
 endif()
 
@@ -391,6 +381,15 @@ if (ENABLE_HDF5)
   endif()
 else()
   message(NOTE "HDF5                      disabled")
+endif()
+if (ENABLE_MEMKIND)
+  if (MEMKIND_FOUND)
+    message(INFO "MEMKIND                   enabled")
+  else()
+    message(NOTE "MEMKIND                   not found")
+  endif()
+else()
+  message(NOTE "MEMKIND                   disabled")
 endif()
 if (ENABLE_LIBNUMA)
   if (NUMA_FOUND)

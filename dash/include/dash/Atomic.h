@@ -30,7 +30,7 @@ namespace dash {
  *       dash::atomic::load(array.lbegin())   // not allowed
  *       \endcode
  * \endnote
- * 
+ *
  * \code
  *   dash::Array<dash::Atomic<int>> array(100);
  *   // supported as Atomic<value_t>(value_t T) is available
@@ -59,9 +59,12 @@ private:
 public:
   typedef T value_type;
 
-  constexpr Atomic()                                 = default;
-  constexpr Atomic(const Atomic<T> & other)          = default;
-  self_t & operator=(const self_t & other)           = default;
+  constexpr Atomic()                       = default;
+  constexpr Atomic(const Atomic<T>& other) = default;
+  constexpr Atomic(Atomic<T>&& other)      = default;
+
+  self_t& operator=(const self_t& other)   = default;
+  self_t& operator=(self_t&& other)        = default;
 
   /**
    * Initializes the underlying value with desired.
@@ -115,7 +118,7 @@ std::ostream & operator<<(
 
 #include <dash/atomic/Type_traits.h>
 #include <dash/atomic/GlobAtomicRef.h>
+#include <dash/atomic/GlobAtomicAsyncRef.h>
 #include <dash/atomic/Operation.h>
 
 #endif // DASH__ATOMIC_H__INCLUDED
-

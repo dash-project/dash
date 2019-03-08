@@ -16,7 +16,7 @@ ifeq ($(DART_IMPL), shmem)
 endif
 
 CFLAGS+=-DDASH_ENABLE_DEFAULT_INDEX_TYPE_LONG
-CFLAGS+=-std=c++11
+CFLAGS+=-std=c++14
 
 #CFLAGS+=-DDASH_DEBUG
 

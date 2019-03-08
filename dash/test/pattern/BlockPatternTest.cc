@@ -160,7 +160,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
     EXPECT_EQ(local_extent_x, pat_blocked_row.local_extents(u)[0]);
     EXPECT_EQ(local_extent_x, pat_blocked_col.local_extents(u)[0]);
   }
-  std::array<index_t, 1> expected_coords;
+  std::array<index_t, 1> expected_coords{};
   for (int x = 0; x < _num_elem; ++x) {
     dash::team_unit_t expected_unit_id(x / block_size);
     int expected_offset  = x % block_size;
@@ -228,7 +228,7 @@ TEST_F(BlockPatternTest, Distribute1DimCyclic)
   EXPECT_EQ(pat_cyclic_col.capacity(), _num_elem);
   EXPECT_EQ(pat_cyclic_col.blocksize(0), 1);
   EXPECT_EQ(pat_cyclic_col.local_capacity(), local_cap);
-  std::array<index_t, 1> expected_coords;
+  std::array<index_t, 1> expected_coords{};
   for (int x = 0; x < _num_elem; ++x) {
     dash::team_unit_t expected_unit_id(x % team_size);
     int expected_offset  = x / team_size;
@@ -296,7 +296,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlockcyclic)
   EXPECT_EQ(pat_blockcyclic_col.local_capacity(), local_cap);
   LOG_MESSAGE("num elem: %d, block size: %lu, num blocks: %lu",
     _num_elem, block_size, num_blocks);
-  std::array<index_t, 1> expected_coords;
+  std::array<index_t, 1> expected_coords{};
   for (int x = 0; x < _num_elem; ++x) {
     dash::team_unit_t unit_id((x / block_size) % team_size);
     int block_index       = x / block_size;
@@ -1129,11 +1129,11 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent)
       dash::TILE(blocksize[1])),
     teamspec_2d,
     dash::Team::All());
-  
+
   for(int i=0; i<pattern_t::ndim(); ++i){
     EXPECT_EQ(pattern.teamspec().extent(i), 2);
     EXPECT_EQ(pattern.blocksize(i), blocksize[i]);
-    
+
     // check extent of last block
     // assuming that each unit only has a single local block
     int local_extent_expected = 0;
@@ -1143,18 +1143,18 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent)
                 ((i == 0) ?  0 : underfill[i]); break;
       case 2: local_extent_expected = blocksize[i] -
                 ((i != 0) ?  0 : underfill[i]); break;
-      case 3: local_extent_expected = blocksize[i] - underfill[i];
+      default: local_extent_expected = blocksize[i] - underfill[i];
     }
     EXPECT_EQ(pattern.local_extent(i), local_extent_expected);
     EXPECT_EQ(pattern.local_block(0).extent(i), local_extent_expected);
-    
+
     auto num_blocks_dim = pattern.blockspec().extent(i);
     std::array<index_t,2> coords = {};
     coords[i] = num_blocks_dim - 1;
     auto index   = pattern.blockspec().at(coords);
     auto extent  = pattern.block(index).extent(i);
     auto desired = blocksize[i] - underfill[i];
-    
+
     EXPECT_EQ_U(extent, desired);
   }
 }
@@ -1173,7 +1173,7 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent1Dim)
   index_t blocksize = 10;
   index_t underfill = 3;
   index_t extent    = blocksize * team_size - underfill;
-  
+
   auto size_spec    = dash::SizeSpec<1>(extent);
 
   // Check TilePattern
@@ -1183,7 +1183,7 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent1Dim)
       dash::TILE(blocksize)),
     teamspec_1d,
     dash::Team::All());
-  
+
   EXPECT_EQ(pattern.blocksize(0), blocksize);
 
   // check extent of last block
@@ -1193,7 +1193,7 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent1Dim)
     case 0:
     case 1:
     case 2: local_extent_expected = blocksize; break;
-    case 3: local_extent_expected = blocksize - underfill;
+    default: local_extent_expected = blocksize - underfill;
   }
   EXPECT_EQ(pattern.local_extent(0), local_extent_expected);
   EXPECT_EQ(pattern.local_block(0).extent(0), local_extent_expected);

@@ -59,8 +59,7 @@ public:
   /**
    * Default constructor, used if no argument list is parsed.
    */
-  PatternArguments() {
-  }
+  PatternArguments() = default;
 
   /**
    * Constructor, parses settings in argument list and checks for

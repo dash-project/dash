@@ -6,8 +6,6 @@
 #include <dash/Team.h>
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
-#include <dash/memory/GlobStaticMem.h>
-#include <dash/Allocator.h>
 #include <dash/HView.h>
 #include <dash/Meta.h>
 
@@ -16,6 +14,9 @@
 #include <dash/matrix/MatrixRefView.h>
 #include <dash/matrix/MatrixRef.h>
 #include <dash/matrix/LocalMatrixRef.h>
+
+#include <dash/memory/MemorySpace.h>
+#include <dash/memory/UniquePtr.h>
 
 #include <type_traits>
 
@@ -95,22 +96,30 @@ template <
   typename T,
   dim_t NumDimensions,
   typename IndexT,
-  class PatternT >
+  class PatternT,
+  typename LocalMemSpaceT>
 class Matrix;
 /// Forward-declaration
 template <
   typename T,
   dim_t NumDimensions,
   dim_t CUR,
-  class PatternT >
+  class PatternT,
+  typename LocalMemSpaceT>
 class MatrixRef;
 /// Forward-declaration
 template <
   typename T,
   dim_t NumDimensions,
   dim_t CUR,
-  class PatternT >
+  class Pattern,
+  typename LocalMemSpaceT>
 class LocalMatrixRef;
+
+namespace halo {
+  template<class _MatrixT>
+  class HaloMatrixWrapper;
+}
 
 /**
  * An n-dimensional array supporting subranges and sub-dimensional
@@ -132,7 +141,8 @@ template<
   typename ElementT,
   dim_t    NumDimensions,
   typename IndexT         = dash::default_index_t,
-  class    PatternT       = TilePattern<NumDimensions, ROW_MAJOR, IndexT> >
+  class    PatternT       = TilePattern<NumDimensions, ROW_MAJOR, IndexT>,
+  typename LocalMemSpaceT = HostSpace>
 class Matrix
 {
   static_assert(
@@ -143,35 +153,41 @@ class Matrix
     "Index type IndexT must be the same for Matrix and specified pattern");
 
 private:
-  typedef Matrix<ElementT, NumDimensions, IndexT, PatternT>
+  typedef Matrix<ElementT, NumDimensions, IndexT, PatternT, LocalMemSpaceT>
     self_t;
   typedef typename std::make_unsigned<IndexT>::type
     SizeType;
-  typedef MatrixRefView<ElementT, NumDimensions, PatternT>
+  typedef MatrixRefView<ElementT, NumDimensions, PatternT, LocalMemSpaceT>
     MatrixRefView_t;
-  typedef LocalMatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
+  typedef LocalMatrixRef<ElementT, NumDimensions, NumDimensions, PatternT, LocalMemSpaceT>
     LocalRef_t;
   typedef LocalMatrixRef<
-            const ElementT, NumDimensions, NumDimensions, PatternT>
+            const ElementT, NumDimensions, NumDimensions, PatternT, LocalMemSpaceT>
     LocalRef_const_t;
   typedef PatternT
     Pattern_t;
-  typedef GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>
+
+  template<class MatrixT_>
+  friend class halo::HaloMatrixWrapper;
+public:
+  typedef GlobStaticMem<LocalMemSpaceT>
     GlobMem_t;
 
-public:
   template<
     typename T_,
     dim_t NumDimensions1,
     dim_t NumDimensions2,
-    class PatternT_ >
+    class PatternT_,
+    typename MSpaceC>
   friend class MatrixRef;
   template<
     typename T_,
     dim_t NumDimensions1,
     dim_t NumDimensions2,
-    class PatternT_ >
+    class PatternT_,
+    typename MSpaceC>
   friend class LocalMatrixRef;
+
 
 public:
   typedef ElementT                                              value_type;
@@ -179,17 +195,18 @@ public:
   typedef typename PatternT::index_type                    difference_type;
   typedef typename PatternT::index_type                         index_type;
 
-  typedef GlobIter<      value_type, Pattern_t>                   iterator;
-  typedef GlobIter<const value_type, Pattern_t>             const_iterator;
+  typedef GlobIter<      value_type, Pattern_t, GlobMem_t>        iterator;
+  typedef GlobIter<const value_type, Pattern_t, GlobMem_t>  const_iterator;
 
   typedef std::reverse_iterator<iterator>                 reverse_iterator;
   typedef std::reverse_iterator<const_iterator>     const_reverse_iterator;
 
-  typedef GlobRef<      value_type>                              reference;
-  typedef GlobRef<const value_type>                        const_reference;
+  typedef          GlobRef<value_type>                           reference;
+  typedef typename GlobRef<value_type>::const_type         const_reference;
 
-  typedef GlobIter<      value_type, Pattern_t>                    pointer;
-  typedef GlobIter<const value_type, Pattern_t>              const_pointer;
+  // TODO rko: use iterator traits
+  typedef typename iterator::pointer   pointer;
+  typedef typename pointer::const_type const_pointer;
 
   typedef       ElementT *                                   local_pointer;
   typedef const ElementT *                             const_local_pointer;
@@ -209,12 +226,12 @@ public:
 public:
   /// Type specifying the view on local matrix elements.
   typedef LocalMatrixRef<
-            ElementT, NumDimensions, NumDimensions, PatternT>
+            ElementT, NumDimensions, NumDimensions, PatternT, LocalMemSpaceT>
     local_type;
 
   /// Type specifying the view on const local matrix elements.
   typedef LocalMatrixRef<
-            const ElementT, NumDimensions, NumDimensions, PatternT>
+            const ElementT, NumDimensions, NumDimensions, PatternT, LocalMemSpaceT>
     const_local_type;
 
   /// The type of the pattern specifying linear iteration order and how
@@ -225,13 +242,13 @@ public:
   /// column vectors.
   template <dim_t NumViewDim>
     using view_type =
-          MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>;
+          MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT, LocalMemSpaceT>;
 
   /// Type of views on matrix elements such as sub-matrices, row- and
   /// column vectors.
   template <dim_t NumViewDim>
     using const_view_type =
-          MatrixRef<const ElementT, NumDimensions, NumViewDim, PatternT>;
+          MatrixRef<const ElementT, NumDimensions, NumViewDim, PatternT, LocalMemSpaceT>;
 
 // public types exposed in Matrix interface
 public:
@@ -247,29 +264,38 @@ public:
   static constexpr dim_t ndim() {
     return NumDimensions;
   }
+private:
+  using allocator_type = dash::GlobalAllocator<std::byte, GlobMem_t>;
+
+  using unique_gptr_t = decltype(dash::allocate_unique<value_type>(
+      allocator_type{}, std::size_t{}));
 
 private:
   /// Team containing all units that collectively instantiated the
   /// Matrix instance
-  dash::Team                 * _team = nullptr;
+  dash::Team *_team = nullptr;
   /// Capacity (total number of elements) of the matrix
-  size_type                    _size;
+  size_type _size;
   /// Number of local elements in the array
-  size_type                    _lsize;
+  size_type _lsize;
   /// Number allocated local elements in the array
-  size_type                    _lcapacity;
+  size_type _lcapacity;
   /// Global pointer to initial element in the array
-  pointer                      _begin;
+  iterator _begin;
   /// The matrix elements' distribution pattern
-  Pattern_t                    _pattern;
+  Pattern_t _pattern;
   /// Global memory allocation and -access
-  GlobMem_t                  * _glob_mem;
+  GlobMem_t _glob_mem{};
+  /// Global allocator
+  allocator_type _allocator;
+  /// Unique pointer to memory allocated by global memory instance
+  unique_gptr_t _data{};
   /// Native pointer to first local element in the array
-  ElementT                   * _lbegin;
+  ElementT *_lbegin{};
   /// Native pointer past last local element in the array
-  ElementT                   * _lend;
+  ElementT *_lend{};
   /// Proxy instance for applying a view, e.g. in subscript operator
-  view_type<NumDimensions>     _ref;
+  view_type<NumDimensions> _ref;
 
 public:
   /**
@@ -742,8 +768,10 @@ public:
    * Conversion operator to type \ref MatrixRef.
    */
   operator
-    MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> ();
+    MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT, LocalMemSpaceT> ();
 
+private:
+  void destruct_at_end(value_type *new_last);
 };
 
 /**
@@ -756,12 +784,12 @@ template <
   typename T,
   dim_t    NumDimensions,
   typename IndexT   = dash::default_index_t,
-  class    PatternT = Pattern<NumDimensions, ROW_MAJOR, IndexT> >
-using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT>;
+  class    PatternT = Pattern<NumDimensions, ROW_MAJOR, IndexT>,
+  typename LocalMemSpaceT = HostSpace>
+using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT, LocalMemSpaceT>;
 
 }  // namespace dash
 
 #include <dash/matrix/internal/Matrix-inl.h>
 
 #endif  // DASH__MATRIX_H_INCLUDED
-

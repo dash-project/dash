@@ -26,19 +26,22 @@ ifeq ($(DASH_ENABLE_ASSERTIONS),1)
 endif
 
 CXXFLAGS+=-DDASH_ENABLE_DEFAULT_INDEX_TYPE_LONG
-CXXFLAGS+=-std=c++11
+CXXFLAGS+=-std=c++14
 
 #CXXFLAGS+=-DDASH_DEBUG
 #CFLAGS+=-D_SVID_SOURCE
 
 LIBDASH = libdash.a
 
-FILES = Distribution GlobPtr Init Logging Math Team 			\
-	algorithm/SUMMA exception/StackTrace util/BenchmarkParams	\
-	util/Config util/Locality util/LocalityDomain			\
-	util/LocalityJSONPrinter util/TeamLocality util/Timer		\
-	util/TimestampClockPosix util/TimestampCounterPosix		\
-	util/TimestampPAPI util/Trace
+FILES = Distribution GlobPtr Init Logging Math Mutex StreamConversion	\
+	Team TypeInfo algorithm/SUMMA allocator/internal/Types		\
+	cpp17/polymorphic_allocator exception/StackTrace io/IOStream	\
+	memory/HBWSpace memory/HostSpace				\
+	memory/internal/MemorySpaceRegistry memory/MemorySpace		\
+	util/BenchmarkParams util/Config util/Locality			\
+	util/LocalityDomain util/LocalityJSONPrinter			\
+	util/TeamLocality util/Timer util/TimestampClockPosix		\
+	util/TimestampCounterPosix util/TimestampPAPI util/Trace
 
 OBJS = $(addsuffix .o, $(FILES))
 
@@ -60,13 +63,22 @@ $(STATIC_CONFIG_H) : $(STATIC_CONFIG_H_IN)
 	sed "s/@CONF_AVAIL_BLAS@/false/"          | \
 	sed "s/@CONF_AVAIL_LAPACK@/false/"        | \
 	sed "s/@CONF_AVAIL_ALGO_SUMMA@/false/"    | \
+	sed "s/@CONF_AVAIL_MEMKIND@/false/"    | \
 	sed "s/@CONF_AVAIL_SCALAPACK@/false/"  > $(STATIC_CONFIG_H)
 
 
 clean :
 	rm -f *~
 	rm -f *.o
-	rm -f util/*.o algorithm/*.o
+	rm -f algorithm/*.o
+	rm -f allocator/*.o
+	rm -f allocator/internal/*.o
+	rm -f cpp17/*.o
+	rm -f exception/*.o
+	rm -f io/*.o
+	rm -f memory/*.o
+	rm -f memory/internal/*.o
+	rm -f util/*.o
 	rm -f $(LIBDASH)
 	rm -f $(STATIC_CONFIG_H)
 

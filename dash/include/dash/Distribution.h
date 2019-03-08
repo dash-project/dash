@@ -31,17 +31,14 @@ private:
     const self_t & distribution);
 
 public:
-  dash::internal::DistributionType type;
-  dash::default_size_t             blocksz;
+  dash::internal::DistributionType type{dash::internal::DIST_NONE};
+  dash::default_size_t             blocksz{0};
 
   /**
    * Constructor, initializes Distribution with distribution
    * type NONE.
    */
-  Distribution()
-  : type(dash::internal::DIST_NONE),
-    blocksz(0) {
-  }
+  Distribution() = default;
 
   /**
    * Constructor, initializes Distribution with a
@@ -54,16 +51,9 @@ public:
     blocksz(blockSize) {
   }
 
-  Distribution(const self_t & other)
-  : type(other.type),
-    blocksz(other.blocksz) {
-  }
+  Distribution(const self_t& other) = default;
 
-  self_t & operator=(const self_t & other) {
-    type    = other.type;
-    blocksz = other.blocksz;
-    return *this;
-  }
+  self_t& operator=(const self_t& other) = default;
 
   /**
    * Resolve the block coordinate for a given local index

@@ -262,7 +262,7 @@ TEST_F(CoarrayTest, Iterators)
 TEST_F(CoarrayTest, CoFutures)
 {
   dash::Coarray<int> x;
-  int i = static_cast<int>(this_image());
+  auto               i = static_cast<int>(this_image());
   x = i;
   x.barrier();
 
@@ -272,7 +272,7 @@ TEST_F(CoarrayTest, CoFutures)
 
 TEST_F(CoarrayTest, MemoryModel)
 {
-  int i = static_cast<int>(this_image());
+  auto i = static_cast<int>(this_image());
   {
     // scalar case
     using Coarray_t = dash::Coarray<dash::Atomic<int>>;
@@ -371,7 +371,13 @@ TEST_F(CoarrayTest, Comutex){
   dash::Coarray<int> arr;
 
   std::random_device rd;
-  std::default_random_engine dre(rd());
+#ifndef DEBUG
+  unsigned int seed = rd();
+#else
+  // avoid non-deterministic code coverage changes
+  unsigned int seed = 42;
+#endif
+  std::default_random_engine dre(seed);
   std::uniform_int_distribution<int> uniform_dist(0, dash::size()-1);
 
   arr = 0;
@@ -397,7 +403,7 @@ TEST_F(CoarrayTest, Comutex){
   std::this_thread::sleep_for(std::chrono::microseconds(100));
 
   // sum should be dash::size() * repetitions
-  auto sum = dash::accumulate(arr.begin(), arr.end(), 0, dash::plus<int>());
+  auto sum = dash::reduce(arr.begin(), arr.end(), 0, dash::plus<int>());
   if(this_image() == 0){
     ASSERT_EQ_U(sum, dash::size() * repetitions);
   }
@@ -408,7 +414,7 @@ dash::Coarray<int> delay_alloc_arr;
 
 TEST_F(CoarrayTest, DelayedAllocation)
 {
-  int i = static_cast<int>(this_image());
+  auto i = static_cast<int>(this_image());
   EXPECT_EQ_U(delay_alloc_arr.size(), 0);
   dash::barrier();
 
@@ -430,7 +436,7 @@ TEST_F(CoarrayTest, StructType)
   struct value_t {double a; int b;};
   dash::Coarray<value_t> x;
   double a_exp = static_cast<double>(this_image()) + 0.1;
-  int    b_exp = static_cast<int>(this_image());
+  auto   b_exp = static_cast<int>(this_image());
 
   x.member(&value_t::a) = a_exp;
   x.member(&value_t::b) = b_exp;
