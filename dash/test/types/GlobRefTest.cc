@@ -13,9 +13,9 @@ TEST_F(GlobRefTest, ArithmeticOps)
 
   array_t arr(dash::size());
 
-  int                    neighbor = (dash::myid() + 1) % dash::size();
+  int neighbor = (dash::myid() + 1) % dash::size();
 
-  dash::GlobRef<value_t> gref     = arr[neighbor];
+  dash::GlobRef<value_t> gref = arr[neighbor];
 
   auto address_of_ref = dash::addressof<typename array_t::memory_type>(gref);
 
@@ -210,28 +210,27 @@ TEST_F(GlobRefTest, ConversionRules)
 {
   constexpr bool ignore = true;
 
-  // Rule 1: T &-> const T &
+  // Rule 1.1: T &-> const T &
   StandardConformabilityTester<int, const int, true, ignore>::test();
-  // Rule 2: const T & -> int &
+  // Rule 1.2: const T & -> int &
   // Conversion Fails due to const correctness
   StandardConformabilityTester<const int, int, false, false>::test();
 
-  // Rule 3: T & -> U & if T and U are not related (FAILS)
+  // Rule 2: T & -> U & if T and U are not related (FAILS)
   StandardConformabilityTester<int, double, false, false>::test();
 
-  // Rule 4: Child & -> Parent & (Upcast)
+  // Rule 3: Child & -> Parent & (Upcast)
   StandardConformabilityTester<Child, Parent, true, ignore>::test();
 
-  // Rule 5.1: Child & -> const Parent & (Upcast to const)
-  // Rule 5.2: const Child & -> Parent & (FAILS, const correctness)
+  // Rule 4.1: Child & -> const Parent & (Upcast to const)
+  // Rule 4.2: const Child & -> Parent & (FAILS, const correctness)
   StandardConformabilityTester<Child, const Parent, true, ignore>::test();
   StandardConformabilityTester<const Child, Parent, false, false>::test();
 
-  // Rule 6.1: Parent & -> const Child &
-  // Rule 6.2: Parent & -> Child &
+  // Rule 5.1: Parent & -> const Child &
+  // Rule 5.2: Parent & -> Child &
   // Explicit downcast (VALID)
   // see https://en.cppreference.com/w/cpp/language/static_cast
   StandardConformabilityTester<Parent, const Child, false, true>::test();
   StandardConformabilityTester<Parent, Child, false, true>::test();
-
 }

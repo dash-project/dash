@@ -371,7 +371,7 @@ public:
                    "(unit:", local_pos.unit, " index:", local_pos.index, ")");
     auto const dart_ptr = _get_pointer_at(local_pos);
 
-    return reference(dart_ptr);
+    return reference{pointer{dart_ptr}};
   }
 
   /**
@@ -391,7 +391,7 @@ public:
                    "(index:", g_index, ") ->",
                    "(unit:", local_pos.unit, " index:", local_pos.index, ")");
     auto const dart_ptr = _get_pointer_at(local_pos);
-    return const_reference(dart_ptr);
+    return const_reference{const_pointer{dart_ptr}};
   }
 
   /**

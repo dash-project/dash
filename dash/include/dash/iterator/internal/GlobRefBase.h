@@ -5,6 +5,7 @@
 #include <memory>
 #include <type_traits>
 
+#include <dash/TypeTraits.h>
 #include <dash/dart/if/dart_globmem.h>
 
 namespace dash {
@@ -114,8 +115,12 @@ class GlobRefBase {
    * PRIVATE: Constructor, creates an GlobRefBase object referencing an
    * element in global memory.
    */
-  explicit constexpr GlobRefBase(dart_gptr_t dart_gptr)
+  explicit constexpr GlobRefBase(dart_gptr_t const& dart_gptr)
     : m_dart_pointer(dart_gptr)
+  {
+  }
+  explicit constexpr GlobRefBase(dart_gptr_t&& dart_gptr)
+    : m_dart_pointer(std::move(dart_gptr))
   {
   }
 
@@ -129,11 +134,23 @@ class GlobRefBase {
    * Constructor: creates an GlobRefBase object referencing an element in
    * global memory.
    */
-  template <class ElementT, class MemSpaceT>
+  template <class MemSpaceT>
   explicit constexpr GlobRefBase(
       /// Pointer to referenced object in global memory
-      const GlobPtr<ElementT, MemSpaceT>& gptr)
+      const GlobPtr<value_type, MemSpaceT>& gptr)
     : GlobRefBase(gptr.dart_gptr())
+  {
+  }
+
+  /**
+   * Constructor: creates an GlobRefBase object referencing an element in
+   * global memory.
+   */
+  template <class MemSpaceT>
+  explicit constexpr GlobRefBase(
+      /// Pointer to referenced object in global memory
+      GlobPtr<value_type, MemSpaceT>&& gptr)
+    : GlobRefBase(std::move(gptr.dart_gptr()))
   {
   }
 
@@ -157,6 +174,24 @@ class GlobRefBase {
 
   // clang-format off
   /**
+   * Copy constructor, implicit if at least one of the following conditions is
+   * satisfied:
+   *    1) value_type and _From are exactly the same types (including const and
+   *    volatile qualifiers
+   *    2) value_type and _From are the same types after removing const and
+   *    volatile qualifiers and value_type itself is const.
+   */
+  // clang-format on
+  template <
+      typename _From,
+      long = detail::enable_implicit_copy_ctor<_From, value_type>::value>
+  constexpr GlobRefBase(GlobRefBase<_From>&& gref) noexcept
+    : GlobRefBase(std::move(gref.dart_gptr()))
+  {
+  }
+
+  // clang-format off
+  /**
    * Copy constructor, explicit if the following conditions are satisfied.
    *    1) value_type and _From are the same types after excluding const and
    *    volatile qualifiers
@@ -171,10 +206,42 @@ class GlobRefBase {
   {
   }
 
-  constexpr dart_gptr_t dart_gptr() const noexcept
+  // clang-format off
+  /**
+   * Copy constructor, explicit if the following conditions are satisfied.
+   *    1) value_type and _From are the same types after excluding const and
+   *    volatile qualifiers
+   *    2) value_type is const and _From is non-const
+   */
+  // clang-format on
+  template <
+      typename _From,
+      int = detail::enable_explicit_copy_ctor<_From, value_type>::value>
+  explicit constexpr GlobRefBase(GlobRefBase<_From>&& gref) noexcept
+    : GlobRefBase(std::move(gref.dart_gptr()))
+  {
+  }
+
+  constexpr dart_gptr_t const& dart_gptr() const & noexcept
   {
     return this->m_dart_pointer;
   }
+
+  constexpr dart_gptr_t const&& dart_gptr() const && noexcept
+  {
+    return std::move(this->m_dart_pointer);
+  }
+
+  constexpr dart_gptr_t& dart_gptr() & noexcept
+  {
+    return this->m_dart_pointer;
+  }
+
+  constexpr dart_gptr_t&& dart_gptr() && noexcept
+  {
+    return std::move(this->m_dart_pointer);
+  }
+
 
  private:
   dart_gptr_t m_dart_pointer{DART_GPTR_NULL};

@@ -23,9 +23,6 @@ private:
   friend class GlobRef; //required for .member()
 
 
-  template <class _T, class _Pat, class _M, class _Ptr, class _Ref>
-  friend class GlobViewIter;
-
   template<typename U>
   friend std::ostream & operator<<(
     std::ostream & os,
@@ -33,13 +30,20 @@ private:
 
 public:
   //inherit all constructors from parent class
-  using base_t::GlobRefBase;
+  using detail::GlobRefBase<T>::GlobRefBase;
 
   /**
    * COPY Construction
    */
   GlobRef(const GlobRef & other) = default;
 
+  /**
+   * MOVE Construction
+   */
+  GlobRef(GlobRef && other) = default;
+
+#if 0
+  //TODO remove
   /**
    * Constructor to convert \c GlobAsyncRef to GlobRef. Set to explicit to
    * avoid unintendet conversion
@@ -59,6 +63,7 @@ public:
     : base_t(gref.dart_gptr())
   {
   }
+#endif
 
   /**
    * Copy Assignment: We copy the value behind this address, NOT the reference
@@ -158,23 +163,9 @@ public:
   operator+=(const nonconst_value_type& ref) const {
     static_assert(std::is_same<value_type, nonconst_value_type>::value,
                   "Cannot modify value referenced by GlobRef<const T>!");
-#if 0
-    // TODO: Alternative implementation, possibly more efficient:
-    T add_val = ref;
-    T old_val;
-    dart_ret_t result = dart_fetch_and_op(
-                          dart_pointer,
-                          reinterpret_cast<void *>(&add_val),
-                          reinterpret_cast<void *>(&old_val),
-                          dash::dart_datatype<T>::value,
-                          dash::plus<T>().dart_operation(),
-                          dash::Team::All().dart_id());
-    dart_flush(dart_pointer);
-  #else
     nonconst_value_type val  = operator nonconst_value_type();
     val   += ref;
     operator=(val);
-  #endif
     return *this;
   }
 
