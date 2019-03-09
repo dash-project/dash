@@ -42,29 +42,6 @@ public:
    */
   GlobRef(GlobRef && other) = default;
 
-#if 0
-  //TODO remove
-  /**
-   * Constructor to convert \c GlobAsyncRef to GlobRef. Set to explicit to
-   * avoid unintendet conversion
-   */
-  template <
-      typename _From,
-      long = detail::enable_implicit_copy_ctor<_From, typename base_t::value_type>::value>
-  constexpr GlobRef(const GlobAsyncRef<_From>& gref)
-    : base_t(gref.dart_gptr())
-  {
-  }
-
-  template <
-      typename _From,
-      int = detail::enable_explicit_copy_ctor<_From, typename base_t::value_type>::value>
-  explicit constexpr GlobRef(const GlobAsyncRef<_From>& gref)
-    : base_t(gref.dart_gptr())
-  {
-  }
-#endif
-
   /**
    * Copy Assignment: We copy the value behind this address, NOT the reference
    */
