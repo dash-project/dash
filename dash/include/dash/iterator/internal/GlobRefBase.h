@@ -222,12 +222,12 @@ class GlobRefBase {
   {
   }
 
-  constexpr dart_gptr_t const& dart_gptr() const & noexcept
+  constexpr dart_gptr_t const& dart_gptr() const& noexcept
   {
     return this->m_dart_pointer;
   }
 
-  constexpr dart_gptr_t const&& dart_gptr() const && noexcept
+  constexpr dart_gptr_t const&& dart_gptr() const&& noexcept
   {
     return std::move(this->m_dart_pointer);
   }
@@ -241,7 +241,6 @@ class GlobRefBase {
   {
     return std::move(this->m_dart_pointer);
   }
-
 
  private:
   dart_gptr_t m_dart_pointer{DART_GPTR_NULL};

@@ -140,14 +140,13 @@ class GlobPtr {
   //clang-format on
   template <
       typename From,
-      typename = typename std::enable_if<
-          // We always allow GlobPtr<T> -> GlobPtr<void> or the other way)
-          // or if From is assignable to To (value_type)
-          dash::internal::is_pointer_assignable<
-              typename dash::remove_atomic<From>::type,
-              typename dash::remove_atomic<value_type>::type>::value>
-
-      ::type>
+      typename = typename std::enable_if<std::is_convertible<
+          // From pointer
+          typename std::add_pointer<
+              typename dash::remove_atomic<From>::type>::type,
+          // To pointer
+          typename std::add_pointer<
+              typename dash::remove_atomic<value_type>::type>::type>::value>>
   constexpr GlobPtr(const GlobPtr<From, GlobMemT> &other)
     : m_dart_pointer(other.m_dart_pointer)
   {
