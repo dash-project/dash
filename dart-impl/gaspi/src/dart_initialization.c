@@ -31,7 +31,8 @@ char * dart_mempool_localalloc;
 struct dart_buddy* dart_localpool;
 /******************* collective memory *******************/
 const gaspi_segment_id_t dart_coll_seg_id_begin = 4;
-const size_t dart_coll_seg_count = 28;
+// 10 fixed id's for special purposes
+const size_t dart_coll_seg_count = 245;
 /*********************************************************/
 static int _init_by_dart = 0;
 static int _count_init = 0;
