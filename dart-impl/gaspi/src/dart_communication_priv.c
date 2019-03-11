@@ -232,3 +232,31 @@ dart_ret_t dart_get_minimal_queue(gaspi_queue_id_t * qid)
 
     return DART_OK;
 }
+
+dart_ret_t check_seg_id(dart_gptr_t* gptr, dart_unit_t* global_unit_id, gaspi_segment_id_t* gaspi_seg_id, const char* location) 
+{
+    if(gptr->segid)
+    {
+        //dart_team_unit_l2g(gptr.teamid, target_unit, &global_target_unit);
+        DART_CHECK_ERROR(unit_l2g(gptr->flags, global_unit_id, gptr->unitid));
+        if(dart_adapt_transtable_get_gaspi_seg_id(gptr->flags, gptr->unitid, gaspi_seg_id) == -1)
+        {
+            fprintf(stderr, "Can't find given segment id in %s\n", location);
+            return DART_ERR_NOTFOUND;
+        }
+    }
+
+    return DART_OK;
+}
+
+dart_ret_t local_copy(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_src_segment_id, void* dest, size_t nbytes)
+{
+    gaspi_pointer_t src_seg_ptr = NULL;
+    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_src_segment_id, &src_seg_ptr));
+
+    src_seg_ptr = (void *) ((char *) src_seg_ptr + gptr->addr_or_offs.offset);
+
+    memcpy(dest, src_seg_ptr, nbytes);
+
+    return DART_OK;
+}
