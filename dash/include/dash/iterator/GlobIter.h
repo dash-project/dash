@@ -86,6 +86,8 @@ public:
   typedef          PatternType                       pattern_type;
   typedef typename PatternType::index_type             index_type;
 
+  typedef          GlobMemType                        memory_type;
+
 private:
   typedef GlobIter<
             const ElementType,
