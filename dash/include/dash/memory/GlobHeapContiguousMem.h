@@ -44,7 +44,7 @@ struct container_data {
 
 //TODO: adapt to GlobMem concept
 /**
- * Global memory space for multiple, dynaimcally allocated contiguous memory 
+ * Global memory space for multiple, dynamically allocated contiguous memory
  * regions.
  */
 template<typename ContainerType>
@@ -99,7 +99,6 @@ public:
       unit_bkt.resize(1);
     }
   }
-
 
   /**
    * Adds a new bucket into memory space.
@@ -176,13 +175,13 @@ public:
 
     container_type * new_container = new container_type();
     new_container->reserve(_local_size);
-    int count = 0;
-    int elements = 0;
-    int bucket_num = 0;
-    size_type bucket_cumul = 0;
+    int count                    = 0;
+    int elements                 = 0;
+    int bucket_num               = 0;
+    size_type bucket_cumul       = 0;
     auto unattached_container_it = _unattached_containers.begin();
+    int elements_before          = 0;
     bucket_type * last_bucket;
-    int elements_before = 0;
     for(auto & bucket : _buckets) {
       elements_before = elements;
       // move data to new range
@@ -277,7 +276,7 @@ public:
 
     // update global iterators
     _begin = global_iterator(this, 0);
-    _end = global_iterator(this, _size);
+    _end   = global_iterator(this, _size);
   }
 
   /**

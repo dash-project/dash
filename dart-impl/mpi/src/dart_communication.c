@@ -2225,7 +2225,6 @@ dart_ret_t dart_alltoall(
 }
 #endif
 
-#if 0
 /*
  * Implementation from branch feat-graph, to be discussed
  */
@@ -2312,7 +2311,6 @@ dart_ret_t dart_alltoallv(
   DART_LOG_TRACE("dart_alltoallv > team:%d", teamid);
   return DART_OK;
 }
-#endif
 
 dart_ret_t dart_allreduce(
   const void       * sendbuf,

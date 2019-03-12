@@ -1,3 +1,6 @@
+
+#include <gtest/gtest.h>
+
 #include "GraphTest.h"
 #include <dash/Graph.h>
 
@@ -5,7 +8,8 @@ struct vprop {
   int comp;
 };
 
-typedef dash::Graph<dash::DirectedGraph, vprop>       graph_t;
+typedef dash::Graph<dash::DirectedGraph, vprop>
+  graph_t;
 
 TEST_F(GraphTest, Construction)
 {
