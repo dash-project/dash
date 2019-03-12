@@ -43,7 +43,6 @@ namespace dash {
  * 
  */
 
-
 /**
  * Distributed, dynamic graph container for sparse graphs.
  */
@@ -51,23 +50,29 @@ template<
   GraphDirection Direction  = DirectedGraph,
   typename VertexProperties = EmptyProperties,  // user-defined struct
   typename EdgeProperties   = EmptyProperties,  // user-defined struct
-  typename VertexSizeType  = int,
-  typename EdgeSizeType    = int,
-  template<class, class...> typename EdgeContainer = std::vector,
-  template<class, class...> typename VertexContainer = std::vector
+  typename VertexSizeType   = int,
+  typename EdgeSizeType     = int,
+//template<class, class...> typename EdgeContainer   = std::vector,
+//template<class, class...> typename VertexContainer = std::vector
+  template<class, class...> class _EdgeContainer   = std::vector,
+  template<class, class...> class _VertexContainer = std::vector
 >
 class Graph {
 
 public:
-
   typedef Graph<Direction, 
           VertexProperties, EdgeProperties,
           VertexSizeType, EdgeSizeType, 
-          EdgeContainer, VertexContainer>             self_t;
+          _EdgeContainer, _VertexContainer>           self_t;
+
   typedef Vertex<self_t>                              vertex_type;
   typedef Edge<self_t>                                edge_type;
-  typedef VertexContainer<vertex_type>                vertex_container_type;
-  typedef EdgeContainer<edge_type>                    edge_container_type;
+
+  typedef std::vector<vertex_type> vertex_container_type;
+  typedef std::vector<edge_type>   edge_container_type;
+
+//typedef VertexContainer<vertex_type>                vertex_container_type;
+//typedef EdgeContainer<edge_type>                    edge_container_type;
 
 private:
 
@@ -174,7 +179,6 @@ public:
    * Partitions vertices based on their id:
    * vertex_id / (n / num_units) = owner
    * 
-   * /todo Add 
    */
   template<
     typename ForwardIterator, 
@@ -474,6 +478,7 @@ public:
    */
   local_vertex_iterator add_vertex() {
     VertexProperties prop;
+    // <twhf>: Reference to temporary!
     return add_vertex(prop);
   }
 
@@ -571,7 +576,7 @@ public:
    *         actually been added.
    */
   std::pair<local_out_edge_iterator, bool> add_edge(
-      const local_vertex_iterator & source, 
+      const local_vertex_iterator  & source, 
       const global_vertex_iterator & target 
   ) {
     EdgeProperties prop;
@@ -835,15 +840,15 @@ private:
 private:
 
   /** the team containing all units using the container */
-  Team *                      _team     = nullptr;
+  Team *                      _team               = nullptr;
   /** Global memory allocation and access to vertices */
-  glob_mem_vert_type *        _glob_mem_vertex = nullptr;
+  glob_mem_vert_type *        _glob_mem_vertex    = nullptr;
   /** Global memory allocation and access to inbound edges */
-  glob_mem_edge_type *        _glob_mem_in_edge = nullptr;
+  glob_mem_edge_type *        _glob_mem_in_edge   = nullptr;
   /** Global memory allocation and access to outbound edges */
-  glob_mem_edge_type *        _glob_mem_out_edge = nullptr;
+  glob_mem_edge_type *        _glob_mem_out_edge  = nullptr;
   /** Access to inbound and outbound edges */
-  glob_mem_edge_comb_type *   _glob_mem_edge = nullptr;
+  glob_mem_edge_comb_type *   _glob_mem_edge      = nullptr;
   /** Unit ID of the current unit */
   team_unit_t                 _myid{DART_UNDEFINED_UNIT_ID};
   /** Amount of units in the team */

@@ -76,9 +76,12 @@ public:
    * 
    *   factor[unit] = log10((unit + start) * scale)
    */
-  LogarithmicVertexMapper(vertex_size_type n_vertices, std::size_t n_units, 
-      double start = 2, double scale = 1) 
-   : _blocks(n_units)
+  LogarithmicVertexMapper(
+      vertex_size_type n_vertices,
+      std::size_t      n_units, 
+      double           start = 2,
+      double           scale = 1) 
+  : _blocks(n_units)
   {
     double factor_sum = 0;
     std::vector<double> factors(n_units);
@@ -101,8 +104,12 @@ public:
   /**
    * Returns the unit a vertex is mapped to.
    */
-  dash::team_unit_t operator()(vertex_size_type v, vertex_size_type n_vertices, 
-      std::size_t n_units, dash::team_unit_t myid) {
+  dash::team_unit_t operator()(
+      vertex_size_type  v,
+      vertex_size_type  n_vertices, 
+      std::size_t       n_units,
+      dash::team_unit_t myid)
+  {
     int owner = n_units - 1;
     // TODO: can this be done in O(c)?
     for(int i = 0; i < n_units; ++i) {
@@ -126,7 +133,6 @@ public:
   }
 
 private:
-
   std::vector<std::size_t> _blocks;
 
 };
@@ -137,10 +143,16 @@ private:
 template <typename IndexType>
 struct VertexIndex {
 
+  typedef VertexIndex<IndexType> self_t;
+
   /**
    * Default constructor.
    */
-  VertexIndex() = default;
+  VertexIndex()                      = default;
+  ~VertexIndex()                     = default;
+  VertexIndex(const self_t &)        = default;
+  VertexIndex(self_t &&)             = default;
+  self_t & operator=(const self_t &) = default;
 
   /**
    * Index Constructor.
@@ -154,7 +166,6 @@ struct VertexIndex {
   team_unit_t     unit;
   /** The offset of the vertex in local memory space of unit */
   IndexType       offset;
-
 };
 
 /**
