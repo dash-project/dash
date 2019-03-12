@@ -1,3 +1,8 @@
+/**
+ * Author: Steffan Effenberger (github: @stiefn)
+ * via     https://github.com/stiefn/dyn-data-structures-thesis
+ *
+ */
 #ifndef DASH__ALGORITHM____GRAPH__MINIMUM_SPANNING_TREE_H__
 #define DASH__ALGORITHM____GRAPH__MINIMUM_SPANNING_TREE_H__
 

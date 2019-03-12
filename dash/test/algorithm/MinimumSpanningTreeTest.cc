@@ -1,10 +1,16 @@
+/**
+ * Author: Steffan Effenberger (github: @stiefn)
+ * via     https://github.com/stiefn/dyn-data-structures-thesis
+ *
+ */
+
 #include "MinimumSpanningTreeTest.h"
 #include <dash/Graph.h>
 #include <dash/algorithm/graph/MinimumSpanningTree.h>
 
 struct vprop {
-  int comp;
-  short unit;
+  dash::default_index_t comp;
+  dash::global_unit_t   unit;
 };
 
 struct eprop {

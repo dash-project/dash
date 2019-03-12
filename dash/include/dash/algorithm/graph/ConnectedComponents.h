@@ -1,3 +1,8 @@
+/**
+ * Author: Steffan Effenberger (github: @stiefn)
+ * via     https://github.com/stiefn/dyn-data-structures-thesis
+ *
+ */
 #ifndef DASH__ALGORITHM____GRAPH__CONNECTED_COMPONENTS_H__
 #define DASH__ALGORITHM____GRAPH__CONNECTED_COMPONENTS_H__
 
@@ -6,7 +11,7 @@
 
 namespace dash {
 
-typedef std::vector<std::vector<int>>                 matrix_t;
+typedef std::vector<std::vector<int>> matrix_t;
 template<typename T> 
 using matrix_pair_t = std::vector<std::vector<std::pair<int, T>>>;
 
@@ -282,7 +287,7 @@ void cc_set_data(
  */
 template<typename GraphType>
 void connected_components(GraphType & g) {
-  typedef typename GraphType::vertex_properties_type      vprop_t;
+  typedef typename GraphType::vertex_properties_type vprop_t;
   dash::util::Trace trace("ConnectedComponents");
   // set component to global index in iteration space
   // TODO: find faster method for this

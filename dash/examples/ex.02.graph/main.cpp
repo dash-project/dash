@@ -6,8 +6,8 @@
 #include "rmatrandom.h"
 
 struct vprop {
-  int comp;
-  int unit;
+  dash::default_index_t comp;
+  dash::global_unit_t   unit;
 };
 
 typedef dash::Graph<dash::UndirectedGraph, vprop>       graph_t;
