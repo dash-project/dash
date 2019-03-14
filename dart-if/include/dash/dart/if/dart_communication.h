@@ -904,6 +904,40 @@ dart_ret_t dart_recv_handle(
 
 /** \} */
 
+
+/**
+ * \name Non-blocking collective operations.
+ */
+
+/** \{ */
+
+/**
+ * DART Equivalent to MPI_Iallreduce.
+ *
+ * \param sendbuf The buffer containing the data to be sent by each unit.
+ * \param recvbuf The buffer to hold the received data.
+ * \param nelem   Number of elements sent by each process and received from each unit.
+ * \param dtype   The data type of values in \c sendbuf and \c recvbuf to use in \c op.
+ * \param op      The reduction operation to perform.
+ * \param team    The team to participate in the allreduce.
+ * \param[out] handle The handle that is later used to test/wait for the operation.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_data{team}
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_allreduce_handle(
+  const void       * sendbuf,
+  void             * recvbuf,
+  size_t             nelem,
+  dart_datatype_t    dtype,
+  dart_operation_t   op,
+  dart_team_t        team,
+  dart_handle_t    * handle) DART_NOTHROW;
+
+/** \} */
+
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF
 /** \endcond */

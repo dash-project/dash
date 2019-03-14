@@ -2301,6 +2301,62 @@ dart_ret_t dart_allreduce(
   return DART_OK;
 }
 
+
+dart_ret_t dart_allreduce_handle(
+  const void       * sendbuf,
+  void             * recvbuf,
+  size_t             nelem,
+  dart_datatype_t    dtype,
+  dart_operation_t   op,
+  dart_team_t        team,
+  dart_handle_t    * handle)
+{
+
+  CHECK_IS_BASICTYPE(dtype);
+
+  MPI_Op       mpi_op    = dart__mpi__op(op, dtype);
+  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (dart__unlikely(nelem > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_allreduce ! failed: nelem (%zu) > INT_MAX", nelem);
+    return DART_ERR_INVAL;
+  }
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_allreduce ! unknown teamid %d", team);
+    return DART_ERR_INVAL;
+  }
+  MPI_Comm comm = team_data->comm;
+  MPI_Request req;
+  CHECK_MPI_RET(
+    MPI_Iallreduce(
+           sendbuf,   // send buffer
+           recvbuf,   // receive buffer
+           nelem,     // buffer size
+           mpi_dtype, // datatype
+           mpi_op,    // reduce operation
+           comm,
+           &req),
+    "MPI_Iallreduce");
+
+  // create the handle
+  dart_handle_t h = allocate_handle();
+  h->num_reqs     = 1;
+  h->reqs[0]      = req;
+  h->win          = MPI_WIN_NULL;
+  h->needs_flush  = false;
+  h->dest         = DART_UNDEFINED_TEAM_ID;
+
+  *handle = h;
+
+  return DART_OK;
+}
+
+
 dart_ret_t dart_reduce(
   const void        * sendbuf,
   void              * recvbuf,
