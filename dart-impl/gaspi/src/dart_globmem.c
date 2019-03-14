@@ -82,9 +82,6 @@ dart_ret_t dart_team_memalloc_aligned(
     /* get a free gaspi segment id */
     DART_CHECK_ERROR_GOTO(dart_error_label, seg_stack_pop(&dart_free_coll_seg_ids, &gaspi_seg_id));
 
-    dart_global_unit_t myid;
-    dart_myid(&myid);
-
     // GPI2 can't allocate 0 bytes
     if( nbytes == 0 )
     {

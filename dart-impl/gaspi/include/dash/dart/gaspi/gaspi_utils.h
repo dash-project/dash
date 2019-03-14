@@ -46,6 +46,14 @@ gaspi_return_t flush_queues(gaspi_queue_id_t queue_begin, gaspi_queue_id_t queue
 
 int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gaspi_rank_t size);
 
+#define DART_CHECK_DATA_TYPE(dart_datatype_1, dart_datatype_2)                                   \
+  do{                                                                                            \
+    if(dart_datatype_1 != dart_datatype_2) {                                                     \
+      DART_LOG_ERROR("Types for dst and src have to be same. No type conversion is performed!"); \
+      return DART_ERR_INVAL;                                                                     \
+    }                                                                                            \
+  }while(0)
+
 #define DART_CHECK_ERROR_GOTO_TEMPL(expected, error_code, ret_type, label, func...)          \
   do {                                                                                       \
     const ret_type retval = func;                                                            \
