@@ -540,7 +540,7 @@ dart_task_t * next_task(dart_thread_t *thread)
     dart_thread_t *target_thread = thread_pool[target];
     if (dart__likely(target_thread != NULL) &&
         target_thread->numa_id == thread->numa_id) {
-      task = next_task_thread_back(thread_pool[target]);
+      task = next_task_thread_back(target_thread);
       if (task != NULL) {
         DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
         return task;
@@ -548,8 +548,8 @@ dart_task_t * next_task(dart_thread_t *thread)
     }
   }
 
-  // if the thread has no local task, we query the global queue
-  // try to get a task from the taskqeue on our NUMA domain and fall-back to
+  // if the thread has no local task, we query the global queue and
+  // try to get a task from a taskqeue on our NUMA domain and fall-back to
   // other domains
   int i = 0;
   do {
@@ -566,7 +566,7 @@ dart_task_t * next_task(dart_thread_t *thread)
          target     = (++target == num_threads) ? 0 : target) {
       dart_thread_t *target_thread = thread_pool[target];
       if (dart__likely(target_thread != NULL)) {
-        task = next_task_thread_back(thread_pool[target]);
+        task = next_task_thread_back(target_thread);
         if (task != NULL) {
           DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
           return task;
@@ -713,6 +713,7 @@ dart__tasking__allocate_dummytask()
 
 void remote_progress(dart_thread_t *thread, bool force)
 {
+  // only progress periodically or if the caller mandates it
   if (force ||
       thread->last_progress_ts + REMOTE_PROGRESS_INTERVAL_USEC >= current_time_us())
   {
@@ -1408,7 +1409,7 @@ dart__tasking__task_complete()
   if (is_root_task) {
     entry_phase = dart__tasking__phase_current();
     if (entry_phase > DART_PHASE_FIRST) {
-      dart__tasking__perform_matching(DART_PHASE_ANY);
+      dart__tasking__perform_matching(entry_phase);
       // enable worker threads to poll for remote messages
       worker_poll_remote = true;
     }
@@ -1459,16 +1460,17 @@ dart__tasking__task_complete()
 
   // 3) clean up if this was the root task and thus no other tasks are running
   if (is_root_task) {
-    if (entry_phase > DART_PHASE_FIRST) {
-      // wait for all units to finish their tasks
-      dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
-    }
     // reset the runnable phase
     dart__tasking__phase_set_runnable(DART_PHASE_FIRST);
     // disable remote polling of worker threads
     worker_poll_remote = false;
     // reset the phase counter
     dart__tasking__phase_reset();
+
+    if (entry_phase > DART_PHASE_FIRST) {
+      // wait for all units to finish their tasks
+      dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
+    }
   } else {
     EXTRAE_ENTER(EVENT_TASK);
   }

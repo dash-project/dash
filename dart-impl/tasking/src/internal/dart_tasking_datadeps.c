@@ -1407,7 +1407,8 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(
   // cache this request and resolve it later
   dart_dephash_elem_t *rs = dephash_allocate_elem(rdep, remote_task, origin);
 
-  DART_ASSERT_MSG(!dart__tasking__phase_is_runnable(rdep->phase),
+  DART_ASSERT_MSG(rdep->phase == DART_PHASE_FIRST ||
+                  !dart__tasking__phase_is_runnable(rdep->phase),
                   "Phase %d of received dependency %p (task %p, unit %d) is "
                   "already runnable (%d)!",
                   rdep->phase, rs, remote_task.local, origin.id,
