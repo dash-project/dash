@@ -52,7 +52,6 @@ struct cached_message_s
 struct message_cache_s
 {
   pthread_rwlock_t        mutex;
-  int                     is_processing;
   int                     pos;
   int8_t                  buffer[];
 };
@@ -249,7 +248,6 @@ dart_amsg_buffered_send(
     if (amsgq->message_cache[target.id] == NULL) {
       cache = malloc(sizeof(message_cache_t) + MSGCACHE_SIZE);
       cache->pos           = 0;
-      cache->is_processing = 0;
       pthread_rwlock_init(&cache->mutex, NULL);
       amsgq->message_cache[target.id] = cache;
     }
@@ -318,7 +316,7 @@ flush_buffer(dart_amsgq_t amsgq, bool blocking)
   for (int target = 0; target < comm_size; ++target) {
     message_cache_t *cache = amsgq->message_cache[target];
     if (cache != NULL) {
-      if (cache->pos > 0) {
+      if (cache->pos > 0 || blocking) {
         pthread_rwlock_wrlock(&cache->mutex);
 
         if (cache->pos == 0) {
@@ -327,12 +325,13 @@ flush_buffer(dart_amsgq_t amsgq, bool blocking)
           continue;
         }
 
-        DART_INC_AND_FETCH32(&cache->is_processing);
         dart_ret_t ret;
         dart_team_unit_t t = {target};
         do {
           ret = amsgq_impl.trysend(t, amsgq->impl, cache->buffer, cache->pos);
-          if (ret != DART_OK && DART_ERR_AGAIN != ret) {
+          if (DART_ERR_AGAIN == ret) {
+            amsgq_impl.process(amsgq->impl);
+          } else if (ret != DART_OK) {
             DART_LOG_ERROR("Failed to flush message cache!");
             dart_abort(DART_EXIT_ASSERT);
           }
@@ -340,13 +339,6 @@ flush_buffer(dart_amsgq_t amsgq, bool blocking)
 
         cache->pos = 0;
         pthread_rwlock_unlock(&cache->mutex);
-
-        DART_DEC_AND_FETCH32(&cache->is_processing);
-
-      } else if (blocking) {
-        // wait for the processing to finish
-        while (DART_FETCH32(&cache->is_processing))
-        { }
       }
     }
   }
