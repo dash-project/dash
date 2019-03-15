@@ -514,7 +514,8 @@ dart_ret_t dart_allgatherv(
     return DART_OK;
 }
 
-dart_ret_t dart_barrier (dart_team_t teamid)
+dart_ret_t dart_barrier (
+  dart_team_t teamid)
 {
     uint16_t       index;
     gaspi_group_t  gaspi_group_id;
@@ -643,11 +644,11 @@ dart_ret_t dart_notify_waitsome(dart_gptr_t gptr, unsigned int * tag)
 #endif
 
 dart_ret_t dart_get_blocking(
-  void*           dst,
-  dart_gptr_t     gptr,
-  size_t          nelem,
-  dart_datatype_t src_type,
-  dart_datatype_t dst_type)
+  void            * dst,
+  dart_gptr_t       gptr,
+  size_t            nelem,
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type)
 {
     DART_CHECK_DATA_TYPE(src_type, dst_type);
 
@@ -694,9 +695,9 @@ dart_error_label:
 }
 
 dart_ret_t dart_put_blocking(
-  dart_gptr_t     gptr,
-  const void*     src,
-  size_t          nelem,
+  dart_gptr_t       gptr,
+  const void      * src,
+  size_t            nelem,
   dart_datatype_t   src_type,
   dart_datatype_t   dst_type)
 {
@@ -744,20 +745,27 @@ dart_error_label:
     return DART_ERR_OTHER;
 }
 
-dart_ret_t dart_create_handle(dart_handle_t * handle)
+dart_ret_t dart_free_handle(
+  dart_handle_t * handleptr)
 {
-    *handle = (dart_handle_t) malloc (sizeof (struct dart_handle_struct));
-    assert(*handle);
+    dart_handle_t handle = *handleptr;
+    gaspi_notification_t val = 0;
+    DART_CHECK_GASPI_ERROR(gaspi_notify_reset (handle->local_seg_id, handle->local_seg_id, &val));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_delete(handle->local_seg_id));
+    DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, handle->local_seg_id));
+    free(handle);
+    *handleptr = DART_HANDLE_NULL;
+
+    if(val == 0)
+    {
+      DART_LOG_ERROR("Error: gaspi_notify value is not != 0\n");
+    }
+
     return DART_OK;
 }
 
-dart_ret_t dart_delete_handle(dart_handle_t * handle)
-{
-    free(*handle);
-    return DART_OK;
-}
-
-dart_ret_t dart_wait_local (dart_handle_t * handleptr)
+dart_ret_t dart_wait_local (
+  dart_handle_t * handleptr)
 {
     if (handleptr != NULL && *handleptr != DART_HANDLE_NULL)
     {
@@ -766,93 +774,160 @@ dart_ret_t dart_wait_local (dart_handle_t * handleptr)
 
         DART_CHECK_GASPI_ERROR(gaspi_notify_waitsome(handle->local_seg_id, handle->local_seg_id, 1, &id, GASPI_BLOCK));
 
-        DART_CHECK_ERROR(gaspi_segment_delete(handle->local_seg_id));
-        DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, handle->local_seg_id));
-        free(handle);
-        *handleptr = DART_HANDLE_NULL;
+        DART_CHECK_ERROR(dart_free_handle(handleptr));
     }
 
     return DART_OK;
 }
 
-dart_ret_t dart_waitall_local(dart_handle_t handles[], size_t num_handles)
+dart_ret_t dart_waitall_local(
+  dart_handle_t handles[],
+  size_t        num_handles)
 {
-    if (handles == NULL)
+    if (handles != NULL)
     {
-        DART_LOG_TRACE("dart_waitall_local: empty handles");
-        return DART_ERR_INVAL;
-    }
-    for(size_t i = 0 ; i < num_handles ; ++i)
-    {
-        DART_CHECK_ERROR(dart_wait_local(&handles[i]));
+        for(size_t i = 0 ; i < num_handles ; ++i)
+        {
+            DART_CHECK_ERROR(dart_wait_local(&handles[i]));
+        }
     }
 
     return DART_OK;
 }
 
-
-
-//dart_handle_t handle, int32_t* is_finished)
-dart_ret_t dart_test_local ( dart_handle_t *handleptr, int32_t *is_finished)
+dart_ret_t dart_wait(
+  dart_handle_t * handleptr)
 {
-    /*if(handleptr == NULL)
-    {
-        return DART_ERR_INVAL;
-    }
-    dart_handle_t handle = *handleptr;
-    gaspi_return_t retval = gaspi_wait(handle->queue, GASPI_TEST);
 
-    if(retval == GASPI_SUCCESS)
+    if( handleptr != NULL && *handleptr != DART_HANDLE_NULL )
     {
-        *is_finished = 1;
+        DART_CHECK_GASPI_ERROR((gaspi_wait((*handleptr)->queue, GASPI_BLOCK)));
+        dart_free_handle(handleptr);
+    }
+
+    return DART_OK;
+}
+
+dart_ret_t dart_waitall(
+  dart_handle_t handles[],
+  size_t        num_handles)
+{
+    DART_LOG_DEBUG("dart_waitall()");
+    if ( handles == NULL || num_handles == 0)
+    {
+        DART_LOG_DEBUG("dart_waitall: empty handles");
         return DART_OK;
     }
-    else if(retval == GASPI_ERROR)
+
+    for(size_t i = 0; i < num_handles; ++i)
     {
-        fprintf(stderr, "Error: gaspi_wait failed in dart_test_local\n");
-        return DART_ERR_OTHER;
+        DART_CHECK_GASPI_ERROR(gaspi_wait(handles[i]->queue, GASPI_BLOCK));
+    }
+
+    return DART_OK;
+}
+
+dart_ret_t dart_test_local (
+  dart_handle_t * handleptr,
+  int32_t       * is_finished)
+{
+    if (handleptr == NULL || *handleptr == DART_HANDLE_NULL)
+    {
+        *is_finished = 1;
+        DART_LOG_DEBUG("dart_test_local: empty handle");
+
+        return DART_OK;
     }
 
     *is_finished = 0;
-    free(handle);
-    return DART_OK;*/
+    dart_handle_t handle = *handleptr;
+    gaspi_notification_id_t id;
+    gaspi_return_t test = gaspi_notify_waitsome(handle->local_seg_id, handle->local_seg_id, 1, &id, 1);
+    if(test == GASPI_TIMEOUT)
+    {
+      return DART_OK;
+    }
 
-    fprintf(stderr, "Error: gaspi_wait failed in dart_test_local\n");
-    return DART_ERR_OTHER;
+    if(test != GASPI_SUCCESS)
+    {
+        DART_LOG_ERROR("gaspi_notify_waitsome failed in dart_test_local");
+
+        return DART_ERR_OTHER;
+    }
+    // finished is true even if freeing the handle will fail
+    *is_finished = 1;
+    DART_CHECK_ERROR(dart_free_handle(handleptr));
+
+    return DART_OK;
 }
 
-dart_ret_t dart_testall_local (dart_handle_t *handle, size_t n, int32_t* is_finished)
+dart_ret_t dart_testall_local(
+  dart_handle_t   handles[],
+  size_t          num_handles,
+  int32_t       * is_finished)
 {
-    /*for(size_t i = 0 ; i < n ; ++i)
+    if (handles == NULL || num_handles == 0)
     {
-        DART_CHECK_ERROR(dart_test_local(&handle[i], is_finished));
-        if(! *is_finished )
+        *is_finished = 1;
+        DART_LOG_DEBUG("dart_testall_local: empty handle");
+
+        return DART_OK;
+    }
+
+    *is_finished = 1;
+
+    gaspi_notification_id_t id;
+    for(int i = 0; i < num_handles; ++i)
+    {
+        dart_handle_t handle = handles[i];
+        if(handle != DART_HANDLE_NULL)
         {
-            return DART_OK;
+            gaspi_return_t test = gaspi_notify_waitsome(handle->local_seg_id, handle->local_seg_id, 1, &id, 1);
+            if(test == GASPI_TIMEOUT)
+            {
+              *is_finished = 0;
+              return DART_OK;
+            }
+
+            if(test != GASPI_SUCCESS)
+            {
+                DART_LOG_ERROR("gaspi_notify_waitsome failed in dart_testall_local");
+
+                return DART_ERR_OTHER;
+            }
         }
     }
-    return DART_OK;*/
 
-    fprintf(stderr, "Error: gaspi_wait failed in dart_test_local\n");
-    return DART_ERR_OTHER;
+    *is_finished = 1;
+    for(int i = 0; i < num_handles; ++i)
+    {
+        DART_CHECK_ERROR(dart_free_handle(&handles[i]));
+    }
+
+    return DART_OK;
+}
+
+dart_ret_t dart_test(
+  dart_handle_t * handleptr,
+  int32_t       * is_finished)
+{
+    // Works for get requests only
+    DART_CHECK_ERROR(dart_test_local (handleptr, is_finished));
+
+    return DART_OK;
 }
 
 dart_ret_t dart_testall(
   dart_handle_t   handles[],
-  size_t          n,
+  size_t          num_handles,
   int32_t       * is_finished)
 {
-    /*DART_LOG_DEBUG("dart_testall()");
-    if (handles == NULL || n == 0) {
-        DART_LOG_DEBUG("dart_testall: empty handles");
-        return DART_OK;
-    }
-    DART_LOG_DEBUG("dart_testall: no remote completion with current gaspi impl.");
-    return DART_ERR_OTHER;*/
-
-    fprintf(stderr, "Error: gaspi_wait failed in dart_test_local\n");
-    return DART_ERR_OTHER;
+    // Works for get requests only
+    DART_CHECK_ERROR(dart_testall_local (handles, num_handles, is_finished));
+    return DART_OK;
 }
+
+
 
 dart_ret_t dart_get_handle(
   void*           dst,
@@ -890,8 +965,8 @@ dart_ret_t dart_get_handle(
     DART_CHECK_ERROR(seg_stack_pop(&dart_free_coll_seg_ids, &free_seg_id));
     DART_CHECK_GASPI_ERROR(gaspi_segment_bind(free_seg_id, dst, nbytes, 0));
 
-    int32_t found = 0;
-    /*ART_CHECK_ERROR(find_rma_request(global_src_unit_id, gaspi_src_seg_id, &queue, &found));
+    /*int32_t found = 0;
+    DART_CHECK_ERROR(find_rma_request(global_src_unit_id, gaspi_src_seg_id, &queue, &found));
     if(!found)
     {
         DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
@@ -1267,46 +1342,7 @@ dart_ret_t dart_flush_all(dart_gptr_t gptr)
     return DART_ERR_NOTFOUND;*/
     return dart_flush_local_all(gptr);
 }
-dart_ret_t dart_wait(dart_handle_t *handleptr)
-{
-    DART_LOG_DEBUG(">>>>>>> Dart_Wait <<<<<<<\n");
-    DART_CHECK_GASPI_ERROR((gaspi_wait((*handleptr)->queue, GASPI_BLOCK)));
-    if( *handleptr != DART_HANDLE_NULL )
-    {
-        free(handleptr);
-        *handleptr = DART_HANDLE_NULL;
-    }
-    return DART_OK;
-}
-dart_ret_t dart_waitall(dart_handle_t *handle, size_t n)
-{
-    DART_LOG_DEBUG("dart_waitall()");
-    if (n == 0)
-    {
-        DART_LOG_DEBUG("dart_waitall > number of handles = 0");
-        return DART_OK;
-    }
 
-    printf("dart_waitall: number of handles: %zu", n);
-    for(size_t i = 0; i < n; ++i)
-    {
-        gaspi_queue_id_t queue = (*handle+sizeof(dart_handle_t)*i)->queue;
-        DART_LOG_DEBUG(">>>>>>> Dart_Wait_all [wait on queue] <<<<<<<\n");
-        DART_CHECK_GASPI_ERROR(gaspi_wait(queue, GASPI_BLOCK));
-    }
-
-    // free memory
-    for(size_t i = 0; i < n; ++i)
-    {
-        if(*(handle+sizeof(dart_handle_t)*i) != DART_HANDLE_NULL )
-        {
-            free((*handle+sizeof(dart_handle_t)*i));
-            *(handle+sizeof(dart_handle_t)*i) = DART_HANDLE_NULL;
-        }
-    }
-    //DART_LOG_ERROR(stderr, "dart-gaspi: %s function not supported\n", __func__);
-    return DART_OK;
-}
 
 dart_ret_t dart_allreduce(
   const void       * sendbuf,
