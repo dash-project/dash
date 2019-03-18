@@ -16,7 +16,7 @@ dart_ret_t request_iter_next(request_iterator_t iter);
 
 dart_ret_t inital_rma_request_table();
 dart_ret_t destroy_rma_request_table();
-dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t * qid, int32_t * found);
+dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t * qid, char * found);
 dart_ret_t add_rma_request_entry(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t qid);
 dart_ret_t inital_rma_request_entry(int16_t seg_id);
 dart_ret_t delete_rma_requests(int16_t seg_id);

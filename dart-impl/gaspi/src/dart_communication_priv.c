@@ -8,9 +8,10 @@
 
 tree_root * rma_request_table[DART_MAX_SEGS];
 
+
 typedef struct{
-    dart_unit_t key;
-    gaspi_queue_id_t queue;
+    dart_unit_t             key;
+    gaspi_queue_id_t        queue;
 }request_table_entry_t;
 
 static void * request_table_key(struct stree_node * node)
@@ -68,7 +69,7 @@ dart_ret_t destroy_rma_request_table()
  * exists ->  returns the queue-id and set found to 1
  * Otherwise -> set found to 0
  */
-dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t * qid, int32_t * found)
+dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t * qid, char * found)
 {
     if(rma_request_table[seg_id] != NULL)
     {
