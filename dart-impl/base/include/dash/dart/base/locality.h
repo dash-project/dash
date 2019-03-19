@@ -55,7 +55,7 @@ dart_ret_t dart__base__locality__clone_domain(
 {
   DART_LOG_TRACE("dart__base__locality__clone_domain() "
                  "domain %s (%p)",
-                 domain_in->domain_tag, domain_in);
+                 domain_in->domain_tag,  domain_in);
 
   *domain_out = NULL;
   dart_ret_t ret = dart__base__locality__create_domain(domain_out);
@@ -65,7 +65,7 @@ dart_ret_t dart__base__locality__clone_domain(
 
   DART_LOG_TRACE("dart__base__locality__clone_domain > "
                  "domain %s (%p) -> (%p)",
-                 domain_in->domain_tag, domain_in, *domain_out);
+                 domain_in->domain_tag, domain_in, (*domain_out));
   return ret;
 }
 

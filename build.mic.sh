@@ -48,7 +48,7 @@ rm -Rf $BUILD_DIR/*
                         -DENVIRONMENT_TYPE=supermic \
                         -DCMAKE_C_COMPILER=mpiicc \
                         -DCMAKE_CXX_COMPILER=mpiicc \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-mic/ \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.4.0-mic/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=OFF \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \

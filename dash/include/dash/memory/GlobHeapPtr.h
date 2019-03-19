@@ -4,7 +4,6 @@
 #include <dash/dart/if/dart.h>
 
 #include <dash/Types.h>
-#include <dash/GlobPtr.h>
 #include <dash/Allocator.h>
 #include <dash/Team.h>
 #include <dash/GlobSharedRef.h>
@@ -20,36 +19,21 @@
 
 namespace dash {
 
-// Forward-declaration
-template<
-  typename ElementType,
-  class    AllocatorType >
-class GlobHeapMem;
-
 /**
  * Iterator on global buckets. Represents global pointer type.
  */
-template <typename ElementType, class AllocatorType>
-class GlobPtr<
-        ElementType,
-        GlobHeapMem<
-          typename std::remove_const<ElementType>::type,
-          AllocatorType >
-      >
-{
-  typedef GlobHeapMem<ElementType, AllocatorType> GlobHeapMemType;
-  typedef GlobPtr<ElementType, GlobHeapMemType>   self_t;
+template <
+    typename ElementType,
+    class MemSpaceT>
+class GlobHeapPtr {
 
-  template<
-    typename ElementType_,
-    class    AllocType_ >
-  friend std::ostream & operator<<(
-    std::ostream & os,
-    const dash::GlobPtr<
-            ElementType_,
-            GlobHeapMem<
-              typename std::remove_const<ElementType_>::type, AllocType_ >
-          > & gptr);
+  typedef MemSpaceT                                   GlobHeapMemType;
+  typedef GlobHeapPtr<ElementType, GlobHeapMemType>   self_t;
+
+  template <typename ElementType_, class MemSpaceT_>
+  friend std::ostream &operator<<(
+      std::ostream &                                     os,
+      const dash::GlobHeapPtr<ElementType_, MemSpaceT_> &gptr);
 
 public:
   typedef typename GlobHeapMemType::index_type                   index_type;
@@ -71,17 +55,7 @@ public:
   } local_index;
 
   template <typename U>
-  struct rebind {
-    typedef GlobPtr<
-              U,
-              GlobHeapMem<
-                typename std::remove_const<U>::type,
-                typename AllocatorType::template rebind<
-                           typename std::remove_const<U>::type
-                         >::other
-              >
-            > other;
-  };
+  using rebind = GlobHeapPtr<U, MemSpaceT>;
 
 private:
   typedef std::vector<std::vector<size_type> >
@@ -113,7 +87,7 @@ public:
   /**
    * Default constructor.
    */
-  GlobPtr()
+  GlobHeapPtr()
   : _globmem(nullptr),
     _bucket_cumul_sizes(nullptr),
     _idx(0),
@@ -124,16 +98,15 @@ public:
     _idx_bucket_idx(-1),
     _idx_bucket_phase(-1)
   {
-    DASH_LOG_TRACE_VAR("GlobPtr()", _idx);
-    DASH_LOG_TRACE_VAR("GlobPtr()", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobHeapPtr()", _idx);
+    DASH_LOG_TRACE_VAR("GlobHeapPtr()", _max_idx);
   }
 
   /**
    * Constructor, creates a global pointer on global memory from global
    * offset in logical storage order.
    */
-  template<typename MemSpaceT>
-  GlobPtr(
+  GlobHeapPtr(
     const MemSpaceT    * gmem,
 	  index_type           position = 0)
   : _globmem(reinterpret_cast<const globmem_type *>(gmem)),
@@ -147,15 +120,15 @@ public:
     _idx_bucket_idx(0),
     _idx_bucket_phase(0)
   {
-    DASH_LOG_TRACE("GlobPtr(gmem,idx)", "gidx:", position);
+    DASH_LOG_TRACE("GlobHeapPtr(gmem,idx)", "gidx:", position);
     for (auto unit_bucket_cumul_sizes : *_bucket_cumul_sizes) {
-      DASH_LOG_TRACE_VAR("GlobPtr(gmem,idx)",
+      DASH_LOG_TRACE_VAR("GlobHeapPtr(gmem,idx)",
                          unit_bucket_cumul_sizes);
       size_type bucket_cumul_size_prev = 0;
       for (auto bucket_cumul_size : unit_bucket_cumul_sizes) {
-        DASH_LOG_TRACE_VAR("GlobPtr(gmem,idx)", bucket_cumul_size);
+        DASH_LOG_TRACE_VAR("GlobHeapPtr(gmem,idx)", bucket_cumul_size);
         if (position < bucket_cumul_size) {
-          DASH_LOG_TRACE_VAR("GlobPtr(gmem,idx)", position);
+          DASH_LOG_TRACE_VAR("GlobHeapPtr(gmem,idx)", position);
           _idx_bucket_phase -= bucket_cumul_size;
           position           = 0;
           _idx_local_idx     = position;
@@ -173,7 +146,7 @@ public:
       position -= unit_bucket_cumul_sizes.back();
       ++_idx_unit_id;
     }
-    DASH_LOG_TRACE("GlobPtr(gmem,idx)",
+    DASH_LOG_TRACE("GlobHeapPtr(gmem,idx)",
                    "gidx:",   _idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
@@ -185,8 +158,7 @@ public:
    * Constructor, creates a global pointer on global memory from unit and
    * local offset in logical storage order.
    */
-  template<typename MemSpaceT>
-  GlobPtr(
+  GlobHeapPtr(
     const MemSpaceT    * gmem,
     team_unit_t          unit,
 	  index_type           local_index)
@@ -201,7 +173,7 @@ public:
     _idx_bucket_idx(0),
     _idx_bucket_phase(0)
   {
-    DASH_LOG_TRACE("GlobPtr(gmem,unit,lidx)",
+    DASH_LOG_TRACE("GlobHeapPtr(gmem,unit,lidx)",
                    "unit:", unit,
                    "lidx:", local_index);
     DASH_ASSERT_LT(unit, _bucket_cumul_sizes->size(), "invalid unit id");
@@ -211,7 +183,7 @@ public:
       _idx += prec_unit_local_size;
     }
     increment(local_index);
-    DASH_LOG_TRACE("GlobPtr(gmem,unit,lidx) >",
+    DASH_LOG_TRACE("GlobHeapPtr(gmem,unit,lidx) >",
                    "gidx:",   _idx,
                    "maxidx:", _max_idx,
                    "unit:",   _idx_unit_id,
@@ -224,8 +196,8 @@ public:
    * Copy constructor.
    */
   template<typename E_, typename M_>
-  GlobPtr(
-    const GlobPtr<E_, M_> & other)
+  GlobHeapPtr(
+    const GlobHeapPtr<E_, M_> & other)
   : _globmem(other._globmem),
     _bucket_cumul_sizes(other._bucket_cumul_sizes),
     _lbegin(other._lbegin),
@@ -242,7 +214,7 @@ public:
    */
   template<typename E_, typename M_>
   self_t & operator=(
-    const GlobPtr<E_, M_> & other)
+    const GlobHeapPtr<E_, M_> & other)
   {
     _globmem            = other._globmem;
     _bucket_cumul_sizes = other._bucket_cumul_sizes;
@@ -263,13 +235,13 @@ public:
    */
   dart_gptr_t dart_gptr() const
   {
-    DASH_LOG_TRACE_VAR("GlobPtr.dart_gptr()", _idx);
+    DASH_LOG_TRACE_VAR("GlobHeapPtr.dart_gptr()", _idx);
     // Create global pointer from unit, bucket and phase:
     dart_gptr_t dart_gptr = _globmem->dart_gptr_at(
                               _idx_unit_id,
                               _idx_bucket_idx,
                               _idx_bucket_phase);
-    DASH_LOG_TRACE_VAR("GlobPtr.dart_gptr >", dart_gptr);
+    DASH_LOG_TRACE_VAR("GlobHeapPtr.dart_gptr >", dart_gptr);
     return dart_gptr;
   }
 
@@ -296,7 +268,7 @@ public:
     /// The global position of the element
     index_type g_index) const
   {
-    DASH_LOG_TRACE_VAR("GlobPtr.[]()", g_index);
+    DASH_LOG_TRACE_VAR("GlobHeapPtr.[]()", g_index);
     auto git = *this;
     git  += g_index;
     auto lptr = git.local();
@@ -304,7 +276,7 @@ public:
       return reference(lptr);
     } else {
       auto gref = *git;
-      DASH_LOG_TRACE_VAR("GlobPtr.[] >", gref);
+      DASH_LOG_TRACE_VAR("GlobHeapPtr.[] >", gref);
       return gref;
     }
   }
@@ -460,37 +432,37 @@ public:
   }
 
   template<typename E_, typename M_>
-  inline bool operator<(const GlobPtr<E_, M_> & other) const
+  inline bool operator<(const GlobHeapPtr<E_, M_> & other) const
   {
     return (_idx < other._idx);
   }
 
   template<typename E_, typename M_>
-  inline bool operator<=(const GlobPtr<E_, M_> & other) const
+  inline bool operator<=(const GlobHeapPtr<E_, M_> & other) const
   {
     return (_idx <= other._idx);
   }
 
   template<typename E_, typename M_>
-  inline bool operator>(const GlobPtr<E_, M_> & other) const
+  inline bool operator>(const GlobHeapPtr<E_, M_> & other) const
   {
     return (_idx > other._idx);
   }
 
   template<typename E_, typename M_>
-  inline bool operator>=(const GlobPtr<E_, M_> & other) const
+  inline bool operator>=(const GlobHeapPtr<E_, M_> & other) const
   {
     return (_idx >= other._idx);
   }
 
   template<typename E_, typename M_>
-  inline bool operator==(const GlobPtr<E_, M_> & other) const
+  inline bool operator==(const GlobHeapPtr<E_, M_> & other) const
   {
     return _idx == other._idx;
   }
 
   template<typename E_, typename M_>
-  inline bool operator!=(const GlobPtr<E_, M_> & other) const
+  inline bool operator!=(const GlobHeapPtr<E_, M_> & other) const
   {
     return _idx != other._idx;
   }
@@ -501,7 +473,7 @@ private:
    */
   void increment(int offset)
   {
-    DASH_LOG_TRACE("GlobPtr.increment()",
+    DASH_LOG_TRACE("GlobHeapPtr.increment()",
                    "gidx:",   _idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
@@ -512,12 +484,12 @@ private:
     auto current_bucket_size =
            (*_bucket_cumul_sizes)[_idx_unit_id][_idx_bucket_idx];
     if (_idx_local_idx + offset < current_bucket_size) {
-      DASH_LOG_TRACE("GlobPtr.increment", "position current bucket");
+      DASH_LOG_TRACE("GlobHeapPtr.increment", "position current bucket");
       // element is in bucket currently referenced by this pointer:
       _idx_bucket_phase += offset;
       _idx_local_idx    += offset;
     } else {
-      DASH_LOG_TRACE("GlobPtr.increment",
+      DASH_LOG_TRACE("GlobHeapPtr.increment",
                      "position in succeeding bucket");
       // iterate units:
       auto unit_id_max = _bucket_cumul_sizes->size() - 1;
@@ -528,13 +500,13 @@ private:
         auto unit_bkt_sizes       = (*_bucket_cumul_sizes)[_idx_unit_id];
         auto unit_bkt_sizes_total = unit_bkt_sizes.back();
         auto unit_num_bkts        = unit_bkt_sizes.size();
-        DASH_LOG_TRACE("GlobPtr.increment",
+        DASH_LOG_TRACE("GlobHeapPtr.increment",
                        "unit:", _idx_unit_id,
                        "remaining offset:", offset,
                        "total local bucket size:", unit_bkt_sizes_total);
         if (_idx_local_idx + offset >= unit_bkt_sizes_total) {
           // offset refers to next unit:
-          DASH_LOG_TRACE("GlobPtr.increment",
+          DASH_LOG_TRACE("GlobHeapPtr.increment",
                          "position in remote range");
           // subtract remaining own local size from remaining offset:
           offset -= (unit_bkt_sizes_total - _idx_local_idx);
@@ -554,7 +526,7 @@ private:
           _idx_bucket_phase = 0;
         } else {
           // offset refers to current unit:
-          DASH_LOG_TRACE("GlobPtr.increment",
+          DASH_LOG_TRACE("GlobHeapPtr.increment",
                          "position in local range",
                          "current bucket phase:", _idx_bucket_phase,
                          "cumul. bucket sizes:",  unit_bkt_sizes);
@@ -578,7 +550,7 @@ private:
         }
       }
     }
-    DASH_LOG_TRACE("GlobPtr.increment >",
+    DASH_LOG_TRACE("GlobHeapPtr.increment >",
                    "gidx:",   _idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
@@ -591,7 +563,7 @@ private:
    */
   void decrement(int offset)
   {
-    DASH_LOG_TRACE("GlobPtr.decrement()",
+    DASH_LOG_TRACE("GlobHeapPtr.decrement()",
                    "gidx:",   _idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
@@ -651,7 +623,7 @@ private:
         }
       }
     }
-    DASH_LOG_TRACE("GlobPtr.decrement >",
+    DASH_LOG_TRACE("GlobHeapPtr.decrement >",
                    "gidx:",   _idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
@@ -659,7 +631,7 @@ private:
                    "bphase:", _idx_bucket_phase);
   }
 
-}; // class GlobPtr
+}; // class GlobHeapPtr
 
 /**
  * Resolve the number of elements between two global bucket pointers.
@@ -668,36 +640,28 @@ private:
  *
  * \ingroup     Algorithms
  */
-template<
-  typename ElementType,
-  class    AlllocType >
+template <typename ElementType, class MemSpaceT>
 auto distance(
-  /// Global pointer to the first position in the global sequence
-  const dash::GlobPtr<
-          ElementType, GlobHeapMem<ElementType, AlllocType>
-        > & first,
-  /// Global pointer to the final position in the global sequence
-  const dash::GlobPtr<
-          ElementType, GlobHeapMem<ElementType, AlllocType>
-        > & last)
--> typename GlobHeapMem<ElementType, AlllocType>::index_type
+    /// Global pointer to the first position in the global sequence
+    const dash::GlobHeapPtr<ElementType, MemSpaceT> &first,
+    /// Global pointer to the final position in the global sequence
+    const dash::GlobHeapPtr<ElementType, MemSpaceT> &last) -> typename MemSpaceT::index_type
 {
-  return last - first;
+
+  if (last._globmem == first._globmem) {
+    return last - first;
+  }
+  else {
+    return std::numeric_limits<typename MemSpaceT::index_type>::max();
+  }
 }
 
-template<
-  typename ElementType,
-  class    AllocType >
-std::ostream & operator<<(
-  std::ostream & os,
-  const dash::GlobPtr<
-          ElementType,
-          GlobHeapMem<
-            typename std::remove_const<ElementType>::type, AllocType >
-        > & gptr)
+template <typename ElementType, class MemSpaceT>
+std::ostream &operator<<(
+    std::ostream &os, const dash::GlobHeapPtr<ElementType, MemSpaceT> &gptr)
 {
   std::ostringstream ss;
-  ss << "dash::GlobPtr<" << typeid(ElementType).name() << ">("
+  ss << "dash::GlobHeapPtr<" << typeid(ElementType).name() << ">("
      << "gidx:"   << gptr._idx              << ", ("
      << "unit:"   << gptr._idx_unit_id      << ", "
      << "lidx:"   << gptr._idx_local_idx    << "), ("

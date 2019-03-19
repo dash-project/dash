@@ -3,6 +3,7 @@
 
 #include <dash/util/TeamLocality.h>
 
+#include <random>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -10,7 +11,7 @@
 
 
 void print_locality_domain(
-  std::string                        context,
+  const std::string&                        context,
   const dash::util::LocalityDomain & ld)
 {
   if (dash::myid() != 0) {
@@ -75,7 +76,7 @@ TEST_F(TeamLocalityTest, SplitCore)
   }
 
   dash::Team & team = dash::Team::All();
-  int num_split     = std::min(dash::size(), ssize_t(3));
+  int num_split     = std::min(dash::size(), size_t(3));
 
   dash::util::TeamLocality tloc(team);
 
@@ -171,7 +172,10 @@ TEST_F(TeamLocalityTest, GroupUnits)
   for (dash::global_unit_t u{0}; u < team.size(); ++u) {
     shuffled_unit_ids.push_back(u);
   }
-  std::random_shuffle(shuffled_unit_ids.begin(), shuffled_unit_ids.end());
+  std::shuffle(
+      shuffled_unit_ids.begin(),
+      shuffled_unit_ids.end(),
+      std::mt19937(std::random_device()()));
 
   // Put the first 2 units in group 1:
   group_1_units.push_back(shuffled_unit_ids.back());
@@ -289,17 +293,19 @@ TEST_F(TeamLocalityTest, SplitGroups)
   std::vector<std::string> group_2_tags;
 
   // Put the first 2 units in group 1:
-  group_1_units.push_back(dash::global_unit_t{0});
-  group_1_units.push_back(dash::global_unit_t{1});
+  group_1_units.emplace_back(0);
+  group_1_units.emplace_back(1);
   // Put every second unit in group 2, starting at rank 2:
   for (dash::global_unit_t u{3}; u < team.size(); u += 2) {
     group_2_units.push_back(u);
   }
 
-  for (dash::global_unit_t u : group_1_units) {
+  group_1_tags.reserve(group_1_units.size());
+for (dash::global_unit_t u : group_1_units) {
     group_1_tags.push_back(tloc.unit_locality(u).domain_tag());
   }
-  for (dash::global_unit_t u : group_2_units) {
+  group_2_tags.reserve(group_2_units.size());
+for (dash::global_unit_t u : group_2_units) {
     group_2_tags.push_back(tloc.unit_locality(u).domain_tag());
   }
 
@@ -333,14 +339,14 @@ TEST_F(TeamLocalityTest, SplitGroups)
     // TODO: If requested split was not possible, this yields an incorrect
     //       failure:
     //  EXPECT_EQ_U(group_1_units, group_1.units());
-  } 
+  }
   if (group_2_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group:", group_2_tags);
     const auto & group_2 = tloc.group(group_2_tags);
     DASH_LOG_DEBUG_VAR("TeamLocalityTest.SplitGroups", group_2);
 
     EXPECT_EQ_U(group_2_units, group_2.units());
-  } 
+  }
 
   tloc.split_groups();
 

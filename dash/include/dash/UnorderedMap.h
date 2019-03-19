@@ -135,30 +135,39 @@ template<
   typename Mapped,
   typename Hash    = dash::HashLocal<Key>,
   typename Pred    = std::equal_to<Key>,
-  typename Alloc   = dash::allocator::EpochSynchronizedAllocator<
-                       std::pair<const Key, Mapped> > >
+  typename LocalMemType = HostSpace >
 class UnorderedMap
 {
+  typedef UnorderedMap<Key, Mapped, Hash, Pred, LocalMemType> self_type;
+
+  using glob_mem_type = dash::GlobHeapMem<
+      std::pair<const Key, Mapped>,
+      LocalMemorySpace,
+      dash::global_allocation_policy::epoch_synchronized,
+      dash::allocator::DefaultAllocator>;
+
 public:
-  typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>             self_type;
 
-  typedef Key                                                       key_type;
-  typedef Mapped                                                 mapped_type;
-  typedef Hash                                                        hasher;
-  typedef Pred                                                     key_equal;
-  typedef Alloc                                               allocator_type;
+  typedef Key    key_type;
+  typedef Mapped mapped_type;
+  typedef Hash   hasher;
+  typedef Pred   key_equal;
 
-  typedef dash::default_index_t                                   index_type;
-  typedef dash::default_index_t                              difference_type;
-  typedef dash::default_size_t                                     size_type;
-  typedef std::pair<const key_type, mapped_type>                  value_type;
+  typedef dash::default_index_t                  index_type;
+  typedef dash::default_index_t                  difference_type;
+  typedef dash::default_size_t                   size_type;
+  typedef std::pair<const key_type, mapped_type> value_type;
 
-  typedef typename dash::container_traits<self_type>::local_type  local_type;
+  typedef typename dash::container_traits<self_type>::local_type local_type;
 
-  typedef dash::GlobHeapMem<value_type, allocator_type>     glob_mem_type;
+  typedef GlobHeapPtr<value_type, glob_mem_type>       pointer;
+  typedef GlobHeapPtr<const value_type, glob_mem_type> const_pointer;
 
-  typedef typename glob_mem_type::reference                        reference;
-  typedef typename glob_mem_type::const_reference            const_reference;
+  typedef GlobSharedRef<value_type, GlobHeapPtr<value_type, glob_mem_type>>
+      reference;
+
+  typedef GlobSharedRef<value_type const, GlobHeapPtr<value_type, glob_mem_type>>
+      const_reference;
 
   typedef typename reference::template rebind<mapped_type>::other
     mapped_type_reference;
@@ -182,27 +191,27 @@ public:
   typedef typename glob_mem_type::const_reverse_local_iterator
     const_reverse_local_node_iterator;
 
-  typedef typename glob_mem_type::global_iterator
+  typedef typename glob_mem_type::local_iterator
     local_node_pointer;
-  typedef typename glob_mem_type::const_global_iterator
+  typedef typename glob_mem_type::const_local_iterator
     const_local_node_pointer;
 
-  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, glob_mem_type>
     iterator;
-  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, glob_mem_type>
     const_iterator;
   typedef typename std::reverse_iterator<iterator>
     reverse_iterator;
   typedef typename std::reverse_iterator<const_iterator>
     const_reverse_iterator;
 
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemType>
     local_pointer;
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemType>
     const_local_pointer;
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemType>
     local_iterator;
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemType>
     const_local_iterator;
   typedef typename std::reverse_iterator<local_iterator>
     reverse_local_iterator;
@@ -548,6 +557,28 @@ public:
    */
   std::pair<iterator, bool> insert(
     /// The element to insert.
+    const value_type & value);
+
+  /**
+   * inserts value, using hint as a non-binding suggestion to where the search should start.
+   *
+   * Iterator validity:
+   *
+   * - All iterators in the container remain valid after the insertion unless
+   *   it forces a rehash. In this case, all iterators in the container are
+   *   invalidated.
+   * - A rehash is forced if the new container size after the insertion
+   *   operation would increase above its capacity threshold.
+   * - References to elements in the map container remain valid in all cases,
+   *   even after a rehash.
+   *
+   * \return  an iterator to the inserted element, or to the element that prevented the
+   *          insertion.
+   */
+  iterator insert(
+    //Iterator hint
+    const_iterator hint,
+    //The element to insert
     const value_type & value);
 
   /**

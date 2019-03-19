@@ -58,7 +58,7 @@ dash::util::TraceStore::context_trace(const std::string & context)
   return _traces[context];
 }
 
-void dash::util::TraceStore::write(std::ostream & out)
+void dash::util::TraceStore::write(std::ostream & out, bool printHeader)
 {
   if (!dash::util::Config::get<bool>("DASH_ENABLE_TRACE")) {
     return;
@@ -66,13 +66,12 @@ void dash::util::TraceStore::write(std::ostream & out)
 
   std::ostringstream os;
   auto unit   = dash::Team::GlobalUnitID();
-  auto nunits = dash::size();
   for (auto context_traces : _traces) {
     std::string      context = context_traces.first;
     trace_events_t & events  = context_traces.second;
 
     // Master prints CSV headers:
-    if (unit == 0) {
+    if (printHeader && unit == 0) {
       os << "-- [TRACE] "
          << std::setw(15) << "context"  << ","
          << std::setw(5)  << "unit"     << ","
@@ -82,33 +81,21 @@ void dash::util::TraceStore::write(std::ostream & out)
          << std::endl;
     }
 
-    dash::barrier();
-
     for (auto state_timespan : events) {
       auto   start    = state_timespan.start;
       auto   end      = state_timespan.end;
       auto   state    = state_timespan.state;
       os << "-- [TRACE] "
-         << std::setw(15) << std::fixed << context  << ","
-         << std::setw(5)  << std::fixed << unit     << ","
-         << std::setw(15) << std::fixed << start    << ","
-         << std::setw(15) << std::fixed << end      << ","
+         << std::setw(15) << std::fixed << context  << ", "
+         << std::setw(5)  << std::fixed << unit     << ", "
+         << std::setw(15) << std::fixed << start    << ", "
+         << std::setw(15) << std::fixed << end      << ", "
          << std::setw(12) << std::fixed << state
          << std::endl;
     }
   }
-  // Print trace events of units sequentially:
-  for (size_t trace_unit = 0; trace_unit < nunits; ++trace_unit) {
-    if (trace_unit == static_cast<size_t>(unit)) {
-      out << os.str();
-    }
-    dash::barrier();
-  }
 
-  // To help synchronization of writes:
-  sleep(1);
-
-  dash::barrier();
+  out << os.str();
 }
 
 void dash::util::TraceStore::write(

@@ -5,6 +5,16 @@ BASEPATH=`git rev-parse --show-toplevel`
 CMD_DEPLOY=$BASEPATH/dash/scripts/dash-ci-deploy.sh
 CMD_TEST=$BASEPATH/dash/scripts/dash-test.sh
 FAILED=false
+TESTRUNNER="mpi"
+
+print_env()
+{
+  if [ -z "$CC" ];  then DASH_CC="cc";   else DASH_CC=$CC;   fi
+  if [ -z "$CXX" ]; then DASH_CXX="c++"; else DASH_CXX=$CXX; fi
+  echo -n "[-> ENV    ] " && cmake --version  | head -1
+  echo -n "[-> ENV    ] " && ${DASH_CC} --version  | head -1
+  echo -n "[-> ENV    ] " && ${DASH_CXX} --version | head -1
+}
 
 run_ci()
 {
@@ -33,6 +43,8 @@ run_ci()
     # base delay of MPI operations in NastyMPI, in milliseconds:
     export NASTY_SLEEP_INTERVAL=0
     echo "[-> ENV    ] LD_LIBRARY_PATH: ${LD_LIBRARY_PATH}"
+  elif echo "$BUILD_TYPE" | grep "Coverage"; then
+    TESTRUNNER="mpi-coverage"
   fi
 
   echo "[-> LOG    ] $DEPLOY_PATH/build.log"
@@ -46,9 +58,9 @@ run_ci()
     #
     echo "[-> TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
     echo "[-> LOG    ] $DEPLOY_PATH/test_mpi.log"
-    echo "[-> RUN    ] $CMD_TEST mpi $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log"
+    echo "[-> RUN    ] $CMD_TEST $TESTRUNNER $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log"
 
-    $CMD_TEST mpi $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log
+    $CMD_TEST $TESTRUNNER $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log
     TEST_STATUS=$?
 
     if [ -f $DEPLOY_PATH/test_mpi.log ] ; then
@@ -84,6 +96,8 @@ run_ci()
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH_ORIG}
   fi
 }
+
+print_env
 
 if [ $# != 0 ]; then
   for buildtype in "$@" ; do

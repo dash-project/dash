@@ -51,9 +51,9 @@ TEST_F(AutobalanceTest, Factorize)
 
 TEST_F(AutobalanceTest, BalanceExtents)
 {
-  std::array<int, 2> org_extents;
-  std::array<int, 2> bal_extents;
-  std::array<int, 2> exp_extents;
+  std::array<int, 2> org_extents{};
+  std::array<int, 2> bal_extents{};
+  std::array<int, 2> exp_extents{};
   std::set<int>      blocking;
 
   int size = 2 * 5 * 5 * 11 * 19;
@@ -111,11 +111,11 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNUMA)
 
   // Test for all combinations (team size x data extents):
   extents_t exp_extents;
-  for (size_t u = 0; u < exp_team_extents.size(); ++u) {
+  for (auto exp_team_extent : exp_team_extents) {
     for (int s = 0; s < size_exp_max; ++s) {
       auto size_d    = size_base * std::pow(2, s);
       dash::SizeSpec<2> sizespec(size_d, size_d);
-      exp_extents    = exp_team_extents[u];
+      exp_extents    = exp_team_extent;
       int  num_units = exp_extents[0] * exp_extents[1];
       DASH_LOG_TRACE("AutobalanceTest::BalanceTeamSpec",
                      "testing balancing of", num_units, "units",
@@ -176,8 +176,8 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
 
   // Test for all combinations (team size x data extents):
   extents_t exp_extents;
-  for (size_t n = 0; n < exp_team_extents.size(); ++n) {
-    exp_extents    = exp_team_extents[n];
+  for (auto exp_team_extent : exp_team_extents) {
+    exp_extents    = exp_team_extent;
     int  num_units = exp_extents[0] * exp_extents[1];
     auto n_nodes   = num_units / n_cores_per_node;
 

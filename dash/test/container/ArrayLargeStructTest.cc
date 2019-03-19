@@ -26,8 +26,8 @@ TEST_F(ArrayLargeStruct, LocalArrayTest)
 
   if(_dash_id == 0) {
     LOG_MESSAGE("Assigning array values");
-    auto write = std::unique_ptr<DGNode>(new DGNode());
-    auto read  = std::unique_ptr<DGNode>(new DGNode());
+    auto write = std::make_unique<DGNode>();
+    auto read  = std::make_unique<DGNode>();
 
     for(size_t i = 0; i < array_size; ++i) {
       write->len = 10000;

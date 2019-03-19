@@ -8,6 +8,7 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/locality.h>
 #include <dash/dart/base/internal/unit_locality.h>
+#include <dash/dart/base/internal/compiler_tweaks.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
@@ -110,7 +111,7 @@ dart_ret_t dart_domain_find(
   dart_domain_locality_t       ** subdomain_out)
 {
   DART_LOG_DEBUG("dart_domain_find() domain_in(%p) domain_tag(%s)",
-                 (void*)domain_in, domain_tag);
+                 domain_in, domain_tag);
   dart_ret_t ret = dart__base__locality__domain(
                      domain_in, domain_tag, subdomain_out);
   DART_LOG_DEBUG("dart_domain_find > %d", ret);
@@ -169,7 +170,7 @@ dart_ret_t dart_domain_split_scope(
 {
   DART_LOG_DEBUG("dart_domain_split_scope() team(%d) domain(%s) "
                  "into %d parts at scope %d",
-                 domain_in->team, domain_in->domain_tag, num_parts, 
+                 domain_in->team, domain_in->domain_tag, num_parts,
                  scope);
 
   int    * group_sizes       = NULL;
@@ -220,12 +221,15 @@ dart_ret_t dart_domain_split_scope(
 
     /* Drop domains that are not in split group: */
     DART_LOG_TRACE("dart_domain_split_scope: selecting subdomains");
+PRAGMA__PUSH
+PRAGMA__IGNORE
     DART_ASSERT_RETURNS(
       dart__base__locality__select_subdomains(
         domains_out + p,
         (const char **)(group_domain_tags[p]),
         group_sizes[p]),
       DART_OK);
+PRAGMA__POP
   }
 
   DART_LOG_DEBUG("dart_domain_split_scope >");

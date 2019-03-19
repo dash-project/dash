@@ -1,8 +1,8 @@
 #ifndef DASH__ALGORITHM__FOR_EACH_H__
 #define DASH__ALGORITHM__FOR_EACH_H__
 
-#include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
+#include <dash/iterator/GlobIter.h>
 
 #include <algorithm>
 
@@ -16,7 +16,7 @@ namespace dash {
  * function on its local elements only.
  * To support compiler optimization, this const version is provided
  *
- * \tparam      ElementType   Type of the elements in the sequence
+ * \tparam      GlobIter      Global Iterator to iterate the sequence
  * \tparam      UnaryFunction Function to invoke for each element
  *                            in the specified range with signature
  *                            \c (void (const ElementType &)).
@@ -63,7 +63,7 @@ void for_each(
  * function on its local elements only. The index passed to the function is
  * a global index.
  *
- * \tparam      ElementType            Type of the elements in the sequence
+ * \tparam      GlobIter               Global Iterator to iterate the sequence
  * \tparam      UnaryFunctionWithIndex Function to invoke for each element
  *                                     in the specified range with signature
  *                                     \c void (const ElementType &, index_t)

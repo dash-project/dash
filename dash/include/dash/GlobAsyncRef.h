@@ -1,27 +1,19 @@
 #ifndef DASH__GLOB_ASYNC_REF_H__
 #define DASH__GLOB_ASYNC_REF_H__
 
-#include <dash/GlobPtr.h>
-#include <dash/Allocator.h>
-#include <dash/memory/GlobStaticMem.h>
-
 #include <iostream>
+
+#include <dash/GlobPtr.h>
+#include <dash/Onesided.h>
+
+#include <dash/iterator/internal/GlobRefBase.h>
+
 
 namespace dash {
 
-
-template<typename ReferenceT, typename TargetT>
-struct add_const_from_type
-{
-  using type = TargetT;
-};
-
-template<typename ReferenceT, typename TargetT>
-struct add_const_from_type<const ReferenceT, TargetT>
-{
-  using type = typename std::add_const<TargetT>::type;
-};
-
+// Forward declarations
+template <class T>
+class GlobRef;
 
 /**
  * Global value reference for asynchronous / non-blocking operations.
@@ -59,6 +51,16 @@ class GlobAsyncRef
     typename ElementT >
   friend class GlobAsyncRef;
 
+  struct ReleaseHandle {
+    void operator()(dart_handle_t handle)
+    {
+      DASH_ASSERT_RETURNS(
+        dart_wait_local(&handle),
+        DART_OK
+      );
+    }
+  };
+
 public:
   using value_type          = T;
   using const_value_type    = typename std::add_const<T>::type;
@@ -69,11 +71,13 @@ public:
 
 private:
   /// Pointer to referenced element in global memory
-  dart_gptr_t  _gptr;
+  dart_gptr_t  _gptr{};
   /// Temporary value required for non-blocking put
   mutable nonconst_value_type _value;
   /// DART handle for asynchronous transfers
-  mutable dart_handle_t _handle = DART_HANDLE_NULL;
+  mutable std::
+      unique_ptr<std::remove_pointer<dart_handle_t>::type, ReleaseHandle>
+          _handle{DART_HANDLE_NULL};
 
 private:
 
@@ -94,9 +98,8 @@ private:
       DART_OK);
   }
 
-public:
   /**
-   * Conctructor, creates an GlobRefAsync object referencing an element in
+   * PRIVATE: Conctructor, creates an GlobRefAsync object referencing an element in
    * global memory.
    */
   template<class ElementT, class MemSpaceT>
@@ -105,6 +108,8 @@ public:
     GlobPtr<ElementT, MemSpaceT> & gptr)
   : _gptr(gptr.dart_gptr())
   { }
+
+public:
 
   /**
    * Conctructor, creates an GlobRefAsync object referencing an element in
@@ -117,65 +122,62 @@ public:
   { }
 
   /**
-   * Conctructor, creates an GlobRefAsync object referencing an element in
-   * global memory.
+   * Copy constructor, implicit if at least one of the following conditions is
+   * satisfied:
+   *    1) value_type and _T are exactly the same types (including const and
+   *    volatile qualifiers
+   *    2) value_type and _T are the same types after removing const and volatile
+   *    qualifiers and value_type itself is const.
    */
-  explicit GlobAsyncRef(
-    /// Pointer to referenced object in global memory
-    const GlobRef<nonconst_value_type> & gref)
+  template<typename _T,
+           int = internal::enable_implicit_copy_ctor<value_type, _T>::value>
+  GlobAsyncRef(const GlobAsyncRef<_T>& gref)
   : GlobAsyncRef(gref.dart_gptr())
   { }
 
   /**
-   * Conctructor, creates an GlobRefAsync object referencing an element in
-   * global memory.
+   * Copy constructor, explicit if the following conditions are satisfied.
+   *    1) value_type and _T are the same types after excluding const and
+   *    volatile qualifiers
+   *    2) value_type is const and _T is non-const
    */
-  explicit GlobAsyncRef(
-    /// Pointer to referenced object in global memory
-    const GlobRef<const_value_type> & gref)
-  : GlobAsyncRef(gref.dart_gptr())
+  template <
+      typename _T,
+      long = internal::enable_explicit_copy_ctor<value_type, _T>::value>
+  explicit GlobAsyncRef(const GlobAsyncRef<_T>& gref)
+    : GlobAsyncRef(gref.dart_gptr())
   {
-    static_assert(std::is_same<value_type, const_value_type>::value,
-                  "Cannot create GlobAsyncRef<T> from GlobRef<const T>!");
   }
 
-  /**
-   * Implicit conversion to const.
-   */
-  template<class = std::enable_if<
-                     std::is_same<value_type, nonconst_value_type>::value,void>>
-  operator GlobAsyncRef<const_value_type>() {
-    return GlobAsyncRef<const_value_type>(_gptr);
+  template <
+      typename _T,
+      int = internal::enable_implicit_copy_ctor<value_type, _T>::value>
+  GlobAsyncRef(const GlobRef<_T>& gref)
+    : GlobAsyncRef(gref.dart_gptr())
+  {
   }
 
-  /**
-   * Excpliti conversion to non-const.
-   */
-  template<class = std::enable_if<
-                     std::is_same<value_type, const_value_type>::value,void>>
-  explicit
-  operator GlobAsyncRef<nonconst_value_type>() {
-    return GlobAsyncRef<nonconst_value_type>(_gptr);
+  template <
+      typename _T,
+      long = internal::enable_explicit_copy_ctor<value_type, _T>::value>
+  explicit GlobAsyncRef(const GlobRef<_T>& gref)
+    : GlobAsyncRef(gref.dart_gptr())
+  {
   }
 
-  /**
-   * Like native references, global reference types cannot be copied.
-   *
-   * Default definition of copy constructor would conflict with semantics
-   * of \c operator=(const self_t &).
-   */
-  GlobAsyncRef(const self_t & other) = delete;
+  ~GlobAsyncRef() = default;
 
-  ~GlobAsyncRef() {
-    if (_handle != DART_HANDLE_NULL) {
-      dart_wait_local(&_handle);
-    }
-  }
+  GlobAsyncRef(self_t&& other) = default;
 
   /**
-   * Unlike native reference types, global reference types are moveable.
+   * MOVE Assignment
    */
-  GlobAsyncRef(self_t && other)      = default;
+  self_t& operator=(self_t&& other) = default;
+
+  /**
+   * Copy Assignment
+   */
+  self_t& operator=(const self_t& other) = delete;
 
   /**
    * Whether the referenced element is located in local memory.
@@ -190,20 +192,20 @@ public:
    * specified offset
    */
   template<typename MEMTYPE>
-  GlobAsyncRef<typename dash::add_const_from_type<T, MEMTYPE>::type>
+  GlobAsyncRef<typename internal::add_const_from_type<T, MEMTYPE>::type>
   member(size_t offs) const {
-    return GlobAsyncRef<typename dash::add_const_from_type<T, MEMTYPE>::type>(*this, offs);
+    return GlobAsyncRef<typename internal::add_const_from_type<T, MEMTYPE>::type>(*this, offs);
   }
 
   /**
    * Get the member via pointer to member
    */
   template<class MEMTYPE, class P=T>
-  GlobAsyncRef<typename dash::add_const_from_type<T, MEMTYPE>::type>
+  GlobAsyncRef<typename internal::add_const_from_type<T, MEMTYPE>::type>
   member(
     const MEMTYPE P::*mem) const {
-    size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
-    return member<typename dash::add_const_from_type<T, MEMTYPE>::type>(offs);
+    auto offs = (size_t) & (reinterpret_cast<P*>(0)->*mem);
+    return member<typename internal::add_const_from_type<T, MEMTYPE>::type>(offs);
   }
 
   /**
@@ -273,15 +275,13 @@ public:
                   "Cannot modify value through GlobAsyncRef<const T>!");
     DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", new_value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", _gptr);
+
     _value = new_value;
-    // check that we do not overwrite the handle if it has been used before
-    if (this->_handle != DART_HANDLE_NULL) {
-      DASH_ASSERT_RETURNS(
-        dart_wait_local(&this->_handle),
-        DART_OK
-      );
-    }
-    dash::internal::put_handle(_gptr, &_value, 1, &_handle);
+
+    dart_handle_t new_handle;
+    dash::internal::put_handle(_gptr, &_value, 1, &new_handle);
+
+    _handle.reset(new_handle);
   }
 
   /**

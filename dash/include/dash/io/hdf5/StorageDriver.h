@@ -5,7 +5,7 @@
 
 #ifdef DASH_ENABLE_HDF5
 
-#ifndef MPI_IMPL_ID
+#ifndef DASH_MPI_IMPL_ID
 #pragma error "HDF5 module requires dart-mpi"
 #endif
 
@@ -13,6 +13,7 @@
 #include <dash/Init.h>
 #include <dash/Array.h>
 #include <dash/Matrix.h>
+#include <dash/Shared.h>
 
 #include <sys/stat.h>
 
@@ -760,10 +761,16 @@ class StoreHDF {
                                            const hid_t& h5dset,
                                            const hid_t& internal_type);
 
-  template <typename ElementT, typename PatternT, dim_t NDim, dim_t NViewDim>
+  template <
+      typename ElementT,
+      typename PatternT,
+      dim_t NDim,
+      dim_t NViewDim,
+      typename LocalMemT>
   static void _write_dataset_impl_nd_block(
-      dash::MatrixRef<ElementT, NDim, NViewDim, PatternT>& container,
-      const hid_t& h5dset, const hid_t& internal_type);
+      dash::MatrixRef<ElementT, NDim, NViewDim, PatternT, LocalMemT>& container,
+      const hid_t& h5dset,
+      const hid_t& internal_type);
 
   // --------------------------------------------------------------------------
   // --------------------- READ specializations -------------------------------

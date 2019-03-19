@@ -54,6 +54,8 @@ if (NOT DEFINED MPI_IMPL_ID)
   if (HAVE_OPEN_MPI)
     set (MPI_IMPL_IS_OPENMPI TRUE CACHE BOOL "OpenMPI detected")
     set (MPI_IMPL_ID "openmpi" CACHE STRING "MPI implementation identifier")
+    set (MPI_CXX_SKIP_FLAGS "-DOMPI_SKIP_MPICXX"
+          CACHE STRING "Flag to suppress MPI C++ bindings")
     check_mpi_compile(${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_compatible_ompi.c OMPI_OK)
     if (NOT OMPI_OK)
       message(WARNING
@@ -75,6 +77,8 @@ if (NOT DEFINED MPI_IMPL_ID)
     if (HAVE_I_MPI)
       set (MPI_IMPL_IS_INTEL TRUE CACHE BOOL "IntelMPI detected")
       set (MPI_IMPL_ID "intelmpi" CACHE STRING "MPI implementation identifier")
+      set (MPI_CXX_SKIP_FLAGS "-DMPICH_SKIP_MPICXX"
+            CACHE STRING "Flag to suppress MPI C++ bindings")
     endif ()
   endif ()
 
@@ -88,6 +92,8 @@ if (NOT DEFINED MPI_IMPL_ID)
     if (HAVE_MVAPICH)
       set (MPI_IMPL_IS_MVAPICH TRUE CACHE BOOL "MVAPICH detected")
       set (MPI_IMPL_ID "mvapich" CACHE STRING "MPI implementation identifier")
+      set (MPI_CXX_SKIP_FLAGS "-DMPICH_SKIP_MPICXX"
+            CACHE STRING "Flag to suppress MPI C++ bindings")
     endif ()
   endif ()
 
@@ -110,11 +116,13 @@ if (NOT DEFINED MPI_IMPL_ID)
     if (HAVE_CRAY_MPI)
       set(MPI_IMPL_IS_CRAY TRUE CACHE BOOL "CrayMPI detected")
       set(MPI_IMPL_ID "craympi" CACHE STRING "MPI implementation identifier")
+      set (MPI_CXX_SKIP_FLAGS "-DMPICH_SKIP_MPICXX"
+            CACHE STRING "Flag to suppress MPI C++ bindings")
     endif ()
   endif ()
 
   if (NOT DEFINED MPI_IMPL_ID)
-    # check for MVAPICH
+    # check for MPICH
     check_symbol_exists(
       MPICH
       mpi.h
@@ -123,6 +131,8 @@ if (NOT DEFINED MPI_IMPL_ID)
     if (HAVE_MPICH)
       set (MPI_IMPL_IS_MPICH TRUE CACHE BOOL "MPICH detected")
       set (MPI_IMPL_ID "mpich" CACHE STRING "MPI implementation identifier")
+      set (MPI_CXX_SKIP_FLAGS "-DMPICH_SKIP_MPICXX"
+            CACHE STRING "Flag to suppress MPI C++ bindings")
     endif ()
   endif ()
 
@@ -152,10 +162,12 @@ if (NOT DEFINED MPI_IMPL_ID)
   endif()
 
   set (CMAKE_C_COMPILER ${CMAKE_C_COMPILER_SAFE})
-  set (MPI_INCLUDE_PATH ${MPI_INCLUDE_PATH} CACHE STRING "MPI include path")
-  set (MPI_C_LIBRARIES  ${MPI_C_LIBRARIES}  CACHE STRING "MPI C libraries")
-  set (MPI_LINK_FLAGS   ${MPI_LINK_FLAGS}   CACHE STRING "MPI link flags")
+  set (MPI_INCLUDE_PATH ${MPI_INCLUDE_PATH}   CACHE STRING "MPI include path")
+  set (MPI_C_LIBRARIES  ${MPI_C_LIBRARIES}    CACHE STRING "MPI C libraries")
+  set (MPI_LINK_FLAGS   ${MPI_LINK_FLAGS}     CACHE STRING "MPI link flags")
+  set (MPI_CXX_FLAGS    ${MPI_CXX_SKIP_FLAGS} CACHE STRING "MPI C++ compile flags")
 
+  message(STATUS "Detected MPI library: ${MPI_IMPL_ID}")
 else (NOT DEFINED MPI_IMPL_ID)
 
   message(STATUS "Using previously detected MPI library: ${MPI_IMPL_ID}")

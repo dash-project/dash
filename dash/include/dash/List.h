@@ -165,11 +165,12 @@ namespace dash {
  *
  * \concept{DashListConcept}
  */
-template<
-  typename ElementType,
-  class    AllocatorType = dash::allocator::EpochSynchronizedAllocator<ElementType> >
-class List
-{
+template <
+    /// The underlying Element Type
+    typename ElementType,
+    /// The corresponding Memory Space
+    typename LocalMemorySpace = dash::HostSpace>
+class List {
   static_assert(
     dash::is_container_compatible<ElementType>::value,
     "Type not supported for DASH containers");
@@ -177,33 +178,37 @@ class List
   template<typename T_, class A_>
   friend class LocalListRef;
 
+  /// Private Typedefs
 private:
-  typedef List<ElementType, AllocatorType> self_t;
+  typedef List<ElementType, LocalMemorySpace> self_t;
 
-/// Public types as required by DASH list concept
-public:
-  typedef ElementType                                             value_type;
-  typedef typename dash::default_index_t                          index_type;
-  typedef typename dash::default_size_t                            size_type;
-  typedef AllocatorType                                       allocator_type;
-
-  typedef ListRef<ElementType, AllocatorType>                      view_type;
-  typedef LocalListRef<ElementType, AllocatorType>                local_type;
-
-private:
-  typedef internal::ListNode<value_type>
-    node_type;
-
-  typedef typename AllocatorType::template rebind<
-                     internal::ListNode<ElementType> >::other
-    node_allocator_type;
-
-  typedef dash::GlobHeapMem<node_type, node_allocator_type>
-    glob_mem_type;
+  typedef internal::ListNode<ElementType> node_type;
 
   typedef dash::Array<
-            size_type, int, dash::CSRPattern<1, dash::ROW_MAJOR, int> >
-    local_sizes_map;
+      dash::default_size_t,
+      int,
+      dash::CSRPattern<1, dash::ROW_MAJOR, int> >
+      local_sizes_map;
+
+  using glob_mem_type = dash::GlobHeapMem<
+      node_type,
+      LocalMemorySpace,
+      dash::global_allocation_policy::epoch_synchronized,
+      dash::allocator::DefaultAllocator>;
+
+  /// Public types as required by DASH list concept
+public:
+  typedef ElementType                    value_type;
+  typedef typename dash::default_index_t index_type;
+  typedef typename dash::default_size_t  size_type;
+
+  typedef ListRef<ElementType, LocalMemorySpace>      view_type;
+  typedef LocalListRef<ElementType, LocalMemorySpace> local_type;
+
+  typedef typename glob_mem_type::local_pointer
+    local_node_iterator;
+  typedef typename glob_mem_type::const_local_pointer
+    const_local_node_iterator;
 
 /// Public types as required by STL list concept
 public:
@@ -221,18 +226,9 @@ public:
   typedef       value_type &                                 local_reference;
   typedef const value_type &                           const_local_reference;
 
-  typedef       iterator                                             pointer;
-  typedef const_iterator                                       const_pointer;
-
-  typedef typename glob_mem_type::local_pointer
-    local_node_iterator;
-  typedef typename glob_mem_type::const_local_pointer
-    const_local_node_iterator;
-
-  typedef typename glob_mem_type::local_reference
-    local_node_reference;
-  typedef typename glob_mem_type::const_local_reference
-    const_local_node_reference;
+  //TODO: add pointer traits to handle this
+  typedef GlobHeapPtr<value_type, glob_mem_type> pointer;
+  typedef GlobHeapPtr<const value_type, glob_mem_type> const_pointer;
 
   // TODO: define ListLocalIter to dereference node iterators
   typedef               local_node_iterator                   local_iterator;
@@ -283,8 +279,7 @@ public:
     Team & team = dash::Team::Null())
   : local(this),
     _team(&team),
-    _myid(team.myid()),
-    _remote_size(0)
+    _myid(team.myid())
   {
     DASH_LOG_TRACE("List() >", "default constructor");
   }
@@ -298,8 +293,7 @@ public:
     Team      & team  = dash::Team::All())
   : local(this),
     _team(&team),
-    _myid(team.myid()),
-    _remote_size(0)
+    _myid(team.myid())
   {
     DASH_LOG_TRACE("List(nelem,team)", "nelem:", nelem);
     if (_team->size() > 0) {
@@ -315,15 +309,11 @@ public:
    * Constructor, creates a new constainer instance with the specified
    * initial global container capacity and associated units.
    */
-  List(
-    size_type   nelem,
-    size_type   nlbuf,
-    Team      & team   = dash::Team::All())
-  : local(this),
-    _team(&team),
-    _myid(team.myid()),
-    _remote_size(0),
-    _local_buffer_size(nlbuf)
+  List(size_type nelem, size_type nlbuf, Team& team = dash::Team::All())
+    : local(this)
+    , _team(&team)
+    , _myid(team.myid())
+    , _local_buffer_size(nlbuf)
   {
     DASH_LOG_TRACE("List(nelem,nlbuf,team)",
                    "nelem:", nelem, "nlbuf:", nlbuf);

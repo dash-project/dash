@@ -51,6 +51,9 @@ void dash::init(int * argc, char ** *argv)
 
   dash::_initialized = true;
 
+  // initialize global team
+  dash::Team::initialize();
+
   if (dash::util::Config::get<bool>("DASH_INIT_BREAKPOINT")) {
     DASH_LOG_DEBUG("Process ID", getpid());
     if (dash::myid() == 0) {
@@ -118,8 +121,17 @@ dash::global_unit_t dash::myid()
   return dash::Team::GlobalUnitID();
 }
 
-ssize_t dash::size()
+size_t dash::size()
 {
   return dash::Team::All().size();
 }
 
+void dash::abort()
+{
+  dart_abort(DART_EXIT_ABORT);
+}
+
+void dash::abort(int errorcode)
+{
+  dart_abort(errorcode);
+}

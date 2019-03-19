@@ -19,14 +19,13 @@ namespace dash {
  * \ingroup DashAlgorithms
  */
 template<
-  typename ElementType,
-  class    PatternType,
+  typename GlobIter,
   typename UnaryPredicate>
 bool all_of(
   /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType>   first,
+  GlobIter   first,
   /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType>   last,
+  GlobIter   last,
   /// Predicate applied to the elements in range [first, last)
   UnaryPredicate p)
 {

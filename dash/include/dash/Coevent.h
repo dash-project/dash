@@ -1,16 +1,21 @@
 #ifndef DASH__COEVENT_H__INCLUDED
 #define DASH__COEVENT_H__INCLUDED
 
+#include <thread>
+
+#include <dash/Array.h>
+#include <dash/Atomic.h>
+#include <dash/GlobPtr.h>
 #include <dash/Exception.h>
 #include <dash/Team.h>
 #include <dash/Types.h>
-#include <dash/GlobPtr.h>
-#include <dash/Atomic.h>
 
-#include <dash/Algorithm.h>
+#include <dash/algorithm/Fill.h>
 
 #include <dash/coarray/CoEventIter.h>
 #include <dash/coarray/CoEventRef.h>
+
+#include <dash/memory/MemorySpace.h>
 
 namespace dash {
 
@@ -39,8 +44,11 @@ namespace dash {
  */
 class Coevent {
 private:
-  using event_cnt_t    = dash::Atomic<int>;
-  using gptr_t         = GlobPtr<event_cnt_t>;
+  using event_cnt_t   = dash::Atomic<int>;
+  using array         = dash::Array<event_cnt_t>;
+  using pointer       = typename array::pointer;
+  using const_pointer = typename pointer::const_type;
+
 public:
   // Types
   using iterator       = coarray::CoEventIter;
@@ -49,8 +57,7 @@ public:
   using size_type      = int;
 
 private:
-  dash::Array<event_cnt_t> _event_counts;
-
+   array _event_counts;
 public:
 
   /**
@@ -64,21 +71,33 @@ public:
     }
 
   iterator begin() noexcept {
-    return iterator(static_cast<gptr_t>(_event_counts.begin()));
+    return iterator(static_cast<pointer>(_event_counts.begin()));
   }
 
   const_iterator begin() const noexcept {
-    return const_iterator(static_cast<gptr_t>(_event_counts.begin()));
+    // TODO FIXME
+    //CoevenIter is not const correct, so we need a hack and unpack a nonconst
+    //pointer from a const iterator to make the comiler happy.
+    //return const_iterator(static_cast<const_pointer>(_event_counts.begin()));
+    auto dart_ptr = _event_counts.begin().dart_gptr();
+    pointer nonconst_ptr{dart_ptr};
+    return const_iterator(nonconst_ptr);
   }
 
   iterator end() {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
-    return iterator(static_cast<gptr_t>(_event_counts.end()));
+    return iterator(static_cast<pointer>(_event_counts.end()));
   }
 
   const_iterator end() const {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
-    return const_iterator(static_cast<gptr_t>(_event_counts.end()));
+    // TODO FIXME
+    //CoevenIter is not const correct, so we need a hack and unpack a nonconst
+    //pointer from a const iterator to make the comiler happy.
+    //return const_iterator(static_cast<const_pointer>(_event_counts.end()));
+    auto dart_ptr = _event_counts.end().dart_gptr();
+    pointer nonconst_ptr{dart_ptr};
+    return const_iterator(nonconst_ptr);
   }
 
   size_type size() const {
@@ -97,7 +116,7 @@ public:
 #ifdef DASH_DEBUG
       // avoid spamming the logs while busy waiting
       DASH_LOG_DEBUG("waiting for event at gptr",
-                     static_cast<gptr_t>(_event_counts.begin()
+                     static_cast<pointer>(_event_counts.begin()
                                          +_team->myid().id));
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
 #endif
@@ -116,7 +135,7 @@ public:
    * initializes the Coevent. If it was already initialized in the Ctor,
    * the second initialization is skipped.
    */
-  inline void initialize(Team & team = dash::Team::All()) noexcept {
+  inline void initialize(Team & team = dash::Team::All()) {
     if(!_is_initialized){
       _team = &team;
       _event_counts.allocate(_team->size());
@@ -133,16 +152,16 @@ public:
   /**
    * Operator to select event at given unit.
    */
-  inline reference operator()(const int & unit) noexcept {
+  inline reference operator()(const int & unit) DASH_ASSERT_NOEXCEPT {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
-    auto ptr = static_cast<gptr_t>(_event_counts.begin() + unit);
+    auto ptr = static_cast<pointer>(_event_counts.begin() + unit);
     return reference(ptr);
   }
 
   /**
    * Operator to select event at given unit.
    */
-  inline reference operator()(const team_unit_t & unit) noexcept {
+  inline reference operator()(const team_unit_t & unit) DASH_ASSERT_NOEXCEPT {
     return this->operator()(static_cast<int>(unit));
   }
 

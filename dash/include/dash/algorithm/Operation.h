@@ -1,8 +1,8 @@
 #ifndef DASH__ALGORITHM__OPERATION_H__
 #define DASH__ALGORITHM__OPERATION_H__
 
-#include <dash/Types.h>
 #include <dash/Meta.h>
+#include <dash/Types.h>
 
 #include <dash/dart/if/dart_types.h>
 
@@ -45,18 +45,74 @@ public:
   typedef ValueType value_type;
 
 public:
-  constexpr typename std::enable_if< enabled, dart_operation_t >::type
-  dart_operation() const {
+  static constexpr dart_operation_t
+  dart_operation() {
     return _op;
   }
 
-  constexpr typename std::enable_if< enabled, OpKind >::type
-  op_kind() const {
+  static constexpr OpKind
+  op_kind() {
     return _kind;
   }
 };
 
+/**
+ * Query the DART operation for an arbitrary binary operations.
+ * Overload for operations that cannot be used in DART collectives, e.g.,
+ * arbitrary functions and \c OpKind::NOOP (such as \c dash::first,
+ * \c dash::second)
+ */
+template<typename BinaryOperation, typename = void>
+struct dart_reduce_operation
+  : public std::integral_constant<dart_operation_t, DART_OP_UNDEFINED>
+{ };
+
+/**
+ * Query the DART operation for an arbitrary binary operation.
+ * Overload for operations that can be used in DART collective operations.
+ */
+template<typename BinaryOperation>
+struct dart_reduce_operation<BinaryOperation,
+        typename std::enable_if<
+          // no-ops cannot be used in DART collectives
+          BinaryOperation::op_kind() != dash::internal::OpKind::NOOP &&
+          // only pre-defined operations can be used in DART collectives,
+          // they are derived from dash::internal::ReduceOperation
+          std::is_base_of<
+            dash::internal::ReduceOperation<
+              typename BinaryOperation::value_type,
+              BinaryOperation::dart_operation(),
+              BinaryOperation::op_kind(), true>,
+            BinaryOperation>::value>::type>
+  : public std::integral_constant<dart_operation_t,
+                                  BinaryOperation::dart_operation()>
+{ };
+
 } // namespace internal
+
+#ifdef DOXYGEN
+/**
+ * Query the underlying \ref dart_operation_t for arbitrary binary operations.
+ * Yields \c DART_OP_UNDEFINED for non-DART operations.
+ *
+ * \see      dash::min
+ * \see      dash::max
+ * \see      dash::plus
+ * \see      dash::multiply
+ * \see      dash::first
+ * \see      dash::second
+ * \see      dash::bit_and
+ * \see      dash::bit_or
+ * \see      dash::bit_xor
+ *
+ * \ingroup  DashReduceOperations
+ */
+template<typename BinaryOperation>
+struct dart_operation
+{
+  dart_operation_t value;
+}
+#endif // DOXYGEN
 
 /**
  * Reduce operands to their minimum value.
@@ -145,9 +201,8 @@ template< typename ValueType >
 struct first
 : public internal::ReduceOperation< ValueType, DART_OP_NO_OP,
                                     dash::internal::OpKind::NOOP, true > {
-  ValueType operator()(
-    const ValueType & lhs,
-    const ValueType & rhs) const {
+  ValueType operator()(const ValueType& lhs, const ValueType& /*rhs*/) const
+  {
     return lhs;
   }
 };
@@ -163,9 +218,8 @@ template< typename ValueType >
 struct second
 : public internal::ReduceOperation< ValueType, DART_OP_REPLACE,
                                     dash::internal::OpKind::NOOP, true > {
-  ValueType operator()(
-    const ValueType & lhs,
-    const ValueType & rhs) const {
+  ValueType operator()(const ValueType& /*lhs*/, const ValueType& rhs) const
+  {
     return rhs;
   }
 };
