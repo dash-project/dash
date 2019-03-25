@@ -55,8 +55,8 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_EXT_COMPILER_WARNINGS=OFF \
                         -DENABLE_ASSERTIONS=OFF \
                         \
-                        -DENABLE_SHARED_WINDOWS=ON \
-                        -DENABLE_DYNAMIC_WINDOWS=ON \
+                        -DENABLE_SHARED_WINDOWS=OFF \
+                        -DENABLE_DYNAMIC_WINDOWS=OFF \
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                         \
