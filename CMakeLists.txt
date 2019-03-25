@@ -56,9 +56,9 @@ option(ENABLE_ASSERTIONS
 option(ENABLE_UNIFIED_MEMORY_MODEL
        "Specify whether to assume unified memory model" on)
 option(ENABLE_SHARED_WINDOWS
-       "Specify whether shared memory features are enabled" on)
+       "Specify whether shared memory features are enabled" off)
 option(ENABLE_DYNAMIC_WINDOWS
-       "Specify whether to use dynamic MPI windows for collective allocation" on)
+       "Specify whether to use dynamic MPI windows for collective allocation" off)
 option(ENABLE_DEFAULT_INDEX_TYPE_LONG
        "Specify whether to use int64_t as default index type" on)
 option(ENABLE_LIBNUMA
