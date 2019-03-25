@@ -116,6 +116,56 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
   }
 }
 
+TEST_F(DARTOnesidedTest, PutHandleAllRemote)
+{
+  // Handle variant of put, the handle contains src and dest seg_id as well as queue AFTER return
+  // non blocking so must use wait at the end
+  typedef int value_t;
+  const size_t block_size = 10;
+  size_t num_elem_copy    = (dash::size() - 1) * block_size;
+  size_t num_elem_total   = dash::size() * block_size;
+  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
+  // Array to store local elements to copy: 
+  auto *local_array = new value_t[num_elem_copy];
+  // Zero the local part of the shared array to test against: 
+  for (size_t l = 0; l < block_size; ++l) {
+    array.local[l] = 0;
+  }
+  // Assign initial values to copy to local array: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
+  for (size_t l = 0; l < block_size; ++l) {
+    local_array[l] = ((dash::myid() + 1) * 1000) + l;
+  }
+  printf("%d\n", local_array[1]);
+  array.barrier();
+
+  // Unit to copy values to:
+  dart_unit_t unit_dst  = (dash::myid() + 1) % dash::size();
+  // Global start index of block to copy:
+  value_t g_dst_index       = unit_dst * block_size;
+  // Copy values:
+  dash::dart_storage<value_t> ds(block_size);
+  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
+
+  dart_handle_t handle;
+  EXPECT_EQ_U(
+        DART_OK,
+    dart_put_handle(
+      (array.begin() + g_dst_index).dart_gptr(),
+      local_array,
+      ds.nelem,
+      ds.dtype,
+      ds.dtype,
+      &handle
+    )
+  );
+  
+  dart_wait(&handle);
+
+  printf("%d | %d | %d | %d\n", (value_t) array[0], array[block_size], array[block_size*2],array[block_size*3]);
+  delete[] local_array;
+
+}
+
 TEST_F(DARTOnesidedTest, GetHandleAllRemote)
 {
   typedef int value_t;
