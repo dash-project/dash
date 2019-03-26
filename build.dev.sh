@@ -44,6 +44,15 @@ fi
 # To build with MKL support, set environment variables MKLROOT and INTELROOT.
 #
 
+# The MPI backend offers support for employing shared memory windows in combination
+# with dynamic windows, which may improve on-node communication performance.
+# This feature can be enabled by setting
+#                        -DENABLE_SHARED_WINDOWS=ON \
+#                        -DENABLE_DYNAMIC_WINDOWS=ON \
+# below. However, we have experienced issues with some MPI implementations if used
+# in combination with -DENABLE_THREADSUPPORT=ON. It might also have a negative effect
+# on inter-node communication performance on some architectures.
+
 # To enable IPM runtime support, use:
 #
 #                    -DIPM_PREFIX=<IPM install path> \
