@@ -135,7 +135,6 @@ TEST_F(DARTOnesidedTest, PutHandleAllRemote)
   for (size_t l = 0; l < block_size; ++l) {
     local_array[l] = ((dash::myid() + 1) * 1000) + l;
   }
-  printf("%d\n", local_array[1]);
   array.barrier();
 
   // Unit to copy values to:
@@ -158,12 +157,17 @@ TEST_F(DARTOnesidedTest, PutHandleAllRemote)
       &handle
     )
   );
-  
+  // wait for completion
   dart_wait(&handle);
 
-  printf("%d | %d | %d | %d\n", (value_t) array[0], array[block_size], array[block_size*2],array[block_size*3]);
-  delete[] local_array;
+  LOG_MESSAGE("Validating values");
+  for(int i = 0; i < block_size; ++i)
+  {
+    auto expected =  array[g_dst_index + i];
+    ASSERT_EQ(local_array[i], expected);
+  }
 
+  delete[] local_array;
 }
 
 TEST_F(DARTOnesidedTest, GetHandleAllRemote)
