@@ -116,17 +116,55 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
   }
 }
 
+TEST_F(DARTOnesidedTest, PutNonBlockingSingleBlock)
+{
+  typedef int value_t;
+  const size_t block_size = 10;
+  size_t num_elem_total   = dash::size() * block_size;
+  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
+  // Array to store local copy:
+  int local_array[block_size];
+  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
+  for (size_t l = 0; l < block_size; ++l) {
+    array.local[l] = 0;
+  }
+  for (size_t l = 0; l < block_size; ++l) {
+    local_array[l] = ((dash::myid() + 1) * 1000) + l;
+  }
+  array.barrier();
+  // Unit to copy values to:
+  dart_unit_t unit_dest  = (dash::myid() + 1) % dash::size();
+  // Global start index of block to copy to:
+  int g_dest_index       = unit_dest * block_size;
+  // Copy values:
+  dash::dart_storage<value_t> ds(block_size);
+  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
+  dart_put(
+    (array.begin() + g_dest_index).dart_gptr(),   // gptr dest
+    local_array,                                // lptr src
+    ds.nelem,
+    ds.dtype,
+    ds.dtype
+  );
+
+  dart_flush((array.begin() + g_dest_index).dart_gptr());
+
+  for (size_t l = 0; l < block_size; ++l) {
+    value_t expected = array[g_dest_index + l];
+    ASSERT_EQ_U(expected, local_array[l]);
+  }
+}
+
 TEST_F(DARTOnesidedTest, PutHandleAllRemote)
 {
   // Handle variant of put, the handle contains src and dest seg_id as well as queue AFTER return
   // non blocking so must use wait at the end
   typedef int value_t;
   const size_t block_size = 10;
-  size_t num_elem_copy    = (dash::size() - 1) * block_size;
   size_t num_elem_total   = dash::size() * block_size;
   dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
   // Array to store local elements to copy: 
-  auto *local_array = new value_t[num_elem_copy];
+  auto *local_array = new value_t[block_size];
   // Zero the local part of the shared array to test against: 
   for (size_t l = 0; l < block_size; ++l) {
     array.local[l] = 0;
@@ -164,7 +202,7 @@ TEST_F(DARTOnesidedTest, PutHandleAllRemote)
   for(int i = 0; i < block_size; ++i)
   {
     auto expected =  array[g_dst_index + i];
-    ASSERT_EQ(local_array[i], expected);
+    ASSERT_EQ_U(local_array[i], expected);
   }
 
   delete[] local_array;
