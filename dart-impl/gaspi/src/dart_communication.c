@@ -755,7 +755,7 @@ dart_ret_t dart_free_handle(
 
     if(val == 0)
     {
-      DART_LOG_ERROR("Error: gaspi_notify value is not != 0\n");
+      DART_LOG_ERROR("Error: gaspi_notify value is == 0\n");
     }
 
     return DART_OK;
