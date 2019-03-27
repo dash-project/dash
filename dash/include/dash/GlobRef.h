@@ -66,7 +66,7 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  explicit constexpr GlobRef(dart_gptr_t dart_gptr)
+  explicit constexpr GlobRef(dart_gptr_t dart_gptr) noexcept
   : _gptr(dart_gptr)
   {
   }
@@ -82,7 +82,7 @@ public:
   template <
       typename _T,
       long = internal::enable_implicit_copy_ctor<value_type, _T>::value>
-  constexpr GlobRef(const GlobRef<_T>& gref)
+  constexpr GlobRef(const GlobRef<_T>& gref) noexcept
     : GlobRef(gref.dart_gptr())
   {
   }
@@ -96,7 +96,7 @@ public:
   template <
       typename _T,
       int = internal::enable_explicit_copy_ctor<value_type, _T>::value>
-  explicit constexpr GlobRef(const GlobRef<_T>& gref)
+  explicit constexpr GlobRef(const GlobRef<_T>& gref) noexcept
     : GlobRef(gref.dart_gptr())
   {
   }
@@ -108,7 +108,7 @@ public:
   template <
       typename _T,
       long = internal::enable_implicit_copy_ctor<value_type, _T>::value>
-  constexpr GlobRef(const GlobAsyncRef<_T>& gref)
+  constexpr GlobRef(const GlobAsyncRef<_T>& gref) noexcept
     : _gptr(gref.dart_gptr())
   {
   }
@@ -116,7 +116,7 @@ public:
   template <
       typename _T,
       int = internal::enable_explicit_copy_ctor<value_type, _T>::value>
-  explicit constexpr GlobRef(const GlobAsyncRef<_T>& gref)
+  explicit constexpr GlobRef(const GlobAsyncRef<_T>& gref) noexcept
     : GlobRef(gref.dart_gptr())
   {
   }
@@ -124,7 +124,7 @@ public:
   /**
    * Move Constructor
    */
-  GlobRef(self_t&& other)
+  GlobRef(self_t&& other) noexcept
     :_gptr(std::move(other._gptr))
   {
     DASH_LOG_TRACE("GlobRef.GlobRef(GlobRef &&)", _gptr);
@@ -145,7 +145,7 @@ public:
   /**
    * Move Assignment: Redirects to Copy Assignment
    */
-  self_t& operator=(self_t&& other) {
+  self_t& operator=(self_t&& other) noexcept {
     DASH_LOG_TRACE("GlobRef.operator=(GlobRef &&)", _gptr);
     operator=(other);
     return *this;

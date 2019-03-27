@@ -912,6 +912,8 @@ public:
     other.m_lsize  = 0;
     other.m_size   = 0;
 
+    other.m_team->unregister_deallocator(&other, std::bind(&Array::deallocate, &other));
+
     // Register deallocator of this array instance at the team
     // instance that has been used to initialized it:
     m_team->register_deallocator(this, std::bind(&Array::deallocate, this));
@@ -969,8 +971,11 @@ public:
                             m_allocator, m_pattern.local_size()}};
     m_data = std::move(__tmp);
 
-    this->m_begin     = other.m_begin;
-    this->m_end       = other.m_end;
+
+    //TODO rko: we have to provide a proper dash::swap for iterators;
+    this->m_begin = iterator{&m_globmem, m_pattern, other.m_begin.pos()};
+    this->m_end = iterator{&m_globmem, m_pattern, other.m_end.pos()};
+
     this->m_lbegin    = other.m_lbegin;
     this->m_lcapacity = other.m_lcapacity;
     this->m_lend      = other.m_lend;
@@ -986,6 +991,8 @@ public:
     other.m_lend    = nullptr;
     other.m_lsize   = 0;
     other.m_size    = 0;
+
+    other.m_team->unregister_deallocator(&other, std::bind(&Array::deallocate, &other));
 
     m_team->register_deallocator(this, std::bind(&Array::deallocate, this));
 
@@ -1040,7 +1047,8 @@ public:
    */
   constexpr const_iterator begin() const noexcept
   {
-    return (const_cast<iterator &>(m_begin));
+    return const_iterator(
+        const_cast<memory_type *>(&m_globmem), m_pattern, m_begin.pos());
   }
 
   /**
@@ -1053,8 +1061,10 @@ public:
   /**
    * Global pointer to the end of the array.
    */
-  constexpr const_iterator end() const noexcept {
-    return (const_cast<iterator &>(m_end));
+  constexpr const_iterator end() const noexcept
+  {
+    return const_iterator(
+        const_cast<memory_type *>(&m_globmem), m_pattern, m_end.pos());
   }
 
   /**

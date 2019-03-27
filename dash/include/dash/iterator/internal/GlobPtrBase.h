@@ -71,28 +71,28 @@ dart_gptr_t increment(
     dart_gptr_t dart_gptr,
     typename MemorySpaceT::size_type,
     MemorySpaceT const *mem_space,
-    memory_space_noncontiguous);
+    memory_space_noncontiguous) DASH_NOEXCEPT;
 
 template <class T, class MemorySpaceT>
 dart_gptr_t increment(
     dart_gptr_t dart_gptr,
     typename MemorySpaceT::size_type,
     MemorySpaceT const *mem_space,
-    memory_space_contiguous);
+    memory_space_contiguous) DASH_NOEXCEPT;
 
 template <class T, class MemorySpaceT>
 dart_gptr_t decrement(
     dart_gptr_t dart_gptr,
     typename MemorySpaceT::size_type,
     MemorySpaceT const *mem_space,
-    memory_space_contiguous);
+    memory_space_contiguous) DASH_NOEXCEPT;
 
 template <class T, class MemorySpaceT>
 dart_gptr_t decrement(
     dart_gptr_t dart_gptr,
     typename MemorySpaceT::size_type,
     MemorySpaceT const *mem_space,
-    memory_space_noncontiguous);
+    memory_space_noncontiguous) DASH_NOEXCEPT;
 
 template <class T, class MemSpaceT>
 inline dash::gptrdiff_t distance(
@@ -193,7 +193,7 @@ dart_gptr_t increment(
     dart_gptr_t dart_gptr,
     typename MemorySpaceT::size_type offs,
     MemorySpaceT const * /*mem_space*/,
-    memory_space_noncontiguous)
+    memory_space_noncontiguous) DASH_NOEXCEPT
 {
   dart_gptr.addr_or_offs.offset += offs * sizeof(T);
   return dart_gptr;
@@ -205,7 +205,7 @@ dart_gptr_t increment(
     dart_gptr_t                      gptr,
     typename MemorySpaceT::size_type offs,
     MemorySpaceT const *             mem_space,
-    memory_space_contiguous)
+    memory_space_contiguous) DASH_NOEXCEPT
 {
   using value_type = T;
 
@@ -281,7 +281,7 @@ dart_gptr_t decrement(
     dart_gptr_t gptr,
     typename MemorySpaceT::size_type offs,
     MemorySpaceT const *mem_space,
-    memory_space_noncontiguous)
+    memory_space_noncontiguous) DASH_NOEXCEPT
 {
   DASH_THROW(dash::exception::NotImplemented, "not implemented yet");
 }
@@ -291,7 +291,7 @@ dart_gptr_t decrement(
     dart_gptr_t gptr,
     typename MemorySpaceT::size_type offs,
     MemorySpaceT const *mem_space,
-    memory_space_contiguous)
+    memory_space_contiguous) DASH_NOEXCEPT
 {
   using value_type = T;
 

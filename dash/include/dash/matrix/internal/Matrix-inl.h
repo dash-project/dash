@@ -143,7 +143,7 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
   _team      = other._team;
   _size      = other._size;
   _lcapacity = other._lcapacity;
-  _begin     = other._begin;
+  _begin = iterator{&_glob_mem, _pattern, other._begin.pos()};
   _lbegin    = other._lbegin;
   _lend      = other._lend;
   _ref       = other._ref;
@@ -462,7 +462,8 @@ constexpr typename Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::const_iterato
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::begin() const noexcept
 {
-  return const_iterator(_begin);
+    return const_iterator(
+        const_cast<GlobMem_t *>(&_glob_mem), _pattern, _begin.pos());
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
@@ -478,7 +479,8 @@ constexpr typename Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::const_iterato
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::end() const noexcept
 {
-  return const_iterator(_begin + _size);
+    return const_iterator(
+        const_cast<GlobMem_t *>(&_glob_mem), _pattern, _begin.pos() + _size);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>

@@ -138,6 +138,23 @@ distance(
   return last - first;
 }
 
+template<
+  typename ElementType,
+  class    Pattern,
+  class    GlobMemType,
+  class    Pointer,
+  class    Reference >
+DASH_CONSTEXPR auto operator-(
+  /// Global pointer to the initial position in the global sequence
+  const GlobIter<ElementType, Pattern, GlobMemType, Pointer, Reference> &
+    lhs,
+  /// Global iterator to the final position in the global sequence
+  const GlobIter<ElementType, Pattern, GlobMemType, Pointer, Reference> &
+    rhs) DASH_NOEXCEPT
+{
+  return lhs.pos() - rhs.pos();
+}
+
 /**
  *
  * \ingroup     Algorithms
