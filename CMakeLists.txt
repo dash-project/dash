@@ -117,6 +117,7 @@ endif()
 
 # Load build modules to locate libraries after environment setup
 # has been loaded:
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Boost.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
