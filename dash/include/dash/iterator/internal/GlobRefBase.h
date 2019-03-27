@@ -6,6 +6,7 @@
 #include <type_traits>
 
 #include <dash/TypeTraits.h>
+#include <dash/atomic/Type_traits.h>
 #include <dash/dart/if/dart_globmem.h>
 
 namespace dash {
@@ -107,8 +108,8 @@ template <class T>
 class GlobRefBase {
  public:
   using value_type          = T;
-  using const_value_type    = typename std::add_const<T>::type;
-  using nonconst_value_type = typename std::remove_const<T>::type;
+  using const_value_type    = typename std::add_const<value_type>::type;
+  using nonconst_value_type = typename std::remove_const<value_type>::type;
 
  protected:
   /**
@@ -166,7 +167,9 @@ class GlobRefBase {
   // clang-format on
   template <
       typename _From,
-      long = detail::enable_implicit_copy_ctor<_From, value_type>::value>
+      long = detail::enable_implicit_copy_ctor<
+          typename dash::remove_atomic<_From>::type,
+          typename dash::remove_atomic<value_type>::type>::value>
   constexpr GlobRefBase(const GlobRefBase<_From>& gref) noexcept
     : GlobRefBase(gref.dart_gptr())
   {
@@ -184,7 +187,9 @@ class GlobRefBase {
   // clang-format on
   template <
       typename _From,
-      long = detail::enable_implicit_copy_ctor<_From, value_type>::value>
+      long = detail::enable_implicit_copy_ctor<
+          typename dash::remove_atomic<_From>::type,
+          typename dash::remove_atomic<value_type>::type>::value>
   constexpr GlobRefBase(GlobRefBase<_From>&& gref) noexcept
     : GlobRefBase(std::move(gref.dart_gptr()))
   {
@@ -200,7 +205,9 @@ class GlobRefBase {
   // clang-format on
   template <
       typename _From,
-      int = detail::enable_explicit_copy_ctor<_From, value_type>::value>
+      int = detail::enable_explicit_copy_ctor<
+          typename dash::remove_atomic<_From>::type,
+          typename dash::remove_atomic<value_type>::type>::value>
   explicit constexpr GlobRefBase(const GlobRefBase<_From>& gref) noexcept
     : GlobRefBase(gref.dart_gptr())
   {
@@ -216,7 +223,9 @@ class GlobRefBase {
   // clang-format on
   template <
       typename _From,
-      int = detail::enable_explicit_copy_ctor<_From, value_type>::value>
+      int = detail::enable_explicit_copy_ctor<
+          typename dash::remove_atomic<_From>::type,
+          typename dash::remove_atomic<value_type>::type>::value>
   explicit constexpr GlobRefBase(GlobRefBase<_From>&& gref) noexcept
     : GlobRefBase(std::move(gref.dart_gptr()))
   {

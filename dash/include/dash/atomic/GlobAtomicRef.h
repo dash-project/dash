@@ -15,12 +15,14 @@ class Atomic;
 
 template <typename T>
 class GlobAsyncRef;
+
 /**
  * Specialization for atomic values. All atomic operations are
  * \c const as the \c GlobRef does not own the atomic values.
  */
 template <typename T>
-class GlobRef<dash::Atomic<T>> {
+class GlobRef<dash::Atomic<T>>: public detail::GlobRefBase<dash::Atomic<T>>
+{
   /* Notes on type compatibility:
    *
    * - The general support of atomic operations on values of type T is
@@ -34,6 +36,8 @@ class GlobRef<dash::Atomic<T>> {
   template <typename U>
   friend std::ostream& operator<<(std::ostream& os, const GlobRef<U>& gref);
 
+  using base_t = detail::GlobRefBase<dash::Atomic<T>>;
+
 public:
   using value_type          = T;
   using const_value_type    = typename std::add_const<T>::type;
@@ -45,119 +49,38 @@ public:
   using const_type          = GlobRef<const_atomic_t>;
   using nonconst_type       = GlobRef<dash::Atomic<nonconst_value_type>>;
 
-private:
-  dart_gptr_t _gptr{};
-
-
 public:
-  /**
-   * Reference semantics forbid declaration without definition.
-   */
-  GlobRef() = delete;
 
-  //TODO rkowalewski: Clarify constructors by passing various pointer types
 
-  /**
-   * Constructor: Create an atomic reference to a element in global memory
-   */
-  explicit GlobRef(dart_gptr_t dart_gptr)
-    : _gptr(dart_gptr)
+  //inherit all constructors from parent class
+  using detail::GlobRefBase<dash::Atomic<T>>::GlobRefBase;
+
+  template <class MemSpaceT>
+  GlobRef(dash::GlobPtr<value_type, MemSpaceT> const& gptr)
+    : base_t(gptr.dart_gptr())
   {
-    DASH_LOG_TRACE_VAR("GlobRef(dart_gptr_t)", dart_gptr);
   }
 
-  /**
-   * Constructor, creates an GlobRef object referencing an element in global
-   * memory.
-   */
-  template <typename PatternT>
-  explicit GlobRef(
-      /// Pointer to referenced object in global memory
-      const GlobPtr<const_atomic_t, PatternT>& gptr)
-    : GlobRef(gptr.dart_gptr())
-  {
-    static_assert(
-        std::is_same<value_type, const_value_type>::value,
-        "Cannot create GlobRef<Atomic<T>> from GlobPtr<Atomic<const T>>!");
-  }
-
-  template <typename PatternT>
-  explicit GlobRef(
-      /// Pointer to referenced object in global memory
-      const GlobPtr<nonconst_atomic_t, PatternT>& gptr)
-    : GlobRef(gptr.dart_gptr())
+  template <class MemSpaceT>
+  GlobRef(dash::GlobPtr<value_type, MemSpaceT>&& gptr)
+    : base_t(std::move(gptr.dart_gptr()))
   {
   }
 
   /**
-   * Copy constructor: Implicit if at least one of the following conditions is
-   * satisfied:
-   *    1) value_type and From are exactly the same types (including const and
-   *    volatile qualifiers
-   *    2) value_type and From are the same types after removing const and
-   *    volatile qualifiers and value_type itself is const.
+   * COPY Construction
    */
-  template <
-      typename From,
-      int = detail::enable_implicit_copy_ctor<From, value_type>::value>
-  GlobRef(const GlobRef<dash::Atomic<From>>& gref)
-    : GlobRef(gref.dart_gptr())
-  {
-  }
-
-  /**
-   * Copy constructor: Explicit if the following conditions are satisfied.
-   *    1) value_type and From are the same types after excluding const and
-   *    volatile qualifiers
-   *    2) value_type is const and From is non-const
-   */
-  template <
-      typename From,
-      long = detail::enable_explicit_copy_ctor<From, value_type>::value>
-  explicit GlobRef(const GlobRef<dash::Atomic<From>>& gref)
-    : GlobRef(gref.dart_gptr())
-  {
-  }
-
-  /**
-   * Copy constructor: Implicit if at least one of the following conditions is
-   * satisfied:
-   *    1) value_type and From are exactly the same types (including const and
-   *    volatile qualifiers
-   *    2) value_type and From are the same types after removing const and
-   *    volatile qualifiers and value_type itself is const.
-   */
-  template <
-      typename From,
-      int = detail::enable_implicit_copy_ctor<From, value_type>::value>
-  GlobRef(const GlobAsyncRef<dash::Atomic<From>>& gref)
-    : GlobRef(gref.dart_gptr())
-  {
-  }
-
-  /**
-   * Copy constructor: Explicit if the following conditions are satisfied.
-   *    1) value_type and From are the same types after excluding const and
-   *    volatile qualifiers
-   *    2) value_type is const and From is non-const
-   */
-  template <
-      typename From,
-      long = detail::enable_explicit_copy_ctor<From, value_type>::value>
-  explicit GlobRef(const GlobAsyncRef<dash::Atomic<From>>& gref)
-    : GlobRef(gref.dart_gptr())
-  {
-  }
+  GlobRef(const GlobRef & other) = default;
 
   /**
    * Move Constructor.
    */
-  GlobRef(self_t&& other) = default;
+  GlobRef(GlobRef&& other) = default;
 
   /**
    * Copy Assignment: Copies atomically the value from other
    */
-  self_t& operator=(const self_t& other) const
+  GlobRef& operator=(const GlobRef& other) const
   {
     store(static_cast<atomic_t>(other));
     return *this;
@@ -166,7 +89,7 @@ public:
   /**
    * Move Assignment: Redirects to Copy Assignment
    */
-  self_t& operator=(self_t&& other) {
+  GlobRef& operator=(GlobRef&& other) {
     operator=(other);
     return *this;
   }
@@ -176,18 +99,13 @@ public:
     return load();
   }
 
-  dart_gptr_t dart_gptr() const
-  {
-    return _gptr;
-  }
-
   /**
    * Checks whether the globally referenced element is in
    * the calling unit's local memory.
    */
   bool is_local() const
   {
-    return dash::internal::is_local(_gptr);
+    return dash::internal::is_local(this->dart_gptr());
   }
 
   /**
@@ -218,15 +136,16 @@ public:
     static_assert(
         std::is_same<value_type, nonconst_value_type>::value,
         "Cannot modify value referenced by GlobRef<Atomic<const T>>!");
+    auto gptr = this->dart_gptr();
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.store()", value);
-    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.store", _gptr);
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.store", gptr);
     dart_ret_t ret = dart_accumulate(
-        _gptr,
+        this->dart_gptr(),
         &value,
         1,
         dash::dart_punned_datatype<T>::value,
         DART_OP_REPLACE);
-    dart_flush(_gptr);
+    dart_flush(gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG("GlobRef<Atomic>.store >");
   }
@@ -247,16 +166,17 @@ public:
         "Basic type or type smaller than 64bit required for "
         "atomic get!");
     DASH_LOG_DEBUG("GlobRef<Atomic>.load()");
-    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.load", _gptr);
+    auto gptr = this->dart_gptr();
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.load", gptr);
     nonconst_value_type nothing;
     nonconst_value_type result;
     dart_ret_t          ret = dart_fetch_and_op(
-        _gptr,
+        gptr,
         &nothing,
         &result,
         dash::dart_punned_datatype<T>::value,
         DART_OP_NO_OP);
-    dart_flush_local(_gptr);
+    dart_flush_local(gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.get >", result);
     return result;
@@ -292,16 +212,17 @@ public:
         std::is_same<value_type, nonconst_value_type>::value,
         "Cannot modify value referenced by GlobRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op()", value);
-    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.op", _gptr);
+    auto gptr = this->dart_gptr();
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.op", gptr);
     nonconst_value_type acc = value;
     DASH_LOG_TRACE("GlobRef<Atomic>.op", "dart_accumulate");
     dart_ret_t ret = dart_accumulate(
-        _gptr,
+        gptr,
         &acc,
         1,
         dash::dart_punned_datatype<T>::value,
         binary_op.dart_operation());
-    dart_flush(_gptr);
+    dart_flush(gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op >", acc);
   }
@@ -330,16 +251,17 @@ public:
         std::is_same<value_type, nonconst_value_type>::value,
         "Cannot modify value referenced by GlobRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op()", value);
-    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op", _gptr);
+    auto gptr = this->dart_gptr();
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op", gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op", typeid(value).name());
     nonconst_value_type res;
     dart_ret_t          ret = dart_fetch_and_op(
-        _gptr,
+        gptr,
         &value,
         &res,
         dash::dart_punned_datatype<T>::value,
         binary_op.dart_operation());
-    dart_flush(_gptr);
+    dart_flush(gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_op failed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op >", res);
     return res;
@@ -374,18 +296,19 @@ public:
         std::is_same<value_type, nonconst_value_type>::value,
         "Cannot modify value referenced by GlobRef<const T>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.compare_exchange()", desired);
-    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange", _gptr);
+    auto gptr = this->dart_gptr();
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange", gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange", expected);
     DASH_LOG_TRACE_VAR(
         "GlobRef<Atomic>.compare_exchange", typeid(desired).name());
     nonconst_value_type result;
     dart_ret_t          ret = dart_compare_and_swap(
-        _gptr,
+        gptr,
         &desired,
         &expected,
         &result,
         dash::dart_punned_datatype<T>::value);
-    dart_flush(_gptr);
+    dart_flush(gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_compare_and_swap failed");
     DASH_LOG_DEBUG_VAR(
         "GlobRef<Atomic>.compare_exchange >", (expected == result));

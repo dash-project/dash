@@ -31,7 +31,6 @@ private:
 public:
   //inherit all constructors from parent class
   using detail::GlobRefBase<T>::GlobRefBase;
-
   /**
    * COPY Construction
    */

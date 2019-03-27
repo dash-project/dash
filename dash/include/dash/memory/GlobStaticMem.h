@@ -163,7 +163,7 @@ public:
   {
     auto soon_to_be_end = m_begin;
     // reset local offset to 0
-    soon_to_be_end.set_unit(dash::team_unit_t{m_team->size()});
+    soon_to_be_end.set_unit(dash::team_unit_t{static_cast<dart_team_unit_t>(m_team->size())});
 
     return void_pointer(soon_to_be_end);
   }
