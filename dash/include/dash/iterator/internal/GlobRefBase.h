@@ -6,7 +6,6 @@
 #include <type_traits>
 
 #include <dash/TypeTraits.h>
-#include <dash/atomic/Type_traits.h>
 #include <dash/dart/if/dart_globmem.h>
 
 namespace dash {

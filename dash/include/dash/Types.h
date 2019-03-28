@@ -215,27 +215,6 @@ struct dart_punned_datatype {
 #endif // DOXYGEN
 
 /**
- * Type trait indicating whether the specified type is eligible for
- * elements of DASH containers.
- */
-template <class T>
-struct is_container_compatible :
-  public std::integral_constant<bool,
-              std::is_default_constructible<T>::value
-              && std::is_trivially_copyable<T>::value
-         >
-{ };
-
-/**
- * Type trait indicating whether a type can be used for global atomic
- * operations.
- */
-template <typename T>
-struct is_atomic_compatible
-: public std::integral_constant<bool, std::is_arithmetic<T>::value>
-{ };
-
-/**
  * Type trait indicating whether a type can be used for arithmetic
  * operations in global memory space.
  */

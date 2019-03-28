@@ -1,8 +1,6 @@
 #ifndef DASH__ATOMIC_GLOBREF_H_
 #define DASH__ATOMIC_GLOBREF_H_
 
-#include <dash/GlobPtr.h>
-//#include <dash/Types.h>
 #include <dash/algorithm/Operation.h>
 #include <dash/iterator/internal/GlobRefBase.h>
 
@@ -15,6 +13,9 @@ class Atomic;
 
 template <typename T>
 class GlobAsyncRef;
+
+template <typename T>
+class GlobRef;
 
 /**
  * Specialization for atomic values. All atomic operations are

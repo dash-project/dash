@@ -11,7 +11,6 @@
 #include <dash/Init.h>
 
 #include <dash/TypeTraits.h>
-#include <dash/atomic/Type_traits.h>
 
 #include <dash/internal/Logging.h>
 #include <dash/iterator/internal/GlobPtrBase.h>
