@@ -8,6 +8,7 @@
 #include <dash/GlobRef.h>
 #include <dash/memory/MemorySpace.h>
 #include <dash/memory/UniquePtr.h>
+#include <dash/allocator/GlobalAllocator.h>
 
 #include <dash/iterator/GlobIter.h>
 
