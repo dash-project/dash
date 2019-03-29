@@ -61,12 +61,12 @@ dart_ret_t dart_team_memalloc_aligned(
     size_t nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
     size_t teamsize;
     dart_team_unit_t unitid;
-    DART_CHECK_ERROR(dart_team_myid(teamid, &unitid));
+    DART_CHECK_ERROR(dart_team_myid(teamid, &unitid));     
     DART_CHECK_ERROR(dart_team_size(teamid, &teamsize));
 
     gaspi_group_t        gaspi_group;
     gaspi_segment_id_t   gaspi_seg_id;
-    gaspi_segment_id_t * gaspi_seg_ids = (gaspi_segment_id_t *) malloc(sizeof(gaspi_segment_id_t) * teamsize);
+    gaspi_segment_id_t * gaspi_seg_ids = (gaspi_segment_id_t *) malloc(sizeof(gaspi_segment_id_t) * teamsize);  
     assert(gaspi_seg_ids);
 
 
@@ -147,19 +147,9 @@ dart_ret_t dart_team_memfree(dart_gptr_t gptr)
         return DART_ERR_INVAL;
     }
 
-    // Debug purposes
-    /*gaspi_rank_t gaspi_myid;
-    gaspi_proc_rank(&gaspi_myid);
-    bool loop = 1;
-    if(0==gaspi_myid)
-    {
-        while( loop ){}
-    }
-    gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);*/
-    // ==============
     if(seg_stack_isfull(&dart_free_coll_seg_ids))
     {
-        printf(">>>>> ERROR because of full seg_stack in dart_team_memfree\n");
+        printf("ERROR because of full seg_stack in dart_team_memfree\n");
     }
 
     DART_CHECK_ERROR(gaspi_segment_delete(segs));
