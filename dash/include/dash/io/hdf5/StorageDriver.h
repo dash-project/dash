@@ -6,7 +6,7 @@
 #ifdef DASH_ENABLE_HDF5
 
 #ifndef DASH_MPI_IMPL_ID
-#pragma error "HDF5 module requires dart-mpi"
+#error "HDF5 module requires dart-mpi"
 #endif
 
 #include <dash/Exception.h>
