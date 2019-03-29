@@ -376,9 +376,9 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
 /*
  *reduce MINMAX operations
  *
- * From cpp refrence:  
- * A pair with the smallest value in ilist as the first element and the greatest as the second. 
- * If several elements are equivalent to the smallest, the leftmost such element is returned. 
+ * From cpp refrence:
+ * A pair with the smallest value in ilist as the first element and the greatest as the second.
+ * If several elements are equivalent to the smallest, the leftmost such element is returned.
  * If several elements are equivalent to the largest, the rightmost such element is returned.
  */
 
@@ -522,7 +522,7 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     }
     return GASPI_SUCCESS;
  }
- 
+
  // reduce DART_OP_MINMAX uLong
  gaspi_return_t gaspi_op_MINMAX_uLong(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
                         gaspi_state_t state, gaspi_number_t num,
@@ -635,7 +635,7 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     return GASPI_SUCCESS;
  }
 
- 
+
 /*
  * reduce max operations
  */
@@ -1425,33 +1425,3 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     return GASPI_SUCCESS;
  }
 
-//TODO implementation
- dart_ret_t
- dart_type_create_strided(
-   dart_datatype_t   basetype_id,
-   size_t            stride,
-   size_t            blocklen,
-   dart_datatype_t * newtype)
- {
-   fprintf(stderr, "dart-gaspi: %s function not supported\n", __func__);
-   return DART_ERR_NOTFOUND;
- }
-
-//TODO implementation
-dart_ret_t
-dart_type_create_indexed(
-   dart_datatype_t   basetype,
-   size_t            count,
-   const size_t      blocklen[],
-   const size_t      offset[],
-   dart_datatype_t * newtype)
-{
-   fprintf(stderr, "dart-gaspi: %s function not supported\n", __func__);
-   return DART_ERR_NOTFOUND;
-}
-
-//TODO implementation
-dart_ret_t dart_type_destroy(dart_datatype_t *dart_type_ptr){
-   fprintf(stderr, "dart-gaspi: %s function not supported\n", __func__);
-   return DART_OK;
-}

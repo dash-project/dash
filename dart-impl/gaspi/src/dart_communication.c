@@ -6,8 +6,37 @@
 #include <dash/dart/gaspi/dart_translation.h>
 #include <dash/dart/gaspi/dart_mem.h>
 #include <dash/dart/gaspi/dart_communication_priv.h>
+#include <dash/dart/gaspi/dart_types.h>
 
 #include <dash/dart/base/logging.h>
+
+#define CHECK_EQUAL_BASETYPE(_src_type, _dst_type)                            \
+  do {                                                                        \
+    if (!datatype_samebase(_src_type, _dst_type)){            \
+      DART_LOG_ERROR("%s ! Cannot convert base-types",                        \
+          __func__);                                                          \
+      return DART_ERR_INVAL;                                                  \
+    }                                                                         \
+  } while (0)
+
+#define CHECK_NUM_ELEM(_src_type, _dst_type, _num_elem)                       \
+  do {                                                                        \
+    size_t src_num_elem = datatype_num_elem(_src_type);                       \
+    size_t dst_num_elem = datatype_num_elem(_dst_type);                       \
+    if ((_num_elem % src_num_elem) != 0 || (_num_elem % dst_num_elem) != 0) { \
+      DART_LOG_ERROR(                                                         \
+          "%s ! Type-mismatch would lead to truncation (%zu elems)",          \
+          __func__,  _num_elem);                                              \
+      return DART_ERR_INVAL;                                                  \
+    }                                                                         \
+  } while (0)
+
+#define CHECK_TYPE_CONSTRAINTS(_src_type, _dst_type, _num_elem)               \
+  CHECK_EQUAL_BASETYPE(_src_type, _dst_type);                                 \
+  CHECK_NUM_ELEM(_src_type, _dst_type, _num_elem);
+
+
+
 /*********************** Notify Value ************************/
 //gaspi_notification_t dart_notify_value = 42;
 
@@ -527,118 +556,7 @@ dart_ret_t dart_barrier (
 
     return DART_OK;
 }
-#if 0
-/**
- * This operation sends a notification to a target specified in handle.
- * The notification reaches the target if the datatransfer(of the dart_put_gptr_handle)
- * is completed(remote and local).
- *
- * This function can be used with dart_put_gptr_handle to indicate the target unit the
- * availability of the data.
- *
- * @param handle: is the returned handle of the dart_put_gptr_handle
- * @param tag: must be not null and can be used to differentiate between notifies
- *
- * @return DART_OK => success
- * @return DART_ERR_* => failed
- */
-dart_ret_t dart_notify_handle(dart_handle_t handle, unsigned int tag)
-{
-    dart_global_unit_t myid;
-    dart_unit_t rel_myid;
-    if(handle == NULL)
-    {
-        fprintf(stderr, "dart_notify_handle : Handle structure not initialized\n");
-        return DART_ERR_OTHER;
-    }
 
-    DART_CHECK_ERROR(dart_myid(&myid));
-    DART_CHECK_ERROR(unit_g2l(handle->index, myid.id, &rel_myid));
-    DART_CHECK_GASPI_ERROR(gaspi_notify(handle->remote_seg, handle->target_unit, rel_myid, tag, handle->queue, GASPI_BLOCK));
-
-    return DART_OK;
-}
-/**
- * This operation sends a notification to specified target and can be combined with a dart_put_gptr operation to
- * indicate the completion(remote+local) of the put operation to the target unit.
- *
- *  See also dart_notify_waitsome.
- *
- * @param gptr specifies the target(remote), is the same pointer which was used as destination in dart_put_gptr
- * @param tag must be not null and can be used to differentiate between notifies
- *
- * @return DART_OK => success
- * @return DART_ERR_* => failed
- */
-dart_ret_t dart_notify(dart_gptr_t gptr, unsigned int tag)
-{
-    dart_global_unit_t myid;
-    dart_unit_t        my_rel_id;
-    gaspi_queue_id_t   queue;
-    gaspi_segment_id_t gaspi_seg_id    = dart_mempool_seg_localalloc;
-    int16_t            seg_id          = gptr.segid;
-    uint16_t           index           = gptr.flags;
-    dart_unit_t        target_unit     = gptr.unitid;
-
-    DART_CHECK_ERROR(dart_myid(&myid));
-
-    if(seg_id)
-    {
-        dart_unit_t rel_target_unit;
-        DART_CHECK_ERROR(unit_g2l(index, target_unit, &rel_target_unit));
-        if(dart_adapt_transtable_get_gaspi_seg_id(seg_id, rel_target_unit, &gaspi_seg_id) == -1)
-        {
-            fprintf(stderr, "Can't find given target segment id in dart_notify\n");
-            return DART_ERR_NOTFOUND;
-        }
-    }
-
-    int32_t found = 0;
-    DART_CHECK_ERROR(find_rma_request(target_unit, seg_id, &queue, &found));
-    if(!found)
-    {
-        DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
-    }
-
-    DART_CHECK_ERROR(unit_g2l(index, myid.id, &my_rel_id));
-    DART_CHECK_GASPI_ERROR(check_queue_size(queue));
-
-    DART_CHECK_GASPI_ERROR(gaspi_notify(gaspi_seg_id, target_unit, my_rel_id, tag, queue, GASPI_BLOCK));
-
-    return DART_OK;
-}
-
-/**
- * This operation waits on an incomming notification on a given global pointer.
- *
- * @param gptr specifies the data portion(segment)
- * @param tag returns the received tag of the transfered notification
- *
- * @return DART_OK => success
- * @return DART_ERR_* => failed
- */
-dart_ret_t dart_notify_waitsome(dart_gptr_t gptr, unsigned int * tag)
-{
-    gaspi_notification_id_t notify_received;
-    gaspi_segment_id_t      gaspi_seg_id = dart_mempool_seg_localalloc;
-    int16_t                 seg_id       = gptr.segid;
-    uint16_t                index        = gptr.flags;
-    size_t                  team_size    = dart_teams[index].group->nmem;
-
-    if(seg_id)
-    {
-        if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &gaspi_seg_id) == -1)
-        {
-            fprintf(stderr, "Can't find given segment id in dart_notify_wait\n");
-        }
-    }
-
-    DART_CHECK_GASPI_ERROR(gaspi_notify_waitsome(gaspi_seg_id, 0, team_size, &notify_received, GASPI_BLOCK));
-    DART_CHECK_GASPI_ERROR(gaspi_notify_reset(gaspi_seg_id, notify_received, tag));
-
-    return DART_OK;
-}
-#endif
 
 dart_ret_t dart_get_blocking(
   void            * dst,
@@ -647,9 +565,7 @@ dart_ret_t dart_get_blocking(
   dart_datatype_t   src_type,
   dart_datatype_t   dst_type)
 {
-    DART_CHECK_DATA_TYPE(src_type, dst_type);
-
-    size_t nbytes = dart_gaspi_datatype_sizeof(src_type) * nelem;
+    CHECK_EQUAL_BASETYPE(src_type, dst_type);
 
     // initialized with relative team unit id
     dart_unit_t global_src_unit_id = gptr.unitid;
@@ -659,8 +575,13 @@ dart_ret_t dart_get_blocking(
 
     dart_global_unit_t global_my_unit_id;
     DART_CHECK_ERROR(dart_myid(&global_my_unit_id));
+
+    size_t nbytes_elem = datatype_sizeof(datatype_base(src_type));
+    size_t nbytes = nbytes_elem * nelem;
+
     if(global_my_unit_id.id == global_src_unit_id)
     {
+        //TODO check for kind of datatyp
         DART_CHECK_ERROR(local_copy_get(&gptr, gaspi_src_seg_id, dst, nbytes));
         return DART_OK;
     }
@@ -668,16 +589,68 @@ dart_ret_t dart_get_blocking(
     gaspi_queue_id_t   queue = 0;
     DART_CHECK_ERROR( dart_get_minimal_queue(&queue));
 
-    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_onesided_seg, dst, nbytes, 0));
 
-    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, gaspi_read(dart_onesided_seg,
-                                                             0,
-                                                             global_src_unit_id,
-                                                             gaspi_src_seg_id,
-                                                             gptr.addr_or_offs.offset,
-                                                             nbytes,
-                                                             queue,
-                                                             GASPI_BLOCK));
+    if (datatype_iscontiguous(src_type) && datatype_iscontiguous(dst_type))
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_onesided_seg, dst, nbytes, 0));
+        DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, gaspi_read(dart_onesided_seg,
+                                                                0,
+                                                                global_src_unit_id,
+                                                                gaspi_src_seg_id,
+                                                                gptr.addr_or_offs.offset,
+                                                                nbytes,
+                                                                queue,
+                                                                GASPI_BLOCK));
+    }
+    else if(datatype_isstrided(src_type))
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_onesided_seg, dst, nbytes, 0));
+        dart_datatype_struct_t* dts_src = get_datatype_struct(src_type);
+        if(datatype_iscontiguous(dst_type))
+        {
+          uint64_t offset = gptr.addr_or_offs.offset;
+          int size_elem = datatype_sizeof(dts_src->base_type);
+          size_t nbytes_read = nbytes_elem * dts_src->num_elem;
+          for(int i = 0; i < nelem; i += dts_src->num_elem)
+          {
+              DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, gaspi_read(dart_onesided_seg,
+                                                                i * nbytes_read,
+                                                                global_src_unit_id,
+                                                                gaspi_src_seg_id,
+                                                                offset,
+                                                                nbytes_read,
+                                                                queue,
+                                                                GASPI_BLOCK));
+              offset += dts_src->strided.stride * size_elem;
+          }
+        }
+    }
+    else if(datatype_isstrided(dst_type))
+    {
+        dart_datatype_struct_t* dts_dst = get_datatype_struct(dst_type);
+        nbytes = (nbytes / dts_dst->num_elem) * dts_dst->strided.stride;
+        DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_onesided_seg, dst, nbytes, 0));
+
+        if(datatype_iscontiguous(src_type))
+        {
+          uint64_t offset = gptr.addr_or_offs.offset;
+          int size_elem = datatype_sizeof(dts_dst->base_type);
+          size_t nbytes_read = nbytes_elem * dts_dst->num_elem;
+          for(int i = 0; i < nelem; i += dts_dst->num_elem)
+          {
+              DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, gaspi_read(dart_onesided_seg,
+                                                                offset,
+                                                                global_src_unit_id,
+                                                                gaspi_src_seg_id,
+                                                                i * nbytes_read,
+                                                                nbytes_read,
+                                                                queue,
+                                                                GASPI_BLOCK));
+              offset += dts_dst->strided.stride * size_elem;
+          }
+        }
+    }
+
 
     DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, gaspi_wait(queue, GASPI_BLOCK));
 
@@ -1362,8 +1335,8 @@ dart_ret_t dart_allreduce(
                  break;
        }
        break;
-     case DART_OP_MAX:
-     switch(dtype){
+       case DART_OP_MAX:
+       switch(dtype){
           case DART_TYPE_SHORT:
             gaspi_allreduce_user(sendbuf, recvbuf, nelem,
                                  elem_size, gaspi_op_MAX_short,

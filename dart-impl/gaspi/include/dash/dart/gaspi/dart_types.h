@@ -1,38 +1,114 @@
+#ifndef DART_GASPI_TYPES_H_INCLUDED
+#define DART_GASPI_TYPES_H_INCLUDED
 
-#ifndef DART_TYPES_H_INCLUDED
-#define DART_TYPES_H_INCLUDED
+#include <stdbool.h>
 
-#include <stdlib.h>
-#include <stdint.h>
+#include <dash/dart/if/dart_types.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+typedef enum {
+  DART_KIND_BASIC = 0,
+  DART_KIND_STRIDED,
+  DART_KIND_INDEXED,
+  DART_KIND_CUSTOM
+} dart_type_kind_t;
 
-#define DART_INTERFACE_ON
 
-/*
-   --- DART Types ---
-*/
+typedef struct dart_datatype_struct {
+  /// the underlying data-type (type == base_type for basic types)
+  dart_datatype_t      base_type;
+  /// the kind of this type (basic, strided, indexed)
+  dart_type_kind_t     kind;
+  /// the overall number of elements in this type
+  size_t               num_elem;
+  union {
+    /// used for contiguous (basic & custom) types
+    struct {
+      /// the size in bytes of this type
+      size_t           size;
+    } contiguous;
+    /// used for DART_KIND_STRIDED
+    struct {
+      /// the stride between blocks of size \c num_elem
+      int              stride;
+    } strided;
+    /// used for DART_KIND_INDEXED
+    struct {
+      /// the numbers of elements in each block
+      size_t *         blocklens;
+      /// the offsets at which each block starts
+      size_t *         offsets;
+      /// the number of blocks
+      size_t           num_blocks;
+    } indexed;
+  };
+} dart_datatype_struct_t;
 
-typedef enum 
-  {
-    DART_OK           = 0,
-    DART_PENDING      = 1,
-    DART_ERR_INVAL    = 2,
-    DART_ERR_NOTFOUND = 3,
-    DART_ERR_NOTINIT  = 4,
-    DART_ERR_OTHER    = 999,
-    /* add error codes as needed */
-  } dart_ret_t;
+extern dart_datatype_struct_t dart_base_types[DART_TYPE_LAST];
 
-typedef int32_t dart_unit_t;
-typedef int32_t dart_team_t;
+dart_ret_t
+datatype_init();
 
-#define DART_INTERFACE_OFF
+dart_ret_t
+datatype_fini();
 
-#ifdef __cplusplus
+
+static inline
+dart_datatype_struct_t * get_datatype_struct(
+  dart_datatype_t dart_datatype)
+{
+  if(dart_datatype < DART_TYPE_LAST)
+      return &dart_base_types[dart_datatype];
+
+  return (dart_datatype_struct_t *)dart_datatype;
 }
-#endif
 
-#endif /* DART_TYPES_H_INCLUDED */
+static inline
+dart_datatype_t datatype_base(dart_datatype_t dart_type) {
+  dart_datatype_struct_t *dts = get_datatype_struct(dart_type);
+  return (dts->kind == DART_KIND_BASIC) ? dart_type : dts->base_type;
+}
+
+static inline
+bool datatype_isbasic(dart_datatype_t dart_type) {
+  return (get_datatype_struct(dart_type)->kind == DART_KIND_BASIC);
+}
+
+static inline
+bool datatype_iscontiguous(dart_datatype_t dart_type) {
+  return (get_datatype_struct(dart_type)->kind == DART_KIND_BASIC ||
+          get_datatype_struct(dart_type)->kind == DART_KIND_CUSTOM);
+}
+
+static inline
+bool datatype_isstrided(dart_datatype_t dart_type) {
+  return (get_datatype_struct(dart_type)->kind == DART_KIND_STRIDED);
+}
+
+static inline
+bool datatype_isindexed(dart_datatype_t dart_type) {
+  return (get_datatype_struct(dart_type)->kind == DART_KIND_INDEXED);
+}
+
+static inline
+int datatype_sizeof(dart_datatype_t dart_type) {
+  dart_datatype_struct_t *dts = get_datatype_struct(dart_type);
+  if(datatype_iscontiguous(dart_type))
+      return dts->contiguous.size;
+
+  return -1;
+}
+
+static inline
+bool datatype_samebase(
+  dart_datatype_t lhs_type,
+  dart_datatype_t rhs_type)
+{
+  return (datatype_base(lhs_type) == datatype_base(rhs_type));
+}
+
+static inline
+size_t datatype_num_elem(dart_datatype_t dart_type) {
+  return (get_datatype_struct(dart_type)->num_elem);
+}
+
+#endif /* DART_GASPI_TYPES_H_INCLUDED */

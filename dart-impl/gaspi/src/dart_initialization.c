@@ -47,12 +47,14 @@ dart_ret_t dart_init(int *argc, char ***argv)
         ++_count_init;
     DART_CHECK_ERROR(gaspi_proc_rank(&dart_gaspi_rank));
     DART_CHECK_ERROR(gaspi_proc_num(&dart_gaspi_rank_num));
-    
+
     /* Initialize the teamlist. */
     dart_adapt_teamlist_init();
 
     /* Create a global translation table for all the collective global memory */
     dart_adapt_transtable_create();
+
+    datatype_init();
 
     dart_memid = 1;
     dart_next_availteamid = DART_TEAM_ALL;
@@ -144,10 +146,12 @@ dart_ret_t dart_exit()
 
     DART_CHECK_ERROR(seg_stack_finish(&dart_free_coll_seg_ids));
 
+    datatype_fini();
+
     if(_count_init == 0)
         DART_CHECK_ERROR(gaspi_proc_term(GASPI_BLOCK));
     --_count_init;
-    
+
     return DART_OK;
 }
 
@@ -159,44 +163,6 @@ void dart_abort(int errorcode)
   gaspi_proc_kill(myRank, GASPI_BLOCK);
   /* just in case gaspi_proc_kill does not abort process*/
   abort();
-}
-
-dart_ret_t dart_type_create_custom(
-    size_t            num_bytes,
-    dart_datatype_t * newtype)
-{
-    if (newtype == NULL) {
-        DART_LOG_ERROR("newtype pointer may not be NULL!");
-        return DART_ERR_INVAL;
-    }
-
-    *newtype = DART_TYPE_UNDEFINED;
-    // Frage: in mpi wird hier auf INT_MAX geprüft, hat gaspi die selben limits?
-
-    //dart_datatype_struct_t *new_struct; << needs custom gaspi datatype / struct
-
-
-
-    return DART_OK;
-}
-
-// In gaspi under dart_mpi_op.c
-dart_ret_t dart_op_create(
-  dart_operator_t    op,
-  void             * userdata,
-  bool               commute,
-  dart_datatype_t    dtype,
-  bool               dtype_is_tmp,
-  dart_operation_t * new_op)
-  {
-    // needs gaspi possibility to create custom operation
-    return DART_OK;
-  }
-
-dart_ret_t dart_op_destroy(dart_operation_t *op)
-{
-    // needs gaspi possibility to create custom operation
-    return DART_OK;
 }
 
 bool dart_initialized()
