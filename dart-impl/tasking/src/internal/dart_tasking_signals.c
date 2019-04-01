@@ -27,6 +27,7 @@ static void handler(int signum, siginfo_t *si, void *ptr)
                   si->si_addr, uc, thread ? thread->current_task : NULL);
 
    // re-raise the signal to force shutdown
+   // the default signal handler has already been restored via SA_RESETHAND
    raise(signum);
 }
 
