@@ -116,7 +116,7 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
   }
 }
 
-TEST_F(DARTOnesidedTest, PutNonBlockingSingleBlock)
+TEST_F(DARTOnesidedTest, PutSingleBlock)
 {
   typedef int value_t;
   const size_t block_size = 10;
@@ -148,6 +148,51 @@ TEST_F(DARTOnesidedTest, PutNonBlockingSingleBlock)
   );
 
   dart_flush((array.begin() + g_dest_index).dart_gptr());
+
+  for (size_t l = 0; l < block_size; ++l) {
+    value_t expected = array[g_dest_index + l];
+    ASSERT_EQ_U(expected, local_array[l]);
+  }
+}
+
+TEST_F(DARTOnesidedTest, PutSingleBlock)
+{
+  typedef int value_t;
+  const size_t block_size = 10;
+  size_t num_elem_total   = (dash::size() * block_size) * 2;
+  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
+  // Array to store local copy:
+  int local_array[block_size * 2];
+  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
+  for (size_t l = 0; l < block_size*2; ++l) {
+    array.local[l] = 0;
+  }
+  for (size_t l = 0; l < block_size*2; ++l) {
+    local_array[l] = ((dash::myid() + 1) * 1000) + l;
+  }
+  array.barrier();
+  // Unit to copy values to:
+  dart_unit_t unit_dest  = (dash::myid() + 1) % dash::size();
+  // Global start index of block to copy to:
+  int g_dest_index       = unit_dest * block_size;
+  // Copy values:
+  dash::dart_storage<value_t> ds(block_size);
+  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
+  size_t block = 0;
+  for(value_t i = 1; i < 3; ++i)
+  {
+    dart_put(
+    (array.begin() + g_dest_index * i).dart_gptr(),   // gptr dest
+    local_array + (block_size * block),               // lptr src
+    ds.nelem,
+    ds.dtype,
+    ds.dtype
+    );
+
+    block++;
+  }
+
+  dart_flush_all((array.begin() + g_dest_index).dart_gptr());
 
   for (size_t l = 0; l < block_size; ++l) {
     value_t expected = array[g_dest_index + l];
@@ -313,7 +358,7 @@ TEST_F(DARTOnesidedTest, StridedGetSimple) {
       ASSERT_EQ_U(i*stride, buf[i]);
     }
 
-    // global-to-local strided-to-contig
+    // global-to-local contig-to-strided
     memset(buf, 0, sizeof(int)*num_elem_per_unit);
 
     dart_get_blocking(buf, gptr, num_elem_per_unit / stride,
