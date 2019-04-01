@@ -713,6 +713,9 @@ dart__tasking__allocate_dummytask()
 
 void remote_progress(dart_thread_t *thread, bool force)
 {
+  // short-cut if we only run on one unit
+  if (num_units == 1) return;
+
   // only progress periodically or if the caller mandates it
   if (force ||
       thread->last_progress_ts + REMOTE_PROGRESS_INTERVAL_USEC >= current_time_us())
