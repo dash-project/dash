@@ -156,6 +156,12 @@ bool dart__base__env__bool(const char *env, bool fallback)
         atoi(envstr)                > 0)
     {
       res = true;
+    } else if (
+        strcasecmp(envstr, "no")    == 0 ||
+        strcasecmp(envstr, "false") == 0 ||
+        atoi(envstr)                == 0)
+    {
+      res = false;
     }
   }
 
