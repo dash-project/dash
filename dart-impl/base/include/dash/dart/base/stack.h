@@ -106,14 +106,15 @@ static inline
 dart_stack_elem_t *
 pop_cas(struct dart_stack_head *sh)
 {
-  struct dart_stack_head next, orig = atomic_load(sh);
+  _Atomic struct dart_stack_head* ash = (_Atomic struct dart_stack_head*)sh;
+  struct dart_stack_head next, orig = atomic_load(ash);
   do {
     if (orig.node == NULL) {
       break;
     }
     next.aba  = orig.aba + 1;
     next.node = orig.node->next;
-  } while (!atomic_compare_exchange_weak(sh, &orig, next));
+  } while (!atomic_compare_exchange_weak(ash, &orig, next));
 
   return orig.node;
 }
@@ -122,14 +123,25 @@ static inline
 void
 push_cas(struct dart_stack_head *sh, dart_stack_elem_t *elem)
 {
-  struct dart_stack_head next, orig = atomic_load(sh);
+  _Atomic struct dart_stack_head* ash = (_Atomic struct dart_stack_head*)sh;
+  struct dart_stack_head next, orig = atomic_load(ash);
 
   do {
     elem->next = orig.node;
     next.aba   = orig.aba + 1;
     next.node  = elem;
-  } while (!atomic_compare_exchange_weak(sh, &orig, next));
+  } while (!atomic_compare_exchange_weak(ash, &orig, next));
 }
+
+static inline
+void dart__base__stack_move_to(dart_stack_t *from, dart_stack_t *to)
+{
+  _Atomic struct dart_stack_head* ash = (_Atomic struct dart_stack_head*)&from->head;
+  dart_stack_t reset = DART_STACK_INITIALIZER;
+  to->head = from->head;
+  while (!atomic_compare_exchange_weak(ash, &to->head, reset.head)) {}
+}
+
 
 #else
 
@@ -168,6 +180,19 @@ push_cas(struct dart_stack_head *sh, dart_stack_elem_t *elem)
   dart__base__mutex_unlock(&sh->mtx);
 }
 
+static inline
+void dart__base__stack_move_to(dart_stack_t *from, dart_stack_t *to)
+{
+  dart_stack_t reset = DART_STACK_INITIALIZER;
+  dart__base__mutex_lock(&from->mtx);
+  to->head = from->head;
+  from->head = reset.head;
+  dart__base__mutex_unlock(&from->mtx);
+}
+
+
+#undef POP
+#undef PUSH
 
 #endif // USE_ATOMIC128_CAS
 
@@ -183,6 +208,18 @@ dart__base__stack_push(dart_stack_t *st, dart_stack_elem_t *elem)
 }
 
 static inline
+dart_ret_t
+dart__base__stack_push_nolock(dart_stack_t *st, dart_stack_elem_t *elem)
+{
+  if (elem != NULL) {
+    elem->next = st->head.node;
+    st->head.node = elem;
+  }
+
+  return DART_OK;
+}
+
+static inline
 dart_stack_elem_t *
 dart__base__stack_pop(dart_stack_t *st)
 {
@@ -192,10 +229,21 @@ dart__base__stack_pop(dart_stack_t *st)
 }
 
 static inline
+dart_stack_elem_t *
+dart__base__stack_pop_nolock(dart_stack_t *st)
+{
+  dart_stack_elem_t *elem = st->head.node;
+  if (elem != NULL) {
+    st->head.node = elem->next;
+  }
+  return elem;
+}
+
+static inline
 bool
 dart__base__stack_empty(dart_stack_t *st)
 {
-  return atomic_load(&st->head.node) == NULL;
+  return st->head.node == NULL;
 }
 
 static inline

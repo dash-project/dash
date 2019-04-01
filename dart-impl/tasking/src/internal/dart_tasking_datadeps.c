@@ -12,13 +12,16 @@
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_copyin.h>
 
+#include <stdint.h>
+
 //#define DART_DEPHASH_SIZE 1023
 #define DART_DEPHASH_SIZE 511
 
-// if we have support for TCmalloc we don't have to manage memory on our own
-//#if !defined(DART_ENABLE_TCMALLOC)
-#define USE_FREELIST
-//#endif // DART_ENABLE_TCMALLOC
+/**
+ * TODO:
+ *   - Extract implementation of list and hash table
+ *   - Clarify the locking in the hash table: do we need element-wise locks?
+ */
 
 /**
  * Management of task data dependencies using a hash map that maps pointers to tasks.
@@ -44,6 +47,9 @@
 #define DART_DEPHASH_ELEM_PUSH(__freelist, __elem) \
   dart__base__stack_push(&__freelist, &DART_STACK_MEMBER_GET(__elem))
 
+/**
+ * Represents a dependency in the dependency hash table.
+ */
 struct dart_dephash_elem {
   union {
     // atomic list used for free elements
@@ -54,38 +60,107 @@ struct dart_dephash_elem {
       dart_dephash_elem_t *prev;
     };
   };
-  dart_task_dep_t           taskdep;
-  taskref                   task;    // the task referred to by the dependency
-  dart_global_unit_t        origin;  // the unit this dependency originated from
-  dart_dephash_elem_t      *next_in_task; // list in the task struct
+  dart_dephash_elem_t      *next_in_task;   // list in the task struct
+  dart_task_dep_t           dep;            // IN or OUT dependency information
+  dart_dephash_elem_t      *dep_list;       // For OUT: start of list of assigned IN dependencies
+                                            // For IN:  back-pointer to OUT dependency
+  taskref                   task;           // task this dependency belongs to
+  /*
+   * TODO: this needs reconsideration, try to use atomics instead of locking
+   *       the bucket and only lock the bucket when removing an element.
+   * *Possible solution*
+   *
+   * When registering with an out dep:
+   * CAS num_consumers *and* use_cnt to increment both and abort if
+   * num_consumers is -1.
+   *
+   * When deregistering from an output dependency:
+   * decrement num_consumers and if 0 CAS use_cnt *and* num_consumers to signal
+   * ownership of the element (num_consumer=-1) and detect whether someone else
+   * has registered with the outdep in between (in which case we do not remove
+   * the object). Needs thorough testing!
+  union {
+    struct {
+      int32_t               num_consumers;  // For OUT: the number of consumers still not completed
+      int32_t               use_cnt;        // incremented everytime an input dependency is registered with an output dependency,
+                                            // needed to detect race conditions when freeing an output dependency
+    };
+    uint64_t                refcnt_value;   // value used for CAS operations on the above values
+  };
+  */
+  int32_t                   num_consumers;
+  dart_global_unit_t        origin;         // the unit owning the task
+  uint16_t                  owner_thread;   // the thread that owns the element
+  //dart_tasklock_t           lock;           // lock used for element-wise locking
+  bool                      is_dummy;       // whether an output dependency is not backed by a task
 };
 
+/**
+ * Represents the head of a bucket in the dependency hash table.
+ */
 struct dart_dephash_head {
-  dart_tasklock_t lock;
   dart_dephash_elem_t *head;
+  dart_tasklock_t      lock;
+  uint32_t             num_outdeps;
 };
 
+#define DART_DEPHASH_HEAD_INITIALIZER { \
+  .head = NULL,                         \
+  .lock = TASKLOCK_INITIALIZER,         \
+  .num_outdeps = 0}
 
-#ifdef USE_FREELIST
-static dart_stack_t freelist_head = DART_STACK_INITIALIZER;
-#endif
+/**
+ * Dependency hash element pool to speed up dependency handling.
+ */
+#define DART_DEPHASH_ELEM_POOL_SIZE (1024)
+
+typedef struct dart_dephash_elem_pool dart_dephash_elem_pool_t;
+
+struct dart_dephash_elem_pool {
+  DART_STACK_MEMBER_DEF;
+  uint32_t                  pos;
+  dart_dephash_elem_t       elems[DART_DEPHASH_ELEM_POOL_SIZE];
+};
+
+/**
+ * Per-thread memory pool.
+ */
+_Thread_local static dart_dephash_elem_pool_t *dephash_elem_pool = NULL;
+
+/**
+ * List of allocated dephash elem pools.
+ */
+static dart_stack_t dephash_elem_pool_list = DART_STACK_INITIALIZER;
+
+#define DART_DEPHASH_ELEM_POOL_POP(__freelist) \
+  (dart_dephash_elem_pool_t*)((void*)dart__base__stack_pop(&__freelist))
+
+#define DART_DEPHASH_ELEM_POOL_PUSH(__freelist, __elem) \
+  dart__base__stack_push(&__freelist, &DART_STACK_MEMBER_GET(__elem))
+
+/**
+ * Per-thread free-list for dependency elements. The elements are never
+ * deallocated but stored in the free list for later re-use.
+ */
+_Thread_local static dart_stack_t dephash_elem_freelist = DART_STACK_INITIALIZER;
+
+/**
+ * Array of pointers to the thread-local dephash_elem_freelist, needed to return
+ * elements to the correct owner.
+ */
+static dart_stack_t **dephash_elem_freelist_list;
 
 // list of incoming remote dependency requests defered to matching step
 static dart_dephash_elem_t *unhandled_remote_indeps  = NULL;
-static dart_dephash_elem_t *unhandled_remote_outdeps = NULL;
+//static dart_dephash_elem_t *unhandled_remote_outdeps = NULL;
+static dart_dephash_head_t  unhandled_remote_outdeps = DART_DEPHASH_HEAD_INITIALIZER;
 static dart_mutex_t         unhandled_remote_mutex   = DART_MUTEX_INITIALIZER;
 
 // list of tasks that have been deferred because they are in a phase
 // that is not ready to run yet
-dart_taskqueue_t            local_deferred_tasks; // visible outside this CU
+dart_taskqueue_t            local_deferred_tasks; // visible outside this TU
 
 static dart_global_unit_t myguid;
-
-#ifndef DART_TASK_THREADLOCAL_Q
-// forward declaration
-extern dart_taskqueue_t task_queue DART_INTERNAL;
-#endif // DART_TASK_THREADLOCAL_Q
-
 
 static dart_ret_t
 release_remote_dependencies(dart_task_t *task);
@@ -93,11 +168,8 @@ release_remote_dependencies(dart_task_t *task);
 static void
 dephash_recycle_elem(dart_dephash_elem_t *elem);
 
-static void
-dephash_recycle_elem_unsafe(dart_dephash_elem_t *elem);
-
 static dart_ret_t
-dart_tasking_datadeps_match_delayed_local_datadep(
+dart_tasking_datadeps_match_delayed_local_indep(
   const dart_task_dep_t * dep,
         dart_task_t     * task);
 
@@ -107,18 +179,16 @@ static inline int hash_gptr(dart_gptr_t gptr)
   // and unsigned to force logical shifts (instead of arithmetic)
   // NOTE: we ignore the teamid here because gptr in dependencies contain
   //       global unit IDs
-  uint32_t segid  = gptr.segid;
   uint64_t hash   = gptr.addr_or_offs.offset;
   uint64_t unitid = gptr.unitid; // 64-bit required for shift
   // cut off the lower 2 bit, we assume that pointers are 4-byte aligned
   hash >>= 2;
   // mix in unit, team and segment ID
-  hash ^= (segid  << 16); // 16 bit segment ID
   hash ^= (unitid << 32); // 24 bit unit ID
   // using a prime number in modulo stirs reasonably well
 
-  DART_LOG_TRACE("hash_gptr(u:%lu, s:%d, o:%p) => (%lu)",
-                 unitid, segid, gptr.addr_or_offs.addr,
+  DART_LOG_TRACE("hash_gptr(u:%lu, o:%p) => (%lu)",
+                 unitid, gptr.addr_or_offs.addr,
                  (hash % DART_DEPHASH_SIZE));
 
   return (hash % DART_DEPHASH_SIZE);
@@ -166,7 +236,9 @@ dart_ret_t dart_tasking_datadeps_init()
 {
   dart_myid(&myguid);
   dart_tasking_taskqueue_init(&local_deferred_tasks);
-
+  int num_threads = dart__tasking__num_threads() + DART_TASKING_MAX_UTILITY_THREADS;
+  dephash_elem_freelist_list = calloc(num_threads,
+                                        sizeof(*dephash_elem_freelist_list));
   return dart_tasking_remote_init();
 }
 
@@ -181,45 +253,38 @@ free_dephash_list(dart_dephash_elem_t *list)
   }
 }
 
-static void
-free_dephash_list_unsafe(dart_dephash_elem_t *list)
-{
-  dart_dephash_elem_t *elem = list;
-  while (elem != NULL) {
-    dart_dephash_elem_t *tmp = elem->next;
-    dephash_recycle_elem(elem);
-    elem = tmp;
-  }
-}
-
-
 dart_ret_t dart_tasking_datadeps_reset(dart_task_t *task)
 {
   if (task == NULL || task->local_deps == NULL) return DART_OK;
 
+  DART_LOG_TRACE("Cleaning up dependency objects of task %p", task);
+
+#ifdef DART_ENABLE_ASSERTIONS
   for (int i = 0; i < DART_DEPHASH_SIZE; ++i) {
-    dart_dephash_elem_t *elem = task->local_deps[i].head;
-    free_dephash_list_unsafe(elem);
+    DART_ASSERT_MSG(task->local_deps[i].head == NULL,
+                    "Found non-empty bucket while tearing down hash table of "
+                    "task %p (elem %p, i %d)", task, task->local_deps[i].head, i);
   }
+  DART_ASSERT_MSG(task->remote_successor == NULL,
+                  "Found pending remote successors of task %p (elem %p)",
+                  task, task->remote_successor);
+#endif // DART_ENABLE_ASSERTIONS
+
   free(task->local_deps);
   task->local_deps = NULL;
-  free_dephash_list_unsafe(task->remote_successor);
 
-  task->remote_successor = NULL;
-  task->unresolved_deps  = 0;
-  task->unresolved_remote_deps = 0;
   return DART_OK;
 }
 
 dart_ret_t dart_tasking_datadeps_fini()
 {
   dart_tasking_datadeps_reset(dart__tasking__current_task());
-#ifdef USE_FREELIST
-  dart_dephash_elem_t *elem;
-  while ((elem = DART_DEPHASH_ELEM_POP(freelist_head))!= NULL) {
-    free(elem);
+  dart_dephash_elem_pool_t *pool;
+  while (NULL != (pool = DART_DEPHASH_ELEM_POOL_POP(dephash_elem_pool_list))) {
+    free(pool);
   }
-#endif // USE_FREELIST
+  free(dephash_elem_freelist_list);
+  dephash_elem_freelist_list = NULL;
   dart_tasking_taskqueue_finalize(&local_deferred_tasks);
   return dart_tasking_remote_fini();
 }
@@ -230,6 +295,53 @@ dart_ret_t dart_tasking_datadeps_fini()
 dart_ret_t dart_tasking_datadeps_progress()
 {
   return dart_tasking_remote_progress();
+}
+
+static void
+inline
+dephash_list_insert_elem_after_nolock(
+  dart_dephash_head_t *head,
+  dart_dephash_elem_t *elem,
+  dart_dephash_elem_t *prev)
+{
+  if (head->head == NULL) {
+    // insert into empty bucket
+    head->head = elem;
+    elem->prev = NULL;
+    elem->next = NULL;
+  } else if (prev == NULL) {
+    // insert at front of bucket
+    elem->next = head->head;
+    head->head->prev = elem;
+    elem->prev = NULL;
+    head->head = elem;
+  } else {
+    elem->next = prev->next;
+    elem->prev = prev;
+    prev->next = elem;
+    if (elem->next != NULL) {
+      elem->next->prev = elem;
+    }
+  }
+  ++head->num_outdeps;
+}
+
+
+static void
+inline
+dephash_list_insert_elem_sorted_phase_desc_nolock(
+  dart_dephash_head_t *head,
+  dart_dephash_elem_t *elem)
+{
+  dart_dephash_elem_t *next, *iter;
+  for (iter = head->head; iter != NULL; iter = next) {
+    next = iter->next;
+    if (iter->dep.phase <= elem->dep.phase) {
+      break;
+    }
+  }
+  dart_dephash_elem_t *prev = iter ? iter->prev : NULL;
+  dephash_list_insert_elem_after_nolock(head, elem, prev);
 }
 
 /**
@@ -243,25 +355,80 @@ dephash_allocate_elem(
 {
   // take an element from the free list if possible
   dart_dephash_elem_t *elem = NULL;
-#ifdef USE_FREELIST
-  elem = DART_DEPHASH_ELEM_POP(freelist_head);
-#endif // USE_FREELIST
+
+#ifndef DART_TASKING_DONOT_REUSE
+  elem = DART_DEPHASH_ELEM_POP(dephash_elem_freelist);
+#endif // !DART_TASKING_DONOT_REUSE
 
   if (elem == NULL){
-    elem = calloc(1, sizeof(dart_dephash_elem_t));
+    int thread_id = dart__tasking__thread_num();
+    if (thread_id < 0) {
+      // utility threads carry negative thread IDs so we need to adjust
+      thread_id = -thread_id + dart__tasking__num_threads() - 1;
+    }
+    DART_ASSERT(thread_id >= 0 && thread_id < UINT16_MAX);
+    // attempt to take an element from the pool
+    if (dephash_elem_pool == NULL ||
+        !(dephash_elem_pool->pos < DART_DEPHASH_ELEM_POOL_SIZE)) {
+      // allocate a new pool and take from that
+      dephash_elem_pool = malloc(sizeof(*dephash_elem_pool));
+      dephash_elem_pool->pos = 0;
+      // make sure this pool is registered for deallocation
+      DART_DEPHASH_ELEM_POOL_PUSH(dephash_elem_pool_list, dephash_elem_pool);
+      // upon first allocation, we also have to make sure that our freelist is
+      // accessible from other threads
+      if (dephash_elem_freelist_list[thread_id] == NULL) {
+        dephash_elem_freelist_list[thread_id] = &dephash_elem_freelist;
+      }
+    }
+    elem = &dephash_elem_pool->elems[dephash_elem_pool->pos++];
+    elem->owner_thread = thread_id;
   }
 
-  DART_ASSERT(task.local != NULL);
   elem->task    = task;
-  elem->taskdep = *dep;
   elem->origin  = origin;
+  elem->dep     = *dep;
+  elem->num_consumers = 0;
+  elem->dep_list = NULL;
+  //TASKLOCK_INIT(elem);
   elem->next = elem->prev = NULL;
+  elem->is_dummy = false;
 
   DART_LOG_TRACE("Allocated elem %p (task %p)", elem, task.local);
 
   return elem;
 }
 
+static void
+register_at_out_dep_nolock(
+  dart_dephash_elem_t *out_elem,
+  dart_dephash_elem_t *in_elem)
+{
+  in_elem->dep_list = out_elem;
+  // register this dependency
+  DART_STACK_PUSH(out_elem->dep_list, in_elem);
+  //int nc = DART_INC_AND_FETCH32(&out_elem->num_consumers);
+  int nc = ++out_elem->num_consumers;
+  DART_LOG_TRACE("Registered in dep %p with out dep %p of task %p (num_consumers: %d)",
+                 in_elem, out_elem, out_elem->task.local, nc);
+  DART_ASSERT_MSG(nc > 0, "Dependency %p has negative number of consumers: %d!",
+                  out_elem, nc);
+}
+
+static int32_t
+deregister_in_dep_nolock(
+  dart_dephash_elem_t *in_elem)
+{
+  dart_dephash_elem_t *out_elem = in_elem->dep_list;
+  in_elem->dep_list = NULL;
+  //int32_t nc = DART_DEC_AND_FETCH32(&out_elem->num_consumers);
+  int nc = --out_elem->num_consumers;
+  DART_LOG_TRACE("Deregistered in dep %p from out dep %p (consumers: %d)",
+                 in_elem, out_elem, nc);
+  DART_ASSERT_MSG(nc >= 0, "Dependency %p has negative number of consumers: %d",
+                  out_elem, nc);
+  return nc;
+}
 
 /**
  * Deallocate an element
@@ -269,34 +436,12 @@ dephash_allocate_elem(
 static void dephash_recycle_elem(dart_dephash_elem_t *elem)
 {
   if (elem != NULL) {
-    //memset(elem, 0, sizeof(*elem));
-#ifdef USE_FREELIST
     elem->next = NULL;
     elem->prev = NULL;
-    DART_LOG_TRACE("Pushing elem %p (prev=%p, next=%p) to freelist (head %p)",
-                   elem, elem->prev, elem->next, freelist_head.head.node);
-    DART_DEPHASH_ELEM_PUSH(freelist_head, elem);
-#else
-    free(elem);
-#endif // USE_FREELIST
-  }
-}
-
-/**
- * Deallocate an element
- */
-static void dephash_recycle_elem_unsafe(dart_dephash_elem_t *elem)
-{
-  if (elem != NULL) {
-    //memset(elem, 0, sizeof(*elem));
-#ifdef USE_FREELIST
-    elem->next = NULL;
-    elem->prev = NULL;
-    DART_LOG_TRACE("Recycling elem %p (prev=%p, next=%p)", elem, elem->prev, elem->next);
-    DART_DEPHASH_ELEM_PUSH(freelist_head, elem);
-#else
-    free(elem);
-#endif // USE_FREELIST
+    dart_stack_t *lifo = dephash_elem_freelist_list[elem->owner_thread];
+    DART_LOG_TRACE("Pushing elem %p (prev=%p, next=%p) to freelist (head %p, thread %d)",
+                   elem, elem->prev, elem->next, lifo->head.node, elem->owner_thread);
+    DART_DEPHASH_ELEM_PUSH(*lifo, elem);
   }
 }
 
@@ -316,93 +461,239 @@ static void dephash_require_alloc(dart_task_t *task)
  * Add a task with dependency to the parent's dependency hash table.
  * The dependency is added to the front of the bucket.
  */
-static void dephash_add_local_nolock(
+static void
+dephash_add_local_nolock(
   const dart_task_dep_t * dep,
         dart_task_t     * task,
         int               slot)
 {
-  taskref tr;
-  tr.local = task;
+  dart_dephash_elem_t *new_elem = dephash_allocate_elem(dep, TASKREF(task), myguid);
+
+  DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
+
   dart_task_t *parent = task->parent;
-  dart_dephash_elem_t *elem = dephash_allocate_elem(dep, tr, myguid);
-
-  DART_STACK_PUSH_MEMB(task->deps_owned, elem, next_in_task);
-
   dephash_require_alloc(parent);
+  DART_LOG_TRACE("Adding elem %p of task %p to slot %d with head %p",
+                 new_elem, task, slot, parent->local_deps[slot].head);
   // put the new entry at the beginning of the list
-  dart_dephash_elem_t *head = parent->local_deps[slot].head;
-  DART_LOG_TRACE("Adding elem %p to slot %d with head %p", elem, slot, head);
-  elem->next = head;
-  elem->prev = NULL;
-  if (NULL != head) {
-    head->prev = elem;
-  }
-  parent->local_deps[slot].head = elem;
+  dephash_list_insert_elem_after_nolock(&parent->local_deps[slot], new_elem, NULL);
 }
 
-static void dephash_add_local(
+static void dephash_add_local_out(
   const dart_task_dep_t * dep,
         dart_task_t     * task)
 {
   int slot = hash_gptr(dep->gptr);
   dart_task_t *parent = task->parent;
 
-  dephash_require_alloc(parent);
   LOCK_TASK(&parent->local_deps[slot]);
   dephash_add_local_nolock(dep, task, slot);
   UNLOCK_TASK(&parent->local_deps[slot]);
 }
 
+static void dephash_remove_dep_from_bucket_nolock(
+  dart_dephash_elem_t *elem,
+  dart_dephash_head_t *local_deps,
+  int                  slot)
+{
+  DART_LOG_TRACE("Removing elem %p (prev=%p, next=%p) from slot %d",
+                 elem, elem->prev, elem->next, slot);
+
+  if (elem->prev != NULL) {
+    elem->prev->next = elem->next;
+    if (elem->next != NULL) {
+      elem->next->prev = elem->prev;
+    }
+  } else {
+    // we have to change the head of the bucket
+    local_deps[slot].head = elem->next;
+    if (elem->next != NULL) {
+      elem->next->prev = NULL;
+    }
+  }
+  elem->next = elem->prev = NULL;
+}
+
+void dart__dephash__print_stats(const dart_task_t *task)
+{
+  uint32_t max_elems = 0;
+  uint32_t min_elems = UINT32_MAX;
+  uint32_t sum_elems = 0;
+  uint32_t empty     = 0;
+  uint32_t n = 0;
+  double mean = 0.0, M2 = 0.0;
+  for (uint32_t i = 0; i < DART_DEPHASH_SIZE; ++i) {
+    uint32_t nb = task->local_deps[i].num_outdeps;
+    if (nb == 0) {
+      ++empty;
+    } else {
+      double delta, delta2;
+      n++;
+      delta  = nb - mean;
+      mean  += delta / n;
+      delta2 = nb - mean;
+      M2    += delta2*delta2;
+      if (nb > max_elems) max_elems = nb;
+      if (nb < min_elems) min_elems = nb;
+      sum_elems += nb;
+    }
+  }
+  DART_LOG_INFO_ALWAYS(
+    "Task %p hash table: entries:%d, sum: %d, min: %d, max: %d, empty: %d, mean: %g, variance: %g",
+    task, DART_DEPHASH_SIZE, sum_elems, min_elems, max_elems, empty, mean, M2/(n-1));
+}
+
+static void
+release_dependency(dart_dephash_elem_t *elem)
+{
+  DART_ASSERT_MSG(elem->task.local != NULL,
+                  "Cannot release dependency %p without task!", elem);
+  if (elem->origin.id == myguid.id) {
+    DART_LOG_TRACE("Releasing local %s dependency %p",
+                   elem->dep.type == DART_DEP_IN ? "in" : "out", elem);
+    bool runnable = release_local_dep_counter(elem->task.local);
+    if (runnable) {
+      dart__tasking__enqueue_runnable(elem->task.local);
+    }
+  } else {
+    // send remote output dependency release together with reference
+    // to the output dependency
+    dart_tasking_remote_release_task(elem->origin, elem->task, (uintptr_t)elem);
+  }
+}
+
+static void
+dephash_release_next_out_dependency_nolock(
+  dart_dephash_elem_t *elem)
+{
+  dart_dephash_elem_t *next_out_dep = elem;
+  do {
+    // dependencies in this slot are ordered by descending phase so we
+    // walk backwards
+    next_out_dep = next_out_dep->prev;
+    if (next_out_dep == NULL) break;
+    if (DEP_ADDR_EQ(next_out_dep->dep, elem->dep)) {
+      release_dependency(next_out_dep);
+      // done here
+      break;
+    }
+  } while (1);
+}
+
+static void dephash_release_out_dependency(
+  dart_dephash_elem_t *elem,
+  dart_dephash_head_t *local_deps)
+{
+  DART_LOG_TRACE("Releasing output dependency %p (num_consumers %d)",
+                 elem, elem->num_consumers);
+  //LOCK_TASK(elem);
+  int slot = hash_gptr(elem->dep.gptr);
+  LOCK_TASK(&local_deps[slot]);
+  DART_ASSERT_MSG(elem->dep_list == NULL || elem->num_consumers > 0,
+                  "Consumer-less output dependency has dependencies: %p",
+                  elem->dep_list);
+  if (elem->dep_list != NULL) {
+    dart_dephash_elem_t *dep_list = elem->dep_list;
+    elem->task.local = NULL;
+    elem->dep_list   = NULL;
+    //UNLOCK_TASK(elem);
+    do {
+      dart_dephash_elem_t *in_dep;
+
+      DART_STACK_POP(dep_list, in_dep);
+      if (NULL == in_dep) break;
+      DART_LOG_TRACE("  -> Releasing input dependency %p from out %p",
+                    in_dep, elem);
+      DART_ASSERT_MSG(in_dep->dep.type == DART_DEP_IN,
+                      "Invalid dependency type %d in dependency %p",
+                      in_dep->dep.type, in_dep);
+      release_dependency(in_dep);
+      // NOTE: keep the dependency object in place, it will be cleaned up
+      //       by the owning task
+    } while (1);
+  } else {
+    //UNLOCK_TASK(elem);
+    // if there are no active input dependencies we can immediately release the next
+    // output dependency
+    int32_t num_consumers = elem->num_consumers;
+    if (num_consumers == 0) {
+      DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep", elem);
+      dephash_release_next_out_dependency_nolock(elem);
+      // remove from hash table bucket
+      dephash_remove_dep_from_bucket_nolock(elem, local_deps, slot);
+      // recycle dephash element
+      dephash_recycle_elem(elem);
+    }
+  }
+  UNLOCK_TASK(&local_deps[slot]);
+
+}
+
+static void dephash_release_in_dependency(
+  dart_dephash_elem_t *elem,
+  dart_dephash_head_t *local_deps)
+{
+  // decrement the counter of the associated output dependency and release the
+  // next output dependency if all input dependencies have completed
+  dart_dephash_elem_t *out_dep = elem->dep_list;
+  if (out_dep != NULL) {
+    DART_ASSERT_MSG(out_dep->task.local == NULL,
+                    "Output dependency %p is still active!", out_dep);
+    int slot = hash_gptr(out_dep->dep.gptr);
+    /**
+     * Be safe here: lock the bucket to avoid race conditions.
+     */
+    LOCK_TASK(&local_deps[slot]);
+    //int32_t num_consumers = DART_DEC_AND_FETCH32(&out_dep->num_consumers);
+    int32_t num_consumers = --out_dep->num_consumers;
+    DART_LOG_TRACE("Releasing input dependency %p (output dependency %p with nc %d)",
+                  elem, out_dep, num_consumers);
+    DART_ASSERT_MSG(num_consumers >= 0, "Found negative number of consumers for "
+                    "dependency %p: %d", elem, num_consumers);
+    dephash_recycle_elem(elem);
+    if (num_consumers == 0){
+      // release the next output dependency
+      DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep",
+                    out_dep);
+      dephash_release_next_out_dependency_nolock(out_dep);
+
+      // remove the output dependency from the bucket
+      dephash_remove_dep_from_bucket_nolock(out_dep, local_deps, slot);
+
+      // finally recycle the output dependency
+      dephash_recycle_elem(out_dep);
+    }
+    UNLOCK_TASK(&local_deps[slot]);
+  } else {
+    DART_LOG_TRACE("Skipping input dependency %p as it has no output dependency!", elem);
+    dephash_recycle_elem(elem);
+  }
+}
+
 /**
  * Remove the dependencies of a task from the parent's dependency hash table.
  */
-static void dephash_remove_local(
+static void dephash_release_local_task(
   dart_task_t     * task)
 {
-  dart_task_t *parent = task->parent;
   dart_dephash_elem_t *elem;
+  DART_LOG_TRACE("Releasing local data dependencies of task %p", task);
   do {
     DART_STACK_POP_MEMB(task->deps_owned, elem, next_in_task);
     if (NULL == elem) break;
-    int slot = hash_gptr(elem->taskdep.gptr);
 
-    LOCK_TASK(&parent->local_deps[slot]);
-    DART_LOG_TRACE("Removing elem %p (prev=%p, next=%p)", elem, elem->prev, elem->next);
-    // remove from hash table bucket
-    if (elem->prev != NULL) {
-      elem->prev->next = elem->next;
-      if (elem->next != NULL) {
-        elem->next->prev = elem->prev;
-      }
+    DART_LOG_TRACE("Releasing dependency object %p (type %d, consumers %d)",
+                   elem, elem->dep.type, elem->num_consumers);
+
+    if (IS_OUT_DEP(elem->dep)) {
+      // release all input dependencies
+      dephash_release_out_dependency(elem, task->parent->local_deps);
     } else {
-      // we have to change the head of the bucket
-      parent->local_deps[slot].head = elem->next;
-      if (elem->next != NULL) {
-        elem->next->prev = NULL;
-      }
+      dephash_release_in_dependency(elem, task->parent->local_deps);
     }
-    UNLOCK_TASK(&parent->local_deps[slot]);
-    dephash_recycle_elem(elem);
   } while (1);
   task->deps_owned = NULL;
 }
-
-static void dart_tasking_datadeps_release_dummy_task(dart_task_t *task)
-{
-  // send a release together with a reference to the dummy task
-  // as soon as the remote task with the output dependency has finished
-  // it will send a release for the dummy task
-  taskref tr;
-  tr.remote = task->remote_task;
-  DART_LOG_TRACE("Dummy task %p: releasing remote task %p at unit %d",
-                  task, task->remote_task, task->origin.id);
-  // mark the task as having a remote dependency
-  DART_INC_AND_FETCH32(&task->unresolved_remote_deps);
-  // mark the remote task as released
-  task->remote_task = NULL;
-  dart_tasking_remote_release_outdep(task->origin, task, tr);
-}
-
 
 dart_ret_t
 dart_tasking_datadeps_handle_defered_local()
@@ -416,7 +707,7 @@ dart_tasking_datadeps_handle_defered_local()
   while (
     (task = dart_tasking_taskqueue_pop_unsafe(&local_deferred_tasks)) != NULL)
   {
-    // enqueue the task if it has gained no additional remote dependecies
+    // enqueue the task if it has gained no additional remote dependencies
     // since it's deferrement
     // Note: if the task has gained dependencies we drop the reference
     //       here because it will be released through a dependency release later.
@@ -438,27 +729,33 @@ dart_tasking_datadeps_handle_defered_local()
 }
 
 dart_ret_t
-dart_tasking_datadeps_handle_defered_remote_indeps()
+dart_tasking_datadeps_handle_defered_remote_indeps(
+  dart_taskphase_t      matching_phase,
+  dart_dephash_elem_t **release_candidates)
 {
   dart_dephash_elem_t *rdep;
   DART_LOG_DEBUG("Handling previously unhandled remote input dependencies: %p",
                  unhandled_remote_indeps);
 
   // create tasks requested by remote units to handle copyin deps
-  // TODO: do not buffer the dependencies from this task
   dart_tasking_copyin_create_delayed_tasks();
 
-  dart_task_t *root_task = dart__tasking__current_task();
-  DART_ASSERT(dart__tasking__is_root_task(root_task));
-  dart__base__mutex_lock(&unhandled_remote_mutex);
+  dart_task_t *root_task = dart__tasking__root_task();
   dart_dephash_elem_t *next = unhandled_remote_indeps;
+  unhandled_remote_indeps = NULL;
   while ((rdep = next) != NULL) {
     next = rdep->next;
 
-    if (rdep->taskdep.type == DART_DEP_DELAYED_IN) {
+    if (rdep->dep.phase > matching_phase) {
+      // Skip any dependency we cannot handle yet
+      DART_STACK_PUSH(unhandled_remote_indeps, rdep);
+      continue;
+    }
+
+    if (rdep->dep.type == DART_DEP_DELAYED_IN) {
       // dispatch handling of delayed local dependencies
-      dart_tasking_datadeps_match_delayed_local_datadep(
-        &rdep->taskdep, rdep->task.local);
+      dart_tasking_datadeps_match_delayed_local_indep(
+        &rdep->dep, rdep->task.local);
       dephash_recycle_elem(rdep);
       continue;
     }
@@ -466,289 +763,257 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
     /**
      * Iterate over all possible tasks and find the closest-matching
      * local task that satisfies the remote dependency.
-     * For closest task with a higher phase than the resolving task, send direct
-     * task dependencies.
      */
-    // gptr in dependencies contain global unit IDs
-    dart_global_unit_t origin = rdep->origin;
-
-    dart_task_t *candidate            = NULL;
-    dart_task_t *direct_dep_candidate = NULL;
-    DART_LOG_DEBUG("Handling delayed remote dependency for task %p from unit %i",
-                   rdep->task.local, origin.id);
+    DART_LOG_TRACE("Handling delayed remote dependency for task %p from unit %i phase %i",
+                   rdep->task.local, rdep->origin.id, rdep->dep.phase);
     dart_dephash_head_t *local_deps = root_task->local_deps;
     if (local_deps != NULL) {
-      int slot = hash_gptr(rdep->taskdep.gptr);
+      int slot = hash_gptr(rdep->dep.gptr);
       LOCK_TASK(&local_deps[slot]);
-      for (dart_dephash_elem_t *local = local_deps[slot].head;
-                                local != NULL;
-                                local = local->next) {
-        dart_task_t *local_task = local->task.local;
-
-        // avoid repeatedly inspecting the same task and only consider
-        // matching output dependencies
-        if (local_task != candidate &&
-            IS_OUT_DEP(local->taskdep) &&
-            DEP_ADDR_EQ(local->taskdep, rdep->taskdep)) {
-          /*
-          * Remote INPUT task dependencies refer to nearest previous phase
-          * so every task in the same phase and following
-          * phases have to wait for the remote task to complete.
-          * Note that we are only accounting for the candidate task in the
-          * lowest phase since all later tasks are handled through local
-          * dependencies.
-          *
-          * This matching assumes that the dependencies in local_deps are
-          * ordered in phase-descending order.
-          */
-
-          // lock the task to avoid race condiditions in updating the state
-          LOCK_TASK(local_task);
-
-#if 0
-          if (!IS_ACTIVE_TASK(local_task)) {
-            UNLOCK_TASK(local_task);
-            DART_LOG_INFO("Task %p matching remote task %p already finished",
-                          local_task, rdep->task.local);
-
-            // if we got here without finding a candidate that is still active
-            // we will not find one.
-            // no need to continue searching!
+      dart_dephash_elem_t *local;
+      dart_dephash_elem_t *prev;
+      for (local = local_deps[slot].head, prev = NULL;
+           local != NULL;
+           local = local->next) {
+        if (DEP_ADDR_EQ(local->dep, rdep->dep)) {
+          if (local->dep.phase < rdep->dep.phase) {
+            // 'tis the one
+            break;
+          } else if (local->is_dummy){
+            // a dummy output dependency, we need to adapt the phase to the earlier
+            // phase of this input dependency
+            DART_LOG_TRACE("Adjusting dummy dependency %p from phase %d to %d",
+                           local, local->dep.phase, rdep->dep.phase - 1);
+            local->dep.phase = rdep->dep.phase - 1;
             break;
           }
-#else
-          // finished tasks should not be in the hash table
-          DART_ASSERT_MSG(IS_ACTIVE_TASK(local_task), "Task %p found in inactive state", local_task);
-#endif
-
-          if (local->taskdep.phase < rdep->taskdep.phase) {
-            // local_task is in a previous phase, match!
-            candidate = local_task;
-            // we've found what we were looking for, keep the local_task locked
-            break;
-          } else if (local->taskdep.phase >= rdep->taskdep.phase) {
-            UNLOCK_TASK(local_task);
-            // make this task a candidate for a direct successor to handle WAR
-            // dependencies if it is in an earlier phase
-            if (direct_dep_candidate == NULL ||
-                direct_dep_candidate->phase > local->taskdep.phase) {
-              if (local_task->state == DART_TASK_RUNNING) {
-                DART_LOG_WARN("Task %p has potential direct dependency to task "
-                      "%p on unit %d but is already running, "
-                      "cowardly dropping this dependency!",
-                      local_task, rdep->task.remote, rdep->origin.id);
-              } else {
-                direct_dep_candidate = local_task;
-                /*
-                DART_LOG_TRACE("Making local task %p a direct dependency candidate "
-                               "for remote task %p",
-                               direct_dep_candidate,
-                               rdep->task.remote);
-                */
-              }
-            }
-          }
-          else {
-              UNLOCK_TASK(local_task);
-          }
+          prev = local;
         }
       }
+
+      bool runnable = false;
+      if (local == NULL) {
+        // create a dummy output dependency and register this dependency with it
+        dart_dephash_elem_t *out_dep = dephash_allocate_elem(&rdep->dep,
+                                                             TASKREF(NULL),
+                                                             rdep->origin);
+        out_dep->is_dummy = true;
+        // output depdendencies live in the previous phase
+        --(out_dep->dep.phase);
+        dephash_list_insert_elem_after_nolock(&local_deps[slot], out_dep, prev);
+        local = out_dep;
+        DART_LOG_TRACE("Inserting dummy output dep %p for delayed input dep "
+                       "from task %p, unit %d, phase %d, slot %d",
+                       out_dep, rdep->task.local, rdep->origin.id,
+                       rdep->dep.phase, slot);
+        // make the successor output dependency aware of the dummy
+        if (prev != NULL && prev->task.local != NULL) {
+          DART_FETCH_AND_INC32(&prev->task.local->unresolved_deps);
+        }
+      }
+
+      if (local->task.local == NULL) {
+        runnable = true;
+      }
+
+      register_at_out_dep_nolock(local, rdep);
       UNLOCK_TASK(&local_deps[slot]);
-    }
 
-    if (candidate != NULL) {
-      // we have a local task to satisfy the remote task
-      DART_LOG_DEBUG("Found local task %p to satisfy remote dependency of "
-                     "task %p from origin %i",
-                     candidate, rdep->task.remote, origin.id);
-      DART_STACK_PUSH(candidate->remote_successor, rdep);
-      candidate->prio = DART_PRIO_HIGH;
-      UNLOCK_TASK(candidate);
-    } else {
-      // TODO: we need to add the remote task to the hash table so we
-      //       can find a possible WAR dependency in a later matching
-      // the remote dependency cannot be served --> send release
-      DART_LOG_DEBUG("Releasing remote task %p from unit %i, "
-                     "which could not be handled in phase %i",
-                     rdep->task.remote, origin.id,
-                     rdep->taskdep.phase);
-      dart_tasking_remote_release(origin, rdep->task, &rdep->taskdep);
-    }
-
-    if (direct_dep_candidate != NULL) {
-      // this task has to wait for the remote task to finish because it will
-      // overwrite the input of the remote task
-      int32_t unresolved_deps = DART_FETCH_AND_INC32(
-                                  &direct_dep_candidate->unresolved_remote_deps);
-      dart_global_unit_t target = origin;
-      dart_tasking_remote_direct_taskdep(target, direct_dep_candidate,
-                                         rdep->task);
-      DART_LOG_DEBUG("DIRECT task dep: task %p (ph:%i) directly depends on "
-                     "remote task %p (ph:%d) at unit %i and has %i remote dependencies",
-                     direct_dep_candidate,
-                     direct_dep_candidate->phase,
-                     rdep->task.local,
-                     rdep->taskdep.phase,
-                     target.id,
-                     unresolved_deps + 1);
-    }
-
-    if (candidate == NULL) {
-      // release the dependency object
-      dephash_recycle_elem(rdep);
+      if (runnable) {
+        DART_LOG_TRACE("Delayed dep %p of task %p from unit %d is immediately runnable",
+                       rdep, rdep->task.local, rdep->origin.id);
+        // save the release for after matching the output dependencies
+        DART_STACK_PUSH_MEMB(*release_candidates, rdep, next_in_task);
+      }
     }
   }
-
-  unhandled_remote_indeps = NULL;
-  dart__base__mutex_unlock(&unhandled_remote_mutex);
 
   return DART_OK;
 }
 
 dart_ret_t
-dart_tasking_datadeps_handle_defered_remote_outdeps()
+dart_tasking_datadeps_handle_defered_remote_outdeps(
+  dart_taskphase_t matching_phase)
 {
-  dart_dephash_elem_t *rdep;
   DART_LOG_DEBUG("Handling previously unhandled remote output dependencies: %p",
-                 unhandled_remote_indeps);
+                 unhandled_remote_outdeps.head);
 
-  dart_task_t *root_task = dart__tasking__current_task();
-  DART_ASSERT(dart__tasking__is_root_task(root_task));
+  dart_task_t *root_task = dart__tasking__root_task();
   dephash_require_alloc(root_task);
-  dart__base__mutex_lock(&unhandled_remote_mutex);
-  dart_dephash_elem_t *next = unhandled_remote_outdeps;
+  dart_dephash_elem_t *next = unhandled_remote_outdeps.head;
+  unhandled_remote_outdeps.head        = NULL;
+  unhandled_remote_outdeps.num_outdeps = 0;
   // iterate over all delayed remote output deps
+  dart_dephash_elem_t *rdep;
   while ((rdep = next) != NULL) {
     next = rdep->next;
+    bool runnable = false;
 
-    int32_t phase = rdep->taskdep.phase;
+    if (rdep->dep.phase > matching_phase) {
+      // Skip any dependency we cannot handle yet
+      dephash_list_insert_elem_sorted_phase_desc_nolock(
+        &unhandled_remote_outdeps, rdep);
+      continue;
+    }
 
-    // find the right spot to insert this output dep
-    dart_dephash_elem_t *prev_outdep = NULL;
+    DART_LOG_TRACE("Handling remote dependency %p", rdep);
 
-    // allocate dummy task object
-    dart_task_t *dummy_task = dart__tasking__allocate_dummytask();
-    dummy_task->remote_task = rdep->task.remote; // use the data pointer to store the remote task
-    dummy_task->origin      = rdep->origin;
-    dummy_task->descr       = "DUMMY (OUTDEP)";
-    dummy_task->prio        = DART_PRIO_HIGH;
-    DART_LOG_TRACE(
-      "Allocated dummy task %p (ph:%d) for remote out dep on %p from task %p at unit %d",
-      dummy_task, phase, rdep->taskdep.gptr.addr_or_offs.addr, rdep->task.remote, rdep->origin.id);
+    dart_taskphase_t phase = rdep->dep.phase;
 
-    int slot = hash_gptr(rdep->taskdep.gptr);
+    int slot = hash_gptr(rdep->dep.gptr);
     dart_dephash_head_t *local_deps = root_task->local_deps;
     LOCK_TASK(&local_deps[slot]);
-
-    for (dart_dephash_elem_t *local = local_deps[slot].head;
-                              local != NULL;
-                              local = local->next) {
-      if (!DEP_ADDR_EQ(local->taskdep, rdep->taskdep)) continue;
-      // stop on the first out dependency with a lower phase
-      if (local->taskdep.phase < phase) {
-        dart_task_t *local_task = local->task.local;
-        // make this output dependency a successor of input deps with lower phase
-        DART_INC_AND_FETCH32(&dummy_task->unresolved_deps);
-        DART_LOG_TRACE("Making dummy task %p a successor of local task %p (ph:%d)",
-                       dummy_task, local_task, local->taskdep.phase);
-        LOCK_TASK(local_task);
-        dart_tasking_tasklist_prepend(&(local_task->successor), dummy_task);
-        local_task->prio = DART_PRIO_HIGH;
-        UNLOCK_TASK(local_task);
-        // ... and stop on the first output dependency
-        if (rdep->taskdep.type == DART_DEP_OUT) break;
-      }
-      if (phase == local->taskdep.phase && local->taskdep.type == DART_DEP_OUT) {
-        DART_LOG_WARN("Found remote output dependency with same phase as "
-                      "local output dependency (phase %d)", phase);
-      }
-      if (rdep->taskdep.type == DART_DEP_OUT) {
-        prev_outdep = local;
-      }
-    }
-
-    // go back to the previous output dependency and make all intermediate
-    // input dependencies local successors
-    dart_dephash_elem_t *start = prev_outdep;
     dart_dephash_elem_t *local;
-    if (prev_outdep == NULL) {
-      DART_LOG_TRACE("Starting search for later dependencies from start of slot");
-      start = local_deps[slot].head;
-    } else {
-      DART_LOG_TRACE("Starting search for later dependencies from phase %d", start->taskdep.phase);
-    }
-    for (local = start;
-          local != NULL;
-          local = local->next) {
-
-      // the new dependency will be inserted at the end of the lower phase
-      // or before the next phase
-      if (local->taskdep.phase <= phase) {
-        break;
-      }
-
-      // make immediate later dependencies local successors of the dummy task
-      dart_task_t *local_task = local->task.local;
-      uint32_t num_deps = local_task->unresolved_deps + local_task->unresolved_remote_deps;
-      DART_INC_AND_FETCH32(&local_task->unresolved_deps);
-      DART_LOG_TRACE("Making local task %p (ph:%d) a successor of dummy task %p",
-                     local_task, local->taskdep.phase, dummy_task);
-      dart_tasking_tasklist_prepend(&(dummy_task->successor), local_task);
-
-      if (num_deps == 0) {
-        // we have to remove the task from the defered_local_task queue
-        dart_tasking_taskqueue_remove(&local_deferred_tasks, local_task);
-        local_task->state = DART_TASK_CREATED;
-      }
-    }
-
-    if (dummy_task->unresolved_deps != 0) {
-      // insert the new dependency, re-use the dephash object
-      union taskref tr;
-      tr.local = dummy_task;
-      rdep->task = tr;
-      if (local != local_deps[slot].head) {
-        DART_LOG_TRACE("Inserting dummy task %p in the middle of the slot (rdep %p, local %p)", dummy_task, rdep, local);
-        rdep->next  = local;
-        rdep->prev  = local->prev;
-        if (NULL != local->prev) {
-          local->prev->next = rdep;
+    // prev is the previous dependency on the same memory location
+    dart_dephash_elem_t *prev = NULL;
+    for (local = local_deps[slot].head;
+         local != NULL;
+         local = local->next) {
+      if (DEP_ADDR_EQ(local->dep, rdep->dep)) {
+        if (local->dep.phase <= phase) {
+          // 'tis the one
+          break;
         }
-        local->prev = rdep;
+        prev = local;
+      }
+    }
+
+    // make sure there are no colliding dependencies
+    if (local != NULL && local->dep.phase == phase && local->task.local != NULL) {
+      DART_LOG_ERROR("Found colliding remote output dependencies in phase %d!",
+                     local->dep.phase);
+      dart_abort(DART_EXIT_ABORT);
+    }
+
+    bool needs_insert = true;
+    if (local == NULL) {
+      // if there are no previous output dependencies we can release directly
+      runnable = true;
+      if (prev != NULL && prev->is_dummy) {
+        /**
+        * We found a dummy dependency that was created in a later phase.
+        * Thus, we can capture it. All input dependencies in this dummy have a
+        * phase later than our dependency and earlier than the previous
+        * regular output dependency (as later dependencies have been stolen
+        * before thanks to the ordered insertion).
+        */
+        DART_LOG_TRACE("Capturing dummy dependency %p for remote dependency %p",
+                       prev, rdep);
+        prev->task   = rdep->task;
+        prev->origin = rdep->origin;
+        // release the remote depedendency object, we're working on the existing on
+        dephash_recycle_elem(rdep);
+        rdep = prev; // defensive!
+        needs_insert = false;
+      }
+    }
+
+
+    if (needs_insert) {
+      DART_LOG_TRACE("Inserting remote out dependency %p after %p",
+                     rdep, prev);
+      // insert the remote dependency into the bucket
+      dephash_list_insert_elem_after_nolock(&local_deps[slot], rdep, prev);
+    }
+
+    /**
+     * If there is an earlier dependency: check whether we can steal input
+     * dependencies from it for which our phase is a better match.
+     */
+    if (local != NULL) {
+      // check if this dependency is a better match than the next one
+      //LOCK_TASK(local);
+      if (local->task.local == NULL) {
+        DART_LOG_WARN("Task in dependency %p already completed, cannot steal!",
+                      local);
       } else {
-        DART_LOG_TRACE("Inserting dummy task %p at the front of the slot (rdep %p, local_deps[%d] %p)", dummy_task, rdep, slot, local_deps[slot].head);
-        rdep->next = local_deps[slot].head;
-        if (local_deps[slot].head != NULL) {
-          local_deps[slot].head->prev = rdep;
+        dart_dephash_elem_t *in_dep = local->dep_list;
+        dart_dephash_elem_t *prev = NULL;
+        dart_dephash_elem_t *next = in_dep;
+        while (NULL != (in_dep = next))
+        {
+          next = in_dep->next;
+          if (in_dep->dep.phase > rdep->dep.phase) {
+            // steal this dependency
+            DART_LOG_TRACE("Stealing in dep %p (ph %d) from out dep %p (ph %d) "
+                           "to out dep %p (ph %d)",
+                           in_dep, in_dep->dep.phase,
+                           local, local->dep.phase,
+                           rdep, rdep->dep.phase);
+            if (prev == NULL) {
+              local->dep_list = next;
+            } else {
+              prev->next = next;
+            }
+            deregister_in_dep_nolock(in_dep);
+            register_at_out_dep_nolock(rdep, in_dep);
+          }
+
+          prev = in_dep;
         }
-        local_deps[slot].head = rdep;
-        rdep->prev = NULL;
       }
-      // register this depdendency with the dummy task
-      DART_STACK_PUSH_MEMB(dummy_task->deps_owned, rdep, next_in_task);
-    } else {
-      DART_LOG_TRACE("Dummy task %p is immediately runnable in phase %d!",
-                     dummy_task, phase);
-      dephash_recycle_elem(rdep);
-      dart_tasking_datadeps_release_dummy_task(dummy_task);
+      //UNLOCK_TASK(local);
     }
+
+    /**
+     * Finally, release the task if it is runnable.
+     */
+    if (runnable) {
+      release_dependency(rdep);
+    }
+
     UNLOCK_TASK(&local_deps[slot]);
   }
 
-  unhandled_remote_outdeps = NULL;
-  dart__base__mutex_unlock(&unhandled_remote_mutex);
-
   return DART_OK;
 }
 
-dart_ret_t
-dart_tasking_datadeps_handle_defered_remote()
+static void
+dart_tasking_datadeps_release_runnable_remote_indeps(
+  dart_dephash_elem_t *release_candidates)
 {
-  // first enter the remote output dependencies
-  dart_tasking_datadeps_handle_defered_remote_outdeps();
+  if (release_candidates != NULL) {
+    dart_dephash_elem_t *elem;
+    do {
+      DART_STACK_POP_MEMB(release_candidates, elem, next_in_task);
+      if (elem == NULL) break;
+      //LOCK_TASK(elem);
+      /**
+       * If the indep's output dependency has no task it means that the task
+       * is runnable.
+       */
+      if (elem->dep_list->task.local == NULL) {
+        // safe to send a remote release now
+        release_dependency(elem);
+      }
+      //UNLOCK_TASK(elem);
+    } while (1);
+  }
+}
 
-  // now we can handle the deferred remote input dependencies
-  dart_tasking_datadeps_handle_defered_remote_indeps();
+dart_ret_t
+dart_tasking_datadeps_handle_defered_remote(dart_taskphase_t matching_phase)
+{
+  /**
+  * List of dephash elements representing remote tasks that were deemed to be
+  * runnable during matching. They need to be checked again after matching
+  * completed.
+  * NOTE: the list is formed using the next_in_task member and there is no multi-
+  *       threaded access.
+  */
+  dart_dephash_elem_t *release_candidates = NULL;
+
+  dart__base__mutex_lock(&unhandled_remote_mutex);
+  // insert the deferred remote input dependencies
+  dart_tasking_datadeps_handle_defered_remote_indeps(
+    matching_phase, &release_candidates);
+
+  // match the remote output dependencies
+  dart_tasking_datadeps_handle_defered_remote_outdeps(matching_phase);
+  dart__base__mutex_unlock(&unhandled_remote_mutex);
+
+  // check whether we can release any task with remote input deps
+  dart_tasking_datadeps_release_runnable_remote_indeps(release_candidates);
 
   return DART_OK;
 }
@@ -791,7 +1056,6 @@ dart_tasking_datadeps_handle_copyin(
   dest_gptr.teamid            = 0;
   dest_gptr.unitid            = myguid.id;
   slot = hash_gptr(dest_gptr);
-  dart_dephash_elem_t *elem = NULL;
   int iter = 0;
   DART_LOG_TRACE("Handling copyin dep (unit %d, phase %d)",
                  dep->copyin.gptr.unitid, dep->phase);
@@ -801,37 +1065,36 @@ dart_tasking_datadeps_handle_copyin(
     // check whether this is the first task with copyin
     if (parent->local_deps != NULL) {
       LOCK_TASK(&parent->local_deps[slot]);
+      dart_dephash_elem_t *elem = NULL;
       for (elem = parent->local_deps[slot].head;
            elem != NULL; elem = elem->next) {
-        if (elem->taskdep.gptr.addr_or_offs.addr == dep->copyin.dest) {
-          if (elem->taskdep.phase < dep->phase) {
+        if (elem->dep.gptr.addr_or_offs.addr == dep->copyin.dest) {
+          if (elem->dep.phase < dep->phase) {
             // phases are stored in decending order so we can stop here
             break;
           }
           // So far we can only re-use prefetching in the same phase
           // TODO: can we figure out whether we can go back further?
           //       Might need help from the remote side.
-          if (IS_OUT_DEP(elem->taskdep) && dep->phase == elem->taskdep.phase) {
+          if (IS_OUT_DEP(elem->dep) && dep->phase == elem->dep.phase) {
+            UNLOCK_TASK(&parent->local_deps[slot]);
             // we're not the first --> add a dependency to the task that does the copy
-            dart_task_t *elem_task = elem->task.local;
             DART_INC_AND_FETCH32(&task->unresolved_deps);
-            // lock the task here to avoid race condition
-            LOCK_TASK(elem_task);
-            dart_tasking_tasklist_prepend(&(elem_task->successor), task);
-            if (elem_task->prio < task->prio) elem_task->prio = task->prio;
-            UNLOCK_TASK(elem_task);
 
-            // add this task to the hash table
+            // register the depdendency with the output dependency
             dart_task_dep_t in_dep;
             in_dep.type  = DART_DEP_IN;
             in_dep.gptr  = dest_gptr;
             in_dep.phase = dep->phase;
-            dephash_add_local_nolock(&in_dep, task, slot);
+            dart_dephash_elem_t *new_elem;
+            new_elem = dephash_allocate_elem(&in_dep, TASKREF(task), myguid);
+            DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
+            register_at_out_dep_nolock(elem, new_elem);
 
+            dart_task_t *elem_task = elem->task.local;
             DART_LOG_TRACE("Copyin: task %p waits for copyin task %p", task, elem_task);
 
             // we're done
-            UNLOCK_TASK(&parent->local_deps[slot]);
             return DART_OK;
           }
         }
@@ -844,11 +1107,9 @@ dart_tasking_datadeps_handle_copyin(
 
     // we haven't found a task that does the prefetching in this phase
     // so create a new one
-    taskref tr;
-    tr.local = task;
     DART_LOG_TRACE("Creating copyin task in phase %d (dest %p)",
                    dep->phase, dep->copyin.dest);
-    dart_tasking_copyin_create_task(dep, dest_gptr, tr);
+    dart_tasking_copyin_create_task(dep, dest_gptr, TASKREF(task));
   } while (0 == iter++);
 
   return DART_OK;
@@ -861,198 +1122,166 @@ dart_tasking_datadeps_handle_copyin(
  * encountered.
  */
 static dart_ret_t
-dart_tasking_datadeps_match_local_datadep(
+dart_tasking_datadeps_match_local_dependency(
   const dart_task_dep_t * dep,
         dart_task_t     * task)
 {
-  int slot;
-  slot = hash_gptr(dep->gptr);
   dart_task_t *parent = task->parent;
 
-  // shortcut if no dependencies to match, yet
-  if (parent->local_deps == NULL) return DART_OK;
+  // TODO: we cannot short-cut here because we need to store all local input
+  //       dependencies to match against remote input dependencies
+  //if (parent->local_deps == NULL) return DART_OK;
+  dephash_require_alloc(parent);
+
+  int slot;
+  slot = hash_gptr(dep->gptr);
 
   // lock task to make sure the hash table is consistent
   // TODO: more fine-grained locking on bucket level
   LOCK_TASK(&parent->local_deps[slot]);
 
+  DART_LOG_TRACE("Matching local dependency for task %p (off: %p, type:%d)",
+                 task, dep->gptr.addr_or_offs.addr, dep->type);
+
   /*
-   * iterate over all dependent tasks until we find the first task with
-   * OUT|INOUT dependency on the same pointer
-   */
+  * iterate over all dependent tasks until we find the first task with
+  * OUT|INOUT dependency on the same pointer
+  */
   dart_dephash_elem_t *prev = NULL;
-  for (dart_dephash_elem_t *elem = parent->local_deps[slot].head;
-       elem != NULL; elem = elem->next)
+  dart_dephash_elem_t *elem = NULL;
+  for (elem = parent->local_deps[slot].head;
+      elem != NULL; prev = elem, elem = elem->next)
   {
     DART_ASSERT_MSG(elem->prev == prev,
                     "Corrupt double linked list: elem %p, elem->prev %p, prev %p",
                     elem, elem->prev, prev);
-    prev = elem;
-    if (DEP_ADDR_EQ(elem->taskdep, *dep)) {
-      dart_task_t *elem_task = elem->task.local;
-      if (elem_task == task) {
-        // simply upgrade the dependency to an output dependency
-        if (elem->taskdep.type == DART_DEP_IN && IS_OUT_DEP(*dep)) {
-          elem->taskdep.type = DART_DEP_INOUT;
-        }
-        // nothing to be done for this dependency
-        break;
-      }
 
-      if (IS_OUT_DEP(*dep) ||
-              (dep->type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep))) {
-        // lock the task here to avoid race condition
-        LOCK_TASK(elem_task);
-        DART_ASSERT_MSG(IS_ACTIVE_TASK(elem_task),
-                        "Found inactive task %p in state %d in elem %p (prev elem %p)",
-                        elem_task, elem_task->state, elem, elem->prev);
-        // check whether this task is already in the successor list
-        if (dart_tasking_tasklist_contains(elem_task->successor, task)){
-          // the task is already in the list, don't add it again!
-          DART_LOG_TRACE("Task %p already a local successor of task %p, skipping",
-                         task, elem_task);
-        } else {
-          int32_t unresolved_deps = DART_INC_AND_FETCH32(
-                                        &task->unresolved_deps);
-          DART_LOG_TRACE("Making task %p a local successor of task %p "
-                         "(successor: %p, state: %i | num_deps: %i)",
-                         task, elem_task,
-                         elem_task->successor,
-                         elem_task->state, unresolved_deps);
-          dart_tasking_tasklist_prepend(&(elem_task->successor), task);
-          if (elem_task->prio < task->prio) elem_task->prio = task->prio;
-          instrument_task_dependency(elem_task, task, elem->taskdep.gptr);
-        }
-        UNLOCK_TASK(elem_task);
-      }
-      if (IS_OUT_DEP(elem->taskdep)) {
-        UNLOCK_TASK(&parent->local_deps[slot]);
-        // we can stop at the first OUT|INOUT dependency
-        DART_LOG_TRACE("Stopping search for dependencies for task %p at "
-                       "first OUT dependency encountered from task %p!",
-                       task, elem_task);
-        return DART_OK;
-      }
+    if (DEP_ADDR_EQ(elem->dep, *dep)) {
+      break;
     }
+  }
+
+  if (dep->type == DART_DEP_IN) {
+    dart_dephash_elem_t *new_elem = dephash_allocate_elem(dep, TASKREF(task), myguid);
+    DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
+    if (elem == NULL) {
+      /**
+       * Couldn't find matching output dependency.
+       * Insert a dummy output dependency and register the input dependency
+       * with it.
+       * The dummy dependency won't have a task assigned to it and has the phase
+       * of the input dependency.
+       * A remote output dependency serving this input dependency may then
+       * capture this dummy dependency and adjust the phase.
+       */
+
+      // create a dummy output dependency and register with it
+      dart_task_dep_t out_dep = *dep;
+      out_dep.type = DART_DEP_OUT;
+      // put the dummy output dependency in a previous phase
+      --out_dep.phase;
+      dart_dephash_elem_t *dummy = dephash_allocate_elem(&out_dep, TASKREF(NULL), myguid);
+      dummy->is_dummy = true;
+      register_at_out_dep_nolock(dummy, new_elem);
+      // put the dummy dependency in the hash table
+      dephash_list_insert_elem_after_nolock(&parent->local_deps[slot], dummy, NULL);
+      // NOTE: the dummy dependency is not registered with the task because
+      // the task does not own it. It is already released and will be free'd
+      // once the input dependency is released.
+      DART_LOG_TRACE("Inserting dummy dependency %p for input dependency %p "
+                      "of task %p in phase %d",
+                     dummy, new_elem, task, out_dep.phase);
+    } else {
+      //LOCK_TASK(elem);
+      if (elem->task.local != NULL) {
+        int32_t unresolved_deps = DART_INC_AND_FETCH32(
+                                      &task->unresolved_deps);
+        DART_LOG_TRACE("Making task %p a local successor of task %p "
+                      "(num_deps: %i, outdep: %p)",
+                      task, elem->task.local, unresolved_deps, elem);
+        register_at_out_dep_nolock(elem, new_elem);
+      } else {
+        //DART_INC_AND_FETCH32(&elem->num_consumers);
+        elem->num_consumers++;
+        // register the output dependency with the input dependency for later release
+        new_elem->dep_list = elem;
+        DART_LOG_TRACE("Task of out dep %p already running, not waiting to finish",
+                       elem);
+      }
+      //UNLOCK_TASK(elem);
+    }
+  } else {
+    if (elem != NULL) {
+      int32_t unresolved_deps = DART_INC_AND_FETCH32(
+                                    &task->unresolved_deps);
+      DART_LOG_TRACE("Making task %p a local successor of task %p in out dep %p"
+                    "(num_deps: %i)",
+                    task, elem->task.local, elem, unresolved_deps);
+    } else {
+      DART_LOG_TRACE("No previous out dependency for task %p", task);
+    }
+    // insert output dependency into the hash table
+    dephash_add_local_nolock(dep, task, slot);
   }
 
   UNLOCK_TASK(&parent->local_deps[slot]);
 
-  if (!IS_OUT_DEP(*dep)) {
-    DART_LOG_TRACE("No matching output dependency found for local input "
-        "dependency %p of task %p in phase %i",
-        DEP_ADDR(*dep), task, task->phase);
-  }
   return DART_OK;
 }
 
 
 /**
- * Match a delayed local data dependency.
- * This is similar to \ref dart_tasking_datadeps_match_local_datadep but
+ * Match a delayed local input dependency.
+ * This is similar to \ref dart_tasking_datadeps_match_local_dependency but
  * handles the local dependency honoring the phase, i.e., later depdendencies
  * are skipped. This also potententially adds dependencies to the graph.
  */
 static dart_ret_t
-dart_tasking_datadeps_match_delayed_local_datadep(
+dart_tasking_datadeps_match_delayed_local_indep(
   const dart_task_dep_t * dep,
         dart_task_t     * task)
 {
-  int slot;
-  slot = hash_gptr(dep->gptr);
-
   dart_task_t *parent = task->parent;
 
   // shortcut if no dependencies to match, yet
   if (parent->local_deps == NULL) return DART_OK;
 
-  dart_task_t *next_out_task = NULL; // the task with the next output dependency
+  int slot;
+  slot = hash_gptr(dep->gptr);
 
   DART_LOG_DEBUG("Handling delayed input dependency in phase %d", dep->phase);
 
-  /*
-   * iterate over all dependent tasks until we find the first task with
-   * OUT|INOUT dependency on the same pointer
-   */
   LOCK_TASK(&parent->local_deps[slot]);
   for (dart_dephash_elem_t *elem = parent->local_deps[slot].head;
        elem != NULL; elem = elem->next)
   {
-    // skip dependencies that were created in a later phase
-    if (elem->taskdep.phase > dep->phase) {
-      if (DEP_ADDR_EQ(elem->taskdep, *dep) && IS_OUT_DEP(elem->taskdep)){
-        next_out_task = elem->task.local;
-      }
+    // skip output dependencies that were created in a later phase
+    if (elem->dep.phase >= dep->phase) {
       continue;
     }
 
-    if (DEP_ADDR_EQ(elem->taskdep, *dep)) {
+    if (DEP_ADDR_EQ(elem->dep, *dep)) {
       dart_task_t *elem_task = elem->task.local;
       DART_ASSERT_MSG(elem_task != task,
                       "Cannot insert existing task with delayed dependency!");
 
-      if (IS_OUT_DEP(elem->taskdep)) {
-        // lock the task here to avoid race condition
-        LOCK_TASK(elem_task);
-        DART_ASSERT(IS_ACTIVE_TASK(elem_task));
+      DART_ASSERT(IS_ACTIVE_TASK(elem_task));
+      dart_dephash_elem_t *new_elem;
+      new_elem = dephash_allocate_elem(dep, TASKREF(task), myguid);
+
+      //LOCK_TASK(elem);
+      if (elem->task.local != NULL) {
         int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                       &task->unresolved_deps);
         DART_LOG_TRACE("Making task %p a local successor of task %p using delayed dependency "
-                      "(successor: %p, state: %i | num_deps: %i)",
+                      "(state: %i | num_deps: %i)",
                       task, elem_task,
-                      elem_task->successor,
                       elem_task->state, unresolved_deps);
-
-        dart_tasking_tasklist_prepend(&(elem_task->successor), task);
-        if (elem_task->prio < task->prio) elem_task->prio = task->prio;
-        instrument_task_dependency(elem_task, task, elem->taskdep.gptr);
-        UNLOCK_TASK(elem_task);
-
-        // register this task with the next out task to avoid overwriting
-        if (next_out_task) {
-          LOCK_TASK(next_out_task);
-          DART_ASSERT_MSG(IS_ACTIVE_TASK(next_out_task),
-                          "Cannot insert delayed dependency if the next task "
-                          "is already running (WTF?!)");
-          int32_t unresolved_deps = DART_INC_AND_FETCH32(
-                                        &next_out_task->unresolved_deps);
-          DART_LOG_TRACE("Making task %p a local successor of next_out_task %p using delayed dependency  "
-                        "(successor: %p, state: %i | num_deps: %i)",
-                        task, next_out_task,
-                        next_out_task->successor,
-                        next_out_task->state, unresolved_deps);
-          dart_tasking_tasklist_prepend(&(task->successor), next_out_task);
-          if (task->prio < next_out_task->prio) task->prio = next_out_task->prio;
-          instrument_task_dependency(elem_task, task, elem->taskdep.gptr);
-          UNLOCK_TASK(next_out_task);
-          // no need to add this dependency to the hash table
-        } else {
-          // there is no later task so we better insert this dependency into
-          // the hash table
-          taskref tr;
-          tr.local = task;
-          dart_dephash_elem_t *new_elem = dephash_allocate_elem(dep, tr, myguid);
-          DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
-          if (elem->prev == NULL) {
-            // we are still at the head of the hash table slot, i.e.,
-            // our match was the very first task we encountered
-            DART_LOG_TRACE("Inserting delayed dependency at the beginning of the slot (new_elem %p, elem %p)", new_elem, elem);
-            new_elem->next                 = elem;
-            elem->prev                     = new_elem;
-            parent->local_deps[slot].head  = new_elem;
-            new_elem->prev                 = NULL;
-          } else {
-            DART_LOG_TRACE("Inserting delayed dependency in the middle (new_elem %p, elem %p)", new_elem, elem);
-            new_elem->next        = elem;
-            new_elem->prev        = elem->prev;
-            new_elem->prev->next  = new_elem;
-            elem->prev            = new_elem;
-          }
-        }
-        // we're done here
-        UNLOCK_TASK(&parent->local_deps[slot]);
-        return DART_OK;
       }
+      register_at_out_dep_nolock(elem, new_elem);
+      //UNLOCK_TASK(elem);
+      // we're done here
+      break;
     }
   }
   UNLOCK_TASK(&parent->local_deps[slot]);
@@ -1133,7 +1362,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
         if (task->parent->state == DART_TASK_ROOT) {
           dart_tasking_remote_datadep(&dep, task);
           int32_t unresolved_deps = DART_INC_AND_FETCH32(&task->unresolved_remote_deps);
-          DART_LOG_INFO(
+          DART_LOG_TRACE(
             "Sent remote dependency request for task %p "
             "(unit=%i, team=%i, segid=%i, offset=%p, num_deps=%i)",
             task, guid.id, dep.gptr.teamid, dep.gptr.segid,
@@ -1150,16 +1379,14 @@ dart_ret_t dart_tasking_datadeps_handle_task(
          * the creation of the task using this dependency has been delayed until
          * the matching step so we can process it here.
          */
-        dart_tasking_datadeps_match_delayed_local_datadep(&dep, task);
+        dart_tasking_datadeps_match_delayed_local_indep(&dep, task);
 
       } else {
-        dart_tasking_datadeps_match_local_datadep(&dep, task);
+        // match both input and output dependencies
+        dart_tasking_datadeps_match_local_dependency(&dep, task);
 
         // set the numaptr
         if (task->numaptr == NULL) task->numaptr = dep.gptr.addr_or_offs.addr;
-
-        // add this task to the hash table
-        dephash_add_local(&dep, task);
       }
     }
   }
@@ -1175,83 +1402,31 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(
     const taskref           remote_task,
     dart_global_unit_t      origin)
 {
-  /*
-  if (rdep->type != DART_DEP_IN) {
-    DART_LOG_ERROR("Remote dependencies with type other than DART_DEP_IN are not supported!");
-    return DART_ERR_INVAL;
-  }
-  */
-
-  DART_LOG_INFO("Enqueuing remote task %p from unit %i for later resolution",
-    remote_task.remote, origin.id);
+  DART_LOG_TRACE("Enqueuing remote task %p from unit %i for later resolution",
+                remote_task.remote, origin.id);
   // cache this request and resolve it later
   dart_dephash_elem_t *rs = dephash_allocate_elem(rdep, remote_task, origin);
+
+  DART_ASSERT_MSG(rdep->phase == DART_PHASE_FIRST ||
+                  !dart__tasking__phase_is_runnable(rdep->phase),
+                  "Phase %d of received dependency %p (task %p, unit %d) is "
+                  "already runnable (%d)!",
+                  rdep->phase, rs, remote_task.local, origin.id,
+                  dart__tasking__phase_runnable());
+
+  // TODO: are these locks really necessary?
   dart__base__mutex_lock(&unhandled_remote_mutex);
   if (rdep->type == DART_DEP_IN) {
     DART_STACK_PUSH(unhandled_remote_indeps, rs);
   } else {
-    DART_STACK_PUSH(unhandled_remote_outdeps, rs);
+    /**
+     * store the dependency in phase-descending order so we can later insert
+     * them into the hash table, starting with the highest phase, to match
+     * input dependencies that had not been assigned an output dependency before.
+     */
+    dephash_list_insert_elem_sorted_phase_desc_nolock(&unhandled_remote_outdeps, rs);
   }
   dart__base__mutex_unlock(&unhandled_remote_mutex);
-  return DART_OK;
-}
-
-
-/**
- * Handle the direct task dependency between a local task and
- * its remote successor
- */
-dart_ret_t dart_tasking_datadeps_handle_remote_direct(
-    dart_task_t       *local_task,
-    taskref            remote_task,
-    dart_global_unit_t origin)
-{
-  bool enqueued = false;
-  DART_LOG_DEBUG("Remote direct task dependency for task %p: %p",
-      local_task, remote_task.remote);
-  // dummy dependency
-  dart_task_dep_t dep;
-  dep.type   = DART_DEP_DIRECT;
-  dep.gptr   = DART_GPTR_NULL;
-  if (IS_ACTIVE_TASK(local_task)) {
-    LOCK_TASK(local_task);
-    if (IS_ACTIVE_TASK(local_task)) {
-      dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task, origin);
-      DART_STACK_PUSH(local_task->remote_successor, rs);
-      local_task->prio = DART_PRIO_HIGH;
-      enqueued = true;
-    }
-    UNLOCK_TASK(local_task);
-  }
-
-  if (!enqueued) {
-    // local task done already --> release immediately
-    dart_tasking_remote_release(origin, remote_task, &dep);
-  }
-
-  return DART_OK;
-}
-
-/**
- * Release a remote output dependency of a local task, called from remote side.
- */
-dart_ret_t dart_tasking_datadeps_release_remote_outdep(
-    dart_task_t       *local_task,
-    taskref            remote_task,
-    dart_global_unit_t origin)
-{
-  // enqueue the remote dummy task as remote successor
-  dart_task_dep_t dep;
-  dep.type   = DART_DEP_DIRECT;
-  dep.gptr   = DART_GPTR_NULL;
-  dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task, origin);
-  // no need for locking here as remote dependencies are never processed in parallel
-  DART_STACK_PUSH(local_task->remote_successor, rs);
-  local_task->prio = DART_PRIO_HIGH;
-
-  // release the dependency (potentially enqueuing the task)
-  dart_tasking_datadeps_release_remote_dep(local_task);
-  // no error signaled to remote side
   return DART_OK;
 }
 
@@ -1262,13 +1437,14 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
     dart_task_t   *task,
     dart_thread_t *thread)
 {
+  DART_LOG_TRACE("Releasing local dependencies of task %p", task);
+
   // start with removing this task from the hash maps
-  dephash_remove_local(task);
+  dephash_release_local_task(task);
   // release the remote dependencies
   release_remote_dependencies(task);
 
-  DART_LOG_TRACE("Releasing local dependencies of task %p", task);
-
+  DART_LOG_TRACE("Releasing local direct dependencies of task %p", task);
   // release local successors
   dart_task_t *succ;
   while ((succ = dart_tasking_tasklist_pop(&task->successor)) != NULL) {
@@ -1283,11 +1459,8 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
     if (runnable) {
       if (state == DART_TASK_CREATED) {
         dart__tasking__enqueue_runnable(succ);
-      } else if (state == DART_TASK_DUMMY) {
-        dart_tasking_datadeps_release_dummy_task(succ);
       } else {
         DART_ASSERT_MSG(state == DART_TASK_CREATED ||
-                        state == DART_TASK_DUMMY   ||
                         state == DART_TASK_NASCENT,
                         "Unexpected task state %d in dependency release!", state);
       }
@@ -1302,9 +1475,23 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
  * The release might be deferred until after the matching of dependencies
  * has completed.
  */
-dart_ret_t dart_tasking_datadeps_release_remote_dep(
-  dart_task_t *local_task)
+dart_ret_t dart_tasking_datadeps_release_remote_task(
+  dart_task_t        *local_task,
+  uintptr_t           elem,
+  dart_global_unit_t  unit)
 {
+
+  if (elem != 0) {
+    // store the remote dephash element reference in the dependencie's gptr
+    dart_task_dep_t dep;
+    dep.gptr.unitid = unit.id;
+    dep.gptr.addr_or_offs.offset = elem;
+    dart_dephash_elem_t *new_elem = dephash_allocate_elem(&dep, TASKREF(NULL), unit);
+    DART_STACK_PUSH(local_task->remote_successor, new_elem);
+    DART_LOG_TRACE("Storing dependency %p from unit %d in dep object %p",
+                   (void*)elem, unit.id, new_elem);
+  }
+
   // release the task if it is runnable
   LOCK_TASK(local_task);
   bool runnable = release_remote_dep_counter(local_task);
@@ -1313,17 +1500,7 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
 
   if (runnable) {
     // enqueue as runnable
-    if (state == DART_TASK_DUMMY) {
-      if (local_task->remote_task != NULL) {
-        dart_tasking_datadeps_release_dummy_task(local_task);
-      } else {
-        // immediately release dependencies of a dummy task
-        dart_tasking_datadeps_release_local_task(local_task,
-                                                 dart__tasking__current_thread());
-        // dummy is not needed anymore so we can free it
-        dart__tasking__destroy_task(local_task);
-      }
-    } else if (state == DART_TASK_CREATED || state == DART_TASK_DEFERRED) {
+    if (state == DART_TASK_CREATED || state == DART_TASK_DEFERRED) {
       dart__tasking__enqueue_runnable(local_task);
     } else {
       // if the task is nascent someone else will take care of enqueueing it
@@ -1334,6 +1511,21 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
   return DART_OK;
 }
 
+dart_ret_t dart_tasking_datadeps_release_remote_dep(
+  dart_dephash_elem_t *elem)
+{
+  dart_task_t *parent = dart__tasking__root_task();
+  DART_ASSERT(elem != NULL);
+
+  if (elem->dep.type == DART_DEP_IN) {
+    dephash_release_in_dependency(elem, parent->local_deps);
+  } else {
+    dephash_release_out_dependency(elem, parent->local_deps);
+  }
+
+  return DART_OK;
+}
+
 /**
  * Release the remote dependencies of \c task.
  */
@@ -1341,15 +1533,20 @@ static dart_ret_t release_remote_dependencies(dart_task_t *task)
 {
   DART_LOG_TRACE("Releasing remote dependencies for task %p (rs:%p)",
                  task, task->remote_successor);
-  dart_dephash_elem_t *rs = task->remote_successor;
-  while (rs != NULL) {
-    dart_dephash_elem_t *tmp = rs;
-    rs = rs->next;
+  do {
+    dart_dephash_elem_t *rs;
+    DART_STACK_POP(task->remote_successor, rs);
+    if (rs == NULL) {
+      break;
+    }
 
     // send the release
-    dart_tasking_remote_release(tmp->origin, tmp->task, &tmp->taskdep);
-    dephash_recycle_elem(tmp);
-  }
+    dart_global_unit_t guid;
+    guid.id = rs->dep.gptr.unitid;
+    uintptr_t depref = rs->dep.gptr.addr_or_offs.offset;
+    dart_tasking_remote_release_dep(guid, rs->task, depref);
+    dephash_recycle_elem(rs);
+  } while (1);
   task->remote_successor = NULL;
   return DART_OK;
 }

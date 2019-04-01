@@ -27,6 +27,9 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id) DART_INTERNAL
 int
 dart__tasking__affinity_num_numa_nodes() DART_INTERNAL;
 
+uint32_t
+dart__tasking__affinity_num_cores() DART_INTERNAL;
+
 int
 dart__tasking__affinity_core_numa_node(int core_id) DART_INTERNAL;
 

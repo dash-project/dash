@@ -48,11 +48,7 @@ static void
 cancel_thread_tasks(dart_thread_t *thread)
 {
   dart_task_t* task;
-#ifdef DART_TASK_THREADLOCAL_Q
-  dart_taskqueue_t *target_queue = &thread->queue;
-#else
   dart_taskqueue_t *target_queue = dart__tasking__get_taskqueue();
-#endif
   while ((task = dart_tasking_taskqueue_pop(target_queue)) != NULL) {
     DART_LOG_TRACE("Cancelling task %p", task);
     dart__tasking__cancel_task(task);

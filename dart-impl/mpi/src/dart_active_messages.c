@@ -52,7 +52,6 @@ struct cached_message_s
 struct message_cache_s
 {
   pthread_rwlock_t        mutex;
-  int                     is_processing;
   int                     pos;
   int8_t                  buffer[];
 };
@@ -78,13 +77,15 @@ static inline dart_ret_t exchange_fnoffsets();
 enum {
   DART_AMSGQ_SINGLEWIN,
   DART_AMSGQ_SOPNOP,
-  DART_AMSGQ_SENDRECV
+  DART_AMSGQ_SENDRECV,
+  DART_AMSGQ_DUALWIN
 };
 
 static struct dart_env_str2int env_vals[] = {
   {"singlewin", DART_AMSGQ_SINGLEWIN},
   {"sopnop",    DART_AMSGQ_SOPNOP},
   {"sendrecv",  DART_AMSGQ_SENDRECV},
+  {"dualwin",  DART_AMSGQ_DUALWIN},
   {NULL, 0}
 };
 
@@ -111,6 +112,10 @@ dart_amsg_init()
       break;
     case DART_AMSGQ_SENDRECV:
       res = dart_amsg_sendrecv_init(&amsgq_impl);
+      DART_LOG_TRACE("Using send/recv-based active message queue");
+      break;
+    case DART_AMSGQ_DUALWIN:
+      res = dart_amsg_dualwin_init(&amsgq_impl);
       DART_LOG_TRACE("Using send/recv-based active message queue");
       break;
     default:
@@ -249,7 +254,6 @@ dart_amsg_buffered_send(
     if (amsgq->message_cache[target.id] == NULL) {
       cache = malloc(sizeof(message_cache_t) + MSGCACHE_SIZE);
       cache->pos           = 0;
-      cache->is_processing = 0;
       pthread_rwlock_init(&cache->mutex, NULL);
       amsgq->message_cache[target.id] = cache;
     }
@@ -315,12 +319,10 @@ flush_buffer(dart_amsgq_t amsgq, bool blocking)
 {
   int comm_size = amsgq->team_size;
 
-  uint8_t msgbuf[MSGCACHE_SIZE];
-
   for (int target = 0; target < comm_size; ++target) {
     message_cache_t *cache = amsgq->message_cache[target];
     if (cache != NULL) {
-      if (cache->pos > 0) {
+      if (cache->pos > 0 || blocking) {
         pthread_rwlock_wrlock(&cache->mutex);
 
         if (cache->pos == 0) {
@@ -329,30 +331,20 @@ flush_buffer(dart_amsgq_t amsgq, bool blocking)
           continue;
         }
 
-        // copy the messages out of the buffer and process them without holding
-        // the lock
-        uint32_t pos = cache->pos;
-        memcpy(msgbuf, cache->buffer, pos);
-        cache->pos = 0;
-        DART_INC_AND_FETCH32(&cache->is_processing);
-        pthread_rwlock_unlock(&cache->mutex);
-
         dart_ret_t ret;
         dart_team_unit_t t = {target};
         do {
-          ret = amsgq_impl.trysend(t, amsgq->impl, msgbuf, pos);
-          if (ret != DART_OK && DART_ERR_AGAIN != ret) {
+          ret = amsgq_impl.trysend(t, amsgq->impl, cache->buffer, cache->pos);
+          if (DART_ERR_AGAIN == ret) {
+            amsgq_impl.process(amsgq->impl);
+          } else if (ret != DART_OK) {
             DART_LOG_ERROR("Failed to flush message cache!");
             dart_abort(DART_EXIT_ASSERT);
           }
         } while (ret != DART_OK);
 
-        DART_DEC_AND_FETCH32(&cache->is_processing);
-
-      } else if (blocking) {
-        // wait for the processing to finish
-        while (DART_FETCH32(&cache->is_processing))
-        { }
+        cache->pos = 0;
+        pthread_rwlock_unlock(&cache->mutex);
       }
     }
   }
@@ -433,7 +425,8 @@ uint64_t translate_fnptr(
   if (needs_translation) {
     intptr_t  remote_fn_offset;
     dart_global_unit_t global_target_id;
-    dart_team_unit_l2g(amsgq->team, target, &global_target_id);
+    global_target_id.id = target.id;
+    //dart_team_unit_l2g(amsgq->team, target, &global_target_id);
     remote_fn_offset = offsets[global_target_id.id];
     remote_fnptr += remote_fn_offset;
     DART_LOG_TRACE("Translated function pointer %p into %p on unit %i",

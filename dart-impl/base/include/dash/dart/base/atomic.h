@@ -132,23 +132,23 @@
 
 
 #define DART_COMPARE_AND_SWAP64(ptr, oldval, newval)       \
-          __sync_val_compare_and_swap((int64_t *)(ptr),    \
+          __sync_bool_compare_and_swap((int64_t *)(ptr),   \
                                       (int64_t  )(oldval), \
                                       (int64_t  )(newval))
 #define DART_COMPARE_AND_SWAP32(ptr, oldval, newval)       \
-          __sync_val_compare_and_swap((int32_t *)(ptr),    \
+          __sync_bool_compare_and_swap((int32_t *)(ptr),   \
                                       (int32_t  )(oldval), \
                                       (int32_t  )(newval))
 #define DART_COMPARE_AND_SWAP16(ptr, oldval, newval)       \
-          __sync_val_compare_and_swap((int16_t *)(ptr),    \
+          __sync_bool_compare_and_swap((int16_t *)(ptr),   \
                                       (int16_t  )(oldval), \
                                       (int16_t  )(newval))
 #define DART_COMPARE_AND_SWAP8(ptr, oldval, newval)        \
-          __sync_val_compare_and_swap((int8_t  *)(ptr),    \
+          __sync_bool_compare_and_swap((int8_t  *)(ptr),   \
                                       (int8_t   )(oldval), \
                                       (int8_t   )(newval))
 #define DART_COMPARE_AND_SWAPPTR(ptr, oldval, newval)      \
-          __sync_val_compare_and_swap((void   **)(ptr),    \
+          __sync_bool_compare_and_swap((void   **)(ptr),   \
                                       (void    *)(oldval), \
                                       (void    *)(newval))
 

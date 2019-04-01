@@ -31,12 +31,6 @@
 
 static int amsgq_mpi_tag = 10001;
 
-// on MPICH and it's derivatives ISSEND seems broken
-#ifdef MPICH
-#define IS_ISSEND_BROKEN 1
-#endif // MPICH
-
-
 struct dart_amsgq_impl_data {
   MPI_Request *recv_reqs;
   char *      *recv_bufs;
@@ -119,7 +113,7 @@ dart_amsg_sendrecv_openq(
 {
   *queue = NULL;
   bool direct_send = dart__base__env__bool(DART_AMSGQ_SENDRECV_DIRECT_ENVSTR,
-                                    false);
+                                    true);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
@@ -128,6 +122,14 @@ dart_amsg_sendrecv_openq(
   }
   struct dart_amsgq_impl_data* res = calloc(1, sizeof(*res));
   MPI_Comm_dup(team_data->comm, &res->comm);
+
+  // signal MPI that we don't care about the order of messages
+  MPI_Info info;
+  MPI_Info_create(&info);
+  MPI_Info_set(info, "mpi_assert_allow_overtaking", "true");
+  MPI_Comm_set_info(res->comm, info);
+  MPI_Info_free(&info);
+
   dart__base__mutex_init(&res->send_mutex);
   dart__base__mutex_init(&res->processing_mutex);
   res->msg_size    = msg_size;
@@ -201,14 +203,14 @@ dart_amsg_sendrecv_trysend(
 
     memcpy(sendbuf, data, data_size);
 
-    ret = MPI_Isend(
+    ret = MPI_Issend(
                 sendbuf, data_size,
                 MPI_BYTE, target.id, amsgq->tag, amsgq->comm,
                 &amsgq->send_reqs[idx]);
 
     dart__base__mutex_unlock(&amsgq->send_mutex);
   } else {
-    ret = MPI_Send(
+    ret = MPI_Ssend(
                 data, data_size,
                 MPI_BYTE, target.id, amsgq->tag, amsgq->comm);
   }
@@ -299,6 +301,8 @@ dart_amsg_sendrevc_process_blocking(
 
   dart__base__mutex_lock(&amsgq->processing_mutex);
 
+  DART_LOG_TRACE("Starting blocking processing of message queue %p", amsgq);
+
   int         barrier_flag = 0;
   int         send_flag = 0;
   do {
@@ -329,14 +333,21 @@ dart_amsg_sendrevc_process_blocking(
       }
     }
   } while (!(barrier_flag && send_flag));
-#ifdef IS_ISSEND_BROKEN
-  // if Issend is broken we need another round of synchronization
-  MPI_Barrier(amsgq->comm);
-#endif
+
+  /**
+   * final processing of any message that was sent between our last processing
+   * and the completion of the Ibarrier.
+   */
   amsg_sendrecv_process_internal(amsgq, true, true);
-  // final synchronization
-  // TODO: I don't think this is needed here!
-  //MPI_Barrier(team_data->comm);
+
+  /**
+   * final synchronization
+   * NOTE: this is needed to ensure that the above processing does not pick up
+   *       messages that were sent after the completion of the Ibarrier.
+   */
+  MPI_Barrier(amsgq->comm);
+
+  DART_LOG_TRACE("Finished blocking processing of message queue %p", amsgq);
 
   dart__base__mutex_unlock(&amsgq->processing_mutex);
   return DART_OK;

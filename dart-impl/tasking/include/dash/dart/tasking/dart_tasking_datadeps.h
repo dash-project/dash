@@ -23,6 +23,8 @@ typedef union taskref {
   remote_task_t        remote;
 } taskref;
 
+#define TASKREF(_ptr) (union taskref){.local = _ptr}
+
 extern dart_taskqueue_t local_deferred_tasks DART_INTERNAL;
 
 /**
@@ -62,23 +64,6 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(
     const taskref           remote_task,
     dart_global_unit_t      origin) DART_INTERNAL;
 
-/**
- * Handle the direct task dependency between a local task
- * and it's remote successor
- */
-dart_ret_t dart_tasking_datadeps_handle_remote_direct(
-    dart_task_t        *local_task,
-    taskref             remote_task,
-    dart_global_unit_t  origin) DART_INTERNAL;
-
-
-/**
- * Release a remote output dependency
- */
-dart_ret_t dart_tasking_datadeps_release_remote_outdep(
-    dart_task_t       *local_task,
-    taskref            remote_task,
-    dart_global_unit_t origin) DART_INTERNAL;
 
 /**
  * End a phase, e.g., by releasing any unhandled remote dependency of the
@@ -96,11 +81,26 @@ dart_tasking_datadeps_release_local_task(
   dart_thread_t *thread) DART_INTERNAL;
 
 /**
- * Release a remote dependency of the \c local_task.
- * Might defer the release if the task is not eligible to run, yet.
+ * Release a remote dependency \c elem after it has finished
+ * execution.
+ *
+ * This is called from the remote side.
  */
 dart_ret_t dart_tasking_datadeps_release_remote_dep(
-    dart_task_t *local_task) DART_INTERNAL;
+    dart_dephash_elem_t *elem) DART_INTERNAL;
+
+/**
+ * Release a local task \c local_task.
+ * The dependency reference will be stored and sent back later to release the
+ * corresponding dependency on the remote side.
+ *
+ * This is called from the remote side.
+ */
+dart_ret_t dart_tasking_datadeps_release_remote_task(
+  dart_task_t        *local_task,
+  uintptr_t           elem,
+  dart_global_unit_t  unit) DART_INTERNAL;
+
 
 /**
  * Cancel all remaining remote dependencies.
@@ -115,7 +115,8 @@ dart_ret_t dart_tasking_datadeps_cancel_remote_deps() DART_INTERNAL;
  * to avoid deadlocks.
  */
 dart_ret_t
-dart_tasking_datadeps_handle_defered_remote() DART_INTERNAL;
+dart_tasking_datadeps_handle_defered_remote(
+  dart_taskphase_t matching_phase) DART_INTERNAL;
 
 /**
  * Release local tasks whose releases have been deferred.
@@ -168,5 +169,10 @@ dart_tasking_datadeps_localize_gptr(dart_gptr_t gptr)
  * Check for new remote task dependency requests coming in
  */
 dart_ret_t dart_tasking_datadeps_progress() DART_INTERNAL;
+
+/**
+ * Print statistics of the hash table of parent task \c task.
+ */
+void dart__dephash__print_stats(const dart_task_t *task) DART_INTERNAL;
 
 #endif /* DART_TASKING_DATADEPS_H_ */

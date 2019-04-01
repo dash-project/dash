@@ -19,12 +19,12 @@ typedef struct dart_dephash_elem dart_dephash_elem_t;
 typedef struct dart_dephash_head dart_dephash_head_t;
 struct task_list;
 
-// whether to use thread-local task queues or a single queue
-//#define DART_TASK_THREADLOCAL_Q
-
 #ifdef USE_UCONTEXT
 #define HAVE_RESCHEDULING_YIELD 1
 #endif // USE_UCONTEXT
+
+// disable re-use of objects, can help in debugging
+//#define DART_TASKING_DONOT_REUSE
 
 typedef enum {
   DART_TASK_ROOT     = -1, // special state assigned to the root task
@@ -64,10 +64,27 @@ enum dart_taskflags_t {
 #define DART_TASK_UNSET_FLAG(_task, _flag)  (_task)->flags &= ~(_flag)
 #define DART_TASK_HAS_FLAG(_task, _flag)    ((_task)->flags &   (_flag))
 
+typedef struct task_list {
+  struct task_list      *next;
+  dart_task_t           *task;
+} task_list_t;
+
+struct task_deque{
+  dart_task_t * head;
+  dart_task_t * tail;
+};
+
 
 struct dart_task_data {
-  struct dart_task_data     *next;            // next entry in a task list/queue
-  struct dart_task_data     *prev;            // previous entry in a task list/queue
+  union {
+    // atomic list used for free elements
+    DART_STACK_MEMBER_DEF;
+    // double linked list used in lists/queues
+    struct {
+      struct dart_task_data     *next;        // next entry in a task list/queue
+      struct dart_task_data     *prev;        // previous entry in a task list/queue
+    };
+  };
   int                        prio;
   uint16_t                   flags;
   int8_t                     state;           // one of dart_task_state_t, single byte sufficient
@@ -104,6 +121,9 @@ struct dart_task_data {
   const char                *descr;           // the description of the task
   dart_taskphase_t           phase;
   int                        num_children;
+#ifdef DART_DEBUG
+  task_list_t              * children;  // list of child tasks
+#endif //DART_DEBUG
 };
 
 #define DART_STACK_PUSH(_head, _elem) \
@@ -127,6 +147,11 @@ struct dart_task_data {
     }                                \
   } while (0)
 
+/**
+ * The maximum number of utility threads allowed. Adjust if adding potential new
+ * utlity thread!
+ */
+#define DART_TASKING_MAX_UTILITY_THREADS 1
 
 /*
  * Special priority signalling to immediately execute the task when ready.
@@ -137,47 +162,30 @@ struct dart_task_data {
  */
 #define DART_PRIO_INLINE (__DART_PRIO_COUNT)
 
-typedef struct task_list {
-  struct task_list      *next;
-  dart_task_t           *task;
-} task_list_t;
-
-struct task_deque{
-  dart_task_t * head;
-  dart_task_t * tail;
-};
-
 typedef struct dart_taskqueue {
   size_t              num_elem;
   struct task_deque   queues[__DART_PRIO_COUNT];
   dart_mutex_t        mutex;
 } dart_taskqueue_t;
 
+#define THREAD_QUEUE_SIZE 16
+
 typedef struct {
   dart_task_t           * current_task;
-#ifdef DART_TASK_THREADLOCAL_Q
-  struct dart_taskqueue   queue;
-  int                     last_steal_thread;
-#endif // DART_TASK_THREADLOCAL_Q
+  dart_task_t           * queue[THREAD_QUEUE_SIZE]; // array of tasks short-cut
+  dart_task_t           * next_task;                // pointer to the next task executed in a yield
   uint64_t                taskcntr;
   pthread_t               pthread;
   context_t               retctx;            // the thread-specific context to return to eventually
   dart_stack_t            ctxlist;           // a free-list of contexts, written by all threads
   context_list_t        * ctx_to_enter;      // the context to enter next
   int                     thread_id;
-  int                     core_id;
-  int                     numa_id;
   int                     delay;             // delay in case this task yields
-  double                  last_progress_ts;  // the timestamp of the last remote progress call
-  dart_task_t           * next_task;         // short-cut on the next task to execute
-  bool                    is_releasing_deps; // whether the thread is currently releasing dependencies
+  int16_t                 core_id;
+  int8_t                  numa_id;
   bool                    is_utility_thread; // whether the thread is a worker or utility thread
+  double                  last_progress_ts;  // the timestamp of the last remote progress call
 } dart_thread_t;
-
-struct dart_wait_handle_s {
-  size_t              num_handle;
-  dart_handle_t       handle[];
-};
 
 dart_ret_t
 dart__tasking__init() DART_INTERNAL;
@@ -219,6 +227,9 @@ dart__tasking__task_complete() DART_INTERNAL;
 
 dart_taskref_t
 dart__tasking__current_task() DART_INTERNAL;
+
+dart_task_t*
+dart__tasking__root_task() DART_INTERNAL;
 
 void
 dart__tasking__mark_detached(dart_taskref_t task) DART_INTERNAL;
@@ -277,5 +288,16 @@ void dart__tasking__utility_thread(
   void (*fn) (void *),
   void  *data
 ) DART_INTERNAL;
+
+
+#define CLOCK_TIME_USEC(ts) \
+  (((uint64_t)(ts).tv_sec)*1000*1000 + (ts).tv_nsec/1000)
+
+static inline
+uint64_t current_time_us() {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return CLOCK_TIME_USEC(ts);
+}
 
 #endif /* DART__INTERNAL__TASKING_H__ */

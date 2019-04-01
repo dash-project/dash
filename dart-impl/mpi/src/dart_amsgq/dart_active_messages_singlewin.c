@@ -7,6 +7,7 @@
 #include <stddef.h>
 
 #include <dash/dart/base/mutex.h>
+#include <dash/dart/base/env.h>
 #include <dash/dart/base/assert.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_active_messages.h>
@@ -16,11 +17,9 @@
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_active_messages_priv.h>
 
-/**
- * TODO: check whether it makes sense to use atomics+shared locks for writers!
- */
 
-//#define DART_AMSGQ_ATOMICS 1
+#define DART_AMSGQ_SINGLEWIN_ATOMIC_ENVSTR     "DART_AMSGQ_SINGLEWIN_ATOMIC"
+#define DART_AMSGQ_SINGLEWIN_SHAREDLOCK_ENVSTR "DART_AMSGQ_SINGLEWIN_SHAREDLOCK"
 
 struct dart_amsgq_impl_data {
   /// window holding the tail ptr
@@ -36,6 +35,10 @@ struct dart_amsgq_impl_data {
   dart_mutex_t processing_mutex;
   int          my_rank;
 };
+
+static bool use_shared_locks;
+static int  writer_lock_type;
+static bool use_atomics;
 
 static
 dart_ret_t
@@ -90,6 +93,18 @@ dart_amsg_singlewin_openq(
 
   MPI_Info_free(&info);
 
+  use_shared_locks = dart__base__env__bool(
+                                DART_AMSGQ_SINGLEWIN_SHAREDLOCK_ENVSTR, true);
+  if (use_shared_locks) {
+    writer_lock_type = MPI_LOCK_SHARED;
+    // when using a shared lock, we need to use atomics
+    use_atomics      = true;
+  } else {
+    writer_lock_type = MPI_LOCK_EXCLUSIVE;
+    use_atomics      = dart__base__env__bool(
+                                  DART_AMSGQ_SINGLEWIN_ATOMIC_ENVSTR, false);
+  }
+
   MPI_Barrier(res->comm);
 
   *queue = res;
@@ -111,37 +126,35 @@ dart_amsg_singlewin_trysend(
   dart__base__mutex_lock(&amsgq->send_mutex);
 
   //lock the tailpos window
-  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target.id, 0, amsgq->win);
+  MPI_Win_lock(writer_lock_type, target.id, 0, amsgq->win);
 
-#ifdef DART_AMSGQ_ATOMICS
-  // Add the size of the message to the tailpos at the target
-  if (MPI_Fetch_and_op(
-        &msg_size,
-        &remote_offset,
-        MPI_UINT64_T,
-        target.id,
-        0,
-        MPI_SUM,
-        amsgq->win) != MPI_SUCCESS) {
-    DART_LOG_ERROR("MPI_Fetch_and_op failed!");
-    dart__base__mutex_unlock(&amsgq->send_mutex);
-    return DART_ERR_NOTINIT;
+  if (use_atomics) {
+    // Add the size of the message to the tailpos at the target
+    if (MPI_Fetch_and_op(
+          &msg_size,
+          &remote_offset,
+          MPI_UINT64_T,
+          target.id,
+          0,
+          MPI_SUM,
+          amsgq->win) != MPI_SUCCESS) {
+      DART_LOG_ERROR("MPI_Fetch_and_op failed!");
+      dart__base__mutex_unlock(&amsgq->send_mutex);
+      return DART_ERR_NOTINIT;
+    }
+    MPI_Win_flush(target.id, amsgq->win);
+
+    DART_LOG_TRACE("MPI_Fetch_and_op returned offset %lu at unit %i",
+                  remote_offset, target.id);
+  } else {
+
+    MPI_Request req;
+    MPI_Rget(&remote_offset, 1, MPI_UINT64_T, target.id, 0, 1, MPI_UINT64_T, amsgq->win, &req);
+    MPI_Wait(&req, MPI_STATUS_IGNORE);
+
+    DART_LOG_TRACE("MPI_Rget returned offset %lu at unit %i",
+                  remote_offset, target.id);
   }
-  MPI_Win_flush(target.id, amsgq->win);
-
-  DART_LOG_TRACE("MPI_Fetch_and_op returned offset %lu at unit %i",
-                 remote_offset, target.id);
-
-#else
-
-  MPI_Request req;
-  MPI_Rget(&remote_offset, 1, MPI_UINT64_T, target.id, 0, 1, MPI_UINT64_T, amsgq->win, &req);
-  MPI_Wait(&req, MPI_STATUS_IGNORE);
-
-  DART_LOG_TRACE("MPI_Rget returned offset %lu at unit %i",
-                 remote_offset, target.id);
-
-#endif // DART_AMSGQ_ATOMICS
 
   if (remote_offset >= amsgq->size) {
     DART_LOG_ERROR("Received offset larger than message queue size from "
@@ -153,24 +166,26 @@ dart_amsg_singlewin_trysend(
   }
 
   if ((remote_offset + msg_size) >= amsgq->size) {
-#ifdef DART_AMSGQ_ATOMICS
-    uint64_t tmp;
-    static int msg_printed = 0;
-    if (!msg_printed) {
-      msg_printed = 1;
-      DART_LOG_WARN("Message queue at unit %d is full, please consider raising "
-                    "the queue size (currently %zuB)", target.id, amsgq->size);
+    // revert the increment if we've done that through an atomic
+    if (use_atomics) {
+      uint64_t tmp;
+      static int msg_printed = 0;
+      if (!msg_printed) {
+        msg_printed = 1;
+        DART_LOG_WARN("Message queue at unit %d is full, please consider raising "
+                      "the queue size (currently %zuB)", target.id, amsgq->size);
+      }
+      // if not, revert the operation and free the lock to try again.
+      MPI_Fetch_and_op(
+        &remote_offset,
+        &tmp,
+        MPI_UINT64_T,
+        target.id,
+        0,
+        MPI_REPLACE,
+        amsgq->win);
     }
-    // if not, revert the operation and free the lock to try again.
-    MPI_Fetch_and_op(
-      &remote_offset,
-      &tmp,
-      MPI_UINT64_T,
-      target.id,
-      0,
-      MPI_REPLACE,
-      amsgq->win);
-#endif // DART_AMSGQ_ATOMICS
+
     MPI_Win_unlock(target.id, amsgq->win);
     DART_LOG_TRACE("Not enough space for message of size %lu at unit %i "
                    "(current offset %lu of %lu)",
@@ -191,11 +206,12 @@ dart_amsg_singlewin_trysend(
     data_size,
     MPI_BYTE,
     amsgq->win);
-#ifndef DART_AMSGQ_ATOMICS
-  // update the offset
-  remote_offset += msg_size;
-  MPI_Put(&remote_offset, 1, MPI_UINT64_T, target.id, 0, 1, MPI_UINT64_T, amsgq->win);
-#endif // !DART_AMSGQ_ATOMICS
+
+  if (!use_atomics) {
+    // update the offset
+    remote_offset += msg_size;
+    MPI_Put(&remote_offset, 1, MPI_UINT64_T, target.id, 0, 1, MPI_UINT64_T, amsgq->win);
+  }
   MPI_Win_unlock(target.id, amsgq->win);
 
   dart__base__mutex_unlock(&amsgq->send_mutex);

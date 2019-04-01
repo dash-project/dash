@@ -5,6 +5,13 @@
 #include <dash/dart/base/config.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_util.h>
+#include <stdatomic.h>
+
+#define DART_MUTEX_ATOMIC_LOCK
+
+#ifdef DART_MUTEX_ATOMIC_LOCK
+#include <stdatomic.h>
+#endif // DART_MUTEX_ATOMIC_LOCK
 
 #if defined(DART_ENABLE_THREADSUPPORT) && !defined(DART_HAVE_PTHREADS)
 #error "Thread support has been enabled but PTHREADS support is not available!"
@@ -14,7 +21,9 @@
 #undef DART_HAVE_PTHREADS
 #endif
 
-#ifdef DART_HAVE_PTHREADS
+#ifdef DART_MUTEX_ATOMIC_LOCK
+#define DART_MUTEX_INITIALIZER { .flag = ATOMIC_FLAG_INIT }
+#elif defined(DART_HAVE_PTHREADS)
 #include <pthread.h>
 #define DART_MUTEX_INITIALIZER { .mutex = PTHREAD_MUTEX_INITIALIZER }
 #else
@@ -22,7 +31,9 @@
 #endif
 
 typedef struct dart_mutex {
-#ifdef DART_HAVE_PTHREADS
+#ifdef DART_MUTEX_ATOMIC_LOCK
+atomic_flag     flag;
+#elif defined(DART_HAVE_PTHREADS)
 pthread_mutex_t mutex;
 #else
 // required since C99 does not allow empty structs
@@ -35,7 +46,9 @@ DART_INLINE
 dart_ret_t
 dart__base__mutex_init(dart_mutex_t *mutex)
 {
-#ifdef DART_HAVE_PTHREADS
+#ifdef DART_MUTEX_ATOMIC_LOCK
+  atomic_flag_clear(&mutex->flag);
+#elif defined(DART_HAVE_PTHREADS)
   // pthread_mutex_init always succeeds
   pthread_mutex_init(&mutex->mutex, NULL);
   DART_LOG_TRACE("%s: Initialized fast mutex %p", __FUNCTION__, mutex);
@@ -54,7 +67,10 @@ DART_INLINE
 dart_ret_t
 dart__base__mutex_init_recursive(dart_mutex_t *mutex)
 {
-#ifdef DART_HAVE_PTHREADS
+#ifdef DART_MUTEX_ATOMIC_LOCK
+  atomic_flag_clear(&mutex->flag);
+  return DART_OK;
+#elif defined(DART_HAVE_PTHREADS)
   pthread_mutexattr_t attr;
   pthread_mutexattr_init(&attr);
   int ret = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
@@ -83,7 +99,10 @@ DART_INLINE
 dart_ret_t
 dart__base__mutex_lock(dart_mutex_t *mutex)
 {
-#ifdef DART_HAVE_PTHREADS
+#ifdef DART_MUTEX_ATOMIC_LOCK
+  while (atomic_flag_test_and_set(&mutex->flag) != false) {}
+  return DART_OK;
+#elif defined(DART_HAVE_PTHREADS)
   int ret = pthread_mutex_lock(&mutex->mutex);
   if (ret != 0) {
     DART_LOG_TRACE("%s: Failed to lock mutex (%i)", __FUNCTION__, ret);
@@ -99,7 +118,10 @@ DART_INLINE
 dart_ret_t
 dart__base__mutex_unlock(dart_mutex_t *mutex)
 {
-#ifdef DART_HAVE_PTHREADS
+#ifdef DART_MUTEX_ATOMIC_LOCK
+  atomic_flag_clear(&mutex->flag);
+  return DART_OK;
+#elif defined(DART_HAVE_PTHREADS)
   int ret = pthread_mutex_unlock(&mutex->mutex);
   if (ret != 0) {
     DART_LOG_TRACE("%s: Failed to unlock mutex (%i)", __FUNCTION__, ret);
@@ -115,7 +137,9 @@ DART_INLINE
 dart_ret_t
 dart__base__mutex_trylock(dart_mutex_t *mutex)
 {
-#ifdef DART_HAVE_PTHREADS
+#ifdef DART_MUTEX_ATOMIC_LOCK
+  return atomic_flag_test_and_set(&mutex->flag) ? DART_PENDING : DART_OK;
+#elif defined(DART_HAVE_PTHREADS)
   int ret = pthread_mutex_trylock(&mutex->mutex);
   return (ret == 0) ? DART_OK : DART_PENDING;
 #else
@@ -127,7 +151,10 @@ DART_INLINE
 dart_ret_t
 dart__base__mutex_destroy(dart_mutex_t *mutex)
 {
-#ifdef DART_HAVE_PTHREADS
+#ifdef DART_MUTEX_ATOMIC_LOCK
+  atomic_flag_clear(&mutex->flag);
+  return DART_OK;
+#elif defined(DART_HAVE_PTHREADS)
   int ret = pthread_mutex_destroy(&mutex->mutex);
   if (ret != 0) {
     DART_LOG_TRACE("%s: Failed to destroy mutex (%i)", __FUNCTION__, ret);
