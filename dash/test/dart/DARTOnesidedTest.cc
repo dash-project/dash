@@ -156,16 +156,16 @@ TEST_F(DARTOnesidedTest, PutSingleBlock)
 {
   typedef int value_t;
   const size_t block_size = 10;
-  size_t num_elem_total   = (dash::size() * block_size) * 2;
+  size_t num_elem_total   = dash::size() * block_size;
   dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
   // Array to store local copy:
-  int local_array[block_size * 2];
+  int local_array[block_size];
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (size_t l = 0; l < block_size*2; ++l) {
+  for (size_t l = 0; l < block_size; ++l) {
     array.local[l] = 0;
   }
-  for (size_t l = 0; l < block_size*2; ++l) {
-    local_array[l] = ((dash::myid() + 1) * 1000) + l;
+  for (size_t l = 0; l < block_size; ++l) {
+    local_array[l] = (dash::myid() * 1000) + l;
   }
   array.barrier();
   // Unit to copy values to:
@@ -175,21 +175,16 @@ TEST_F(DARTOnesidedTest, PutSingleBlock)
   // Copy values:
   dash::dart_storage<value_t> ds(block_size);
   LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
-  size_t block = 0;
-  for(value_t i = 1; i < 3; ++i)
-  {
-    dart_put(
-    (array.begin() + g_dest_index * i).dart_gptr(),   // gptr dest
-    local_array + (block_size * block),               // lptr src
+
+  dart_put(
+    (array.begin() + g_dest_index).dart_gptr(),   // gptr dest
+    local_array,                                  // lptr src
     ds.nelem,
     ds.dtype,
     ds.dtype
-    );
+  );
 
-    block++;
-  }
-
-  dart_flush_all((array.begin() + g_dest_index).dart_gptr());
+  dart_flush((array.begin() + g_dest_index).dart_gptr());
 
   for (size_t l = 0; l < block_size; ++l) {
     value_t expected = array[g_dest_index + l];
@@ -199,6 +194,7 @@ TEST_F(DARTOnesidedTest, PutSingleBlock)
 
 TEST_F(DARTOnesidedTest, PutHandleAllRemote)
 {
+  /*
   // Handle variant of put, the handle contains src and dest seg_id as well as queue AFTER return
   // non blocking so must use wait at the end
   typedef int value_t;
@@ -248,6 +244,66 @@ TEST_F(DARTOnesidedTest, PutHandleAllRemote)
   }
 
   delete[] local_array;
+  */
+}
+
+TEST_F(DARTOnesidedTest, GetAllRemote)
+{
+  typedef int value_t;
+  const size_t block_size = 5000;
+  size_t num_elem_copy    = (dash::size() - 1) * block_size;
+  size_t num_elem_total   = dash::size() * block_size;
+  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
+  if (dash::size() < 2) {
+    return;
+  }
+
+  // Array to store local copy:
+  auto *local_array = new int[num_elem_copy];
+  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
+  for (size_t l = 0; l < block_size; ++l) {
+    array.local[l] = ((dash::myid() + 1) * 1000) + l;
+  }
+  array.barrier();
+  LOG_MESSAGE("Requesting remote blocks");
+  // Copy values from all non-local blocks:
+  size_t block = 0;
+  for (size_t u = 0; u < dash::size(); ++u) {
+    if (u != static_cast<size_t>(dash::myid())) {
+      LOG_MESSAGE("Requesting block %zu from unit %zu", block, u);
+
+      dash::dart_storage<value_t> ds(block_size);
+      LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
+      EXPECT_EQ_U(
+        DART_OK,
+        dart_get(
+          local_array + (block * block_size),
+          (array.begin() + (u * block_size)).dart_gptr(),
+          ds.nelem,
+          ds.dtype,
+          ds.dtype
+        )
+      );
+
+      ++block;
+    }
+  }
+  // Wait for completion of get operations:
+  LOG_MESSAGE("Waiting for completion of async requests");
+  dart_flush_local_all( (array.begin() + block_size * dash::myid()).dart_gptr() );
+
+  LOG_MESSAGE("Validating values");
+  int l = 0;
+  for (size_t g = 0; g < array.size(); ++g) {
+    auto unit = array.pattern().unit_at(g);
+    if (unit != dash::myid()) {
+      value_t expected = array[g];
+      ASSERT_EQ_U(expected, local_array[l]);
+      ++l;
+    }
+  }
+  delete[] local_array;
+  ASSERT_EQ_U(num_elem_copy, l);
 }
 
 TEST_F(DARTOnesidedTest, GetHandleAllRemote)
