@@ -176,15 +176,6 @@ dart_amsg_singlewin_trysend(
                   remote_offset, target.id);
   }
 
-  if (remote_offset >= amsgq->size) {
-    DART_LOG_ERROR("Received offset larger than message queue size from "
-                   "unit %i (%lu but expected < %lu)",
-                   target.id, remote_offset, amsgq->size);
-    MPI_Win_unlock(target.id, amsgq->win);
-    dart__base__mutex_unlock(&amsgq->send_mutex);
-    return DART_ERR_INVAL;
-  }
-
   if ((remote_offset + msg_size) >= amsgq->size) {
     // revert the increment if we've done that through an atomic
     if (use_atomics) {
