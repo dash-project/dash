@@ -350,6 +350,7 @@ dart_amsg_dualwin_closeq(struct dart_amsgq_impl_data* amsgq)
 
   MPI_Win_free(&(amsgq->queue1_win));
   MPI_Win_free(&(amsgq->queue2_win));
+  MPI_Win_unlock_all(amsgq->queuenum_win);
   MPI_Win_free(&(amsgq->queuenum_win));
 
   MPI_Comm_free(&amsgq->comm);
