@@ -1016,14 +1016,6 @@ void* thread_main(void *data)
     if ((task == NULL || worker_poll_remote) && threadid == 1) {
       //DART_LOG_TRACE("worker polling for remote messages");
       remote_progress(thread, (task == NULL));
-      if (task == NULL)
-        task = next_task(thread);
-      // wait for 100us to reduce pressure on master thread
-      if (task == NULL) {
-        nanosleep(&sleeptime, NULL);
-      } else {
-        handle_task(task, thread);
-      }
     } else if (task == NULL) {
       struct timespec curr_ts;
       if (!in_idle) {
