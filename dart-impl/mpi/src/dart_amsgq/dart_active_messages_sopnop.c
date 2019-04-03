@@ -132,6 +132,11 @@ dart_amsg_sopnop_sendbuf(
      */
 
     // fetch queue number
+    MPI_Request req;
+    MPI_Rget(&queuenum, 1, MPI_INT64_T, target.id,
+             OFFSET_QUEUENUM, 1, MPI_INT64_T, amsgq->queue_win, &req);
+    MPI_Wait(&req, MPI_STATUS_IGNORE);
+    /*
     MPI_Fetch_and_op(
       NULL,
       &queuenum,
@@ -141,6 +146,7 @@ dart_amsg_sopnop_sendbuf(
       MPI_NO_OP,
       amsgq->queue_win);
     MPI_Win_flush_local(target.id, amsgq->queue_win);
+    */
 
     DART_ASSERT(queuenum == 0 || queuenum == 1);
 
@@ -253,8 +259,8 @@ amsg_sopnop_process_internal(
     dart__base__mutex_lock(&amsgq->processing_mutex);
   }
 
+  MPI_Comm_rank(amsgq->comm, &unitid);
   do {
-    MPI_Comm_rank(amsgq->comm, &unitid);
 
     int64_t queuenum = *(int64_t*)amsgq->queue_ptr;
 
@@ -280,9 +286,9 @@ amsg_sopnop_process_internal(
 
     if (tailpos > 0) {
       DART_LOG_TRACE("Queue %ld has tailpos %ld", queuenum, tailpos);
-      const int64_t zero = 0;
 
       int64_t writecnt;
+      int64_t oldwritecnt;
       int64_t tmp = 0;
       int64_t newqueue = (queuenum == 0) ? 1 : 0;
       int64_t queue_swap_sum = (queuenum == 0) ? 1 : -1;
@@ -302,16 +308,18 @@ amsg_sopnop_process_internal(
 
       MPI_Fetch_and_op(
         &neg_processing_signal,
-        &writecnt,
+        &oldwritecnt,
         MPI_INT64_T,
         unitid,
         OFFSET_WRITECNT(newqueue),
         MPI_SUM,
         amsgq->queue_win);
 
+#ifdef DART_ENABLE_ASSERTIONS
       MPI_Win_flush(unitid, amsgq->queue_win);
       DART_ASSERT(tmp == queuenum);
-      DART_ASSERT(writecnt >= processing_signal);
+      DART_ASSERT(oldwritecnt >= processing_signal);
+#endif // DART_ENABLE_ASSERTIONS
 
       // wait for all writers to finish
       MPI_Fetch_and_op(
@@ -344,6 +352,8 @@ amsg_sopnop_process_internal(
 
 
       // reset tailpos
+      *(int64_t*)((intptr_t)amsgq->queue_ptr + OFFSET_TAILPOS(queuenum)) = 0;
+#if 0
       // NOTE: using MPI_REPLACE here is valid as no-one else will write to it
       //       at this time.
       MPI_Fetch_and_op(
@@ -355,6 +365,7 @@ amsg_sopnop_process_internal(
         MPI_REPLACE,
         amsgq->queue_win);
       MPI_Win_flush(unitid, amsgq->queue_win);
+#endif // 0
 
       DART_LOG_TRACE("Starting processing queue %ld: tailpos %ld",
                      queuenum, tailpos);
