@@ -51,13 +51,18 @@ struct dart_amsgq_impl_data {
   int         *recv_outidx;
   MPI_Status  *recv_status;
   int         *send_outidx;
+  int64_t     *send_count;
+  int64_t     *recv_count;
+  int64_t     *send_round_count;
+  int64_t     *recv_round_count;
   int          send_tailpos;
   size_t       msg_size;
   int          msg_count;
   MPI_Comm     comm;
   dart_mutex_t send_mutex;
   dart_mutex_t processing_mutex;
-  int          my_rank;
+  int          comm_rank;
+  int          comm_size;
   int          tag;
   bool         direct_send;
   bool         sync_send;
@@ -139,11 +144,18 @@ dart_amsg_sendrecv_openq(
   MPI_Comm_dup(team_data->comm, &res->comm);
 
   // signal MPI that we don't care about the order of messages
+  /**
+   * NOTE: allow_overtake may not be used for regular sends as it may distort
+   *       our accounting. For synchronous sends, allow_overtake can be used
+   *       but is broken on Open MPI <= 4.0.1.
+   */
+#if 0
   MPI_Info info;
   MPI_Info_create(&info);
   MPI_Info_set(info, "mpi_assert_allow_overtaking", "true");
   MPI_Comm_set_info(res->comm, info);
   MPI_Info_free(&info);
+#endif
 
   dart__base__mutex_init(&res->send_mutex);
   dart__base__mutex_init(&res->processing_mutex);
@@ -160,7 +172,8 @@ dart_amsg_sendrecv_openq(
   res->recv_reqs   = malloc(msg_count*sizeof(*res->recv_reqs));
   res->recv_outidx = malloc(msg_count*sizeof(*res->recv_outidx));
   res->recv_status = malloc(msg_count*sizeof(*res->recv_status));
-  MPI_Comm_rank(res->comm, &res->my_rank);
+  MPI_Comm_rank(res->comm, &res->comm_rank);
+  MPI_Comm_size(res->comm, &res->comm_size);
 
   res->tag = amsgq_mpi_tag++;
 
@@ -179,6 +192,13 @@ dart_amsg_sendrecv_openq(
       res->send_bufs[i] = malloc(res->msg_size);
       res->send_reqs[i] = MPI_REQUEST_NULL;
     }
+  }
+
+  if (!res->sync_send) {
+    res->send_count       = calloc(res->comm_size, sizeof(int64_t));
+    res->send_round_count = calloc(res->comm_size, sizeof(int64_t));
+    res->recv_count       = calloc(res->comm_size, sizeof(int64_t));
+    res->recv_round_count = calloc(res->comm_size, sizeof(int64_t));
   }
 
   MPI_Startall(msg_count, res->recv_reqs);
@@ -229,7 +249,7 @@ dart_amsg_sendrecv_trysend(
                   sendbuf, data_size,
                   MPI_BYTE, target.id, amsgq->tag, amsgq->comm,
                   &amsgq->send_reqs[idx]);
-
+      amsgq->send_count[target.id]++;
     }
     DART_LOG_TRACE("Sent message of size %zu to unit %i using request %d",
                    data_size, target.id, idx);
@@ -244,6 +264,7 @@ dart_amsg_sendrecv_trysend(
       ret = MPI_Send(
                   data, data_size,
                   MPI_BYTE, target.id, amsgq->tag, amsgq->comm);
+      amsgq->send_count[target.id]++;
     }
     DART_LOG_TRACE("Sent message of size %zu to unit %i", data_size, target.id);
   }
@@ -294,12 +315,16 @@ amsg_sendrecv_process_internal(
       char *dbuf = amsgq->recv_bufs[idx];
       int tailpos;
       MPI_Get_elements(&amsgq->recv_status[i], MPI_BYTE, &tailpos);
+      int source = amsgq->recv_status[i].MPI_SOURCE;
       if (tailpos == MPI_UNDEFINED) {
         DART_LOG_ERROR("MPI_Get_elements returned MPI_UNDEFINED!");
       }
       DART_LOG_TRACE("Processing received messages (tailpos %d) in buffer %d of %d (idx %d)",
                      tailpos, i, outcount, idx);
       DART_ASSERT(tailpos > 0);
+      if (!amsgq->sync_send) {
+        amsgq->recv_count[source]++;
+      }
       dart__amsgq__process_buffer(dbuf, tailpos);
 
       // repost the recv
@@ -324,6 +349,20 @@ dart_amsg_sendrecv_process(struct dart_amsgq_impl_data* amsgq)
 }
 
 static
+bool
+dart_amsgq_sendrecv_check_round_completion(struct dart_amsgq_impl_data* amsgq)
+{
+  for (int i = 0; i < amsgq->comm_size; ++i) {
+    // check that we have received at least as many messages as were sent to us
+    DART_LOG_TRACE("  recv_round_count[%d]=%ld, recv_count[%d]=%ld", i, amsgq->recv_round_count[i], i, amsgq->recv_count[i]);
+    if ((amsgq->recv_round_count[i] - amsgq->recv_count[i]) > 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static
 dart_ret_t
 dart_amsg_sendrevc_process_blocking(
   struct dart_amsgq_impl_data* amsgq,
@@ -332,6 +371,21 @@ dart_amsg_sendrevc_process_blocking(
   MPI_Request req = MPI_REQUEST_NULL;
 
   dart__base__mutex_lock(&amsgq->processing_mutex);
+
+  // get a copy of the send_count to use in the allreduce
+  // other threads may continue sending messages but they are not part of this
+  // communication round
+  if (!amsgq->sync_send) {
+    dart__base__mutex_lock(&amsgq->send_mutex);
+    memcpy(amsgq->send_round_count, amsgq->send_count,
+          sizeof(int64_t)*amsgq->comm_size);
+    memset(amsgq->send_count, 0, sizeof(int64_t)*amsgq->comm_size);
+    dart__base__mutex_unlock(&amsgq->send_mutex);
+  }
+
+  for (int i = 0; i < amsgq->comm_size; ++i) {
+    DART_LOG_TRACE("  send_round_count[%d]=%ld", i, amsgq->send_round_count[i]);
+  }
 
   DART_LOG_TRACE("Starting blocking processing of message queue %p", amsgq);
 
@@ -361,16 +415,26 @@ dart_amsg_sendrevc_process_blocking(
         send_flag = 1;
       }
       if (send_flag) {
-        MPI_Ibarrier(amsgq->comm, &req);
+        if (amsgq->sync_send) {
+          // for synchronous sends we don't have to track received messages
+          MPI_Ibarrier(amsgq->comm, &req);
+        } else {
+          MPI_Ialltoall(amsgq->send_round_count, 1, MPI_INT64_T,
+                        amsgq->recv_round_count, 1, MPI_INT64_T,
+                        amsgq->comm, &req);
+        }
       }
     }
   } while (!(barrier_flag && send_flag));
 
   /**
-   * final processing of any message that was sent between our last processing
-   * and the completion of the Ibarrier.
-   */
-  amsg_sendrecv_process_internal(amsgq, true, true);
+  * final processing of any message that has not yet been processed
+  */
+  if (!amsgq->sync_send) {
+    while (!dart_amsgq_sendrecv_check_round_completion(amsgq)) {
+      amsg_sendrecv_process_internal(amsgq, true, true);
+    }
+  }
 
   /**
    * final synchronization
@@ -378,6 +442,16 @@ dart_amsg_sendrevc_process_blocking(
    *       messages that were sent after the completion of the Ibarrier.
    */
   MPI_Barrier(amsgq->comm);
+
+  /**
+   * adjust the counter for actually received messages to account for the
+   * messages that should have been received in this round.
+   */
+  if (!amsgq->sync_send) {
+    for (int i = 0; i < amsgq->comm_size; ++i) {
+      amsgq->recv_count[i] -= amsgq->recv_round_count[i];
+    }
+  }
 
   DART_LOG_TRACE("Finished blocking processing of message queue %p", amsgq);
 
@@ -428,6 +502,22 @@ dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
   dart__base__mutex_destroy(&amsgq->processing_mutex);
 
   MPI_Comm_free(&amsgq->comm);
+
+  for (int i = 0; i < amsgq->comm_size; ++i) {
+    DART_ASSERT_MSG(amsgq->recv_count[i] == 0,
+                    "Found unaccounted recv messages from %d: %ld",
+                    i, amsgq->recv_count[i]);
+    DART_ASSERT_MSG(amsgq->send_count[i] == 0,
+                    "Found unaccounted sent messages to %d: %ld",
+                    i, amsgq->send_count[i]);
+  }
+
+  if (!amsgq->sync_send) {
+    free(amsgq->send_count);
+    free(amsgq->send_round_count);
+    free(amsgq->recv_count);
+    free(amsgq->recv_round_count);
+  }
 
   free(amsgq);
 
