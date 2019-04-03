@@ -59,7 +59,7 @@ void insert_hashmap(const void *ptr, int numa_node)
 {
   dart__base__mutex_lock(&hashmtx);
   // check whether someone else has inserted already
-  if (query_hashmap_nolock(ptr) != -1) {
+  if (query_hashmap_nolock(ptr) == -1) {
     int hash = hashptr(ptr);
     hash_elem_t *elem = malloc(sizeof(*elem));
     elem->ptr         = (void*)ptr;
@@ -301,10 +301,11 @@ dart__tasking__affinity_init()
 }
 */
 
-static cpu_set_t set;
-
 #include <sched.h>
 #include <pthread.h>
+
+static cpu_set_t set;
+static int num_cpus = 1;
 
 void
 dart__tasking__affinity_init()
@@ -325,7 +326,7 @@ dart__tasking__affinity_init()
     DART_LOG_INFO_ALWAYS(
       "Using pthread_setaffinity_np to set affinity (print: %d)", print_binding);
     int count = 0;
-    int num_cpus = CPU_COUNT(&set);
+    num_cpus = CPU_COUNT(&set);
     size_t len = num_cpus * 8;
     char* buf = malloc(sizeof(char) * len);
     int pos = 0;
@@ -351,7 +352,6 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
 {
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
-  int num_cpus = CPU_COUNT(&set);
   unsigned int entry = 0;
   int count = 0;
 
@@ -380,7 +380,6 @@ dart__tasking__affinity_set_utility(pthread_t pthread, int dart_thread_id)
   dart__unused(dart_thread_id);
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
-  int num_cpus = CPU_COUNT(&set);
   unsigned int entry = 0;
   int count = 0;
 
@@ -412,6 +411,13 @@ dart__tasking__affinity_core_numa_node(int core_id)
 {
   return 0;
 }
+
+uint32_t
+dart__tasking__affinity_num_cores()
+{
+  return num_cpus;
+}
+
 
 void
 dart__tasking__affinity_fini()
