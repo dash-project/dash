@@ -234,14 +234,11 @@ static int handle_comm_tasks = 0;
 
 static void thread_progress_main(void *data)
 {
-  printf("Progress thread starting up...\n");
   dart__unused(data);
   int sleep_us = dart__base__env__us(DART_THREAD_PROGRESS_INTERVAL_ENVSTR, 1000);
   struct timespec ts;
   ts.tv_sec  = sleep_us / 1E6;
   ts.tv_nsec = (sleep_us - (ts.tv_sec*1E6))*1E3;
-
-  printf("Progress thread starting up (sleep_us=%d)\n", sleep_us);
 
   while (progress_thread) {
     uint64_t ts2;
@@ -294,7 +291,7 @@ dart_ret_t dart_tasking_remote_init()
     DART_ASSERT(amsgq != NULL);
     DART_LOG_INFO("Created active message queue for remote tasking (%p)", amsgq);
     progress_thread = dart__base__env__us(DART_THREAD_PROGRESS_ENVSTR, false);
-    printf("progress_thread=%d\n", progress_thread);
+
     if (progress_thread) {
       dart__tasking__utility_thread(&thread_progress_main, NULL);
       dart_tasking_taskqueue_init(&comm_tasks);
