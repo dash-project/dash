@@ -25,6 +25,18 @@
  */
 #define DART_AMSGQ_SENDRECV_DIRECT_ENVSTR "DART_AMSGQ_SENDRECV_DIRECT"
 
+/**
+ * Name of the environment variable controlling whether using synchronous
+ * (default, true) or regular send operations (false). Setting this to false
+ * may cause processing of messages to be delayed beyond the current round,
+ * which may impact the correctness of the upper software layers.
+ *
+ * Use this only for (performance) benchmarks!
+ *
+ * Type: boolean
+ */
+#define DART_AMSGQ_SENDRECV_SYNC_ENVSTR "DART_AMSGQ_SENDRECV_SYNC"
+
 // 100*512B (512KB) receives posted by default
 //#define DEFAULT_MSG_SIZE 256
 //#define NUM_MSG 100
@@ -48,6 +60,7 @@ struct dart_amsgq_impl_data {
   int          my_rank;
   int          tag;
   bool         direct_send;
+  bool         sync_send;
 };
 
 static dart_ret_t
@@ -113,7 +126,9 @@ dart_amsg_sendrecv_openq(
 {
   *queue = NULL;
   bool direct_send = dart__base__env__bool(DART_AMSGQ_SENDRECV_DIRECT_ENVSTR,
-                                    true);
+                                           true);
+  bool sync_send   = dart__base__env__bool(DART_AMSGQ_SENDRECV_SYNC_ENVSTR,
+                                           true);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
@@ -135,6 +150,7 @@ dart_amsg_sendrecv_openq(
   res->msg_size    = msg_size;
   res->msg_count   = msg_count;
   res->direct_send = direct_send;
+  res->sync_send   = sync_send;
   if (!direct_send) {
     res->send_bufs   = malloc(msg_count*sizeof(*res->send_bufs));
     res->send_reqs   = malloc(msg_count*sizeof(*res->send_reqs));
@@ -203,16 +219,33 @@ dart_amsg_sendrecv_trysend(
 
     memcpy(sendbuf, data, data_size);
 
-    ret = MPI_Issend(
-                sendbuf, data_size,
-                MPI_BYTE, target.id, amsgq->tag, amsgq->comm,
-                &amsgq->send_reqs[idx]);
+    if (amsgq->sync_send) {
+      ret = MPI_Issend(
+                  sendbuf, data_size,
+                  MPI_BYTE, target.id, amsgq->tag, amsgq->comm,
+                  &amsgq->send_reqs[idx]);
+    } else {
+      ret = MPI_Isend(
+                  sendbuf, data_size,
+                  MPI_BYTE, target.id, amsgq->tag, amsgq->comm,
+                  &amsgq->send_reqs[idx]);
+
+    }
+    DART_LOG_TRACE("Sent message of size %zu to unit %i using request %d",
+                   data_size, target.id, idx);
 
     dart__base__mutex_unlock(&amsgq->send_mutex);
   } else {
-    ret = MPI_Ssend(
-                data, data_size,
-                MPI_BYTE, target.id, amsgq->tag, amsgq->comm);
+    if (amsgq->sync_send) {
+      ret = MPI_Ssend(
+                  data, data_size,
+                  MPI_BYTE, target.id, amsgq->tag, amsgq->comm);
+    } else {
+      ret = MPI_Send(
+                  data, data_size,
+                  MPI_BYTE, target.id, amsgq->tag, amsgq->comm);
+    }
+    DART_LOG_TRACE("Sent message of size %zu to unit %i", data_size, target.id);
   }
 
   if (ret != MPI_SUCCESS) {
@@ -220,7 +253,6 @@ dart_amsg_sendrecv_trysend(
     return DART_ERR_AGAIN;
   }
 
-  DART_LOG_TRACE("Sent message of size %zu to unit %i", data_size, target.id);
 
   return DART_OK;
 }
