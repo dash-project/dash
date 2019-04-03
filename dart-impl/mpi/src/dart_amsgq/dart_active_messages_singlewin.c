@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <time.h>
 
 #include <dash/dart/base/mutex.h>
 #include <dash/dart/base/env.h>
@@ -20,6 +21,15 @@
 
 #define DART_AMSGQ_SINGLEWIN_ATOMIC_ENVSTR     "DART_AMSGQ_SINGLEWIN_ATOMIC"
 #define DART_AMSGQ_SINGLEWIN_SHAREDLOCK_ENVSTR "DART_AMSGQ_SINGLEWIN_SHAREDLOCK"
+
+/**
+ * Name of the environment variable specifying the number microseconds caller
+ * sleeps between consecutive reads of the active message in a blocking
+ * processing call.
+ *
+ * Type: integral value with optional us, ms, s qualifier
+ */
+#define DART_AMSGQ_SINGLEWIN_SLEEP_ENVSTR  "DART_AMSGQ_SINGLEWIN_SLEEP"
 
 struct dart_amsgq_impl_data {
   /// window holding the tail ptr
@@ -40,6 +50,9 @@ static bool use_shared_locks;
 static int  writer_lock_type;
 static bool use_atomics;
 
+static struct timespec sleeptime = {-1, -1};
+static int64_t sleep_us = -1;
+
 static
 dart_ret_t
 dart_amsg_singlewin_openq(
@@ -48,6 +61,13 @@ dart_amsg_singlewin_openq(
   dart_team_t    team,
   struct dart_amsgq_impl_data** queue)
 {
+
+  if (sleeptime.tv_sec == -1) {
+    sleep_us  = dart__base__env__us(DART_AMSGQ_SINGLEWIN_SLEEP_ENVSTR, 0);
+    sleeptime.tv_sec  = sleep_us / 1000000;
+    sleeptime.tv_nsec = sleep_us % 1000000;
+  }
+
   struct dart_amsgq_impl_data* res = calloc(1, sizeof(struct dart_amsgq_impl_data));
   res->size = msg_count * + msg_size;
   res->dbuf = malloc(res->size);
@@ -322,6 +342,10 @@ dart_amsg_singlewin_process_blocking(
   do {
     amsg_singlewin_process_internal(amsgq, true);
     MPI_Test(&req, &flag, MPI_STATUSES_IGNORE);
+    if (!flag && sleep_us > 0) {
+      // sleep for the requested number of microseconds
+      nanosleep(&sleeptime, NULL);
+    }
   } while (!flag);
   amsg_singlewin_process_internal(amsgq, true);
   MPI_Barrier(team_data->comm);

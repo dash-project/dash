@@ -5,11 +5,13 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <alloca.h>
+#include <time.h>
 
 #include <dash/dart/base/mutex.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
 #include <dash/dart/base/atomic.h>
+#include <dash/dart/base/env.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -35,9 +37,21 @@ struct dart_amsgq_impl_data {
   int64_t           prev_tailpos;
 };
 
+/**
+ * Name of the environment variable specifying the number microseconds a caller
+ * sleeps between consecutive reads of the active message in a blocking
+ * processing call.
+ *
+ * Type: integral value with optional us, ms, s qualifier
+ */
+#define DART_AMSGQ_DUALWIN_SLEEP_ENVSTR  "DART_AMSGQ_DUALWIN_SLEEP"
+
 #ifdef DART_ENABLE_LOGGING
 static uint32_t msgcnt = 0;
 #endif // DART_ENABLE_LOGGING
+
+static struct timespec sleeptime = {-1, -1};
+static int64_t sleep_us = -1;
 
 static dart_ret_t
 dart_amsg_dualwin_openq(
@@ -50,6 +64,12 @@ dart_amsg_dualwin_openq(
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_gptr_getaddr ! Unknown team %i", team);
     return DART_ERR_INVAL;
+  }
+
+  if (sleeptime.tv_sec == -1) {
+    sleep_us  = dart__base__env__us(DART_AMSGQ_DUALWIN_SLEEP_ENVSTR, 0);
+    sleeptime.tv_sec  = sleep_us / 1000000;
+    sleeptime.tv_nsec = sleep_us % 1000000;
   }
 
   struct dart_amsgq_impl_data *res = calloc(1, sizeof(struct dart_amsgq_impl_data));
@@ -310,6 +330,10 @@ dart_amsg_dualwin_process_blocking(
   do {
     amsg_sopnop_process_internal(amsgq, false);
     MPI_Test(&req, &flag, MPI_STATUSES_IGNORE);
+    if (!flag && sleep_us > 0) {
+      // sleep for the requested number of microseconds
+      nanosleep(&sleeptime, NULL);
+    }
   } while (!flag);
   amsg_sopnop_process_internal(amsgq, true);
   MPI_Barrier(amsgq->comm);
