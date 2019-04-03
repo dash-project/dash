@@ -352,10 +352,12 @@ amsg_sopnop_process_internal(
 
 
       // reset tailpos
+      tailpos = *(int64_t*)((intptr_t)amsgq->queue_ptr + OFFSET_TAILPOS(queuenum));
       *(int64_t*)((intptr_t)amsgq->queue_ptr + OFFSET_TAILPOS(queuenum)) = 0;
 #if 0
       // NOTE: using MPI_REPLACE here is valid as no-one else will write to it
       //       at this time.
+      const int64_t zero = 0;
       MPI_Fetch_and_op(
         &zero,
         &tailpos,
