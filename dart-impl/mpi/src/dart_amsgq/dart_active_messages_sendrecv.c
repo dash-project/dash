@@ -130,10 +130,10 @@ dart_amsg_sendrecv_openq(
   struct dart_amsgq_impl_data** queue)
 {
   *queue = NULL;
-  bool direct_send = dart__base__env__bool(DART_AMSGQ_SENDRECV_DIRECT_ENVSTR,
-                                           true);
   bool sync_send   = dart__base__env__bool(DART_AMSGQ_SENDRECV_SYNC_ENVSTR,
                                            true);
+  bool direct_send = dart__base__env__bool(DART_AMSGQ_SENDRECV_DIRECT_ENVSTR,
+                                           sync_send ? false : true);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
