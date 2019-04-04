@@ -131,7 +131,7 @@ dart_amsg_sendrecv_openq(
 {
   *queue = NULL;
   bool sync_send   = dart__base__env__bool(DART_AMSGQ_SENDRECV_SYNC_ENVSTR,
-                                           true);
+                                           false);
   bool direct_send = dart__base__env__bool(DART_AMSGQ_SENDRECV_DIRECT_ENVSTR,
                                            sync_send ? false : true);
 
