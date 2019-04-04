@@ -143,8 +143,8 @@ dart_amsg_sendrecv_openq(
   struct dart_amsgq_impl_data* res = calloc(1, sizeof(*res));
   MPI_Comm_dup(team_data->comm, &res->comm);
 
-  // signal MPI that we don't care about the order of messages
   /**
+   * signal MPI that we don't care about the order of messages
    * NOTE: allow_overtake may not be used for regular sends as it may distort
    *       our accounting. For synchronous sends, allow_overtake can be used
    *       but is broken on Open MPI <= 4.0.1.
@@ -503,16 +503,16 @@ dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
 
   MPI_Comm_free(&amsgq->comm);
 
-  for (int i = 0; i < amsgq->comm_size; ++i) {
-    DART_ASSERT_MSG(amsgq->recv_count[i] == 0,
-                    "Found unaccounted recv messages from %d: %ld",
-                    i, amsgq->recv_count[i]);
-    DART_ASSERT_MSG(amsgq->send_count[i] == 0,
-                    "Found unaccounted sent messages to %d: %ld",
-                    i, amsgq->send_count[i]);
-  }
-
   if (!amsgq->sync_send) {
+    for (int i = 0; i < amsgq->comm_size; ++i) {
+      DART_ASSERT_MSG(amsgq->recv_count[i] == 0,
+                      "Found unaccounted recv messages from %d: %ld",
+                      i, amsgq->recv_count[i]);
+      DART_ASSERT_MSG(amsgq->send_count[i] == 0,
+                      "Found unaccounted sent messages to %d: %ld",
+                      i, amsgq->send_count[i]);
+    }
+
     free(amsgq->send_count);
     free(amsgq->send_round_count);
     free(amsgq->recv_count);
