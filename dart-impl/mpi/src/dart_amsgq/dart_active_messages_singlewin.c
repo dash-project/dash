@@ -153,7 +153,7 @@ dart_amsg_singlewin_trysend(
     if (MPI_Fetch_and_op(
           &msg_size,
           &remote_offset,
-          MPI_UINT64_T,
+          MPI_INT64_T,
           target.id,
           0,
           MPI_SUM,
@@ -177,24 +177,17 @@ dart_amsg_singlewin_trysend(
   }
 
   if ((remote_offset + msg_size) >= amsgq->size) {
+    static int msg_printed = 0;
+    if (!msg_printed) {
+      msg_printed = 1;
+      DART_LOG_WARN("Message queue at unit %d is full, please consider raising "
+                    "the queue size (currently %zuB)", target.id, amsgq->size);
+    }
     // revert the increment if we've done that through an atomic
     if (use_atomics) {
-      uint64_t tmp;
-      static int msg_printed = 0;
-      if (!msg_printed) {
-        msg_printed = 1;
-        DART_LOG_WARN("Message queue at unit %d is full, please consider raising "
-                      "the queue size (currently %zuB)", target.id, amsgq->size);
-      }
-      // if not, revert the operation and free the lock to try again.
-      MPI_Fetch_and_op(
-        &remote_offset,
-        &tmp,
-        MPI_UINT64_T,
-        target.id,
-        0,
-        MPI_REPLACE,
-        amsgq->win);
+      int64_t neg_msg_size = -msg_size;
+      MPI_Accumulate(&neg_msg_size, 1, MPI_INT64_T, target.id,
+                     0, 1, MPI_INT64_T, MPI_SUM, amsgq->win);
     }
 
     MPI_Win_unlock(target.id, amsgq->win);
