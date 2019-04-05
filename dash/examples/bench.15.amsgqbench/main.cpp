@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <libdash.h>
+#include <mpi.h>
 #include <dash/dart/if/dart.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/tasks/Tasks.h>
@@ -132,6 +133,8 @@ benchmark_amsgq_ring(dart_amsgq_t amsgq, size_t num_msg)
 
 int main(int argc, char** argv)
 {
+  // initialize MPI without thread-support, not needed
+  MPI_Init(&argc, &argv);
   dash::init(&argc, &argv);
   dash::util::BenchmarkParams bench_params("bench.15.amsgqbench");
   bench_params.print_header();
@@ -190,6 +193,8 @@ int main(int argc, char** argv)
   dart_amsg_closeq(amsgq);
 
   dash::finalize();
+
+  MPI_Finalize();
 }
 
 static
