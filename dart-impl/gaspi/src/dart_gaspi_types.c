@@ -60,16 +60,17 @@ dart_type_create_strided(
 
     *newtype = DART_TYPE_UNDEFINED;
 
-    if (!datatype_iscontiguous(basetype)) {
+    dart_datatype_struct_t* dts_src = get_datatype_struct(basetype);
+    if (!datatype_iscontiguous(dts_src)) {
         DART_LOG_ERROR("Only contiguous data types allowed in strided datatypes!");
         return DART_ERR_INVAL;
     }
 
     dart_datatype_struct_t* strided_type =  malloc(sizeof(struct dart_datatype_struct));
-    strided_type->base_type        = basetype;
-    strided_type->kind             = DART_KIND_STRIDED;
-    strided_type->num_elem         = blocklen;
-    strided_type->strided.stride   = stride;
+    strided_type->base_type = basetype;
+    strided_type->kind      = DART_KIND_STRIDED;
+    strided_type->num_elem  = blocklen;
+    strided_type->strided.stride = stride;
 
     *newtype = (dart_datatype_t)strided_type;
 
@@ -93,7 +94,8 @@ dart_type_create_indexed(
 
     *newtype = DART_TYPE_UNDEFINED;
 
-    if (!datatype_iscontiguous(basetype)) {
+    dart_datatype_struct_t* dts_src = get_datatype_struct(basetype);
+    if (!datatype_iscontiguous(dts_src)) {
       DART_LOG_ERROR("Only contiguous data types allowed in indexed datatypes!");
       return DART_ERR_INVAL;
     }
