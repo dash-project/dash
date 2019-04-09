@@ -288,8 +288,7 @@ TEST_F(DARTOnesidedTest, GetAllRemote)
   }
   // Wait for completion of get operations:
   LOG_MESSAGE("Waiting for completion of async requests");
-  //dart_flush_local_all( (array.begin() + block_size * dash::myid()).dart_gptr() );
-  dart_flush( (array.begin()).dart_gptr() );
+  dart_flush_local_all( (array.begin() + block_size * dash::myid()).dart_gptr() );
 
   LOG_MESSAGE("Validating values");
   int l = 0;
@@ -310,7 +309,7 @@ TEST_F(DARTOnesidedTest, GetAllRemote)
 TEST_F(DARTOnesidedTest, PutHandleAllRemote)
 {
   typedef int value_t;
-  const size_t block_size = 5000;
+  const size_t block_size = 5;
   size_t num_elem_recv    = (dash::size() -1) * block_size;
   // every process gets an array.local where the others write into at their position
   size_t num_elem_total   = num_elem_recv * dash::size();
@@ -329,6 +328,7 @@ TEST_F(DARTOnesidedTest, PutHandleAllRemote)
   for (size_t l = 0; l < num_elem_recv; ++l) {
     array.local[l] = 0;
   }
+  array.barrier();
 
   // Copy values to all non-local blocks:
   size_t block = 0;
