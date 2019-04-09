@@ -274,3 +274,98 @@ dart_ret_t local_copy_put(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_dst_segmen
 
     return DART_OK;
 }
+
+void set_multiple_block(converted_type_t* conv_types, size_t num_blocks)
+{
+    conv_types->num_blocks = num_blocks;
+    conv_types->kind = DART_BLOCK_MULTIPLE;
+    conv_types->multiple = (multiple_t){(offset_pair_t*) malloc(sizeof(offset_pair_t) * num_blocks),
+                                        (offset_pair_t*) malloc(sizeof(offset_pair_t) * num_blocks)};
+}
+
+void set_single_block(converted_type_t* conv_types, size_t num_blocks, offset_pair_t offset_pair, size_t nbytes)
+{
+    conv_types->num_blocks = num_blocks;
+    conv_types->kind = DART_BLOCK_SINGLE;
+    conv_types->single = (single_t){offset_pair, nbytes};
+}
+
+dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
+                             dart_datatype_struct_t* dts_dst,
+                             size_t nelem,
+                             size_t nbytes_elem,
+                             converted_type_t* conv_types)
+{
+    //*conv_types = (converted_type_t){0, true, NULL, NULL, NULL};
+    if (datatype_iscontiguous(dts_src) && datatype_iscontiguous(dts_dst))
+    {
+        set_single_block(conv_types, 1, (offset_pair_t){0,0}, nelem * nbytes_elem);
+        //*conv_types = (converted_type_t) {1, DART_BLOCK_SINGLE, (single_t)({(offset_pair_t)({0, 0}), nelem})};
+    }
+    if(datatype_iscontiguous(dts_src) || datatype_iscontiguous(dts_dst))
+    {
+        if(datatype_iscontiguous(dts_src))
+        {
+            if(datatype_isstrided(dts_dst))
+            {
+                size_t num_blocks = nelem / dts_dst->num_elem;
+                size_t num_elem_byte = dts_dst->num_elem * nbytes_elem;
+
+                set_single_block(conv_types, num_blocks, (offset_pair_t){num_elem_byte,dts_dst->strided.stride * nbytes_elem}, num_elem_byte);
+
+                return DART_OK;
+            }
+
+            if(datatype_isindexed(dts_dst))
+            {
+                size_t num_blocks = dts_dst->indexed.num_blocks;
+                set_multiple_block(conv_types, num_blocks);
+                size_t offset_src = 0;
+                for(int i = 0; i < num_blocks; ++i)
+                {
+                    size_t num_elem_byte = dts_dst->indexed.blocklens[i] * nbytes_elem;
+                    conv_types->multiple.nbytes[i] = num_elem_byte;
+                    conv_types->multiple.offsets[i] = (offset_pair_t){offset_src, dts_dst->indexed.offsets[i] * nbytes_elem};
+                    offset_src += num_elem_byte;
+                }
+
+                return DART_OK;
+            }
+
+            return DART_ERR_INVAL;
+
+        }
+        else
+        {
+            if(datatype_isstrided(dts_src))
+            {
+                size_t num_blocks = nelem / dts_src->num_elem;
+                size_t num_elem_byte = dts_src->num_elem * nbytes_elem;
+
+                set_single_block(conv_types, num_blocks, (offset_pair_t){dts_src->strided.stride * nbytes_elem, num_elem_byte}, num_elem_byte);
+
+                return DART_OK;
+            }
+
+            if(datatype_isindexed(dts_src))
+            {
+                size_t num_blocks = dts_src->indexed.num_blocks;
+                set_multiple_block(conv_types, num_blocks);
+                size_t offset_dst = 0;
+                for(int i = 0; i < num_blocks; ++i)
+                {
+                    size_t num_elem_byte = dts_src->indexed.blocklens[i] * nbytes_elem;
+                    conv_types->multiple.nbytes[i] = num_elem_byte;
+                    conv_types->multiple.offsets[i] = (offset_pair_t){dts_src->indexed.offsets[i] * nbytes_elem, offset_dst};
+                    offset_dst += num_elem_byte;
+                }
+
+                return DART_OK;
+            }
+
+            return DART_ERR_INVAL;
+        }
+    }
+
+    return DART_ERR_INVAL;
+}

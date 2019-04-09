@@ -63,36 +63,40 @@ dart_datatype_struct_t * get_datatype_struct(
 }
 
 static inline
-dart_datatype_t datatype_base(dart_datatype_t dart_type) {
-  dart_datatype_struct_t *dts = get_datatype_struct(dart_type);
-  return (dts->kind == DART_KIND_BASIC) ? dart_type : dts->base_type;
+dart_datatype_t datatype_base(dart_datatype_struct_t* dts) {
+  return dts->base_type;
 }
 
 static inline
-bool datatype_isbasic(dart_datatype_t dart_type) {
-  return (get_datatype_struct(dart_type)->kind == DART_KIND_BASIC);
+dart_datatype_struct_t* datatype_base_struct(dart_datatype_struct_t* dts) {
+  return (dts->kind == DART_KIND_BASIC) ? dts
+                                        : get_datatype_struct(dts->base_type);
 }
 
 static inline
-bool datatype_iscontiguous(dart_datatype_t dart_type) {
-  return (get_datatype_struct(dart_type)->kind == DART_KIND_BASIC ||
-          get_datatype_struct(dart_type)->kind == DART_KIND_CUSTOM);
+bool datatype_isbasic(dart_datatype_struct_t* dts) {
+  return (dts->kind == DART_KIND_BASIC);
+}
+
+
+static inline
+bool datatype_iscontiguous(dart_datatype_struct_t* dts) {
+  return (dts->kind == DART_KIND_BASIC || dts->kind == DART_KIND_CUSTOM);
 }
 
 static inline
-bool datatype_isstrided(dart_datatype_t dart_type) {
-  return (get_datatype_struct(dart_type)->kind == DART_KIND_STRIDED);
+bool datatype_isstrided(dart_datatype_struct_t* dts) {
+  return (dts->kind == DART_KIND_STRIDED);
 }
 
 static inline
-bool datatype_isindexed(dart_datatype_t dart_type) {
-  return (get_datatype_struct(dart_type)->kind == DART_KIND_INDEXED);
+bool datatype_isindexed(dart_datatype_struct_t* dts) {
+  return (dts->kind == DART_KIND_INDEXED);
 }
 
 static inline
-int datatype_sizeof(dart_datatype_t dart_type) {
-  dart_datatype_struct_t *dts = get_datatype_struct(dart_type);
-  if(datatype_iscontiguous(dart_type))
+size_t datatype_sizeof(dart_datatype_struct_t* dts) {
+  if(datatype_iscontiguous(dts))
       return dts->contiguous.size;
 
   return -1;
@@ -100,15 +104,15 @@ int datatype_sizeof(dart_datatype_t dart_type) {
 
 static inline
 bool datatype_samebase(
-  dart_datatype_t lhs_type,
-  dart_datatype_t rhs_type)
+  dart_datatype_struct_t* lhs_type,
+  dart_datatype_struct_t* rhs_type)
 {
   return (datatype_base(lhs_type) == datatype_base(rhs_type));
 }
 
 static inline
-size_t datatype_num_elem(dart_datatype_t dart_type) {
-  return (get_datatype_struct(dart_type)->num_elem);
+size_t datatype_num_elem(dart_datatype_struct_t* dts) {
+  return dts->num_elem;
 }
 
 #endif /* DART_GASPI_TYPES_H_INCLUDED */
