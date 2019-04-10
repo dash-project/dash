@@ -9,33 +9,6 @@
 
 #include <dash/dart/base/logging.h>
 
-#define CHECK_EQUAL_BASETYPE(_src_type, _dst_type)                            \
-  do {                                                                        \
-    if (!datatype_samebase(_src_type, _dst_type)){            \
-      DART_LOG_ERROR("%s ! Cannot convert base-types",                        \
-          __func__);                                                          \
-      return DART_ERR_INVAL;                                                  \
-    }                                                                         \
-  } while (0)
-
-#define CHECK_NUM_ELEM(_src_type, _dst_type, _num_elem)                       \
-  do {                                                                        \
-    size_t src_num_elem = datatype_num_elem(_src_type);                       \
-    size_t dst_num_elem = datatype_num_elem(_dst_type);                       \
-    if ((_num_elem % src_num_elem) != 0 || (_num_elem % dst_num_elem) != 0) { \
-      DART_LOG_ERROR(                                                         \
-          "%s ! Type-mismatch would lead to truncation (%zu elems)",          \
-          __func__,  _num_elem);                                              \
-      return DART_ERR_INVAL;                                                  \
-    }                                                                         \
-  } while (0)
-
-#define CHECK_TYPE_CONSTRAINTS(_src_type, _dst_type, _num_elem)               \
-  CHECK_EQUAL_BASETYPE(_src_type, _dst_type);                                 \
-  CHECK_NUM_ELEM(_src_type, _dst_type, _num_elem);
-
-#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
-
 
 
 /*********************** Notify Value ************************/
@@ -589,6 +562,12 @@ dart_ret_t dart_get_blocking(
     converted_type_t conv_types;
     dart_convert_type(dts_src, dts_dst, nelem, nbytes_elem, &conv_types);
 
+    if(global_my_unit_id.id == global_src_unit_id)
+    {
+        DART_CHECK_ERROR(local_copy_get(&gptr, gaspi_src_seg_id, dst, &conv_types));
+        return DART_OK;
+    }
+
     size_t offset_src = gptr.addr_or_offs.offset;
     size_t offset_dst = 0;
     size_t nbytes_read = 0;
@@ -893,7 +872,8 @@ dart_ret_t dart_testall(
     return DART_OK;
 }
 
-
+#include <time.h>
+#include <sys/time.h>
 dart_ret_t dart_get_handle(
   void*           dst,
   dart_gptr_t     gptr,
@@ -928,7 +908,6 @@ dart_ret_t dart_get_handle(
     gaspi_segment_id_t free_seg_id;
     DART_CHECK_ERROR(seg_stack_pop(&dart_free_coll_seg_ids, &free_seg_id));
 
-
     converted_type_t conv_types;
     dart_convert_type(dts_src, dts_dst, nelem, nbytes_elem, &conv_types);
 
@@ -951,13 +930,6 @@ dart_ret_t dart_get_handle(
 
     for(int i = 0; i < conv_types.num_blocks; ++i)
     {
-      if(conv_types.kind == DART_BLOCK_MULTIPLE)
-      {
-        offset_src = gptr.addr_or_offs.offset + conv_types.multiple.offsets[i].src;
-        offset_dst = conv_types.multiple.offsets[i].dst;
-        nbytes_read = conv_types.multiple.nbytes[i];
-      }
-
       DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, gaspi_read(free_seg_id,
                                                             offset_dst,
                                                             global_src_unit_id,
@@ -972,6 +944,7 @@ dart_ret_t dart_get_handle(
         offset_dst += conv_types.single.offset.dst;
       }
     }
+
     if(conv_types.kind == DART_BLOCK_MULTIPLE)
     {
       if(conv_types.multiple.offsets != NULL)

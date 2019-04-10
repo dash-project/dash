@@ -8,6 +8,35 @@
 #include <dash/dart/gaspi/rbtree.h>
 #include "dart_team_private.h"
 
+
+#define CHECK_EQUAL_BASETYPE(_src_type, _dst_type)                            \
+  do {                                                                        \
+    if (!datatype_samebase(_src_type, _dst_type)){            \
+      DART_LOG_ERROR("%s ! Cannot convert base-types",                        \
+          __func__);                                                          \
+      return DART_ERR_INVAL;                                                  \
+    }                                                                         \
+  } while (0)
+
+#define CHECK_NUM_ELEM(_src_type, _dst_type, _num_elem)                       \
+  do {                                                                        \
+    size_t src_num_elem = datatype_num_elem(_src_type);                       \
+    size_t dst_num_elem = datatype_num_elem(_dst_type);                       \
+    if ((_num_elem % src_num_elem) != 0 || (_num_elem % dst_num_elem) != 0) { \
+      DART_LOG_ERROR(                                                         \
+          "%s ! Type-mismatch would lead to truncation (%zu elems)",          \
+          __func__,  _num_elem);                                              \
+      return DART_ERR_INVAL;                                                  \
+    }                                                                         \
+  } while (0)
+
+#define CHECK_TYPE_CONSTRAINTS(_src_type, _dst_type, _num_elem)               \
+  CHECK_EQUAL_BASETYPE(_src_type, _dst_type);                                 \
+  CHECK_NUM_ELEM(_src_type, _dst_type, _num_elem);
+
+#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+
 typedef tree_iterator* request_iterator_t;
 request_iterator_t new_request_iter(int16_t gaspi_seg);
 dart_ret_t destroy_request_iter(request_iterator_t iter);
@@ -94,8 +123,8 @@ dart_ret_t dart_get_minimal_queue(gaspi_queue_id_t * qid);
 gaspi_queue_id_t dart_handle_get_queue(dart_handle_t handle);
 
 dart_ret_t check_seg_id(dart_gptr_t* gptr, dart_unit_t* global_unit_id, gaspi_segment_id_t* gaspi_seg_id, const char* location);
-dart_ret_t local_copy_get(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_src_segment_id, void* dest, size_t nbytes);
-dart_ret_t local_copy_put(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_dst_segment_id, const void* src, size_t nbytes);
+dart_ret_t local_copy_get(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_src_segment_id, void* dst, converted_type_t* conv_type);
+dart_ret_t local_copy_put(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_dst_segment_id, const void* src, converted_type_t* conv_types);
 
 dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                              dart_datatype_struct_t* dts_dst,
