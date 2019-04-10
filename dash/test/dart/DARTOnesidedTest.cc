@@ -57,19 +57,19 @@ TEST_F(DARTOnesidedTest, PutBlockingSingleBlock)
   // Unit to copy values from:
   dart_unit_t unit_src  = (dash::myid() + 1) % dash::size();
   // Global start index of block to copy:
-  int g_src_index       = unit_src * block_size;
+  int g_dst_index       = unit_src * block_size;
   // Copy values:
   dash::dart_storage<value_t> ds(block_size);
   LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
   dart_put_blocking(
-    (array.begin() + g_src_index).dart_gptr(),   // gptr dest
+    (array.begin() + g_dst_index).dart_gptr(),   // gptr dest
     local_array,                                // lptr src
     ds.nelem,
     ds.dtype,
     ds.dtype
   );
   for (size_t l = 0; l < block_size; ++l) {
-    value_t expected = array[g_src_index + l];
+    value_t expected = array[g_dst_index + l];
     ASSERT_EQ_U(expected, local_array[l]);
   }
 }
@@ -192,9 +192,8 @@ TEST_F(DARTOnesidedTest, PutSingleBlock)
   }
 }
 
-TEST_F(DARTOnesidedTest, PutHandleAllRemote)
+TEST_F(DARTOnesidedTest, PutHandleSingleRemote)
 {
-  /*
   // Handle variant of put, the handle contains src and dest seg_id as well as queue AFTER return
   // non blocking so must use wait at the end
   typedef int value_t;
@@ -216,7 +215,7 @@ TEST_F(DARTOnesidedTest, PutHandleAllRemote)
   // Unit to copy values to:
   dart_unit_t unit_dst  = (dash::myid() + 1) % dash::size();
   // Global start index of block to copy:
-  value_t g_dst_index       = unit_dst * block_size;
+  value_t g_dst_index   = unit_dst * block_size;
   // Copy values:
   dash::dart_storage<value_t> ds(block_size);
   LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
@@ -244,13 +243,12 @@ TEST_F(DARTOnesidedTest, PutHandleAllRemote)
   }
 
   delete[] local_array;
-  */
 }
 
 TEST_F(DARTOnesidedTest, GetAllRemote)
 {
   typedef int value_t;
-  const size_t block_size = 5000;
+  const size_t block_size = 50;
   size_t num_elem_copy    = (dash::size() - 1) * block_size;
   size_t num_elem_total   = dash::size() * block_size;
   dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
@@ -266,7 +264,7 @@ TEST_F(DARTOnesidedTest, GetAllRemote)
   }
   array.barrier();
   LOG_MESSAGE("Requesting remote blocks");
-  // Copy values from all non-local blocks:
+  // Copy values from all non-local blocks to the local array:
   size_t block = 0;
   for (size_t u = 0; u < dash::size(); ++u) {
     if (u != static_cast<size_t>(dash::myid())) {
@@ -299,12 +297,95 @@ TEST_F(DARTOnesidedTest, GetAllRemote)
     if (unit != dash::myid()) {
       value_t expected = array[g];
       ASSERT_EQ_U(expected, local_array[l]);
+      if(l % block_size == 0) printf("Assertion: %d | %d\n", expected, local_array[l]);
       ++l;
     }
   }
+  
   delete[] local_array;
   ASSERT_EQ_U(num_elem_copy, l);
 }
+
+TEST_F(DARTOnesidedTest, PutHandleAllRemote)
+{
+  typedef int value_t;
+  const size_t block_size = 5;
+  size_t num_elem_recv    = (dash::size() -1) * block_size;
+  // every process gets an array.local where the others write into at their position
+  size_t num_elem_total   = num_elem_recv * dash::size();
+  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
+  if (dash::size() < 2) {
+    return;
+  }
+  // Array to store local values:
+  auto *local_array = new int[block_size];
+  // Array of handles, one for each dart_put_handle:
+  std::vector<dart_handle_t> handles;
+  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
+  for (size_t l = 0; l < block_size; ++l) {
+    local_array[l] = ((dash::myid() + 1) * 1000) + l;
+  }
+  for (size_t l = 0; l < num_elem_recv; ++l) {
+    array.local[l] = 0;
+  }
+  array.barrier();
+
+  // Copy values to all non-local blocks:
+  size_t block = 0;
+  for (size_t u = 0; u < dash::size(); ++u) {
+    if (u != static_cast<size_t>(dash::myid())) {
+      LOG_MESSAGE("Requesting block %zu from unit %zu", block, u);
+      dart_handle_t handle;
+
+      // Unit to copy values from:
+      dart_unit_t unit_dst  = (dash::myid() + 1) % dash::size();
+      // Global start index of block to copy:
+      int g_dst_index       = unit_dst * block_size;
+      // position of is dependant on position relative to the other id
+      int id_position = (u < dash::myid())? dash::myid() -1 : dash::myid(); 
+
+      dash::dart_storage<value_t> ds(block_size);
+      LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
+      EXPECT_EQ_U(
+        DART_OK,
+        dart_put_handle(
+            (array.begin() + ((u * num_elem_recv) + (id_position * block_size))).dart_gptr(),
+            local_array,
+            ds.nelem,
+            ds.dtype,
+            ds.dtype,
+            &handle)
+      );
+      LOG_MESSAGE("dart_get_handle returned handle %p",
+                  static_cast<void*>(handle));
+      handles.push_back(handle);
+      ++block;
+    }
+  }
+
+  // Wait for completion of put operations:
+  LOG_MESSAGE("Waiting for completion of async requests");
+  dart_waitall(handles.data(), handles.size());
+
+  LOG_MESSAGE("Validating values");
+  for(int j = 0; j < dash::size(); j++)
+  {
+    if(j != static_cast<size_t>(dash::myid()))
+    {
+      // position of is dependant on position relative to the other id
+      int id_position = (j < dash::myid())? dash::myid() -1 : dash::myid(); 
+      for(int i = 0; i < block_size; i++)
+      {
+        int expected  = local_array[i];
+        int actual    = array.at((j*num_elem_recv) + (id_position * block_size) + i);
+        ASSERT_EQ_U(expected, actual);
+      }
+    }
+  }
+
+  delete[] local_array;
+}
+
 
 TEST_F(DARTOnesidedTest, GetHandleAllRemote)
 {
