@@ -235,7 +235,7 @@ dart_ret_t dart_get_minimal_queue(gaspi_queue_id_t * qid)
     return DART_OK;
 }
 
-dart_ret_t check_seg_id(dart_gptr_t* gptr, dart_unit_t* global_unit_id, gaspi_segment_id_t* gaspi_seg_id, const char* location)
+dart_ret_t glob_unit_gaspi_seg(dart_gptr_t* gptr, dart_unit_t* global_unit_id, gaspi_segment_id_t* gaspi_seg_id, const char* location)
 {
     if(gptr->segid)
     {
@@ -251,73 +251,45 @@ dart_ret_t check_seg_id(dart_gptr_t* gptr, dart_unit_t* global_unit_id, gaspi_se
     return DART_OK;
 }
 
-void local_copy_impl(char* src, char* dst, converted_type_t* conv_types)
+
+void set_multiple_block(converted_type_t* conv_type, size_t num_blocks)
 {
-    size_t offset_src = 0;
-    size_t offset_dst = 0;
-    size_t nbytes_read = 0;
-    for(int i = 0; i < conv_types->num_blocks; ++i)
-    {
-      if(conv_types->kind == DART_BLOCK_MULTIPLE)
-      {
-        offset_src = conv_types->multiple.offsets[i].src;
-        offset_dst = conv_types->multiple.offsets[i].dst;
-        nbytes_read = conv_types->multiple.nbytes[i];
-      }
-      memcpy((void*)(dst + offset_dst), (void*)(src + offset_src), nbytes_read);
-
-      if(conv_types->kind == DART_BLOCK_SINGLE)
-      {
-        offset_src += conv_types->single.offset.src;
-        offset_dst += conv_types->single.offset.dst;
-      }
-    }
-}
-
-dart_ret_t local_copy_get(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_src_segment_id, void* dst, converted_type_t* conv_types)
-{
-    gaspi_pointer_t src_seg_ptr = NULL;
-    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_src_segment_id, &src_seg_ptr));
-
-    local_copy_impl((char *) src_seg_ptr + gptr->addr_or_offs.offset, (char*) dst, conv_types);
-
-    return DART_OK;
-}
-
-dart_ret_t local_copy_put(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_dst_segment_id, const void* src, converted_type_t* conv_types)
-{
-    gaspi_pointer_t dst_seg_ptr = NULL;
-    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_dst_segment_id, &dst_seg_ptr));
-
-    local_copy_impl((char *) src, (char*) dst_seg_ptr + gptr->addr_or_offs.offset, conv_types);
-
-    return DART_OK;
-}
-
-void set_multiple_block(converted_type_t* conv_types, size_t num_blocks)
-{
-    conv_types->num_blocks = num_blocks;
-    conv_types->kind = DART_BLOCK_MULTIPLE;
-    conv_types->multiple = (multiple_t){(offset_pair_t*) malloc(sizeof(offset_pair_t) * num_blocks),
+    conv_type->num_blocks = num_blocks;
+    conv_type->kind = DART_BLOCK_MULTIPLE;
+    conv_type->multiple = (multiple_t){(offset_pair_t*) malloc(sizeof(offset_pair_t) * num_blocks),
                                         (size_t*) malloc(sizeof(size_t) * num_blocks)};
 }
 
-void set_single_block(converted_type_t* conv_types, size_t num_blocks, offset_pair_t offset_pair, size_t nbytes)
+void set_single_block(converted_type_t* conv_type, size_t num_blocks, offset_pair_t offset_pair, size_t nbytes)
 {
-    conv_types->num_blocks = num_blocks;
-    conv_types->kind = DART_BLOCK_SINGLE;
-    conv_types->single = (single_t){offset_pair, nbytes};
+    conv_type->num_blocks = num_blocks;
+    conv_type->kind = DART_BLOCK_SINGLE;
+    conv_type->single = (single_t){offset_pair, nbytes};
+}
+
+void free_converted_type(converted_type_t* conv_type)
+{
+    if(conv_type->kind == DART_BLOCK_MULTIPLE)
+    {
+      if(conv_type->multiple.offsets != NULL)
+        free(conv_type->multiple.offsets);
+      if(conv_type->multiple.nbytes != NULL)
+        free(conv_type->multiple.nbytes);
+    }
 }
 
 dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                              dart_datatype_struct_t* dts_dst,
                              size_t nelem,
-                             size_t nbytes_elem,
-                             converted_type_t* conv_types)
+                             converted_type_t* conv_type)
 {
+    size_t nbytes_elem = datatype_sizeof(datatype_base_struct(dts_src));
+
     if (datatype_iscontiguous(dts_src) && datatype_iscontiguous(dts_dst))
     {
-        set_single_block(conv_types, 1, (offset_pair_t){0,0}, nelem * nbytes_elem);
+        set_single_block(conv_type, 1, (offset_pair_t){0,0}, nelem * nbytes_elem);
+
+        return DART_OK;
     }
 
     if(datatype_iscontiguous(dts_src) || datatype_iscontiguous(dts_dst))
@@ -329,7 +301,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                 size_t num_blocks = nelem / dts_dst->num_elem;
                 size_t num_elem_byte = dts_dst->num_elem * nbytes_elem;
 
-                set_single_block(conv_types, num_blocks, (offset_pair_t){num_elem_byte,dts_dst->strided.stride * nbytes_elem}, num_elem_byte);
+                set_single_block(conv_type, num_blocks, (offset_pair_t){num_elem_byte,dts_dst->strided.stride * nbytes_elem}, num_elem_byte);
 
                 return DART_OK;
             }
@@ -337,13 +309,13 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
             if(datatype_isindexed(dts_dst))
             {
                 size_t num_blocks = dts_dst->indexed.num_blocks;
-                set_multiple_block(conv_types, num_blocks);
+                set_multiple_block(conv_type, num_blocks);
                 size_t offset_src = 0;
                 for(int i = 0; i < num_blocks; ++i)
                 {
                     size_t num_elem_byte = dts_dst->indexed.blocklens[i] * nbytes_elem;
-                    conv_types->multiple.nbytes[i] = num_elem_byte;
-                    conv_types->multiple.offsets[i] = (offset_pair_t){offset_src, dts_dst->indexed.offsets[i] * nbytes_elem};
+                    conv_type->multiple.nbytes[i] = num_elem_byte;
+                    conv_type->multiple.offsets[i] = (offset_pair_t){offset_src, dts_dst->indexed.offsets[i] * nbytes_elem};
                     offset_src += num_elem_byte;
                 }
 
@@ -357,7 +329,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                 size_t num_blocks = nelem / dts_src->num_elem;
                 size_t num_elem_byte = dts_src->num_elem * nbytes_elem;
 
-                set_single_block(conv_types, num_blocks, (offset_pair_t){dts_src->strided.stride * nbytes_elem, num_elem_byte}, num_elem_byte);
+                set_single_block(conv_type, num_blocks, (offset_pair_t){dts_src->strided.stride * nbytes_elem, num_elem_byte}, num_elem_byte);
 
                 return DART_OK;
             }
@@ -365,41 +337,44 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
             if(datatype_isindexed(dts_src))
             {
                 size_t num_blocks = dts_src->indexed.num_blocks;
-                set_multiple_block(conv_types, num_blocks);
+                set_multiple_block(conv_type, num_blocks);
                 size_t offset_dst = 0;
                 for(int i = 0; i < num_blocks; ++i)
                 {
                     size_t num_elem_byte = dts_src->indexed.blocklens[i] * nbytes_elem;
-                    conv_types->multiple.nbytes[i] = num_elem_byte;
-                    conv_types->multiple.offsets[i] = (offset_pair_t){dts_src->indexed.offsets[i] * nbytes_elem, offset_dst};
+                    conv_type->multiple.nbytes[i] = num_elem_byte;
+                    conv_type->multiple.offsets[i] = (offset_pair_t){dts_src->indexed.offsets[i] * nbytes_elem, offset_dst};
                     offset_dst += num_elem_byte;
                 }
 
                 return DART_OK;
             }
         }
+
+        return DART_ERR_INVAL;
     }
 
-    if(datatype_isstrided(dts_src) && datatype_isstrided(dts_dst) && dts_src->num_elem == dts_dst->num_elem)
-    {
-        size_t num_blocks = nelem / dts_src->num_elem;
-        set_single_block(conv_types, num_blocks, (offset_pair_t){dts_src->strided.stride * nbytes_elem, dts_dst->strided.stride * nbytes_elem}, dts_src->num_elem * nbytes_elem);
-
-        return DART_OK;
-    }
-
+    // only strided and indexed datatypes should left
     if(!(datatype_isstrided(dts_src) || datatype_isindexed(dts_src)) &&
        !(datatype_isstrided(dts_dst) || datatype_isindexed(dts_dst)))
     {
         return DART_ERR_INVAL;
     }
 
+
+    if(datatype_isstrided(dts_src) && datatype_isstrided(dts_dst) && dts_src->num_elem == dts_dst->num_elem)
+    {
+        size_t num_blocks = nelem / dts_src->num_elem;
+        set_single_block(conv_type, num_blocks, (offset_pair_t){dts_src->strided.stride * nbytes_elem, dts_dst->strided.stride * nbytes_elem}, dts_src->num_elem * nbytes_elem);
+
+        return DART_OK;
+    }
+
     size_t nblocks_src = datatype_isstrided(dts_src) ? nelem / dts_src->num_elem : dts_src->indexed.num_blocks;
     size_t nblocks_dst = datatype_isstrided(dts_dst) ? nelem / dts_dst->num_elem : dts_dst->indexed.num_blocks;
-    set_multiple_block(conv_types, nblocks_src + nblocks_dst);
-
-    size_t elems_done = 0;
-    size_t block_id = 0;
+    // simple solution -> allocates slightly more memory but
+    // doesn't need to calculte the exact number of blocks (more complex)
+    set_multiple_block(conv_type, nblocks_src + nblocks_dst);
 
     size_t block_src = 0;
     size_t block_dst = 0;
@@ -408,12 +383,16 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
     size_t offset_dst = datatype_isstrided(dts_dst) ? 0 : dts_dst->indexed.offsets[block_dst];
     size_t elems_src = datatype_isstrided(dts_src) ? dts_src->num_elem : dts_src->indexed.blocklens[block_src];
     size_t elems_dst = datatype_isstrided(dts_dst) ? dts_dst->num_elem : dts_dst->indexed.blocklens[block_dst];
+
+    size_t elems_done = 0;
+    size_t block_id = 0;
+
     do
     {
         size_t min_elem = MIN(elems_src, elems_dst);
         size_t nelem_byte = min_elem * nbytes_elem;
-        conv_types->multiple.nbytes[block_id] = nelem_byte;
-        conv_types->multiple.offsets[block_id] = (offset_pair_t){offset_src, offset_dst};
+        conv_type->multiple.nbytes[block_id] = nelem_byte;
+        conv_type->multiple.offsets[block_id] = (offset_pair_t){offset_src, offset_dst};
 
         elems_src -= min_elem;
         elems_dst -= min_elem;
@@ -465,7 +444,162 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
 
     } while (elems_done < nelem);
 
-    conv_types->num_blocks = block_id;
+    conv_type->num_blocks = block_id;
 
     return DART_OK;
+}
+
+void local_copy_impl(char* src, char* dst, converted_type_t* conv_type)
+{
+    size_t offset_src = 0;
+    size_t offset_dst = 0;
+    size_t nbytes_read = 0;
+    if(conv_type->kind == DART_BLOCK_SINGLE)
+    {
+        nbytes_read = conv_type->single.nbyte;
+    }
+    for(int i = 0; i < conv_type->num_blocks; ++i)
+    {
+      if(conv_type->kind == DART_BLOCK_MULTIPLE)
+      {
+        offset_src = conv_type->multiple.offsets[i].src;
+        offset_dst = conv_type->multiple.offsets[i].dst;
+        nbytes_read = conv_type->multiple.nbytes[i];
+      }
+      memcpy((void*)(dst + offset_dst), (void*)(src + offset_src), nbytes_read);
+
+      if(conv_type->kind == DART_BLOCK_SINGLE)
+      {
+        offset_src += conv_type->single.offset.src;
+        offset_dst += conv_type->single.offset.dst;
+      }
+    }
+}
+
+dart_ret_t local_get(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_src_segment_id, void* dst, converted_type_t* conv_type)
+{
+    gaspi_pointer_t src_seg_ptr = NULL;
+    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_src_segment_id, &src_seg_ptr));
+
+    local_copy_impl((char *) src_seg_ptr + gptr->addr_or_offs.offset, (char*) dst, conv_type);
+
+    return DART_OK;
+}
+
+dart_ret_t local_put(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_dst_segment_id, const void* src, converted_type_t* conv_type)
+{
+    gaspi_pointer_t dst_seg_ptr = NULL;
+    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_dst_segment_id, &dst_seg_ptr));
+
+    local_copy_impl((char *) src, (char*) dst_seg_ptr + gptr->addr_or_offs.offset, conv_type);
+
+    return DART_OK;
+}
+
+gaspi_return_t remote_get(dart_gptr_t* gptr, gaspi_rank_t src_unit, gaspi_segment_id_t src_seg_id, gaspi_segment_id_t dst_seg_id, void* dst, gaspi_queue_id_t* queue, converted_type_t* conv_type)
+{
+    size_t nbytes_segment = 0;
+    size_t nbytes_read = 0;
+
+    DART_CHECK_ERROR( dart_get_minimal_queue(queue));
+
+    if(conv_type->kind == DART_BLOCK_SINGLE)
+    {
+      nbytes_segment = conv_type->num_blocks * conv_type->single.offset.dst + conv_type->single.nbyte;
+      nbytes_read = conv_type->single.nbyte;
+    }
+    else
+    {
+      size_t last_block = conv_type->num_blocks - 1;
+      nbytes_segment = conv_type->multiple.offsets[last_block].dst + conv_type->multiple.nbytes[last_block];
+    }
+
+    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dst_seg_id, dst, nbytes_segment, 0));
+
+    size_t offset_src = gptr->addr_or_offs.offset;
+    size_t offset_dst = 0;
+
+    for(int i = 0; i < conv_type->num_blocks; ++i)
+    {
+      if(conv_type->kind == DART_BLOCK_MULTIPLE)
+      {
+        offset_src = gptr->addr_or_offs.offset + conv_type->multiple.offsets[i].src;
+        offset_dst = conv_type->multiple.offsets[i].dst;
+        nbytes_read = conv_type->multiple.nbytes[i];
+      }
+
+      DART_CHECK_GASPI_ERROR(
+            gaspi_read(dst_seg_id,
+                        offset_dst,
+                        src_unit,
+                        src_seg_id,
+                        offset_src,
+                        nbytes_read,
+                        *queue,
+                        GASPI_BLOCK)
+     );
+      if(conv_type->kind == DART_BLOCK_SINGLE)
+      {
+        offset_src += conv_type->single.offset.src;
+        offset_dst += conv_type->single.offset.dst;
+      }
+    }
+
+    free_converted_type(conv_type);
+
+    return GASPI_SUCCESS;
+}
+
+gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segment_id_t dst_seg_id, gaspi_segment_id_t src_seg_id, void* src, gaspi_queue_id_t* queue, converted_type_t* conv_type)
+{
+    size_t nbytes_segment = 0;
+    size_t nbytes_read = 0;
+
+    DART_CHECK_ERROR( dart_get_minimal_queue(queue));
+
+    if(conv_type->kind == DART_BLOCK_SINGLE)
+    {
+      nbytes_segment = conv_type->num_blocks * conv_type->single.offset.src + conv_type->single.nbyte;
+      nbytes_read = conv_type->single.nbyte;
+    }
+    else
+    {
+      size_t last_block = conv_type->num_blocks - 1;
+      nbytes_segment = conv_type->multiple.offsets[last_block].src + conv_type->multiple.nbytes[last_block];
+    }
+
+    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(src_seg_id, src, nbytes_segment, 0));
+
+    size_t offset_src = 0;
+    size_t offset_dst = gptr->addr_or_offs.offset;
+
+    for(int i = 0; i < conv_type->num_blocks; ++i)
+    {
+      if(conv_type->kind == DART_BLOCK_MULTIPLE)
+      {
+        offset_src = conv_type->multiple.offsets[i].src;
+        offset_dst = gptr->addr_or_offs.offset + conv_type->multiple.offsets[i].dst;
+        nbytes_read = conv_type->multiple.nbytes[i];
+      }
+
+      DART_CHECK_GASPI_ERROR(
+            gaspi_write(src_seg_id,
+                        offset_src,
+                        dst_unit,
+                        dst_seg_id,
+                        offset_dst,
+                        nbytes_read,
+                        *queue,
+                        GASPI_BLOCK)
+     );
+      if(conv_type->kind == DART_BLOCK_SINGLE)
+      {
+        offset_src += conv_type->single.offset.src;
+        offset_dst += conv_type->single.offset.dst;
+      }
+    }
+
+    free_converted_type(conv_type);
+
+    return GASPI_SUCCESS;
 }
