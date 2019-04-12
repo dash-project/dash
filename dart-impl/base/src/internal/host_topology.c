@@ -575,8 +575,6 @@ dart_ret_t dart__base__host_topology__create(
   /* Number of units mapped to current host: */
   int    num_host_units = 0;
   for (size_t u = 0; u < num_units; ++u) {
-    ++num_host_units;
-    if (u == last_host_idx) { continue; }
     /* copies next differing host name to the left, like:
      *
      *     [ a a a a b b b c c c ]  last_host_index++ = 1
@@ -596,8 +594,9 @@ dart_ret_t dart__base__host_topology__create(
       }
       num_host_units = 0;
     }
+    ++num_host_units;
   }
-  if (max_host_units == 0) {
+  if (max_host_units < num_host_units) {
     /* All units mapped to same host: */
     max_host_units = num_host_units;
   }
