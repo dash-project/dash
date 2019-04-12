@@ -31,6 +31,12 @@
  */
 #define DART_AMSGQ_SINGLEWIN_SLEEP_ENVSTR  "DART_AMSGQ_SINGLEWIN_SLEEP"
 
+/* Allow for ten consecutive write attempts before starting to back-off */
+#define FAILED_WRITE_THRESHOLD 10
+
+/* Back-off time, doubling on every additional failed attempt (10us) */
+#define FAILED_WRITE_BACKOFF_US 10
+
 struct dart_amsgq_impl_data {
   /// window holding the tail ptr
   MPI_Win      win;
@@ -43,6 +49,9 @@ struct dart_amsgq_impl_data {
   MPI_Comm     comm;
   dart_mutex_t send_mutex;
   dart_mutex_t processing_mutex;
+  // timestamp of the last failed write
+  double      *last_failed_write;
+  int         *num_failed_writes;
   int          my_rank;
 };
 
@@ -86,6 +95,11 @@ dart_amsg_singlewin_openq(
   }
   MPI_Comm_dup(team_data->comm, &res->comm);
   MPI_Comm_rank(res->comm, &res->my_rank);
+
+  int comm_size;
+  MPI_Comm_size(res->comm, &comm_size);
+  res->last_failed_write = calloc(comm_size, sizeof(double));
+  res->num_failed_writes = calloc(comm_size, sizeof(int));
 
   // we don't need MPI to take care of the ordering since we use
   // explicit flushes to guarantee ordering
@@ -145,6 +159,17 @@ dart_amsg_singlewin_trysend(
 
   dart__base__mutex_lock(&amsgq->send_mutex);
 
+  /* back-off if necessary */
+  if (amsgq->num_failed_writes[target.id] > FAILED_WRITE_THRESHOLD) {
+    double next_attempt = amsgq->last_failed_write[target.id]
+                          + 1E-6* (amsgq->num_failed_writes[target.id]
+                              - FAILED_WRITE_THRESHOLD)*FAILED_WRITE_BACKOFF_US;
+    if (MPI_Wtime() < next_attempt) {
+      dart__base__mutex_unlock(&amsgq->send_mutex);
+      return DART_ERR_AGAIN;
+    }
+  }
+
   //lock the tailpos window
   MPI_Win_lock(writer_lock_type, target.id, 0, amsgq->win);
 
@@ -191,6 +216,11 @@ dart_amsg_singlewin_trysend(
     }
 
     MPI_Win_unlock(target.id, amsgq->win);
+
+    // remember that we failed here
+    amsgq->num_failed_writes[target.id]++;
+    amsgq->last_failed_write[target.id] = MPI_Wtime();
+
     DART_LOG_TRACE("Not enough space for message of size %lu at unit %i "
                    "(current offset %lu of %lu)",
                    msg_size, target.id, remote_offset, amsgq->size);
@@ -218,6 +248,7 @@ dart_amsg_singlewin_trysend(
   }
   MPI_Win_unlock(target.id, amsgq->win);
 
+  amsgq->num_failed_writes[target.id] = 0;
   dart__base__mutex_unlock(&amsgq->send_mutex);
 
   DART_LOG_INFO("Sent message of size %zu with payload %zu to unit "
@@ -348,6 +379,8 @@ dart_amsg_singlewin_closeq(struct dart_amsgq_impl_data* amsgq)
   dart__base__mutex_destroy(&amsgq->send_mutex);
   dart__base__mutex_destroy(&amsgq->processing_mutex);
 
+  free(amsgq->last_failed_write);
+  free(amsgq->num_failed_writes);
   free(amsgq);
 
   return DART_OK;
