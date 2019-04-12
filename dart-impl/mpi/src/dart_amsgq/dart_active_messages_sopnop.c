@@ -37,6 +37,7 @@ struct dart_amsgq_impl_data {
   MPI_Comm          comm;
   dart_mutex_t      send_mutex;
   dart_mutex_t      processing_mutex;
+  int               comm_rank;
   int64_t           prev_tailpos;
 };
 
@@ -74,6 +75,8 @@ dart_amsg_sopnop_openq(
   struct dart_amsgq_impl_data *res = calloc(1, sizeof(struct dart_amsgq_impl_data));
   res->queue_size = msg_count * msg_size;
   MPI_Comm_dup(team_data->comm, &res->comm);
+
+  MPI_Comm_rank(res->comm, &res->comm_rank);
 
   // TODO: check if it is better to use 32-bit integer?!
   size_t win_size = sizeof(int64_t)          // queuenumber (64-bit to guarantee alignment)
@@ -135,6 +138,8 @@ dart_amsg_sopnop_sendbuf(
 {
   // no locks needed, MPI will take care of it
 
+  MPI_Win queue_win = amsgq->queue_win;
+
   DART_LOG_DEBUG("dart_amsg_trysend: u:%i ds:%zu",
                  target.id, data_size);
 
@@ -154,19 +159,8 @@ dart_amsg_sopnop_sendbuf(
     // fetch queue number
     MPI_Request req;
     MPI_Rget(&queuenum, 1, MPI_INT64_T, target.id,
-             OFFSET_QUEUENUM, 1, MPI_INT64_T, amsgq->queue_win, &req);
+             OFFSET_QUEUENUM, 1, MPI_INT64_T, queue_win, &req);
     MPI_Wait(&req, MPI_STATUS_IGNORE);
-    /*
-    MPI_Fetch_and_op(
-      NULL,
-      &queuenum,
-      MPI_INT64_T,
-      target.id,
-      OFFSET_QUEUENUM,
-      MPI_NO_OP,
-      amsgq->queue_win);
-    MPI_Win_flush_local(target.id, amsgq->queue_win);
-    */
 
     DART_ASSERT(queuenum == 0 || queuenum == 1);
 
@@ -178,8 +172,8 @@ dart_amsg_sopnop_sendbuf(
       target.id,
       OFFSET_WRITECNT(queuenum),
       MPI_SUM,
-      amsgq->queue_win);
-    MPI_Win_flush(target.id, amsgq->queue_win);
+      queue_win);
+    MPI_Win_flush(target.id, queue_win);
 
     if (writecnt >= 0) {
       // atomically fetch and update the writer offset
@@ -190,8 +184,8 @@ dart_amsg_sopnop_sendbuf(
         target.id,
         OFFSET_TAILPOS(queuenum),
         MPI_SUM,
-        amsgq->queue_win);
-      MPI_Win_flush(target.id, amsgq->queue_win);
+        queue_win);
+      MPI_Win_flush(target.id, queue_win);
 
       if (offset >= 0 && (offset + msg_size) <= amsgq->queue_size) break;
 
@@ -202,8 +196,8 @@ dart_amsg_sopnop_sendbuf(
                     queuenum, target.id, offset, writecnt, neg_msg_size);
       MPI_Accumulate(&neg_msg_size, 1, MPI_INT64_T, target.id,
                     OFFSET_TAILPOS(queuenum), 1, MPI_INT64_T,
-                    MPI_SUM, amsgq->queue_win);
-      MPI_Win_flush(target.id, amsgq->queue_win);
+                    MPI_SUM, queue_win);
+      MPI_Win_flush(target.id, queue_win);
     } else {
       DART_LOG_TRACE("Queue %ld at %d processing (writecnt %ld)",
                     queuenum, target.id, writecnt);
@@ -216,8 +210,8 @@ dart_amsg_sopnop_sendbuf(
       target.id,
       OFFSET_WRITECNT(queuenum),
       MPI_SUM,
-      amsgq->queue_win);
-    MPI_Win_flush(target.id, amsgq->queue_win);
+      queue_win);
+    MPI_Win_flush(target.id, queue_win);
 
     return DART_ERR_AGAIN;
   } while (1);
@@ -237,9 +231,9 @@ dart_amsg_sopnop_sendbuf(
     OFFSET_DATA(queuenum, amsgq->queue_size) + offset,
     data_size,
     MPI_BYTE,
-    amsgq->queue_win);
+    queue_win);
   // we have to flush here because MPI has no ordering guarantees
-  MPI_Win_flush(target.id, amsgq->queue_win);
+  MPI_Win_flush(target.id, queue_win);
 
   DART_LOG_TRACE("Unregistering as writer from queue %ld at unit %i",
                  queuenum, target.id);
@@ -252,8 +246,8 @@ dart_amsg_sopnop_sendbuf(
     target.id,
     OFFSET_WRITECNT(queuenum),
     MPI_SUM,
-    amsgq->queue_win);
-  MPI_Win_flush(target.id, amsgq->queue_win);
+    queue_win);
+  MPI_Win_flush(target.id, queue_win);
 
   DART_LOG_TRACE("Sent message of size %zu with payload %zu to unit "
                 "%d starting at offset %ld (writecnt=%ld)",
@@ -267,8 +261,9 @@ amsg_sopnop_process_internal(
   struct dart_amsgq_impl_data * amsgq,
   bool                          blocking)
 {
-  int     unitid;
   int64_t tailpos;
+  int comm_rank = amsgq->comm_rank;
+  MPI_Win queue_win = amsgq->queue_win;
 
   if (!blocking) {
     dart_ret_t ret = dart__base__mutex_trylock(&amsgq->processing_mutex);
@@ -279,14 +274,11 @@ amsg_sopnop_process_internal(
     dart__base__mutex_lock(&amsgq->processing_mutex);
   }
 
-  MPI_Comm_rank(amsgq->comm, &unitid);
   do {
 
     int64_t queuenum = *(int64_t*)amsgq->queue_ptr;
 
     DART_ASSERT(queuenum == 0 || queuenum == 1);
-
-    //printf("Reading from queue %i\n", queuenum);
 
     /**
      * Number of accumulate ops: 5 ops
@@ -297,11 +289,11 @@ amsg_sopnop_process_internal(
       NULL,
       &tailpos,
       MPI_INT64_T,
-      unitid,
+      comm_rank,
       OFFSET_TAILPOS(queuenum),
       MPI_NO_OP,
-      amsgq->queue_win);
-    MPI_Win_flush(unitid, amsgq->queue_win);
+      queue_win);
+    MPI_Win_flush(comm_rank, queue_win);
 
 
     if (tailpos > 0) {
@@ -313,7 +305,7 @@ amsg_sopnop_process_internal(
       int64_t newqueue = (queuenum == 0) ? 1 : 0;
       int64_t queue_swap_sum = (queuenum == 0) ? 1 : -1;
 
-      const int64_t processing_signal     = PROCESSING_SIGNAL;
+      const int64_t processing_signal     =  PROCESSING_SIGNAL;
       const int64_t neg_processing_signal = -PROCESSING_SIGNAL;
 
       // swap the queue number and reset writecnt
@@ -321,22 +313,22 @@ amsg_sopnop_process_internal(
         &queue_swap_sum,
         &tmp,
         MPI_INT64_T,
-        unitid,
+        comm_rank,
         OFFSET_QUEUENUM,
         MPI_SUM,
-        amsgq->queue_win);
+        queue_win);
 
       MPI_Fetch_and_op(
         &neg_processing_signal,
         &oldwritecnt,
         MPI_INT64_T,
-        unitid,
+        comm_rank,
         OFFSET_WRITECNT(newqueue),
         MPI_SUM,
-        amsgq->queue_win);
+        queue_win);
 
 #ifdef DART_ENABLE_ASSERTIONS
-      MPI_Win_flush(unitid, amsgq->queue_win);
+      MPI_Win_flush(comm_rank, queue_win);
       DART_ASSERT(tmp == queuenum);
       DART_ASSERT(oldwritecnt >= processing_signal);
 #endif // DART_ENABLE_ASSERTIONS
@@ -346,11 +338,11 @@ amsg_sopnop_process_internal(
         &processing_signal,
         &writecnt,
         MPI_INT64_T,
-        unitid,
+        comm_rank,
         OFFSET_WRITECNT(queuenum),
         MPI_SUM,
-        amsgq->queue_win);
-      MPI_Win_flush(unitid, amsgq->queue_win);
+        queue_win);
+      MPI_Win_flush(comm_rank, queue_win);
 
       if (writecnt > 0) {
         DART_LOG_TRACE("Waiting for writecnt=%ld writers on queue %ld to finish",
@@ -361,11 +353,11 @@ amsg_sopnop_process_internal(
             NULL,
             &writecnt,
             MPI_INT64_T,
-            unitid,
+            comm_rank,
             OFFSET_WRITECNT(queuenum),
             MPI_NO_OP,
-            amsgq->queue_win);
-          MPI_Win_flush(unitid, amsgq->queue_win);
+            queue_win);
+          MPI_Win_flush(comm_rank, queue_win);
         } while (writecnt > processing_signal);
         DART_LOG_TRACE("Done waiting for writers on queue %ld", queuenum);
       }
@@ -374,20 +366,6 @@ amsg_sopnop_process_internal(
       // reset tailpos
       tailpos = *(int64_t*)((intptr_t)amsgq->queue_ptr + OFFSET_TAILPOS(queuenum));
       *(int64_t*)((intptr_t)amsgq->queue_ptr + OFFSET_TAILPOS(queuenum)) = 0;
-#if 0
-      // NOTE: using MPI_REPLACE here is valid as no-one else will write to it
-      //       at this time.
-      const int64_t zero = 0;
-      MPI_Fetch_and_op(
-        &zero,
-        &tailpos,
-        MPI_INT64_T,
-        unitid,
-        OFFSET_TAILPOS(queuenum),
-        MPI_REPLACE,
-        amsgq->queue_win);
-      MPI_Win_flush(unitid, amsgq->queue_win);
-#endif // 0
 
       DART_LOG_TRACE("Starting processing queue %ld: tailpos %ld",
                      queuenum, tailpos);
