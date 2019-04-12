@@ -102,7 +102,7 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
 gaspi_return_t gaspi_op_MINMAX_char(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
                         gaspi_state_t state, gaspi_number_t num,
                         gaspi_size_t element_size, gaspi_timeout_t timeout);
-                        
+
 gaspi_return_t gaspi_op_MINMAX_short(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
                         gaspi_state_t state, gaspi_number_t num,
                         gaspi_size_t element_size, gaspi_timeout_t timeout);
@@ -133,7 +133,7 @@ gaspi_return_t gaspi_op_MINMAX_float(gaspi_pointer_t op1, gaspi_pointer_t op2, g
 
 gaspi_return_t gaspi_op_MINMAX_double(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
                         gaspi_state_t state, gaspi_number_t num,
-                        gaspi_size_t element_size, gaspi_timeout_t timeout);                                                                                                                                                                                                                
+                        gaspi_size_t element_size, gaspi_timeout_t timeout);
 
 //MAX operations for each supported data type
 gaspi_return_t gaspi_op_MAX_char(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res,
@@ -349,13 +349,5 @@ gaspi_return_t gaspi_op_LXOR_int(gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi
                         gaspi_state_t state, gaspi_number_t num,
                         gaspi_size_t element_size, gaspi_timeout_t timeout);
 
-dart_ret_t  dart_type_create_strided(dart_datatype_t   basetype_id, size_t stride,
-                                     size_t blocklen, dart_datatype_t * newtype);
-
-dart_ret_t  dart_type_create_indexed(dart_datatype_t   basetype, size_t count,
-                                     const size_t blocklen[], const size_t offset[],
-                                     dart_datatype_t * newtype);
-
-dart_ret_t dart_type_destroy(dart_datatype_t *dart_type_ptr);
 
 #endif // GASPI_UTILS_H

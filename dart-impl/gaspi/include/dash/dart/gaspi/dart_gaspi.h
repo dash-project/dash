@@ -19,6 +19,12 @@ extern gaspi_rank_t dart_gaspi_rank_num;
 extern gaspi_rank_t dart_gaspi_rank;
 extern const gaspi_segment_id_t dart_gaspi_buffer_id;
 extern const gaspi_segment_id_t dart_onesided_seg;
+
+#define PUT_COMPLETION_VALUE 255
+extern const gaspi_segment_id_t put_completion_src;
+extern const gaspi_segment_id_t put_completion_dst;
+extern char put_completion_dst_storage;
+
 extern gaspi_pointer_t dart_gaspi_buffer_ptr;
 extern const gaspi_segment_id_t dart_mempool_seg_localalloc;
 extern const gaspi_segment_id_t dart_fallback_seg;

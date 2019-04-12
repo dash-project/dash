@@ -11,6 +11,7 @@
 
 gaspi_rank_t dart_gaspi_rank_num;
 gaspi_rank_t dart_gaspi_rank;
+
 /**************** global auxiliary memory ****************/
 /**
  * for internal communication
@@ -23,6 +24,8 @@ const gaspi_segment_id_t dart_onesided_seg = 3;
 bool dart_fallback_seg_is_allocated;
 /***************** non-collective memory *****************/
 #define DART_BUDDY_ORDER 24
+
+// 10 fixed id's for special purposes
 /* Gaspi segment number for non-collective memory */
 const gaspi_segment_id_t dart_mempool_seg_localalloc = 1;
 /* Point to the base address of memory region for local allocation. */
@@ -31,12 +34,19 @@ char * dart_mempool_localalloc;
 struct dart_buddy* dart_localpool;
 /******************* collective memory *******************/
 const gaspi_segment_id_t dart_coll_seg_id_begin = 4;
-// 10 fixed id's for special purposes
+
+// segment to trigger remote completion with gaspi write
+const gaspi_segment_id_t put_completion_src = 5;
+const gaspi_segment_id_t put_completion_dst = 6;
+char put_completion_dst_storage = PUT_COMPLETION_VALUE;
+
+// gaspi segment id pool
 const size_t dart_coll_seg_count = 245;
 /*********************************************************/
 static int _init_by_dart = 0;
 static int _count_init = 0;
 static int _dart_initialized = 0;
+
 
 
 dart_ret_t dart_init(int *argc, char ***argv)
@@ -78,6 +88,14 @@ dart_ret_t dart_init(int *argc, char ***argv)
     }
 
     dart_next_availteamid++;
+
+    DART_CHECK_ERROR(gaspi_segment_create(put_completion_src,
+                                          sizeof(char),
+                                          GASPI_GROUP_ALL,
+                                          GASPI_BLOCK,
+                                          GASPI_MEM_INITIALIZED));
+
+    DART_CHECK_ERROR(gaspi_segment_bind(put_completion_dst, &put_completion_dst_storage, sizeof(put_completion_dst_storage), 0));
     /*
      * non-collective memory initialization
      */
@@ -128,6 +146,9 @@ dart_ret_t dart_exit()
     DART_CHECK_ERROR(gaspi_segment_delete(dart_gaspi_buffer_id));
 
     DART_CHECK_ERROR(gaspi_segment_delete(dart_mempool_seg_localalloc));
+
+    DART_CHECK_ERROR(gaspi_segment_delete(put_completion_src));
+    DART_CHECK_ERROR(gaspi_segment_delete(put_completion_dst));
 
     uint16_t index;
     int result = dart_adapt_teamlist_convert(DART_TEAM_ALL, &index);

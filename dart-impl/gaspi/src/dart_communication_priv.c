@@ -476,6 +476,24 @@ void local_copy_impl(char* src, char* dst, converted_type_t* conv_type)
     }
 }
 
+void print_converted_type(converted_type_t* conv_type)
+{
+    if(conv_type->kind == DART_BLOCK_SINGLE)
+    {
+        printf("conv_type: blocks=%d, kind=%d, off_src=%d, off_dst=%d, nbyte=%d\n",conv_type->num_blocks,conv_type->kind,conv_type->single.offset.src, conv_type->single.offset.dst, conv_type->single.nbyte);
+    }
+    else
+    {
+        printf("conv_type: blocks=%d, kind=%d {",conv_type->num_blocks,conv_type->kind);
+        for(size_t i = 0; i < conv_type->num_blocks; ++i)
+        {
+            printf(" [i] off_src=%d, off_dst=%d, nbyte=%d ; ",conv_type->multiple.offsets[i].src, conv_type->multiple.offsets[i].dst, conv_type->multiple.nbytes[i]);
+        }
+        printf(")\n");
+        fflush(stdout);
+    }
+}
+
 dart_ret_t local_get(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_src_segment_id, void* dst, converted_type_t* conv_type)
 {
     gaspi_pointer_t src_seg_ptr = NULL;
@@ -603,3 +621,20 @@ gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segmen
 
     return GASPI_SUCCESS;
 }
+
+gaspi_return_t put_completion_test(gaspi_rank_t dst_unit, gaspi_queue_id_t queue)
+{
+    DART_CHECK_GASPI_ERROR(
+            gaspi_read(put_completion_dst,
+                        0,
+                        dst_unit,
+                        put_completion_src,
+                        0,
+                        sizeof(put_completion_dst_storage),
+                        queue,
+                        GASPI_BLOCK)
+     );
+
+    return GASPI_SUCCESS;
+}
+

@@ -35,6 +35,7 @@
   CHECK_NUM_ELEM(_src_type, _dst_type, _num_elem);
 
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
 typedef tree_iterator* request_iterator_t;
@@ -106,17 +107,6 @@ typedef struct converted_types
 
 } converted_type_t;
 
-struct type_complex_meta
-{
-    size_t nbytes_read;
-    size_t loop_inc_j;
-    size_t loop_count;
-    uint64_t offset_src;
-    uint64_t offset_dst;
-    size_t offset_inc_src;
-    size_t offset_inc_dst;
-};
-
 dart_ret_t unit_g2l (uint16_t index, dart_unit_t abs_id, dart_unit_t *rel_id);
 dart_ret_t unit_l2g (uint16_t index, dart_unit_t *abs_id, dart_unit_t rel_id);
 dart_ret_t dart_get_minimal_queue(gaspi_queue_id_t * qid);
@@ -136,5 +126,7 @@ dart_ret_t local_put(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_dst_segment_id,
 
 gaspi_return_t remote_get(dart_gptr_t* gptr, gaspi_rank_t src_unit, gaspi_segment_id_t src_seg_id, gaspi_segment_id_t dst_seg_id, void* dst, gaspi_queue_id_t* queue, converted_type_t* conv_type);
 gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segment_id_t dst_seg_id, gaspi_segment_id_t src_seg_id, void* src, gaspi_queue_id_t* queue, converted_type_t* conv_type);
+
+gaspi_return_t put_completion_test(gaspi_rank_t dst_unit, gaspi_queue_id_t queue);
 
 #endif /* DART_COMMUNICATION_PRIV_H */
