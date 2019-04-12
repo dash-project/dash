@@ -588,7 +588,9 @@ dart_ret_t dart__base__host_topology__create(
      */
     if (strcmp(hostnames[u], hostnames[last_host_idx]) != 0) {
       ++last_host_idx;
-      strncpy(hostnames[last_host_idx], hostnames[u], max_host_len);
+      if (last_host_idx != u) {
+        strncpy(hostnames[last_host_idx], hostnames[u], max_host_len);
+      }
       if (num_host_units > max_host_units) {
         max_host_units = num_host_units;
       }
