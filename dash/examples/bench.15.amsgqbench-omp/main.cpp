@@ -199,6 +199,8 @@ benchmark_amsgq_alltoall_mt_pertarget(dart_amsgq_t amsgq, size_t num_msg,
   } else {
 #pragma omp parallel for shared(buf, amsgq) firstprivate(num_msg, size, buffered)
     for (int target = 0; target < dash::size()-1; ++target) {
+      // skip self
+      if (target >= dash::myid()) ++target;
       for (size_t i = 0; i < num_msg; ++i) {
         dart_ret_t ret;
         //std::cout << dash::myid() << ": writing message " << i << " to " << target.id << std::endl;
@@ -276,7 +278,7 @@ int main(int argc, char** argv)
   }
 
   // all-to-all per-target thread-parallel
-  expected_num_msg = dash::size()*params.num_msgs;
+  expected_num_msg = params.num_msgs;
   for (int i = 0; i < params.num_reps; i++) {
     benchmark_amsgq_alltoall_mt_pertarget(amsgq, params.num_msgs, params.size, params.buffered);
     if (dash::myid() == 0 && msg_recv != expected_num_msg) {
@@ -310,16 +312,16 @@ static
 benchmark_params parse_args(int argc, char * argv[])
 {
   benchmark_params params;
-  for (auto i = 1; i < argc; i += 2) {
+  for (auto i = 1; i < argc; i += 1) {
     std::string flag = argv[i];
     if (flag == "-m" || flag == "--num-msgs") {
-      params.num_msgs = atoll(argv[i+1]);
+      params.num_msgs = atoll(argv[++i]);
     }
     else if (flag == "-n" || flag == "--num-reps") {
-      params.num_reps = atoll(argv[i+1]);
+      params.num_reps = atoll(argv[++i]);
     }
     else if (flag == "-s" || flag == "--size") {
-      params.size = atoll(argv[i+1]);
+      params.size = atoll(argv[++i]);
     }
     else if (flag == "-b" || flag == "--buffered") {
       params.buffered = true;

@@ -225,16 +225,16 @@ static
 benchmark_params parse_args(int argc, char * argv[])
 {
   benchmark_params params;
-  for (auto i = 1; i < argc; i += 2) {
+  for (auto i = 1; i < argc; i += 1) {
     std::string flag = argv[i];
     if (flag == "-m" || flag == "--num-msgs") {
-      params.num_msgs = atoll(argv[i+1]);
+      params.num_msgs = atoll(argv[++i]);
     }
     else if (flag == "-n" || flag == "--num-reps") {
-      params.num_reps = atoll(argv[i+1]);
+      params.num_reps = atoll(argv[++i]);
     }
     else if (flag == "-s" || flag == "--size") {
-      params.size = atoll(argv[i+1]);
+      params.size = atoll(argv[++i]);
     }
     else if (flag == "-b" || flag == "--buffered") {
       params.buffered = true;
