@@ -108,7 +108,6 @@ benchmark_amsgq_alltoall(dart_amsgq_t amsgq, size_t num_msg,
 {
   dart_team_unit_t target = next_target(dash::Team::All().myid());
   void *buf = calloc(size, sizeof(char));
-  num_msg *= omp_get_max_threads();
   Timer t;
 
     if (buffered) {
