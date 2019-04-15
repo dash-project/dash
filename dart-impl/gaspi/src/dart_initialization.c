@@ -36,8 +36,8 @@ struct dart_buddy* dart_localpool;
 const gaspi_segment_id_t dart_coll_seg_id_begin = 4;
 
 // segment to trigger remote completion with gaspi write
-const gaspi_segment_id_t put_completion_src = 5;
-const gaspi_segment_id_t put_completion_dst = 6;
+const gaspi_segment_id_t put_completion_src_seg = 5;
+const gaspi_segment_id_t put_completion_dst_seg = 6;
 char put_completion_dst_storage = PUT_COMPLETION_VALUE;
 
 // gaspi segment id pool
@@ -89,13 +89,13 @@ dart_ret_t dart_init(int *argc, char ***argv)
 
     dart_next_availteamid++;
 
-    DART_CHECK_ERROR(gaspi_segment_create(put_completion_src,
+    DART_CHECK_ERROR(gaspi_segment_create(put_completion_src_seg,
                                           sizeof(char),
                                           GASPI_GROUP_ALL,
                                           GASPI_BLOCK,
                                           GASPI_MEM_INITIALIZED));
 
-    DART_CHECK_ERROR(gaspi_segment_bind(put_completion_dst, &put_completion_dst_storage, sizeof(put_completion_dst_storage), 0));
+    DART_CHECK_ERROR(gaspi_segment_bind(put_completion_dst_seg, &put_completion_dst_storage, sizeof(put_completion_dst_storage), 0));
     /*
      * non-collective memory initialization
      */
@@ -147,8 +147,8 @@ dart_ret_t dart_exit()
 
     DART_CHECK_ERROR(gaspi_segment_delete(dart_mempool_seg_localalloc));
 
-    DART_CHECK_ERROR(gaspi_segment_delete(put_completion_src));
-    DART_CHECK_ERROR(gaspi_segment_delete(put_completion_dst));
+    DART_CHECK_ERROR(gaspi_segment_delete(put_completion_src_seg));
+    DART_CHECK_ERROR(gaspi_segment_delete(put_completion_dst_seg));
 
     uint16_t index;
     int result = dart_adapt_teamlist_convert(DART_TEAM_ALL, &index);

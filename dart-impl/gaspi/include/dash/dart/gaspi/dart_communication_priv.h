@@ -8,6 +8,8 @@
 #include <dash/dart/gaspi/rbtree.h>
 #include "dart_team_private.h"
 
+#include <dash/dart/base/logging.h>
+
 
 #define CHECK_EQUAL_BASETYPE(_src_type, _dst_type)                            \
   do {                                                                        \
@@ -47,15 +49,28 @@ dart_ret_t request_iter_next(request_iterator_t iter);
 
 dart_ret_t inital_rma_request_table();
 dart_ret_t destroy_rma_request_table();
-dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t * qid, char * found);
+dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t * qid, bool * found);
 dart_ret_t add_rma_request_entry(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t qid);
 dart_ret_t inital_rma_request_entry(int16_t seg_id);
 dart_ret_t delete_rma_requests(int16_t seg_id);
 
+typedef enum {
+  GASPI_WRITE = 0,
+  GASPI_READ
+} communication_kind_t;
+
+typedef enum {
+  GASPI_LOCAL = 0,
+  GASPI_GLOBAL
+} access_kind_t;
+
 struct dart_handle_struct
 {
+    communication_kind_t comm_kind;
+    // also used for local notification id and value
     gaspi_segment_id_t local_seg_id;
-    gaspi_segment_id_t remote_seg_id;
+    // used for put remote completion
+    gaspi_notification_id_t notify_remote;
     gaspi_queue_id_t queue;
 };
 
@@ -102,9 +117,6 @@ typedef struct converted_types
 
         multiple_t multiple;
     };
-
-
-
 } converted_type_t;
 
 dart_ret_t unit_g2l (uint16_t index, dart_unit_t abs_id, dart_unit_t *rel_id);
@@ -128,5 +140,8 @@ gaspi_return_t remote_get(dart_gptr_t* gptr, gaspi_rank_t src_unit, gaspi_segmen
 gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segment_id_t dst_seg_id, gaspi_segment_id_t src_seg_id, void* src, gaspi_queue_id_t* queue, converted_type_t* conv_type);
 
 gaspi_return_t put_completion_test(gaspi_rank_t dst_unit, gaspi_queue_id_t queue);
+
+dart_ret_t dart_test_impl(dart_handle_t* handleptr, int32_t * is_finished, gaspi_notification_id_t notify_id_to_check);
+dart_ret_t dart_test_all_impl(dart_handle_t handleptr[], size_t num_handles, int32_t * is_finished, access_kind_t access_kind);
 
 #endif /* DART_COMMUNICATION_PRIV_H */

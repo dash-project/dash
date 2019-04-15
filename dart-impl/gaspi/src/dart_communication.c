@@ -7,8 +7,6 @@
 #include <dash/dart/gaspi/dart_mem.h>
 #include <dash/dart/gaspi/dart_communication_priv.h>
 
-#include <dash/dart/base/logging.h>
-
 
 
 /*********************** Notify Value ************************/
@@ -646,18 +644,28 @@ dart_ret_t dart_free_handle(
   dart_handle_t * handleptr)
 {
     dart_handle_t handle = *handleptr;
-    //gaspi_notification_t val = 0;
-    //DART_CHECK_GASPI_ERROR(gaspi_notify_reset (handle->local_seg_id, handle->local_seg_id, &val));
+    gaspi_notification_t val = 0;
+    DART_CHECK_GASPI_ERROR(gaspi_notify_reset (handle->local_seg_id, handle->local_seg_id, &val));
+    if(handle->comm_kind == GASPI_WRITE)
+    {
+        gaspi_notification_t val_remote = 0;
+        DART_CHECK_GASPI_ERROR(gaspi_notify_reset (handle->local_seg_id, handle->notify_remote, &val_remote));
+        if(val_remote != handle->notify_remote)
+        {
+          DART_LOG_ERROR("Error: gaspi remote completion notify value != expected value");
+        }
+    }
+
+    if(val != handle->local_seg_id)
+    {
+      DART_LOG_ERROR("Error: gaspi notify value != expected value");
+    }
+
     DART_CHECK_GASPI_ERROR(gaspi_segment_delete(handle->local_seg_id));
     DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, handle->local_seg_id));
+
     free(handle);
     *handleptr = DART_HANDLE_NULL;
-
-    /*if(val == 0)
-    {
-      DART_LOG_ERROR("Error: gaspi_notify value is == 0\n");
-    }
-    */
 
     return DART_OK;
 }
@@ -734,26 +742,7 @@ dart_ret_t dart_test_local (
         return DART_OK;
     }
 
-    *is_finished = 0;
-    dart_handle_t handle = *handleptr;
-    gaspi_notification_id_t id;
-    gaspi_return_t test = gaspi_notify_waitsome(handle->local_seg_id, handle->local_seg_id, 1, &id, 1);
-    if(test == GASPI_TIMEOUT)
-    {
-      return DART_OK;
-    }
-
-    if(test != GASPI_SUCCESS)
-    {
-        DART_LOG_ERROR("gaspi_notify_waitsome failed in dart_test_local");
-
-        return DART_ERR_OTHER;
-    }
-    // finished is true even if freeing the handle will fail
-    *is_finished = 1;
-    DART_CHECK_ERROR(dart_free_handle(handleptr));
-
-    return DART_OK;
+    return dart_test_impl(handleptr, is_finished, (*handleptr)->local_seg_id);
 }
 
 dart_ret_t dart_testall_local(
@@ -769,47 +758,27 @@ dart_ret_t dart_testall_local(
         return DART_OK;
     }
 
-    *is_finished = 1;
-
-    gaspi_notification_id_t id;
-    for(int i = 0; i < num_handles; ++i)
-    {
-        dart_handle_t handle = handles[i];
-        if(handle != DART_HANDLE_NULL)
-        {
-            gaspi_return_t test = gaspi_notify_waitsome(handle->local_seg_id, handle->local_seg_id, 1, &id, 1);
-            if(test == GASPI_TIMEOUT)
-            {
-              *is_finished = 0;
-              return DART_OK;
-            }
-
-            if(test != GASPI_SUCCESS)
-            {
-                DART_LOG_ERROR("gaspi_notify_waitsome failed in dart_testall_local");
-
-                return DART_ERR_OTHER;
-            }
-        }
-    }
-
-    *is_finished = 1;
-    for(int i = 0; i < num_handles; ++i)
-    {
-        DART_CHECK_ERROR(dart_free_handle(&handles[i]));
-    }
-
-    return DART_OK;
+    return dart_test_all_impl(handles, num_handles, is_finished, GASPI_LOCAL);
 }
 
 dart_ret_t dart_test(
   dart_handle_t * handleptr,
   int32_t       * is_finished)
 {
-    // Works for "get" requests only yet
-    DART_CHECK_ERROR(dart_test_local (handleptr, is_finished));
+    if(handleptr == NULL || *handleptr == DART_HANDLE_NULL)
+    {
+        *is_finished = 1;
+        DART_LOG_DEBUG("dart_test: empty handle");
 
-    return DART_OK;
+        return DART_OK;
+    }
+
+    if((*handleptr)->comm_kind == GASPI_READ)
+    {
+        return dart_test_impl(handleptr, is_finished, (*handleptr)->local_seg_id);
+    }
+
+    return dart_test_impl(handleptr, is_finished, (*handleptr)->notify_remote);
 }
 
 dart_ret_t dart_testall(
@@ -817,9 +786,15 @@ dart_ret_t dart_testall(
   size_t          num_handles,
   int32_t       * is_finished)
 {
-    // Works for "get" requests only yet
-    DART_CHECK_ERROR(dart_testall_local (handles, num_handles, is_finished));
-    return DART_OK;
+    if(handles == NULL || num_handles == 0)
+    {
+        *is_finished = 1;
+        DART_LOG_DEBUG("dart_testall: empty handle");
+
+        return DART_OK;
+    }
+
+    return dart_test_all_impl(handles, num_handles, is_finished, GASPI_GLOBAL);
 }
 
 dart_ret_t dart_get_handle(
@@ -874,12 +849,14 @@ dart_ret_t dart_get_handle(
                    &conv_type)
     );
 
-    //TODO notify
+    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
+        gaspi_notify(free_seg_id, global_my_unit_id.id, free_seg_id, free_seg_id, queue, GASPI_BLOCK));
 
     handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
+    handle->comm_kind     = GASPI_READ;
     handle->queue         = queue;
-    handle->local_seg_id   = free_seg_id;
-    handle->remote_seg_id   = gaspi_src_seg_id;
+    handle->local_seg_id  = free_seg_id;
+    handle->notify_remote = 0;
     *handleptr = handle;
     DART_LOG_DEBUG("dart_get_handle: handle(%p) dest:%d\n", (void*)(handle), global_src_unit_id);
 
@@ -942,14 +919,22 @@ dart_ret_t dart_put_handle(
                    &conv_type)
     );
 
+    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
+        gaspi_notify(free_seg_id, global_my_unit_id.id, free_seg_id, free_seg_id, queue, GASPI_BLOCK));
+
     DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, put_completion_test(global_dst_unit_id, queue));
 
+    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
+        gaspi_notify(free_seg_id, global_my_unit_id.id, put_completion_dst_seg, put_completion_dst_seg, queue, GASPI_BLOCK));
+
     handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
+    handle->comm_kind     = GASPI_WRITE;
     handle->queue         = queue;
-    handle->local_seg_id   = free_seg_id;
-    handle->remote_seg_id   = gaspi_dst_seg_id;
+    handle->local_seg_id  = free_seg_id;
+    handle->notify_remote = put_completion_dst_seg;
     *handleptr = handle;
-    DART_LOG_DEBUG("dart_get_handle: handle(%p) dest:%d\n", (void*)(handle), global_dst_unit_id);
+
+    DART_LOG_DEBUG("dart_put_handle: handle(%p) dest:%d\n", (void*)(handle), global_dst_unit_id);
 
     return DART_OK;
 dart_error_label:
@@ -1039,31 +1024,37 @@ dart_ret_t dart_get(
   dart_datatype_t   src_type,
   dart_datatype_t   dst_type)
 {
-   DART_CHECK_DATA_TYPE(src_type, dst_type);
+    dart_datatype_struct_t* dts_src = get_datatype_struct(src_type);
+    dart_datatype_struct_t* dts_dst = get_datatype_struct(dst_type);
+    CHECK_EQUAL_BASETYPE(dts_src, dts_dst);
 
-    size_t nbytes = dart_gaspi_datatype_sizeof(src_type) * nelem;
+    size_t nbytes_elem = datatype_sizeof(datatype_base_struct(dts_src));
+    size_t nbytes_segment = nbytes_elem * nelem;
 
     // initialized with relative team unit id
     dart_unit_t global_src_unit_id = gptr.unitid;
 
     gaspi_segment_id_t gaspi_src_seg_id = 0;
-    DART_CHECK_ERROR(glob_unit_gaspi_seg(&gptr, &global_src_unit_id, &gaspi_src_seg_id, "dart_get"));
+    DART_CHECK_ERROR(glob_unit_gaspi_seg(&gptr, &global_src_unit_id, &gaspi_src_seg_id, "dart_get_handled"));
 
     dart_global_unit_t global_my_unit_id;
     DART_CHECK_ERROR(dart_myid(&global_my_unit_id));
+
+    converted_type_t conv_type;
+    DART_CHECK_ERROR(dart_convert_type(dts_src, dts_dst, nelem, &conv_type));
+
     if(global_my_unit_id.id == global_src_unit_id)
     {
-        DART_CHECK_ERROR(local_get(&gptr, gaspi_src_seg_id, dst, nbytes));
+        DART_CHECK_ERROR(local_get(&gptr, gaspi_src_seg_id, dst, &conv_type));
         return DART_OK;
     }
 
     // get gaspi segment id and bind it to dst
     gaspi_segment_id_t free_seg_id;
     DART_CHECK_ERROR(seg_stack_pop(&dart_free_coll_seg_ids, &free_seg_id));
-    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(free_seg_id, dst, nbytes, 0));
 
-    //communitcation request
-    char found_rma_req = 0;
+    // communitcation request
+    bool found_rma_req = false;
     gaspi_queue_id_t   queue = 0;
     DART_CHECK_ERROR(find_rma_request(gptr.unitid, gptr.segid, &queue, &found_rma_req));
     if(!found_rma_req)
@@ -1076,16 +1067,24 @@ dart_ret_t dart_get(
         DART_CHECK_GASPI_ERROR(check_queue_size(queue));
     }
 
-    DART_CHECK_GASPI_ERROR(gaspi_read(free_seg_id,
-                                      0,
-                                      global_src_unit_id,
-                                      gaspi_src_seg_id,
-                                      gptr.addr_or_offs.offset,
-                                      nbytes,
-                                      queue,
-                                      GASPI_BLOCK));
+    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
+        remote_get(&gptr,
+                   global_src_unit_id,
+                   gaspi_src_seg_id,
+                   free_seg_id,
+                   dst,
+                   &queue,
+                   &conv_type)
+    );
 
    return DART_OK;
+
+dart_error_label:
+    DART_CHECK_ERROR(gaspi_segment_delete(free_seg_id));
+    DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, free_seg_id));
+    free_converted_type(&conv_type);
+
+    return DART_ERR_OTHER;
 }
 
 dart_ret_t dart_put(
@@ -1095,28 +1094,31 @@ dart_ret_t dart_put(
   dart_datatype_t   src_type,
   dart_datatype_t   dst_type)
 {
-    DART_CHECK_DATA_TYPE(src_type, dst_type);
-
-    size_t nbytes = dart_gaspi_datatype_sizeof(dst_type) * nelem;
+    dart_datatype_struct_t* dts_src = get_datatype_struct(src_type);
+    dart_datatype_struct_t* dts_dst = get_datatype_struct(dst_type);
+    CHECK_EQUAL_BASETYPE(dts_src, dts_dst);
 
     // initialized with relative team unit id
     dart_unit_t global_dst_unit_id = gptr.unitid;
 
     gaspi_segment_id_t gaspi_dst_seg_id = 0;
-    DART_CHECK_ERROR(glob_unit_gaspi_seg(&gptr, &global_dst_unit_id, &gaspi_dst_seg_id, "dart_put"));
+    DART_CHECK_ERROR(glob_unit_gaspi_seg(&gptr, &global_dst_unit_id, &gaspi_dst_seg_id, "dart_put_handle"));
 
     dart_global_unit_t global_my_unit_id;
     DART_CHECK_ERROR(dart_myid(&global_my_unit_id));
+
+    converted_type_t conv_type;
+    DART_CHECK_ERROR(dart_convert_type(dts_src, dts_dst, nelem, &conv_type));
+
     if(global_my_unit_id.id == global_dst_unit_id)
     {
-        DART_CHECK_ERROR(local_put(&gptr, gaspi_dst_seg_id, (void*) src, nbytes));
+        DART_CHECK_ERROR(local_put(&gptr, gaspi_dst_seg_id, src, &conv_type));
         return DART_OK;
     }
 
     // get gaspi segment id and bind it to dst
     gaspi_segment_id_t free_seg_id;
     DART_CHECK_ERROR(seg_stack_pop(&dart_free_coll_seg_ids, &free_seg_id));
-    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(free_seg_id, src, nbytes, 0));
 
     //communitcation request
     char found_rma_req = 0;
@@ -1132,18 +1134,26 @@ dart_ret_t dart_put(
         DART_CHECK_GASPI_ERROR(check_queue_size(queue));
     }
 
-    DART_CHECK_GASPI_ERROR(gaspi_write(free_seg_id,
-                                      0,
-                                      global_dst_unit_id,
-                                      gaspi_dst_seg_id,
-                                      gptr.addr_or_offs.offset,
-                                      nbytes,
-                                      queue,
-                                      GASPI_BLOCK));
+    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
+        remote_put(&gptr,
+                   global_dst_unit_id,
+                   gaspi_dst_seg_id,
+                   free_seg_id,
+                   src,
+                   &queue,
+                   &conv_type)
+    );
 
-    DART_CHECK_GASPI_ERROR(put_completion_test(global_dst_unit_id, queue));
+    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, put_completion_test(global_dst_unit_id, queue));
 
    return DART_OK;
+
+dart_error_label:
+    DART_CHECK_ERROR(gaspi_segment_delete(free_seg_id));
+    DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, free_seg_id));
+    free_converted_type(&conv_type);
+
+    return DART_ERR_OTHER;
 }
 
 
