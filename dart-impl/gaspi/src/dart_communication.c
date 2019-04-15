@@ -7,8 +7,6 @@
 #include <dash/dart/gaspi/dart_mem.h>
 #include <dash/dart/gaspi/dart_communication_priv.h>
 
-#include <dash/dart/base/logging.h>
-
 
 
 /*********************** Notify Value ************************/
@@ -734,26 +732,7 @@ dart_ret_t dart_test_local (
         return DART_OK;
     }
 
-    *is_finished = 0;
-    dart_handle_t handle = *handleptr;
-    gaspi_notification_id_t id;
-    gaspi_return_t test = gaspi_notify_waitsome(handle->local_seg_id, handle->local_seg_id, 1, &id, 1);
-    if(test == GASPI_TIMEOUT)
-    {
-      return DART_OK;
-    }
-
-    if(test != GASPI_SUCCESS)
-    {
-        DART_LOG_ERROR("gaspi_notify_waitsome failed in dart_test_local");
-
-        return DART_ERR_OTHER;
-    }
-    // finished is true even if freeing the handle will fail
-    *is_finished = 1;
-    DART_CHECK_ERROR(dart_free_handle(handleptr));
-
-    return DART_OK;
+    return dart_test_impl(handleptr, is_finished, (*handleptr)->local_seg_id);
 }
 
 dart_ret_t dart_testall_local(
@@ -769,47 +748,27 @@ dart_ret_t dart_testall_local(
         return DART_OK;
     }
 
-    *is_finished = 1;
-
-    gaspi_notification_id_t id;
-    for(int i = 0; i < num_handles; ++i)
-    {
-        dart_handle_t handle = handles[i];
-        if(handle != DART_HANDLE_NULL)
-        {
-            gaspi_return_t test = gaspi_notify_waitsome(handle->local_seg_id, handle->local_seg_id, 1, &id, 1);
-            if(test == GASPI_TIMEOUT)
-            {
-              *is_finished = 0;
-              return DART_OK;
-            }
-
-            if(test != GASPI_SUCCESS)
-            {
-                DART_LOG_ERROR("gaspi_notify_waitsome failed in dart_testall_local");
-
-                return DART_ERR_OTHER;
-            }
-        }
-    }
-
-    *is_finished = 1;
-    for(int i = 0; i < num_handles; ++i)
-    {
-        DART_CHECK_ERROR(dart_free_handle(&handles[i]));
-    }
-
-    return DART_OK;
+    return dart_test_all_impl(handles, num_handles, is_finished, GASPI_LOCAL);
 }
 
 dart_ret_t dart_test(
   dart_handle_t * handleptr,
   int32_t       * is_finished)
 {
-    // Works for "get" requests only yet
-    DART_CHECK_ERROR(dart_test_local (handleptr, is_finished));
+    if(handleptr == NULL || *handleptr == DART_HANDLE_NULL)
+    {
+        *is_finished = 1;
+        DART_LOG_DEBUG("dart_test: empty handle");
 
-    return DART_OK;
+        return DART_OK;
+    }
+
+    if((*handleptr)->comm_kind == GASPI_READ)
+    {
+        return dart_test_impl(handleptr, is_finished, (*handleptr)->local_seg_id);
+    }
+
+    return dart_test_impl(handleptr, is_finished, (*handleptr)->notify_remote);
 }
 
 dart_ret_t dart_testall(
@@ -817,9 +776,15 @@ dart_ret_t dart_testall(
   size_t          num_handles,
   int32_t       * is_finished)
 {
-    // Works for "get" requests only yet
-    DART_CHECK_ERROR(dart_testall_local (handles, num_handles, is_finished));
-    return DART_OK;
+    if(handles == NULL || num_handles == 0)
+    {
+        *is_finished = 1;
+        DART_LOG_DEBUG("dart_testall: empty handle");
+
+        return DART_OK;
+    }
+
+    return dart_test_all_impl(handles, num_handles, is_finished, GASPI_GLOBAL);
 }
 
 dart_ret_t dart_get_handle(
@@ -874,12 +839,14 @@ dart_ret_t dart_get_handle(
                    &conv_type)
     );
 
-    //TODO notify
+    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
+        gaspi_notify(free_seg_id, global_my_unit_id.id, free_seg_id, free_seg_id, queue, GASPI_BLOCK));
 
     handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
+    handle->comm_kind     = GASPI_READ;
     handle->queue         = queue;
-    handle->local_seg_id   = free_seg_id;
-    handle->remote_seg_id   = gaspi_src_seg_id;
+    handle->local_seg_id  = free_seg_id;
+    handle->notify_remote = 0;
     *handleptr = handle;
     DART_LOG_DEBUG("dart_get_handle: handle(%p) dest:%d\n", (void*)(handle), global_src_unit_id);
 
@@ -942,12 +909,19 @@ dart_ret_t dart_put_handle(
                    &conv_type)
     );
 
+    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
+        gaspi_notify(free_seg_id, global_my_unit_id.id, free_seg_id, free_seg_id, queue, GASPI_BLOCK));
+
     DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, put_completion_test(global_dst_unit_id, queue));
 
+    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
+        gaspi_notify(free_seg_id, global_my_unit_id.id, put_completion_dst_seg, put_completion_dst_seg, queue, GASPI_BLOCK));
+
     handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
+    handle->comm_kind     = GASPI_WRITE;
     handle->queue         = queue;
-    handle->local_seg_id   = free_seg_id;
-    handle->remote_seg_id   = gaspi_dst_seg_id;
+    handle->local_seg_id  = free_seg_id;
+    handle->notify_remote = put_completion_dst_seg;
     *handleptr = handle;
     DART_LOG_DEBUG("dart_get_handle: handle(%p) dest:%d\n", (void*)(handle), global_dst_unit_id);
 

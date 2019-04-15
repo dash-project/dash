@@ -21,8 +21,8 @@ extern const gaspi_segment_id_t dart_gaspi_buffer_id;
 extern const gaspi_segment_id_t dart_onesided_seg;
 
 #define PUT_COMPLETION_VALUE 255
-extern const gaspi_segment_id_t put_completion_src;
-extern const gaspi_segment_id_t put_completion_dst;
+extern const gaspi_segment_id_t put_completion_src_seg;
+extern const gaspi_segment_id_t put_completion_dst_seg;
 extern char put_completion_dst_storage;
 
 extern gaspi_pointer_t dart_gaspi_buffer_ptr;

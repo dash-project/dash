@@ -625,10 +625,10 @@ gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segmen
 gaspi_return_t put_completion_test(gaspi_rank_t dst_unit, gaspi_queue_id_t queue)
 {
     DART_CHECK_GASPI_ERROR(
-            gaspi_read(put_completion_dst,
+            gaspi_read(put_completion_dst_seg,
                         0,
                         dst_unit,
-                        put_completion_src,
+                        put_completion_src_seg,
                         0,
                         sizeof(put_completion_dst_storage),
                         queue,
@@ -636,5 +636,72 @@ gaspi_return_t put_completion_test(gaspi_rank_t dst_unit, gaspi_queue_id_t queue
      );
 
     return GASPI_SUCCESS;
+}
+
+dart_ret_t dart_test_impl(dart_handle_t* handleptr, int32_t * is_finished, gaspi_notification_id_t notify_id_to_check)
+{
+    *is_finished = 0;
+    dart_handle_t handle = *handleptr;
+    gaspi_notification_id_t id;
+    gaspi_return_t test = gaspi_notify_waitsome(handle->local_seg_id, notify_id_to_check, 1, &id, 1);
+    if(test == GASPI_TIMEOUT)
+    {
+      return DART_OK;
+    }
+
+    if(test != GASPI_SUCCESS)
+    {
+        DART_LOG_ERROR("gaspi_notify_waitsome failed");
+
+        return DART_ERR_OTHER;
+    }
+
+    // finished is true even if freeing the handle will fail
+    *is_finished = 1;
+    DART_CHECK_ERROR(dart_free_handle(handleptr));
+
+    return DART_OK;
+}
+
+dart_ret_t dart_test_all_impl(dart_handle_t handles[], size_t num_handles, int32_t * is_finished, access_kind_t access_kind)
+{
+    *is_finished = 1;
+    gaspi_notification_id_t id;
+    gaspi_return_t test;
+    for(int i = 0; i < num_handles; ++i)
+    {
+        dart_handle_t handle = handles[i];
+        if(handle != DART_HANDLE_NULL)
+        {
+            if(access_kind == GASPI_LOCAL || handle->comm_kind == GASPI_READ)
+            {
+              test = gaspi_notify_waitsome(handle->local_seg_id, handle->local_seg_id, 1, &id, 1);
+            }
+            else
+            {
+              test = gaspi_notify_waitsome(handle->local_seg_id, handle->notify_remote, 1, &id, 1);
+            }
+
+            if(test == GASPI_TIMEOUT)
+            {
+              *is_finished = 0;
+              return DART_OK;
+            }
+
+            if(test != GASPI_SUCCESS)
+            {
+                DART_LOG_ERROR("gaspi_notify_waitsome failed.");
+
+                return DART_ERR_OTHER;
+            }
+        }
+    }
+
+    for(int i = 0; i < num_handles; ++i)
+    {
+        DART_CHECK_ERROR(dart_free_handle(&handles[i]));
+    }
+
+    return DART_OK;
 }
 
