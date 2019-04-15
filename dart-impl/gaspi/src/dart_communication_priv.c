@@ -69,20 +69,21 @@ dart_ret_t destroy_rma_request_table()
  * exists ->  returns the queue-id and set found to 1
  * Otherwise -> set found to 0
  */
-dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t * qid, char * found)
+dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t * qid, bool * found)
 {
+    *found = false;
     if(rma_request_table[seg_id] != NULL)
     {
         request_table_entry_t * entry = (request_table_entry_t *) search_rbtree(*(rma_request_table[seg_id]), &target_unit);
         if(entry != NULL)
         {
             *qid = entry->queue;
-            *found = 1;
+            *found = true;
 
             return DART_OK;
         }
     }
-    *found = 0;
+
     return DART_OK;
 }
 /**
@@ -519,7 +520,10 @@ gaspi_return_t remote_get(dart_gptr_t* gptr, gaspi_rank_t src_unit, gaspi_segmen
     size_t nbytes_segment = 0;
     size_t nbytes_read = 0;
 
-    DART_CHECK_ERROR( dart_get_minimal_queue(queue));
+    if(*queue == 0)
+    {
+        DART_CHECK_ERROR( dart_get_minimal_queue(queue));
+    }
 
     if(conv_type->kind == DART_BLOCK_SINGLE)
     {
