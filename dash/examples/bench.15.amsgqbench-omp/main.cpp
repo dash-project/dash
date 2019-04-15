@@ -158,7 +158,7 @@ benchmark_amsgq_alltoall_mt(dart_amsgq_t amsgq, size_t num_msg,
 
   if (dash::myid() == 0) {
     auto elapsed = t.Elapsed();
-    size_t total_msg = num_msg*dash::size();
+    size_t total_msg = msg_recv*dash::size();
     std::cout << "alltoall:num_msg:" << total_msg
               << ":" << (buffered ? "buffered" : "direct")
               << ":msg:" << size
@@ -220,7 +220,7 @@ benchmark_amsgq_alltoall_mt_pertarget(dart_amsgq_t amsgq, size_t num_msg,
 
   if (dash::myid() == 0) {
     auto elapsed = t.Elapsed();
-    size_t total_msg = num_msg*dash::size();
+    size_t total_msg = msg_recv*dash::size();
     std::cout << "alltoall-pt:num_msg:" << total_msg
               << ":" << (buffered ? "buffered" : "direct")
               << ":msg:" << size

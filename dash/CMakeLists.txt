@@ -217,6 +217,8 @@ if (ENABLE_SCALAPACK)
   endif()
 endif()
 
+set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES} -latomic)
+
 if (HAVE_STD_TRIVIALLY_COPYABLE)
   set (ADDITIONAL_COMPILE_FLAGS
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_HAVE_STD_TRIVIALLY_COPYABLE)
@@ -426,10 +428,14 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
               ${PLASMA_LIBRARIES})
           endif()
         endif()
+        set(EXAMPLE_COMPILE_FLAGS "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused")
+        if (exampletarget MATCHES ".*-omp")
+          set(EXAMPLE_COMPILE_FLAGS "${EXAMPLE_COMPILE_FLAGS} ${CXX_OMP_FLAG}")
+        endif()
         set_target_properties(
           ${exampletarget} PROPERTIES
           COMPILE_FLAGS
-          "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused"
+          ${EXAMPLE_COMPILE_FLAGS}
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
