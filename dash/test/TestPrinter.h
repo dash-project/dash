@@ -10,8 +10,6 @@
 #define TEST_RUN "\033[0;32m[  RUN     ] \033[m"
 // ==================================================
 
-#ifdef MPI_IMPL_ID
-
 #ifndef DASH__UTIL__TEST_PRINTER_H_
 #define DASH__UTIL__TEST_PRINTER_H_
 
@@ -20,7 +18,15 @@
 #include <list>
 #include <iostream>
 
-#include <mpi.h>
+#ifdef DASH_MPI_IMPL_ID
+  #include <mpi.h>
+  #define MPI_SUPPORT
+#endif
+
+#ifdef DASH_GASPI_IMPL_ID
+  #include <GASPI.h>
+  #define GASPI_SUPPORT
+#endif
 
 #define TEST_NEUTRAL "\033[0;32m[----------] \033[m"
 #define TEST_SUM     "\033[0;32m[==========] \033[m"
@@ -43,15 +49,28 @@ using ::testing::TestResult;
 
 class TestPrinter : public EmptyTestEventListener {
   private:
+
+#ifdef GASPI_SUPPORT
+  gaspi_rank_t _myid;
+  gaspi_rank_t _size;
+#else
   int  _myid;
   int  _size;
+#endif
   bool _testcase_passed = true;
   std::list<std::string> _failed_tests;
 
   public:
   TestPrinter() {
+#ifdef MPI_SUPPORT
     MPI_Comm_rank(MPI_COMM_WORLD, &_myid);
     MPI_Comm_size(MPI_COMM_WORLD, &_size);
+#endif
+
+#ifdef GASPI_SUPPORT
+  gaspi_proc_rank(&_myid);
+  gaspi_proc_num(&_size);
+#endif
   }
 
   private:
@@ -81,7 +100,7 @@ class TestPrinter : public EmptyTestEventListener {
   // Called after a failed assertion or a SUCCEED() invocation.
   virtual void OnTestPartResult(const TestPartResult& test_part_result) {
     if(test_part_result.failed()){
-      std::cout << TEST_ERROR 
+      std::cout << TEST_ERROR
                 << "[UNIT " << _myid << "]" << " in "
                 << test_part_result.file_name() << ":"
                 << test_part_result.line_number() << std::endl
@@ -92,7 +111,15 @@ class TestPrinter : public EmptyTestEventListener {
 
   // Called after all test activities have ended.
   virtual void OnTestProgramEnd(const UnitTest& unit_test) {
+
+#ifdef MPI_SUPPORT
     MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+#ifdef GASPI_SUPPORT
+  gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+#endif
+
     if(_myid == 0){
       bool passed = unit_test.Passed() && _testcase_passed;
 
@@ -135,10 +162,18 @@ class TestPrinter : public EmptyTestEventListener {
   virtual void OnTestEnd(const TestInfo& test_info) {
     int success_units = 0;
     bool passed       = test_info.result()->Passed();
-    int unit_passed   = passed ? 1 : 0; 
+    int unit_passed   = passed ? 1 : 0;
 
+#ifdef MPI_SUPPORT
     MPI_Reduce(&unit_passed, &success_units, 1,
                MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+#endif
+
+#ifdef GASPI_SUPPORT
+    gaspi_allreduce(&unit_passed, &success_units, 1,
+                    GASPI_OP_SUM, GASPI_TYPE_INT,
+                    GASPI_GROUP_ALL, GASPI_BLOCK);
+#endif
 
     if(_myid == 0){
       passed            = (success_units == _size);
@@ -158,10 +193,15 @@ class TestPrinter : public EmptyTestEventListener {
       }
     }
     // prevent overlapping of tests
+#ifdef MPI_SUPPORT
     MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+#ifdef GASPI_SUPPORT
+    gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+#endif
   }
 };
 
 #endif // DASH__UTIL__TEST_PRINTER_H_
 
-#endif // MPI_IMPL_ID

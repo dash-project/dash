@@ -7,16 +7,13 @@
 #include <libdash.h>
 #include <iostream>
 
-#define DASH_GASPI_IMPL_ID
-
 #ifdef DASH_MPI_IMPL_ID
   #include <mpi.h>
   #define MPI_SUPPORT
 #endif
 
-// GASPI include
 #ifdef DASH_GASPI_IMPL_ID
-  #include </opt/GPI2/include/GASPI.h>
+  #include <GASPI.h>
   #define GASPI_SUPPORT
 #endif
 
@@ -30,8 +27,14 @@ int main(int argc, char * argv[])
 {
   //printf("Bginning of test_main\n");
   char hostname[100];
-  int team_myid = -1;
-  int team_size = -1;
+
+#ifdef GASPI_SUPPORT
+  gaspi_rank_t team_myid = 0;
+  gaspi_rank_t team_size = 0;
+#else
+  int  team_myid = -1;
+  int  team_size = -1;
+#endif
   TESTENV::argc = argc;
   TESTENV::argv = argv;
 
@@ -58,13 +61,12 @@ int main(int argc, char * argv[])
 #endif
 
 // Init GASPI
-gaspi_rank_t gaspi_team_size, gaspi_myid;
 #ifdef GASPI_SUPPORT
 
 gaspi_proc_init(GASPI_BLOCK);
 
-gaspi_proc_rank(&gaspi_myid);
-gaspi_proc_num(&gaspi_team_size);
+gaspi_proc_rank(&team_myid);
+gaspi_proc_num(&team_size);
 
 // only unit 0 writes xml file
   if(team_myid != 0){
@@ -75,27 +77,17 @@ gaspi_proc_num(&gaspi_team_size);
   // Init GoogleTest (strips gtest arguments from argv)
   ::testing::InitGoogleTest(&argc, argv);
 
+
+#ifdef MPI_SUPPORT
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
 #ifdef GASPI_SUPPORT
-bool loop = 0;
-if(0==gaspi_myid)
-{
-  while( loop ){}
-}
-gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
-#endif
-
-//dash::barrier();
-#ifdef MPI_SUPPORT
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-#ifdef MPI_SUPPORT
-  MPI_Barrier(MPI_COMM_WORLD);
+  gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
 #endif
 
   sleep(1);
 
-#ifdef MPI_SUPPORT
   // Parallel Test Printer only available for MPI
   // Change Test Printer
   UnitTest& unit_test = *UnitTest::GetInstance();
@@ -104,7 +96,6 @@ gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
   delete listeners.Release(listeners.default_result_printer());
 
   listeners.Append(new TestPrinter);
-#endif
 
   // Run Tests
   int ret = RUN_ALL_TESTS();
