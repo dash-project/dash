@@ -8,34 +8,47 @@
 TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
 {
   typedef int value_t;
-  const size_t block_size = 10;
-  size_t num_elem_total   = dash::size() * block_size;
-  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
+  dart_datatype_t dart_type = DART_TYPE_INT;
+
+  const size_t num_elem_per_unit = 10;
+  
+  dart_gptr_t gptr;
+  int *local_ptr;
+  dart_team_memalloc_aligned(
+    DART_TEAM_ALL, num_elem_per_unit, DART_TYPE_INT, &gptr);
+  gptr.unitid = dash::myid();
+  dart_gptr_getaddr(gptr, (void**)&local_ptr);
+  // Assign initial values
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    local_ptr[i] = i;
+  }
+
+  dash::barrier();
+  
   // Array to store local copy:
-  int local_array[block_size];
-  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (size_t l = 0; l < block_size; ++l) {
-    array.local[l] = ((dash::myid() + 1) * 1000) + l;
-  }
-  array.barrier();
-  // Unit to copy values from:
-  dart_unit_t unit_src  = (dash::myid() + 1) % dash::size();
-  // Global start index of block to copy:
-  int g_src_index       = unit_src * block_size;
+  auto *buf = new int[num_elem_per_unit];
+
+  // Global pointer of block to copy:
+  dart_unit_t neighbor = (dash::myid() + 1) % dash::size();
+  gptr.unitid = neighbor;
+
   // Copy values:
-  dash::dart_storage<value_t> ds(block_size);
-  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
+  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", dart_type, num_elem_per_unit);
   dart_get_blocking(
-    local_array,                                // lptr dest
-    (array.begin() + g_src_index).dart_gptr(),  // gptr start
-    ds.nelem,
-    ds.dtype,
-    ds.dtype
+    buf,                                // lptr dest
+    gptr,                               // gptr start
+    num_elem_per_unit,
+    dart_type,
+    dart_type
   );
-  for (size_t l = 0; l < block_size; ++l) {
-    value_t expected = array[g_src_index + l];
-    ASSERT_EQ_U(expected, local_array[l]);
+
+  LOG_MESSAGE("Validating values");
+  for (size_t l = 0; l < num_elem_per_unit; ++l) {
+    value_t expected = local_ptr[l];
+    ASSERT_EQ_U(expected, buf[l]);
   }
+
+  delete[] buf;
 }
 
 TEST_F(DARTOnesidedTest, PutBlockingSingleBlock)
@@ -356,7 +369,7 @@ TEST_F(DARTOnesidedTest, PutHandleAllRemote)
             ds.dtype,
             &handle)
       );
-      LOG_MESSAGE("dart_get_handle returned handle %p",
+      LOG_MESSAGE("dart_put_handle returned handle %p",
                   static_cast<void*>(handle));
       handles.push_back(handle);
       ++block;
@@ -765,6 +778,7 @@ TEST_F(DARTOnesidedTest, IndexedPutSimple) {
 
   // indexed-to-contig
   dart_put_blocking(gptr, buf, num_elems, new_type, DART_TYPE_INT);
+
 
   dash::barrier();
 
