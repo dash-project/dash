@@ -146,10 +146,11 @@ benchmark_amsgq_alltoall(dart_amsgq_t amsgq, size_t num_msg,
 
   if (dash::myid() == 0) {
     auto elapsed = t.Elapsed();
-    std::cout << "alltoall:num_msg:" << num_msg*dash::size()
+    size_t total_msg = msg_recv*dash::size();
+    std::cout << "alltoall:num_msg:" << total_msg
               << ":" << (buffered ? "buffered" : "direct")
               << ":msg:" << size
-              << ":avg:" << elapsed / num_msg
+              << ":avg:" << elapsed / total_msg
               << "us:total:" << elapsed << "us"
               << std::endl;
   }
