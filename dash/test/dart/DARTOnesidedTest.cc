@@ -10,27 +10,144 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
   typedef int value_t;
   dart_datatype_t dart_type = DART_TYPE_INT;
 
-  const size_t num_elem_per_unit = 10;
+  const size_t num_elem_per_unit = 120;
   
   dart_gptr_t gptr;
   int *local_ptr;
+  // create memory that is accessible for all team members
   dart_team_memalloc_aligned(
-    DART_TEAM_ALL, num_elem_per_unit, DART_TYPE_INT, &gptr);
+    DART_TEAM_ALL, num_elem_per_unit, dart_type, &gptr);
   gptr.unitid = dash::myid();
   dart_gptr_getaddr(gptr, (void**)&local_ptr);
-  // Assign initial values
+  // Assign initial values: [1000, 1001, 1002, ...] 
   for (int i = 0; i < num_elem_per_unit; ++i) {
-    local_ptr[i] = i;
+    local_ptr[i] = (dash::myid() * 1000) + i;
   }
-
-  dash::barrier();
-  
   // Array to store local copy:
   auto *buf = new int[num_elem_per_unit];
 
-  // Global pointer of block to copy:
+  dash::barrier();
+
+  // Global pointer of block to copy from:
+  dart_unit_t neighbour = (dash::myid() + 1) % dash::size();
+  gptr.unitid = neighbour;
+
+  // Copy values:
+  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", dart_type, num_elem_per_unit);
+  dart_get_blocking(
+    buf,                                // lptr dest
+    gptr,                               // gptr src
+    num_elem_per_unit,
+    dart_type,
+    dart_type
+  );
+
+  LOG_MESSAGE("Validating values");
+  value_t offset = ((dash::myid() + 1) % dash::size()) * 1000;
+  for (size_t i = 0; i < num_elem_per_unit; ++i) {
+    value_t expected = offset + i;
+    ASSERT_EQ_U(expected, buf[i]);
+  }
+
+  // Wait for cleanup until all validation is finished
+  dash::barrier();
+  // clean-up
+  gptr.unitid = 0;
+  dart_team_memfree(gptr);
+  delete[] buf;
+}
+
+TEST_F(DARTOnesidedTest, PutBlockingSingleBlock)
+{
+  typedef int value_t;
+  dart_datatype_t dart_type = DART_TYPE_INT;
+
+  const size_t num_elem_per_unit = 100;
+  
+  dart_gptr_t gptr;
+  int *local_ptr;
+  // create memory that is accessible for all team members
+  dart_team_memalloc_aligned(
+    DART_TEAM_ALL, num_elem_per_unit, dart_type, &gptr);
+
+  gptr.unitid = dash::myid();
+  dart_gptr_getaddr(gptr, (void**)&local_ptr);
+  // Zero put area
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    local_ptr[i] = 0;
+  }
+  // Array to store local copy:
+  auto *buf = new int[num_elem_per_unit];
+  // Assign initial values: [1000, 1001, 1002, ...] 
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    buf[i] = (dash::myid() * 1000) + i;
+  }
+
+  dash::barrier();
+
+  // Global pointer of block to copy to:
   dart_unit_t neighbor = (dash::myid() + 1) % dash::size();
   gptr.unitid = neighbor;
+  // Put values:
+  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", dart_type, num_elem_per_unit);
+  dart_put_blocking(
+    gptr,   // gptr dest
+    buf,    // lptr src
+    num_elem_per_unit,
+    dart_type,
+    dart_type
+  );
+  // put from left neighbour into own memory is not controlled by put_blocking
+  dash::barrier();
+  LOG_MESSAGE("Validating values");
+  value_t offset = ((dash::myid() - 1) % dash::size()) * 1000;
+  for (size_t l = 0; l < num_elem_per_unit; ++l) {
+    value_t expected = offset + l;
+    ASSERT_EQ_U(expected, local_ptr[l]);
+  }
+
+  // Wait for cleanup until all validation is finished
+  dash::barrier();
+  // clean-up
+  gptr.unitid = 0;
+  dart_team_memfree(gptr);
+  delete[] buf;
+}
+
+TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
+{
+  typedef int value_t;
+  dart_datatype_t dart_type = DART_TYPE_INT;
+
+  if (dash::size() < 4) {
+    SKIP_TEST_MSG("requires at least 4 units");
+  }
+
+  auto& split_team = dash::Team::All().split(2);
+
+  const size_t num_elem_per_unit = 120;
+  
+  dart_gptr_t gptr;
+  int *local_ptr;
+  dart_team_unit_t my_rel_id;
+  dart_team_myid(split_team.dart_id(), &my_rel_id);
+  // create memory that is accessible for all team members
+  dart_team_memalloc_aligned(
+    split_team.dart_id(), num_elem_per_unit, dart_type, &gptr);
+  gptr.unitid = my_rel_id.id;
+  dart_gptr_getaddr(gptr, (void**)&local_ptr);
+  // Assign initial values: [1000, 1001, 1002, ...] 
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    local_ptr[i] = (my_rel_id.id * 1000) + i;
+  }
+  // Array to store local copy:
+  auto *buf = new int[num_elem_per_unit];
+
+  dash::barrier();
+
+  // Global pointer of block to copy from:
+  dart_unit_t neighbour = (my_rel_id.id + 1) % split_team.size();
+  gptr.unitid = neighbour;
 
   // Copy values:
   LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", dart_type, num_elem_per_unit);
@@ -43,126 +160,70 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
   );
 
   LOG_MESSAGE("Validating values");
-  for (size_t l = 0; l < num_elem_per_unit; ++l) {
-    value_t expected = local_ptr[l];
-    ASSERT_EQ_U(expected, buf[l]);
+  value_t offset = ((my_rel_id.id + 1) % split_team.size()) * 1000;
+  for (size_t i = 0; i < num_elem_per_unit; ++i) {
+    value_t expected = offset + i;
+    ASSERT_EQ_U(expected, buf[i]);
   }
 
+  // Wait for cleanup until all validation is finished
+  dash::barrier();
+  // clean-up
+  gptr.unitid = 0;
+  dart_team_memfree(gptr);
   delete[] buf;
-}
-
-TEST_F(DARTOnesidedTest, PutBlockingSingleBlock)
-{
-  typedef int value_t;
-  const size_t block_size = 10;
-  size_t num_elem_total   = dash::size() * block_size;
-  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
-  // Array to store local copy:
-  int local_array[block_size];
-  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (size_t l = 0; l < block_size; ++l) {
-    array.local[l] = 0;
-  }
-  for (size_t l = 0; l < block_size; ++l) {
-    local_array[l] = ((dash::myid() + 1) * 1000) + l;
-  }
-  array.barrier();
-  // Unit to copy values from:
-  dart_unit_t unit_src  = (dash::myid() + 1) % dash::size();
-  // Global start index of block to copy:
-  int g_dst_index       = unit_src * block_size;
-  // Copy values:
-  dash::dart_storage<value_t> ds(block_size);
-  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
-  dart_put_blocking(
-    (array.begin() + g_dst_index).dart_gptr(),   // gptr dest
-    local_array,                                // lptr src
-    ds.nelem,
-    ds.dtype,
-    ds.dtype
-  );
-  for (size_t l = 0; l < block_size; ++l) {
-    value_t expected = array[g_dst_index + l];
-    ASSERT_EQ_U(expected, local_array[l]);
-  }
-}
-
-TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
-{
-  typedef int value_t;
-
-  if (dash::size() < 4) {
-    SKIP_TEST_MSG("requires at least 4 units");
-  }
-
-  auto& split_team = dash::Team::All().split(2);
-  const size_t block_size = 10;
-  size_t num_elem_total   = split_team.size() * block_size;
-
-
-  dash::Array<value_t> array(num_elem_total, dash::BLOCKED, split_team);
-  // Array to store local copy:
-  int local_array[block_size];
-  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (size_t l = 0; l < block_size; ++l) {
-    array.local[l] = (split_team.myid() + 1) * 1000 +
-                       (split_team.dart_id() * 100) + l;
-  }
-  array.barrier();
-  // Unit to copy values from:
-  dart_unit_t unit_src  = (split_team.myid() + 1) % split_team.size();
-  // Global start index of block to copy:
-  int g_src_index       = unit_src * block_size;
-  // Copy values:
-  dash::dart_storage<value_t> ds(block_size);
-  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
-  dart_get_blocking(
-    local_array,                                // lptr dest
-    (array.begin() + g_src_index).dart_gptr(),  // gptr start
-    ds.nelem,
-    ds.dtype,
-    ds.dtype
-  );
-  for (size_t l = 0; l < block_size; ++l) {
-    value_t expected = array[g_src_index + l];
-    ASSERT_EQ_U(expected, local_array[l]);
-  }
 }
 
 TEST_F(DARTOnesidedTest, GetSingleBlock)
 {
   typedef int value_t;
-  const size_t block_size = 10;
-  size_t num_elem_total   = dash::size() * block_size;
-  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
-  // Array to store local copy:
-  int local_array[block_size];
-  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (size_t l = 0; l < block_size; ++l) {
-    array.local[l] = ((dash::myid() + 1) * 1000) + l;
+  dart_datatype_t dart_type = DART_TYPE_INT;
+
+  const size_t num_elem_per_unit = 120;
+  
+  dart_gptr_t gptr;
+  int *local_ptr;
+  // create memory that is accessible for all team members
+  dart_team_memalloc_aligned(
+    DART_TEAM_ALL, num_elem_per_unit, dart_type, &gptr);
+  gptr.unitid = dash::myid();
+  dart_gptr_getaddr(gptr, (void**)&local_ptr);
+  // Assign initial values: [1000, 1001, 1002, ...] 
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    local_ptr[i] = (dash::myid() * 1000) + i;
   }
-  array.barrier();
-  // Unit to copy values from:
-  dart_unit_t unit_src  = (dash::myid() + 1) % dash::size();
-  // Global start index of block to copy:
-  int g_src_index       = unit_src * block_size;
+  // Array to store local copy:
+  auto *buf = new int[num_elem_per_unit];
+  dash::barrier();
+
+  // Global pointer of block to copy from:
+  dart_unit_t neighbour = (dash::myid() + 1) % dash::size();
+  gptr.unitid = neighbour;
+
   // Copy values:
-  dash::dart_storage<value_t> ds(block_size);
-  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
+  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", dart_type, num_elem_per_unit);
   dart_get(
-    local_array,                                // lptr dest
-    (array.begin() + g_src_index).dart_gptr(),  // gptr start
-    ds.nelem,
-    ds.dtype,
-    ds.dtype
+    buf,                                // lptr dest
+    gptr,                               // gptr start
+    num_elem_per_unit,
+    dart_type,
+    dart_type
   );
 
-  dart_flush((array.begin() + g_src_index).dart_gptr());
-
-  for (size_t l = 0; l < block_size; ++l) {
-    value_t expected = array[g_src_index + l];
-    ASSERT_EQ_U(expected, local_array[l]);
+  dart_flush(gptr);
+  LOG_MESSAGE("Validating values");
+  value_t offset = ((dash::myid() + 1) % dash::size()) * 1000;
+  for (size_t i = 0; i < num_elem_per_unit; ++i) {
+    value_t expected = offset + i;
+    ASSERT_EQ_U(expected, buf[i]);
   }
+
+  // Wait for cleanup until all validation is finished
+  dash::barrier();
+  // clean-up
+  gptr.unitid = 0;
+  dart_team_memfree(gptr);
+  delete[] buf;
 }
 
 TEST_F(DARTOnesidedTest, PutSingleBlock)
