@@ -103,7 +103,7 @@ static inline
 dart_team_unit_t next_target(dart_team_unit_t current)
 {
   dart_team_unit_t next = {current.id + 1};
-  if (next.id >= dash::size()) next = dart_team_unit_t{0};
+  if (next.id >= dash::size()) next = dart_team_unit_t{next.id % (int)dash::size()};
   if (next.id == dash::myid()) return next_target(next);
   return next;
 }
@@ -112,14 +112,16 @@ void
 benchmark_amsgq_alltoall_mt(dart_amsgq_t amsgq, size_t num_msg,
                          size_t size, bool buffered)
 {
-  dart_team_unit_t target = next_target(dash::Team::All().myid());
   void *buf = calloc(size, sizeof(char));
   Timer t;
 
-    if (buffered) {
-#pragma omp parallel for \
-        firstprivate(target, num_msg, buffered, size) \
+#pragma omp parallel \
+        firstprivate(num_msg, buffered, size) \
         shared(amsgq, buf)
+{
+    dart_team_unit_t target = next_target(dash::Team::All().myid() + omp_get_thread_num());
+    if (buffered) {
+#pragma omp for
       for (size_t i = 0; i < num_msg; ++i) {
         dart_ret_t ret;
         while ((ret = dart_amsg_buffered_send(target, amsgq, &msg_fn, buf, size)) != DART_OK) {
@@ -134,9 +136,7 @@ benchmark_amsgq_alltoall_mt(dart_amsgq_t amsgq, size_t num_msg,
         target = next_target(target);
       }
     } else {
-#pragma omp parallel for \
-        firstprivate(target, num_msg, buffered, size) \
-        shared(amsgq, buf)
+#pragma omp for
       for (size_t i = 0; i < num_msg; ++i) {
         dart_ret_t ret;
         //std::cout << dash::myid() << ": writing message " << i << " to " << target.id << std::endl;
@@ -152,6 +152,8 @@ benchmark_amsgq_alltoall_mt(dart_amsgq_t amsgq, size_t num_msg,
         target = next_target(target);
       }
     }
+}
+
 
   // wait for all messages to complete
   dart_amsg_process_blocking(amsgq, DART_TEAM_ALL);
@@ -178,12 +180,14 @@ benchmark_amsgq_alltoall_mt_pertarget(dart_amsgq_t amsgq, size_t num_msg,
   void *buf = calloc(size, sizeof(char));
   Timer t;
 
-  if (buffered) {
-#pragma omp parallel for shared(buf, amsgq) firstprivate(num_msg, size, buffered)
-    for (int target = 0; target < dash::size()-1; ++target) {
-      // skip self
-      if (target >= dash::myid()) ++target;
-      for (size_t i = 0; i < num_msg; ++i) {
+  int num_threads = omp_get_max_threads();
+#pragma omp parallel shared(buf, amsgq) firstprivate(num_msg, size, buffered) num_threads(num_threads)
+{
+#pragma omp for
+  for (int k = 0; k < dash::size()-1; k++) {
+    int target = next_target(dash::myid() + k).id;
+    if (buffered) {
+      for (size_t i = 0; i < (num_msg / (dash::size()-1)); ++i) {
         dart_ret_t ret;
         while ((ret = dart_amsg_buffered_send(target, amsgq, &msg_fn, buf, size)) != DART_OK) {
           if (ret == DART_ERR_AGAIN) {
@@ -195,13 +199,8 @@ benchmark_amsgq_alltoall_mt_pertarget(dart_amsgq_t amsgq, size_t num_msg,
           }
         }
       }
-    }
-  } else {
-#pragma omp parallel for shared(buf, amsgq) firstprivate(num_msg, size, buffered)
-    for (int target = 0; target < dash::size()-1; ++target) {
-      // skip self
-      if (target >= dash::myid()) ++target;
-      for (size_t i = 0; i < num_msg; ++i) {
+    } else {
+      for (size_t i = 0; i < (num_msg / (dash::size()-1)); ++i) {
         dart_ret_t ret;
         //std::cout << dash::myid() << ": writing message " << i << " to " << target.id << std::endl;
         while ((ret = dart_amsg_trysend(target, amsgq, &msg_fn, buf, size)) != DART_OK) {
@@ -216,13 +215,14 @@ benchmark_amsgq_alltoall_mt_pertarget(dart_amsgq_t amsgq, size_t num_msg,
       }
     }
   }
+}
 
   // wait for all messages to complete
   dart_amsg_process_blocking(amsgq, DART_TEAM_ALL);
 
   if (dash::myid() == 0) {
     auto elapsed = t.Elapsed();
-    size_t total_msg = msg_recv*dash::size();
+    size_t total_msg = dash::size()*((num_msg / (dash::size()-1))*(dash::size()-1));
     std::cout << "alltoall-pt:num_msg:" << total_msg
               << ":" << (buffered ? "buffered" : "direct")
               << ":msg:" << size
@@ -278,7 +278,7 @@ int main(int argc, char** argv)
   }
 
   // all-to-all per-target thread-parallel
-  expected_num_msg = params.num_msgs;
+  expected_num_msg = ((params.num_msgs / (dash::size()-1))*(dash::size()-1));
   for (int i = 0; i < params.num_reps; i++) {
     benchmark_amsgq_alltoall_mt_pertarget(amsgq, params.num_msgs, params.size, params.buffered);
     if (dash::myid() == 0 && msg_recv != expected_num_msg) {
