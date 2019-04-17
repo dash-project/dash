@@ -149,10 +149,11 @@ dart_amsg_dualwin_sendbuf(
   const void                  * data,
   size_t                        data_size)
 {
-  // no locks needed, MPI will take care of it
 
   DART_LOG_DEBUG("dart_amsg_trysend: u:%i ds:%zu",
                  target.id, data_size);
+
+  dart__base__mutex_lock(&amsgq->send_mutex);
 
   int64_t msg_size = data_size;
   int64_t offset;
@@ -203,6 +204,7 @@ dart_amsg_dualwin_sendbuf(
 
     // return error if the queue is full, otherwise try again
     if (offset >= 0) {
+    dart__base__mutex_unlock(&amsgq->send_mutex);
       return DART_ERR_AGAIN;
     }
   } while (1);
@@ -230,6 +232,7 @@ dart_amsg_dualwin_sendbuf(
                 "%d starting at offset %ld",
                 msg_size, data_size, target.id, offset);
 
+  dart__base__mutex_unlock(&amsgq->send_mutex);
   return DART_OK;
 }
 
