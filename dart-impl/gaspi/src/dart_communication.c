@@ -1,5 +1,5 @@
 #include <string.h>
-#include <dash/dart/if/dart_communication.h>
+
 #include <dash/dart/gaspi/dart_gaspi.h>
 #include <dash/dart/gaspi/gaspi_utils.h>
 #include <dash/dart/gaspi/dart_team_private.h>
@@ -559,7 +559,7 @@ dart_ret_t dart_get_blocking(
         return DART_OK;
     }
 
-    gaspi_queue_id_t queue = 0;
+    gaspi_queue_id_t queue = (gaspi_queue_id_t) -1;
 
     DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
         remote_get(&gptr,
@@ -574,6 +574,8 @@ dart_ret_t dart_get_blocking(
     DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, gaspi_wait(queue, GASPI_BLOCK));
 
     DART_CHECK_ERROR(gaspi_segment_delete(dart_onesided_seg));
+
+    free_converted_type(&conv_type);
 
     return DART_OK;
 
@@ -613,7 +615,7 @@ dart_ret_t dart_put_blocking(
         return DART_OK;
     }
 
-    gaspi_queue_id_t queue = 0;
+    gaspi_queue_id_t queue = (gaspi_queue_id_t) -1;
 
     DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
         remote_put(&gptr,
@@ -631,6 +633,8 @@ dart_ret_t dart_put_blocking(
 
     DART_CHECK_ERROR(gaspi_segment_delete(dart_onesided_seg));
 
+    free_converted_type(&conv_type);
+
     return DART_OK;
 
 dart_error_label:
@@ -640,7 +644,7 @@ dart_error_label:
     return DART_ERR_OTHER;
 }
 
-dart_ret_t dart_free_handle(
+dart_ret_t dart_handle_free(
   dart_handle_t * handleptr)
 {
     dart_handle_t handle = *handleptr;
@@ -677,7 +681,7 @@ dart_ret_t dart_wait_local (
     {
         gaspi_wait((*handleptr)->queue, GASPI_BLOCK);
 
-        DART_CHECK_ERROR(dart_free_handle(handleptr));
+        DART_CHECK_ERROR(dart_handle_free(handleptr));
     }
 
     return DART_OK;
@@ -705,7 +709,7 @@ dart_ret_t dart_wait(
     if( handleptr != NULL && *handleptr != DART_HANDLE_NULL )
     {
         DART_CHECK_GASPI_ERROR((gaspi_wait((*handleptr)->queue, GASPI_BLOCK)));
-        dart_free_handle(handleptr);
+        dart_handle_free(handleptr);
     }
 
     return DART_OK;
@@ -837,7 +841,7 @@ dart_ret_t dart_get_handle(
     gaspi_segment_id_t free_seg_id;
     DART_CHECK_ERROR(seg_stack_pop(&dart_free_coll_seg_ids, &free_seg_id));
 
-    gaspi_queue_id_t queue = 0;
+    gaspi_queue_id_t queue = (gaspi_queue_id_t) -1;
 
     DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
         remote_get(&gptr,
@@ -858,6 +862,9 @@ dart_ret_t dart_get_handle(
     handle->local_seg_id  = free_seg_id;
     handle->notify_remote = 0;
     *handleptr = handle;
+
+    free_converted_type(&conv_type);
+
     DART_LOG_DEBUG("dart_get_handle: handle(%p) dest:%d\n", (void*)(handle), global_src_unit_id);
 
     return DART_OK;
@@ -907,7 +914,7 @@ dart_ret_t dart_put_handle(
     gaspi_segment_id_t free_seg_id;
     DART_CHECK_ERROR(seg_stack_pop(&dart_free_coll_seg_ids, &free_seg_id));
 
-    gaspi_queue_id_t queue = 0;
+    gaspi_queue_id_t queue = (gaspi_queue_id_t) -1;
 
     DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
         remote_put(&gptr,
@@ -934,6 +941,8 @@ dart_ret_t dart_put_handle(
     handle->notify_remote = put_completion_dst_seg;
     *handleptr = handle;
 
+    free_converted_type(&conv_type);
+
     DART_LOG_DEBUG("dart_put_handle: handle(%p) dest:%d\n", (void*)(handle), global_dst_unit_id);
 
     return DART_OK;
@@ -945,34 +954,33 @@ dart_error_label:
 
 dart_ret_t dart_flush(dart_gptr_t gptr)
 {
-    char             found_rma_req  = 0;
-    gaspi_queue_id_t queue_id;
+    request_table_entry_t* request_entry = NULL;
+    DART_CHECK_ERROR(find_rma_request(gptr.unitid, gptr.segid, &request_entry));
+    if(request_entry == NULL)
+    {
+        DART_LOG_DEBUG("dart_flush: no queue found");
 
-    DART_CHECK_ERROR(find_rma_request(gptr.unitid, gptr.segid, &queue_id, &found_rma_req));
-    if(found_rma_req)
-    {
-        DART_CHECK_GASPI_ERROR(gaspi_wait(queue_id, GASPI_BLOCK));
+        return DART_OK;
     }
-    else
-    {
-      DART_LOG_DEBUG("dart_flush: no queue found");
-    }
+
+    DART_CHECK_GASPI_ERROR(gaspi_wait(request_entry->queue, GASPI_BLOCK));
+
+    DART_CHECK_ERROR(free_segment_ids(request_entry));
 
     return DART_OK;
 }
 
 dart_ret_t dart_flush_all(dart_gptr_t gptr)
 {
-    int16_t seg_id      = gptr.segid;
+    request_table_entry_t* request_entry = NULL;
 
-    request_iterator_t iter = new_request_iter(seg_id);
+    request_iterator_t iter = new_request_iter(gptr.segid);
     if(request_iter_is_vaild(iter)){
       while(request_iter_is_vaild(iter))
       {
-          gaspi_queue_id_t qid;
-          DART_CHECK_ERROR(request_iter_get_queue(iter, &qid));
+          DART_CHECK_ERROR(request_iter_get_entry(iter, &request_entry));
 
-          DART_CHECK_GASPI_ERROR(gaspi_wait(qid, GASPI_BLOCK));
+          DART_CHECK_ERROR(free_segment_ids(request_entry));
 
           DART_CHECK_ERROR(request_iter_next(iter));
       }
@@ -984,34 +992,15 @@ dart_ret_t dart_flush_all(dart_gptr_t gptr)
 
 dart_ret_t dart_flush_local(dart_gptr_t gptr)
 {
-    gaspi_return_t ret = GASPI_SUCCESS;
     DART_CHECK_ERROR(dart_flush(gptr));
-    if(ret != GASPI_SUCCESS)
-    {
-        printf("ERROR in %s at line %d in file %s\n","_dart_flush_local", __LINE__, __FILE__);
-        return DART_ERR_OTHER;
-    }
+
     return DART_OK;
 }
 
 dart_ret_t dart_flush_local_all(dart_gptr_t gptr)
 {
-    int16_t seg_id      = gptr.segid;
+    DART_CHECK_ERROR(dart_flush_all(gptr));
 
-    request_iterator_t iter = new_request_iter(seg_id);
-    if(request_iter_is_vaild(iter)){
-      while(request_iter_is_vaild(iter))
-      {
-          gaspi_queue_id_t qid;
-          DART_CHECK_ERROR(request_iter_get_queue(iter, &qid));
-
-          DART_CHECK_GASPI_ERROR(gaspi_wait(qid, GASPI_BLOCK));
-
-          DART_CHECK_ERROR(request_iter_next(iter));
-      }
-
-      DART_CHECK_ERROR(destroy_request_iter(iter));
-   }
     return DART_OK;
 }
 
@@ -1054,34 +1043,30 @@ dart_ret_t dart_get(
     DART_CHECK_ERROR(seg_stack_pop(&dart_free_coll_seg_ids, &free_seg_id));
 
     // communitcation request
-    bool found_rma_req = false;
-    gaspi_queue_id_t   queue = 0;
-    DART_CHECK_ERROR(find_rma_request(gptr.unitid, gptr.segid, &queue, &found_rma_req));
-    if(!found_rma_req)
-    {
-        DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
-        DART_CHECK_ERROR(add_rma_request_entry(gptr.unitid, gptr.unitid, queue));
-    }
-    else
-    {
-        DART_CHECK_GASPI_ERROR(check_queue_size(queue));
-    }
+    request_table_entry_t* request_entry = NULL;
+    DART_CHECK_ERROR_GOTO(dart_error_label,
+        add_rma_request_entry(gptr.unitid, gptr.segid, free_seg_id, &request_entry));
 
+    printf("[%d] set queue: %d - segid: %d\n", global_my_unit_id.id, request_entry->queue, request_entry->begin_seg_ids->local_gseg_id);
+    fflush(stdout);
     DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
         remote_get(&gptr,
                    global_src_unit_id,
                    gaspi_src_seg_id,
                    free_seg_id,
                    dst,
-                   &queue,
+                   &(request_entry->queue),
                    &conv_type)
     );
+
+    free_converted_type(&conv_type);
 
    return DART_OK;
 
 dart_error_label:
     DART_CHECK_ERROR(gaspi_segment_delete(free_seg_id));
     DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, free_seg_id));
+    //TODO remove segment id from request table
     free_converted_type(&conv_type);
 
     return DART_ERR_OTHER;
@@ -1120,19 +1105,10 @@ dart_ret_t dart_put(
     gaspi_segment_id_t free_seg_id;
     DART_CHECK_ERROR(seg_stack_pop(&dart_free_coll_seg_ids, &free_seg_id));
 
-    //communitcation request
-    char found_rma_req = 0;
-    gaspi_queue_id_t   queue = 0;
-    DART_CHECK_ERROR(find_rma_request(gptr.unitid, gptr.segid, &queue, &found_rma_req));
-    if(!found_rma_req)
-    {
-        DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
-        DART_CHECK_ERROR(add_rma_request_entry(gptr.unitid, gptr.unitid, queue));
-    }
-    else
-    {
-        DART_CHECK_GASPI_ERROR(check_queue_size(queue));
-    }
+    // communitcation request
+    request_table_entry_t* request_entry = NULL;
+    DART_CHECK_ERROR_GOTO(dart_error_label,
+        add_rma_request_entry(gptr.unitid, gptr.segid, free_seg_id, &request_entry));
 
     DART_CHECK_GASPI_ERROR_GOTO(dart_error_label,
         remote_put(&gptr,
@@ -1140,17 +1116,20 @@ dart_ret_t dart_put(
                    gaspi_dst_seg_id,
                    free_seg_id,
                    src,
-                   &queue,
+                   &(request_entry->queue),
                    &conv_type)
     );
 
-    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, put_completion_test(global_dst_unit_id, queue));
+    DART_CHECK_GASPI_ERROR_GOTO(dart_error_label, put_completion_test(global_dst_unit_id, request_entry->queue));
+
+    free_converted_type(&conv_type);
 
    return DART_OK;
 
 dart_error_label:
     DART_CHECK_ERROR(gaspi_segment_delete(free_seg_id));
     DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, free_seg_id));
+    //TODO remove segment id from request table
     free_converted_type(&conv_type);
 
     return DART_ERR_OTHER;
@@ -2016,20 +1995,6 @@ dart_ret_t dart_compare_and_swap(
     DART_LOG_ERROR("dart_compare_and_swap for gaspi not supported!");
     printf("dart_compare_and_swap for gaspi not supported!\n");
     return DART_ERR_INVAL;
-}
-
-
-
-// ===== Functions by Rodario =====
-// copied from the mpi implementation of "dart_communication.c"
-dart_ret_t dart_handle_free(
-  dart_handle_t * handleptr)
-{
-  if (handleptr != NULL && *handleptr != DART_HANDLE_NULL) {
-    free(*handleptr);
-    *handleptr = DART_HANDLE_NULL;
-  }
-  return DART_OK;
 }
 
 dart_ret_t dart_alltoall(
