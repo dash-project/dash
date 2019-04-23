@@ -118,6 +118,7 @@ endif()
 # Load build modules to locate libraries after environment setup
 # has been loaded:
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/GASPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Likwid.cmake)
@@ -297,6 +298,9 @@ message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
 message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
 if (DEFINED MPI_IMPL_ID)
   message(INFO "MPI implementation:       " ${MPI_IMPL_ID})
+endif()
+if (DEFINED GASPI_IMPL_ID)
+  message(INFO "GASPI implementation:     " ${GASPI_IMPL_ID})
 endif()
 
 if (ENABLE_PAPI)

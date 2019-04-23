@@ -22,8 +22,6 @@ dart_ret_t dart_group_sizeof(size_t *size)
     return DART_OK;
 }
 
-//dart_ret_t dart_group_init(dart_group_t *group)
-
 dart_ret_t dart_group_create(
   dart_group_t *group)
 {
@@ -36,7 +34,7 @@ dart_ret_t dart_group_create(
     }
     return DART_OK;
 }
-//dart_ret_t dart_group_fini(dart_group_t *group)
+
 dart_ret_t dart_group_destroy(dart_group_t *group)
 {
     (*group)->nmem = 0;
@@ -115,7 +113,6 @@ dart_ret_t dart_group_intersect(const dart_group_t g1,
     return DART_OK;
 }
 
-//dart_ret_t dart_group_addmember(dart_group_t *g, int32_t unitid)
 dart_ret_t dart_group_addmember(
   dart_group_t        g,
   dart_global_unit_t  unitid)
@@ -126,7 +123,6 @@ dart_ret_t dart_group_addmember(
     return DART_OK;
 }
 
-//dart_ret_t dart_group_delmember(dart_group_t *g, int32_t unitid)
 dart_ret_t dart_group_delmember(
   dart_group_t        g,
   dart_global_unit_t  unitid)
@@ -136,11 +132,7 @@ dart_ret_t dart_group_delmember(
 
     return DART_OK;
 }
-/*
-dart_ret_t dart_group_ismember(const dart_group_t *g,
-                               int32_t unitid,
-                               int32_t *ismember)
-*/
+
 dart_ret_t dart_group_ismember(
                   const dart_group_t   g,
                   dart_global_unit_t   unitid,
@@ -151,7 +143,6 @@ dart_ret_t dart_group_ismember(
     return DART_OK;
 }
 
-//dart_ret_t dart_group_size(const dart_group_t *g, size_t *size)
 dart_ret_t dart_group_size(
   const dart_group_t   g,
   size_t             * size)
@@ -161,7 +152,6 @@ dart_ret_t dart_group_size(
     return DART_OK;
 }
 
-//dart_ret_t dart_group_getmembers(const dart_group_t *g, int32_t *unitids)
 dart_ret_t dart_group_getmembers(
   const dart_group_t   g,
   dart_global_unit_t * unitids)
@@ -206,9 +196,9 @@ dart_ret_t dart_group_split(
         {
             (gout[i]->g2l)[g->l2g[j]] = 1;
         }
-        
+
         group_rebuild(&gout[i]);
-        
+
         ++(*nout);
     }
 

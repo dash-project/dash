@@ -25,64 +25,54 @@ dart_ret_t dart_team_get_group (dart_team_t teamid, dart_group_t *group)
 dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_team_t *newteam)
 {
     // SplitAddition
-    dart_global_unit_t myid;
-    dart_myid(&myid);
-    int32_t ismember = 0;
 
 
-    gaspi_group_t parent_gaspi_group;
+
     gaspi_group_t new_gaspi_group = 0;
     gaspi_group_t gaspi_group_max = 0;
-    uint16_t      index;
-    size_t        size;
-    dart_team_t   max_teamid = -1;
 
-    DART_CHECK_ERROR(dart_size(&size));
-    /*not used
-    dart_global_unit_t   unit;
-    DART_CHECK_ERROR(dart_myid(&unit));
-    */
-    /*
-     * index to dart team
-     */
+    uint16_t      index;
     int result = dart_adapt_teamlist_convert(teamid, &index);
     if (result == -1)
     {
         return DART_ERR_INVAL;
     }
 
-    parent_gaspi_group = dart_teams[index].id;
+    gaspi_group_t parent_gaspi_group = dart_teams[index].id;
 
     /* Get the maximum next_availteamid among all the units belonging to the parent team specified by 'teamid'. */
-    DART_CHECK_ERROR(gaspi_allreduce(&dart_next_availteamid,
-                                     &max_teamid,
-                                     1, GASPI_OP_MAX, GASPI_TYPE_INT, parent_gaspi_group, GASPI_BLOCK));
+    dart_team_t   max_teamid = -1;
+    DART_CHECK_ERROR(dart_allreduce(&dart_next_availteamid,
+                                    &max_teamid,
+                                    1, DART_TYPE_SHORT, DART_OP_MAX, teamid));
 
-    
 
     // TODO: Only relevant for splitting
-    //       find more efficient method -> each split group can have the same group id, this solution creates for
+    //       find more efficient method -> each split partner can hold the same group id, this solution creates for
     //       each split partner an extra gaspi group id
-    // find the maximal group id of all team member
+    // finds the maximal group id of all team member
     DART_CHECK_ERROR(dart_allreduce(&gaspi_group_id_top,
                                     &gaspi_group_max,
                                     1, DART_TYPE_BYTE, DART_OP_MAX, teamid));
-    
+
+    dart_global_unit_t myid;
+    dart_myid(&myid);
+    int32_t ismember = 0;
     dart_group_ismember(group, myid, &ismember);
     if(!ismember)
         return DART_OK;
-    
+
     dart_next_availteamid = max_teamid + 1;
-    
+
     *newteam = DART_TEAM_NULL;
     size_t gsize;
     dart_group_size(group, &gsize);
     dart_global_unit_t * group_members = malloc(sizeof(dart_unit_t) * gsize);
     assert(group_members);
-    
-    
-                                    
-    while(new_gaspi_group <= gaspi_group_max ) 
+
+
+
+    while(new_gaspi_group <= gaspi_group_max )
     {
         DART_CHECK_ERROR(gaspi_group_create(&new_gaspi_group));
     }

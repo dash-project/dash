@@ -2,17 +2,13 @@
 #include <string.h>
 #include <assert.h>
 
+#include <dash/dart/if/dart_communication.h>
+
 #include <dash/dart/gaspi/gaspi_utils.h>
 #include <dash/dart/gaspi/dart_communication_priv.h>
 #include <dash/dart/gaspi/dart_translation.h>
 
 tree_root * rma_request_table[DART_MAX_SEGS];
-
-
-typedef struct{
-    dart_unit_t             key;
-    gaspi_queue_id_t        queue;
-}request_table_entry_t;
 
 static void * request_table_key(struct stree_node * node)
 {
@@ -69,19 +65,11 @@ dart_ret_t destroy_rma_request_table()
  * exists ->  returns the queue-id and set found to 1
  * Otherwise -> set found to 0
  */
-dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t * qid, bool * found)
+dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, request_table_entry_t** request_entry)
 {
-    *found = false;
     if(rma_request_table[seg_id] != NULL)
     {
-        request_table_entry_t * entry = (request_table_entry_t *) search_rbtree(*(rma_request_table[seg_id]), &target_unit);
-        if(entry != NULL)
-        {
-            *qid = entry->queue;
-            *found = true;
-
-            return DART_OK;
-        }
+        *request_entry = (request_table_entry_t *) search_rbtree(*(rma_request_table[seg_id]), &target_unit);
     }
 
     return DART_OK;
@@ -90,26 +78,41 @@ dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue
  * Before add an entry, check if the entry exists
  * because exisiting entries will be replaced
  */
-dart_ret_t add_rma_request_entry(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t qid)
+dart_ret_t add_rma_request_entry(dart_unit_t target_unit, int16_t seg_id, gaspi_segment_id_t local_gseg_id, request_table_entry_t** request_entry)
 {
     if(rma_request_table[seg_id] == NULL)
     {
         rma_request_table[seg_id] = new_rbtree(request_table_key, compare_rma_requests);
     }
-    request_table_entry_t * tmp_entry = (request_table_entry_t *) malloc(sizeof(request_table_entry_t));
-    assert(tmp_entry);
 
-    tmp_entry->key   = target_unit;
-    tmp_entry->queue = qid;
-    /*
-     * TODO if the entry exists, it will be replaced !!
-     * This call ships the owner of the pointer
-     */
-    void * existing_entry = rb_tree_insert(rma_request_table[seg_id], tmp_entry);
-    if(existing_entry != NULL)
+    find_rma_request(target_unit, seg_id, request_entry);
+
+    if(*request_entry == NULL)
     {
-        free(existing_entry);
+        gaspi_queue_id_t queue;
+        DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
+        *request_entry = (request_table_entry_t *) malloc(sizeof(request_table_entry_t));
+        (*request_entry)->key   = target_unit;
+        (*request_entry)->queue = queue;
+        (*request_entry)->begin_seg_ids = NULL;
+        (*request_entry)->end_seg_ids = NULL;
+        rb_tree_insert(rma_request_table[seg_id], *request_entry);
     }
+
+    request_table_entry_t* req_entry = *request_entry;
+    if(req_entry->begin_seg_ids == NULL)
+    {
+        req_entry->begin_seg_ids = (local_gseg_id_entry_t*) malloc(sizeof(local_gseg_id_entry_t));
+        *(req_entry->begin_seg_ids) = (local_gseg_id_entry_t) {local_gseg_id, NULL};
+        req_entry->end_seg_ids = req_entry->begin_seg_ids;
+
+        return DART_OK;
+    }
+
+    req_entry->end_seg_ids->next = (local_gseg_id_entry_t*) malloc(sizeof(local_gseg_id_entry_t));
+    req_entry->end_seg_ids = req_entry->end_seg_ids->next;
+    *(req_entry->end_seg_ids) = (local_gseg_id_entry_t) {local_gseg_id, NULL};
+    DART_CHECK_ERROR(check_queue_size(req_entry->queue));
 
     return DART_OK;
 }
@@ -153,15 +156,43 @@ dart_ret_t request_iter_next(request_iterator_t iter)
     return DART_ERR_INVAL;
 }
 
-dart_ret_t request_iter_get_queue(request_iterator_t iter, gaspi_queue_id_t * qid)
+dart_ret_t request_iter_get_entry(request_iterator_t iter, request_table_entry_t** request_entry)
 {
     if(iter != NULL)
     {
-        request_table_entry_t * entry = (request_table_entry_t *) tree_iterator_value(iter);
-        *qid = entry->queue;
+        *request_entry = (request_table_entry_t *) tree_iterator_value(iter);
+
         return DART_OK;
     }
     return DART_ERR_INVAL;
+}
+
+dart_ret_t free_segment_ids(request_table_entry_t* request_entry)
+{
+    if(request_entry == NULL)
+    {
+        DART_LOG_DEBUG("dart_flush: no queue found");
+
+        return DART_OK;
+    }
+
+    DART_CHECK_GASPI_ERROR(gaspi_wait(request_entry->queue, GASPI_BLOCK));
+
+    // free all stored gaspi segments
+    local_gseg_id_entry_t* current_seg_id = request_entry->begin_seg_ids;
+    while(current_seg_id != NULL)
+    {
+      DART_CHECK_ERROR(gaspi_segment_delete(current_seg_id->local_gseg_id));
+      DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, current_seg_id->local_gseg_id));
+      local_gseg_id_entry_t* tmp = current_seg_id->next;
+      free(current_seg_id);
+      current_seg_id = tmp;
+    }
+
+    request_entry->begin_seg_ids = NULL;
+    request_entry->end_seg_ids = NULL;
+
+    return DART_OK;
 }
 
 dart_ret_t unit_l2g (uint16_t index, dart_unit_t *abs_id, dart_unit_t rel_id)
@@ -520,7 +551,7 @@ gaspi_return_t remote_get(dart_gptr_t* gptr, gaspi_rank_t src_unit, gaspi_segmen
     size_t nbytes_segment = 0;
     size_t nbytes_read = 0;
 
-    if(*queue == 0)
+    if(*queue == (gaspi_queue_id_t) -1)
     {
         DART_CHECK_ERROR( dart_get_minimal_queue(queue));
     }
@@ -577,7 +608,10 @@ gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segmen
     size_t nbytes_segment = 0;
     size_t nbytes_read = 0;
 
-    DART_CHECK_ERROR( dart_get_minimal_queue(queue));
+    if(*queue == (gaspi_queue_id_t) -1)
+    {
+        DART_CHECK_ERROR( dart_get_minimal_queue(queue));
+    }
 
     if(conv_type->kind == DART_BLOCK_SINGLE)
     {
@@ -628,6 +662,7 @@ gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segmen
 
 gaspi_return_t put_completion_test(gaspi_rank_t dst_unit, gaspi_queue_id_t queue)
 {
+    // TODO: use a completion storage for all possible segment ids to prevent lost updates
     DART_CHECK_GASPI_ERROR(
             gaspi_read(put_completion_dst_seg,
                         0,
@@ -662,7 +697,7 @@ dart_ret_t dart_test_impl(dart_handle_t* handleptr, int32_t * is_finished, gaspi
 
     // finished is true even if freeing the handle will fail
     *is_finished = 1;
-    DART_CHECK_ERROR(dart_free_handle(handleptr));
+    DART_CHECK_ERROR(dart_handle_free(handleptr));
 
     return DART_OK;
 }
@@ -703,7 +738,7 @@ dart_ret_t dart_test_all_impl(dart_handle_t handles[], size_t num_handles, int32
 
     for(int i = 0; i < num_handles; ++i)
     {
-        DART_CHECK_ERROR(dart_free_handle(&handles[i]));
+        DART_CHECK_ERROR(dart_handle_free(&handles[i]));
     }
 
     return DART_OK;

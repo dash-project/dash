@@ -40,19 +40,35 @@
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
+// local gaspi segment id entry
+typedef struct local_gseg_id_entry
+{
+    gaspi_segment_id_t          local_gseg_id;
+    struct local_gseg_id_entry* next;
+} local_gseg_id_entry_t;
+
+typedef struct{
+    dart_unit_t            key;
+    gaspi_queue_id_t       queue;
+    local_gseg_id_entry_t* begin_seg_ids;
+    local_gseg_id_entry_t* end_seg_ids;
+}request_table_entry_t;
+
 typedef tree_iterator* request_iterator_t;
 request_iterator_t new_request_iter(int16_t gaspi_seg);
 dart_ret_t destroy_request_iter(request_iterator_t iter);
 uint8_t request_iter_is_vaild(request_iterator_t iter);
-dart_ret_t request_iter_get_queue(request_iterator_t iter, gaspi_queue_id_t * qid);
+dart_ret_t request_iter_get_entry(request_iterator_t iter, request_table_entry_t** request_entry);
 dart_ret_t request_iter_next(request_iterator_t iter);
 
 dart_ret_t inital_rma_request_table();
 dart_ret_t destroy_rma_request_table();
-dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t * qid, bool * found);
-dart_ret_t add_rma_request_entry(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t qid);
+dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, request_table_entry_t** request_entry);
+dart_ret_t add_rma_request_entry(dart_unit_t target_unit, int16_t seg_id, gaspi_segment_id_t local_gseg_id, request_table_entry_t** request_entry);
 dart_ret_t inital_rma_request_entry(int16_t seg_id);
 dart_ret_t delete_rma_requests(int16_t seg_id);
+
+dart_ret_t free_segment_ids(request_table_entry_t* request_entry);
 
 typedef enum {
   GASPI_WRITE = 0,
