@@ -179,7 +179,7 @@ TEST_F(DARTOnesidedTest, GetSingleBlock)
   typedef int value_t;
   dart_datatype_t dart_type = DART_TYPE_INT;
 
-  const size_t num_elem_per_unit = 10;
+  const size_t num_elem_per_unit = 120;
   
   dart_gptr_t gptr;
   int *local_ptr;
