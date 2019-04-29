@@ -179,7 +179,7 @@ TEST_F(DARTOnesidedTest, GetSingleBlock)
   typedef int value_t;
   dart_datatype_t dart_type = DART_TYPE_INT;
 
-  const size_t num_elem_per_unit = 120;
+  const size_t num_elem_per_unit = 1200;
   
   dart_gptr_t gptr;
   int *local_ptr;
@@ -267,6 +267,7 @@ TEST_F(DARTOnesidedTest, PutSingleBlock)
   );
 
   dart_flush(gptr);
+  dash::barrier();
   LOG_MESSAGE("Validating values");
   value_t offset;
   if(dash::myid() == 0){
@@ -336,8 +337,9 @@ TEST_F(DARTOnesidedTest, PutHandleSingleRemote)
     )
   );
   // wait for completion
+  //sleep(3);
   dart_wait(&handle);
-
+  dash::barrier();
   LOG_MESSAGE("Validating values");
   value_t offset = ((dash::myid() - 1) % dash::size()) * 1000;
   for(int i = 0; i < num_elem_per_unit; ++i)
@@ -359,7 +361,7 @@ TEST_F(DARTOnesidedTest, GetAllRemote)
   typedef int value_t;
   dart_datatype_t dart_type = DART_TYPE_INT;
 
-  const size_t num_elem_per_unit = 10;
+  const size_t num_elem_per_unit = 1000;
   
   dart_gptr_t gptr;
   int *local_ptr;
@@ -406,15 +408,15 @@ TEST_F(DARTOnesidedTest, GetAllRemote)
   LOG_MESSAGE("Waiting for completion of async requests");
   gptr.unitid = dash::myid();
   dart_flush_all(gptr);
-  sleep(5);
+  //sleep(5);
   LOG_MESSAGE("Validating values");
   value_t offset;
   for (size_t u = 0; u < dash::size(); ++u) {
-    if (u != dash::myid()) {
+    if (u != static_cast<size_t>(dash::myid())) {
       offset = u * 1000;
       for(size_t i = 0; i < num_elem_per_unit; ++i)
       {
-        ASSERT_EQ_U(buf[offset+i], (offset + i));
+        ASSERT_EQ_U(buf[(u * num_elem_per_unit) +i], (offset + i));
       }
     }
   }
@@ -574,6 +576,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   delete[] local_array;
   ASSERT_EQ_U(num_elem_copy, l);
 }
+
 
 
 TEST_F(DARTOnesidedTest, StridedGetSimple) {
