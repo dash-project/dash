@@ -104,7 +104,6 @@ mkdir -p $BUILD_DIR/$REPORT_DIR
                         -DENABLE_ASSERTIONS=ON \
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
-                        -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DYNAMIC_WINDOWS=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                         \
