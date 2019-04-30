@@ -349,7 +349,7 @@ public:
     // Assure all units are synchronized before deallocation, otherwise
     // other units might still be working on the map:
     if (dash::is_initialized()) {
-      barrier();
+      _team->barrier();
     }
     // Remove this function from team deallocator map to avoid
     // double-free:
@@ -362,7 +362,6 @@ public:
       _globmem = nullptr;
     }
     _local_cumul_sizes    = std::vector<size_type>(_team->size(), 0);
-    _local_sizes.local[0] = 0;
     _remote_size          = 0;
     _begin                = iterator();
     _end                  = _begin;
