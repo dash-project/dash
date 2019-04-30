@@ -168,37 +168,9 @@ template <typename Integer>
 std::set<Integer> factors(Integer n)
 {
   std::set<Integer> primes;
-  if (n < 2) {
-    return primes;
-  }
-  // In HPC applications, we assume (multiples of) powers of 2 as the
-  // most common case:
-  while (n % 2 == 0) {
-    n       = n / 2;
-    auto it = primes.find(2);
-    if (it == primes.end()) {
-      primes.insert(2);
-    }
-    else {
-      it->second++;
-    }
-  }
-  Integer sqrt_n = std::ceil(std::sqrt(n));
-  for (Integer i = 3; i <= sqrt_n; i = i + 2) {
-    while (n % i == 0) {
-      auto it = primes.find(i);
-      if (it == primes.end()) {
-        primes.insert(i);
-      }
-      n = n / i;
-    }
-  }
-  if (n > 2) {
-    // Check if the remainder is prime:
-    auto it = primes.find(n);
-    if (it == primes.end()) {
-      primes.insert(n);
-    }
+  const auto factorization = factorize(n);
+  for(auto it = factorization.begin(); it != factorization.end(); ++it) {
+    primes.insert(it->first);
   }
   return primes;
 }
