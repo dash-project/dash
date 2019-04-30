@@ -1205,9 +1205,12 @@ dart_ret_t dart_flush(
   DART_LOG_TRACE("dart_flush: MPI_Win_flush");
   CHECK_MPI_RET(
     MPI_Win_flush(team_unit_id.id, win), "MPI_Win_flush");
-  DART_LOG_TRACE("dart_flush: MPI_Win_sync");
-  CHECK_MPI_RET(
-    MPI_Win_sync(win), "MPI_Win_sync");
+
+  if (seginfo->sync_needed) {
+    DART_LOG_TRACE("dart_flush: MPI_Win_sync");
+    CHECK_MPI_RET(
+      MPI_Win_sync(win), "MPI_Win_sync");
+  }
 
   // trigger progress
   int flag;
@@ -1250,9 +1253,12 @@ dart_ret_t dart_flush_all(
   DART_LOG_TRACE("dart_flush_all: MPI_Win_flush_all");
   CHECK_MPI_RET(
     MPI_Win_flush_all(win), "MPI_Win_flush");
-  DART_LOG_TRACE("dart_flush_all: MPI_Win_sync");
-  CHECK_MPI_RET(
-    MPI_Win_sync(win), "MPI_Win_sync");
+
+  if (seginfo->sync_needed) {
+    DART_LOG_TRACE("dart_flush_all: MPI_Win_sync");
+    CHECK_MPI_RET(
+      MPI_Win_sync(win), "MPI_Win_sync");
+  }
 
   // trigger progress
   int flag;

@@ -166,6 +166,37 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
   return DART_OK;
 }
 
+/**
+ * Check that the window support MPI_WIN_UNIFIED, print warning otherwise.
+ */
+void dart__mpi__check_memory_model(dart_segment_info_t *segment)
+{
+  int mem_model, flag;
+  MPI_Win_get_attr(segment->win, MPI_WIN_MODEL, &mem_model, &flag);
+
+  DART_ASSERT_MSG(flag != 0, "Failed to query window memory model!");
+
+  segment->sync_needed = false;
+  if (mem_model != MPI_WIN_UNIFIED) {
+    static bool warning_printed = false;
+    if (!warning_printed) {
+      dart_global_unit_t myid;
+      dart_myid(&myid);
+      if (myid.id == 0) {
+        DART_LOG_WARN(
+          "The allocated MPI window does not support the unified memory model. "
+        );
+        DART_LOG_WARN(
+          "DASH may not be able to guaranteed consistency of local and remote updates."
+        );
+        DART_LOG_WARN("USE AT YOUR OWN RISK!");
+      }
+      warning_printed = true;
+    }
+    segment->sync_needed = true;
+  }
+}
+
 #ifdef DART_MPI_ENABLE_DYNAMIC_WINDOWS
 static dart_ret_t
 dart_team_memalloc_aligned_dynamic(
@@ -352,7 +383,11 @@ dart_team_memalloc_aligned_dynamic(
   segment->win     = team_data->window;
   segment->selfbaseptr = sub_mem;
   segment->is_dynamic  = true;
-
+  /**
+   * Following the example 11.21 in the MPI standard v3.1, a sync is necessary
+   * even in the unified memory model if load/stores are used in shared memory.
+   */
+  segment->sync_needed = true;
 
   /* -- Updating infos on gptr -- */
   /* Segid equals to dart_memid (always a positive integer), identifies an
@@ -430,6 +465,7 @@ dart_team_memalloc_aligned_full(
   segment->win         = win;
   segment->is_dynamic  = false;
 
+  dart__mpi__check_memory_model(segment);
 
   gptr->segid  = segment->segid;
   gptr->unitid = gptr_unitid;
@@ -593,6 +629,8 @@ dart_team_memregister_aligned(
   segment->selfbaseptr = (char *)addr;
   segment->flags   = 0;
 
+  dart__mpi__check_memory_model(segment);
+
   gptr->unitid = gptr_unitid;
   gptr->segid  = segment->segid;
   gptr->teamid = teamid;
@@ -665,6 +703,7 @@ dart_team_memregister(
   segment->selfbaseptr = (char *)addr;
   segment->flags = 0;
 
+  dart__mpi__check_memory_model(segment);
 
   gptr->unitid = gptr_unitid;
   gptr->segid  = segment->segid;
