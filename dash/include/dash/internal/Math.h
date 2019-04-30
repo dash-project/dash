@@ -118,36 +118,21 @@ std::map<Integer, int> factorize(Integer n)
     return factors;
   }
   while (n % 2 == 0) {
-    n       = n / 2;
-    auto it = factors.find(2);
-    if (it == factors.end()) {
-      factors.insert(std::make_pair(2, 1));
-    }
-    else {
-      it->second++;
-    }
+    n = n / 2;
+    auto it = factors.insert(std::make_pair(2, 0));
+    it.first->second++;
   }
   Integer sqrt_n = std::ceil(std::sqrt(n));
   for (Integer i = 3; i <= sqrt_n; i = i + 2) {
     while (n % i == 0) {
-      auto it = factors.find(i);
-      if (it == factors.end()) {
-        factors.insert(std::make_pair(i, 1));
-      }
-      else {
-        it->second++;
-      }
       n = n / i;
+      auto it = factors.insert(std::make_pair(i, 0));
+      it.first->second++;
     }
   }
   if (n > 2) {
-    auto it = factors.find(n);
-    if (it == factors.end()) {
-      factors.insert(std::make_pair(n, 1));
-    }
-    else {
-      it->second++;
-    }
+    auto it = factors.insert(std::make_pair(n, 0));
+    it.first->second++;
   }
   return factors;
 }
