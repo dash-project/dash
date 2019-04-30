@@ -436,12 +436,17 @@ dart_team_memalloc_aligned_full(
   dart_segment_info_t *segment = dart_segment_alloc(
                                 &team_data->segdata, DART_SEGMENT_ALLOC);
 
+  MPI_Info win_info;
+  MPI_Info_create(&win_info);
+  MPI_Info_set(win_info, "same_disp_unit", "true");
   if (MPI_Win_allocate(
-      nbytes, 1, MPI_INFO_NULL,
+      nbytes, 1, win_info,
       team_data->comm, &baseptr, &win) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_team_memalloc_aligned_full: MPI_Win_allocate failed");
+    MPI_Info_free(&win_info);
     return DART_ERR_OTHER;
   }
+  MPI_Info_free(&win_info);
 
   if (MPI_Win_lock_all(0, win) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_team_memalloc_aligned_full: MPI_Win_lock_all failed");
