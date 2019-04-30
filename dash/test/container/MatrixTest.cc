@@ -15,6 +15,11 @@
 #include <iostream>
 #include <iomanip>
 
+TEST_F(MatrixTest, Declaration)
+{
+  dash::Matrix<int, 2> matrix;
+}
+
 
 TEST_F(MatrixTest, OddSize)
 {
