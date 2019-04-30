@@ -448,7 +448,7 @@ dart_team_memalloc_aligned_full(
   }
   MPI_Info_free(&win_info);
 
-  if (MPI_Win_lock_all(0, win) != MPI_SUCCESS) {
+  if (MPI_Win_lock_all(MPI_MODE_NOCHECK, win) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_team_memalloc_aligned_full: MPI_Win_lock_all failed");
     return DART_ERR_OTHER;
   }
