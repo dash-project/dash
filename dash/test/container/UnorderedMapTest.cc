@@ -8,6 +8,11 @@
 #include <vector>
 #include <algorithm>
 
+TEST_F(UnorderedMapTest, Declaration)
+{
+  dash::UnorderedMap<int, int> map;
+}
+
 TEST_F(UnorderedMapTest, Initialization)
 {
   typedef int                                  key_t;
