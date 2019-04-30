@@ -107,7 +107,7 @@ double sigma(const Iter& begin, const Iter& end)
  * \code
  *   long number  = 2 * 2 * 2 * 4 * 7 * 7;
  *   auto factors = dash::math::factorize(number);
- *   // returns map { (2,3), (4,1), (7,2) }
+ *   // returns map { (2,5), (7,2) }
  * \endcode
  */
 template <typename Integer>
@@ -161,7 +161,7 @@ std::map<Integer, int> factorize(Integer n)
  * \code
  *   long number  = 2 * 2 * 2 * 4 * 7 * 7;
  *   auto factors = dash::math::factors(number);
- *   // returns set { 2, 4, 7 }
+ *   // returns set { 2, 7 }
  * \endcode
  */
 template <typename Integer>
