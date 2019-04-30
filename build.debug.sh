@@ -41,6 +41,15 @@ fi
 #                    -DGTEST_INCLUDE_PATH=${HOME}/gtest/include \
 #
 
+# The MPI backend offers support for employing shared memory windows in combination
+# with dynamic windows, which may improve on-node communication performance.
+# This feature can be enabled by setting
+#                        -DENABLE_SHARED_WINDOWS=ON \
+#                        -DENABLE_DYNAMIC_WINDOWS=ON \
+# below. However, we have experienced issues with some MPI implementations if used
+# in combination with -DENABLE_THREADSUPPORT=ON. It might also have a negative effect
+# on inter-node communication performance on some architectures.
+
 # To build with MKL support, set environment variables MKLROOT and INTELROOT.
 #
 
@@ -66,8 +75,8 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_ASSERTIONS=ON \
                         \
-                        -DENABLE_SHARED_WINDOWS=ON \
-                        -DENABLE_DYNAMIC_WINDOWS=ON \
+                        -DENABLE_SHARED_WINDOWS=OFF \
+                        -DENABLE_DYNAMIC_WINDOWS=OFF \
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                         \
