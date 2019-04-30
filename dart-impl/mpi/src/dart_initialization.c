@@ -91,13 +91,6 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
       }
     }
   }
-#else
-  MPI_Alloc_mem(
-    DART_LOCAL_ALLOC_SIZE,
-    MPI_INFO_NULL,
-    &dart_mempool_localalloc);
-#endif
-
   /* Create a single global win object for dart local
    * allocation based on the above allocated shared memory.
    *
@@ -109,6 +102,13 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
     win_info,
     DART_COMM_WORLD,
     &dart_win_local_alloc);
+#else
+  MPI_Win_allocate(
+    DART_LOCAL_ALLOC_SIZE, sizeof(char),
+    win_info, DART_COMM_WORLD,
+    &dart_mempool_localalloc,
+    &dart_win_local_alloc);
+#endif
 
   MPI_Info_free(&win_info);
 
@@ -324,11 +324,6 @@ dart_ret_t dart_exit()
   /* Has MPI shared windows: */
   MPI_Win_free(&seginfo->shmwin);
   MPI_Comm_free(&(team_data->sharedmem_comm));
-#else
-  /* No MPI shared windows: */
-  if (dart_mempool_localalloc) {
-    MPI_Free_mem(dart_mempool_localalloc);
-  }
 #endif
   MPI_Win_free(&team_data->window);
 
