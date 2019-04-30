@@ -170,18 +170,6 @@ public:
 #define EXPECT_EQ_U(e,a) ASSERT_EQ_U(e,a)
 
 
-enum GTestColor {
-    COLOR_DEFAULT,
-    COLOR_RED,
-    COLOR_GREEN,
-    COLOR_YELLOW
-};
-
-extern void ColoredPrintf(
-  GTestColor color,
-  const char* fmt,
-  ...);
-
 } // namespace internal
 } // namespace testing
 
