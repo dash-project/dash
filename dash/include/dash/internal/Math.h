@@ -117,8 +117,10 @@ std::map<Integer, int> factorize(Integer n)
   if (n < 2) {
     return factors;
   }
-  Integer sqrt_n = std::ceil(std::sqrt(n));
-  for (Integer i = 2; i <= sqrt_n; i += 1 + (i & 1) /* next odd */) {
+  for (Integer i = 2, i_2 = 4 /* i^2 */;
+       i_2 <= n;
+       i_2 += 2 * i + 1 /* next square */,
+       i += 1 + (i & 1) /* next odd */) {
     while (n % i == 0) {
       n = n / i;
       auto it = factors.insert(std::make_pair(i, 0));
