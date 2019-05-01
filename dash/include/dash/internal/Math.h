@@ -111,9 +111,11 @@ double sigma(const Iter& begin, const Iter& end)
  * \endcode
  */
 template <typename Integer>
-std::map<Integer, int> factorize(Integer n)
+std::map<Integer, unsigned> factorize(Integer n)
 {
-  std::map<Integer, int> factors;
+  static_assert(std::is_integral<Integer>::value, "Must be an integral type");
+  DASH_ASSERT_GT(n, 0, "dash::math::factorize: n must be > 0");
+  std::map<Integer, unsigned> factors;
   if (n < 2) {
     return factors;
   }
