@@ -60,7 +60,7 @@ class GlobIter {
   typedef typename pointer::const_local_type const_local_type;
 
   typedef PatternType                      pattern_type;
-  typedef typename PatternType::index_type index_type;
+  typedef typename std::make_signed<typename PatternType::index_type>::type index_type;
 
  private:
   typedef GlobIter<
@@ -122,7 +122,7 @@ class GlobIter {
     : _globmem(gmem),
       _pattern(&pat),
       _idx(position),
-      _max_idx(std::max(index_type(pat.size()) - 1, index_type(0)))
+      _max_idx(index_type(pat.size()) - 1)
   {
   }
 

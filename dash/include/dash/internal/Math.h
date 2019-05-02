@@ -107,47 +107,31 @@ double sigma(const Iter& begin, const Iter& end)
  * \code
  *   long number  = 2 * 2 * 2 * 4 * 7 * 7;
  *   auto factors = dash::math::factorize(number);
- *   // returns map { (2,3), (4,1), (7,2) }
+ *   // returns map { (2,5), (7,2) }
  * \endcode
  */
 template <typename Integer>
-std::map<Integer, int> factorize(Integer n)
+std::map<Integer, unsigned> factorize(Integer n)
 {
-  std::map<Integer, int> factors;
+  static_assert(std::is_integral<Integer>::value, "Must be an integral type");
+  DASH_ASSERT_GT(n, 0, "dash::math::factorize: n must be > 0");
+  std::map<Integer, unsigned> factors;
   if (n < 2) {
     return factors;
   }
-  while (n % 2 == 0) {
-    n       = n / 2;
-    auto it = factors.find(2);
-    if (it == factors.end()) {
-      factors.insert(std::make_pair(2, 1));
-    }
-    else {
-      it->second++;
-    }
-  }
-  Integer sqrt_n = std::ceil(std::sqrt(n));
-  for (Integer i = 3; i <= sqrt_n; i = i + 2) {
+  for (Integer i = 2, i_2 = 4 /* i^2 */;
+       i_2 <= n;
+       i_2 += 2 * i + 1 /* next square */,
+       i += 1 + (i & 1) /* next odd */) {
     while (n % i == 0) {
-      auto it = factors.find(i);
-      if (it == factors.end()) {
-        factors.insert(std::make_pair(i, 1));
-      }
-      else {
-        it->second++;
-      }
       n = n / i;
+      auto it = factors.insert(std::make_pair(i, 0));
+      it.first->second++;
     }
   }
-  if (n > 2) {
-    auto it = factors.find(n);
-    if (it == factors.end()) {
-      factors.insert(std::make_pair(n, 1));
-    }
-    else {
-      it->second++;
-    }
+  if (n > 1) {
+    auto it = factors.insert(std::make_pair(n, 0));
+    it.first->second++;
   }
   return factors;
 }
@@ -161,44 +145,16 @@ std::map<Integer, int> factorize(Integer n)
  * \code
  *   long number  = 2 * 2 * 2 * 4 * 7 * 7;
  *   auto factors = dash::math::factors(number);
- *   // returns set { 2, 4, 7 }
+ *   // returns set { 2, 7 }
  * \endcode
  */
 template <typename Integer>
 std::set<Integer> factors(Integer n)
 {
   std::set<Integer> primes;
-  if (n < 2) {
-    return primes;
-  }
-  // In HPC applications, we assume (multiples of) powers of 2 as the
-  // most common case:
-  while (n % 2 == 0) {
-    n       = n / 2;
-    auto it = primes.find(2);
-    if (it == primes.end()) {
-      primes.insert(2);
-    }
-    else {
-      it->second++;
-    }
-  }
-  Integer sqrt_n = std::ceil(std::sqrt(n));
-  for (Integer i = 3; i <= sqrt_n; i = i + 2) {
-    while (n % i == 0) {
-      auto it = primes.find(i);
-      if (it == primes.end()) {
-        primes.insert(i);
-      }
-      n = n / i;
-    }
-  }
-  if (n > 2) {
-    // Check if the remainder is prime:
-    auto it = primes.find(n);
-    if (it == primes.end()) {
-      primes.insert(n);
-    }
+  const auto factorization = factorize(n);
+  for(auto it = factorization.begin(); it != factorization.end(); ++it) {
+    primes.insert(it->first);
   }
   return primes;
 }
