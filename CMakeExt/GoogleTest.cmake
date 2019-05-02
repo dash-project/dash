@@ -52,8 +52,8 @@ if (BUILD_TESTS)
     set(GTEST_PREFIX "${CMAKE_BINARY_DIR}/gtest")
     set(GTEST_LOCATION "${GTEST_PREFIX}/src/GTestExternal-build/googlemock/gtest")
     set(GTEST_INCLUDES "${GTEST_SUBMOD}/googletest/include")
-    set(GTEST_LIBRARY  "${GTEST_LOCATION}/${LIBPREFIX}gtest${LIBSUFFIX}")
-    set(GTEST_MAINLIB  "${GTEST_LOCATION}/${LIBPREFIX}gtest_main${LIBSUFFIX}")
+    set(GTEST_LIBRARY  "gtest")
+    set(GTEST_MAINLIB  "gtest_main")
 
     # check whether the submodule has been initialized
     file(GLOB gtest_files     "${GTEST_SUBMOD}/*")

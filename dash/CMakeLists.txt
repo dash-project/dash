@@ -474,7 +474,7 @@ if (BUILD_TESTS)
       )
       target_link_libraries(
         ${DASH_TEST}
-        gtest
+        ${GTEST_LIBRARY}
         ${DASH_LIBRARY}
         ${DART_LIBRARY}
         ${ADDITIONAL_LIBRARIES}
