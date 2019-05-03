@@ -9,6 +9,8 @@
 
 #include <limits.h>
 
+#define DART_LOCAL_ALLOC_SIZE (1024UL*1024*16)
+
 gaspi_rank_t dart_gaspi_rank_num;
 gaspi_rank_t dart_gaspi_rank;
 
@@ -102,7 +104,7 @@ dart_ret_t dart_init(int *argc, char ***argv)
     dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
 
     DART_CHECK_ERROR(gaspi_segment_create(dart_mempool_seg_localalloc,
-                                          DART_MAX_LENGTH,
+                                          DART_LOCAL_ALLOC_SIZE,
                                           GASPI_GROUP_ALL,
                                           GASPI_BLOCK,
                                           GASPI_MEM_INITIALIZED));

@@ -4,9 +4,7 @@
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/gaspi/dart_mem.h>
-#include <dash/dart/gaspi/dart_communication_priv.h>
-
-#include <GASPI.h>
+#include <dash/dart/gaspi/dart_types.h>
 
 struct dart_allocator_struct {
   dart_gptr_t           base_gptr;
@@ -58,9 +56,12 @@ dart_allocator_alloc(
   dart_gptr_t      * gptr,
   dart_allocator_t   allocator)
 {
-  size_t      nbytes   = nelem * dart_gaspi_datatype_sizeof(dtype);
+  dart_datatype_struct_t* dtype_base =
+      datatype_base_struct(get_datatype_struct(dtype));
+
+  size_t      nbytes   = nelem * datatype_sizeof(dtype_base);
   dart_gptr_t res_gptr = allocator->base_gptr;
-  size_t     offset   = dart_buddy_alloc(allocator->buddy_allocator, nbytes);
+  ssize_t     offset   = dart_buddy_alloc(allocator->buddy_allocator, nbytes);
   if (offset < 0) {
     DART_LOG_WARN("dart_allocator_alloc(%zu): allocator %p out of memory",
                   nbytes, allocator);
