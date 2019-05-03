@@ -7,7 +7,7 @@
 
 TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
 {
-  typedef int value_t;
+  using value_t = int;
   dart_datatype_t dart_type = DART_TYPE_INT;
 
   const size_t num_elem_per_unit = 1200;
@@ -59,7 +59,7 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
 
 TEST_F(DARTOnesidedTest, PutBlockingSingleBlock)
 {
-  typedef int value_t;
+  using value_t = int;
   dart_datatype_t dart_type = DART_TYPE_INT;
 
   const size_t num_elem_per_unit = 100;
@@ -116,7 +116,7 @@ TEST_F(DARTOnesidedTest, PutBlockingSingleBlock)
 
 TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
 {
-  typedef int value_t;
+  using value_t = int;
   dart_datatype_t dart_type = DART_TYPE_INT;
 
   if (dash::size() < 4) {
@@ -176,7 +176,7 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
 
 TEST_F(DARTOnesidedTest, GetSingleBlock)
 {
-  typedef int value_t;
+  using value_t = int;
   dart_datatype_t dart_type = DART_TYPE_INT;
 
   const size_t num_elem_per_unit = 1200;
@@ -227,7 +227,7 @@ TEST_F(DARTOnesidedTest, GetSingleBlock)
 
 TEST_F(DARTOnesidedTest, PutSingleBlock)
 {
-  typedef int value_t;
+  using value_t = int;
   dart_datatype_t dart_type = DART_TYPE_INT;
 
   const size_t num_elem_per_unit = 100;
@@ -293,7 +293,7 @@ TEST_F(DARTOnesidedTest, PutHandleSingleRemote)
 {
   // Handle variant of put, the handle contains src and dest seg_id as well as queue AFTER return
   // non blocking so must use wait at the end
-  typedef int value_t;
+  using value_t = int;
   dart_datatype_t dart_type = DART_TYPE_INT;
 
   const size_t num_elem_per_unit = 100;
@@ -493,9 +493,9 @@ TEST_F(DARTOnesidedTest, PutHandleAllRemote)
   dash::barrier();
   // clean-up
   gptr.unitid = 0;
+  gptr.addr_or_offs.offset = 0;
   dart_team_memfree(gptr);
 }
-
 
 TEST_F(DARTOnesidedTest, GetHandleAllRemote)
 {
@@ -565,8 +565,6 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   dart_team_memfree(gptr);
   delete[] buf;
 }
-
-
 
 TEST_F(DARTOnesidedTest, StridedGetSimple) {
   constexpr size_t num_elem_per_unit = 120;
