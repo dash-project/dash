@@ -61,14 +61,8 @@ dart_ret_t dart_team_memalloc_aligned(
     size_t nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
     size_t teamsize;
     dart_team_unit_t unitid;
-    DART_CHECK_ERROR(dart_team_myid(teamid, &unitid));     
+    DART_CHECK_ERROR(dart_team_myid(teamid, &unitid));
     DART_CHECK_ERROR(dart_team_size(teamid, &teamsize));
-
-    gaspi_group_t        gaspi_group;
-    gaspi_segment_id_t   gaspi_seg_id;
-    gaspi_segment_id_t * gaspi_seg_ids = (gaspi_segment_id_t *) malloc(sizeof(gaspi_segment_id_t) * teamsize);  
-    assert(gaspi_seg_ids);
-
 
     uint16_t index;
     int result = dart_adapt_teamlist_convert(teamid, &index);
@@ -77,9 +71,10 @@ dart_ret_t dart_team_memalloc_aligned(
         goto dart_error_label;
     }
 
-    gaspi_group = dart_teams[index].id;
+    gaspi_group_t gaspi_group = dart_teams[index].id;
 
     /* get a free gaspi segment id */
+    gaspi_segment_id_t   gaspi_seg_id;
     DART_CHECK_ERROR_GOTO(dart_error_label, seg_stack_pop(&dart_free_coll_seg_ids, &gaspi_seg_id));
 
     // GPI2 can't allocate 0 bytes
@@ -89,17 +84,19 @@ dart_ret_t dart_team_memalloc_aligned(
     }
 
     /* Create the gaspi-segment with memory allocation */
-    DART_CHECK_ERROR_GOTO(dart_error_label, gaspi_segment_create(gaspi_seg_id,
-                                                                nbytes,
-                                                                gaspi_group,
-                                                                GASPI_BLOCK,
-                                                                GASPI_MEM_INITIALIZED));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_create(gaspi_seg_id,
+                                                nbytes,
+                                                gaspi_group,
+                                                GASPI_BLOCK,
+                                                GASPI_MEM_INITIALIZED));
 
     /**
      * collect the other segment numbers of the team
      * gaspi_segemt_id_t is currently defined as unsigned char.
      * therefore DART_TYPE_BYTE is used as it has the same size
      */
+    gaspi_segment_id_t * gaspi_seg_ids = (gaspi_segment_id_t *) malloc(sizeof(gaspi_segment_id_t) * teamsize);
+    assert(gaspi_seg_ids);
     DART_CHECK_ERROR_GOTO(dart_error_label, dart_allgather(&gaspi_seg_id,
                                                            gaspi_seg_ids,
                                                            1,
@@ -112,7 +109,7 @@ dart_ret_t dart_team_memalloc_aligned(
     gptr->flags = index; /* For collective allocation, the flag is marked as 'index' */
     gptr->teamid = teamid;
     gptr->addr_or_offs.offset = 0;
-    
+
     /* -- Updating the translation table of teamid with the created (segment) infos -- */
     info_t item;
     item.seg_id           = dart_memid;
@@ -123,7 +120,7 @@ dart_ret_t dart_team_memalloc_aligned(
 
     /* Add this newly generated correspondence relationship record into the translation table. */
     dart_adapt_transtable_add(item);
-    DART_CHECK_ERROR_GOTO(dart_error_label, inital_rma_request_entry(item.seg_id));
+    inital_rma_request_entry(item.seg_id);
     dart_memid++;
 
     return DART_OK;

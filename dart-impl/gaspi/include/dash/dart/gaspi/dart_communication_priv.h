@@ -40,6 +40,11 @@
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
+
+
+
+
+
 // local gaspi segment id entry
 typedef struct local_gseg_id_entry
 {
@@ -96,29 +101,15 @@ typedef enum {
 } block_kind_t;
 
 
-typedef struct offset_pair
+typedef struct chunk_info
 {
     /// the source offsets of each block
     size_t         src;
     /// the destination offsets of each block
     size_t         dst;
-} offset_pair_t;
-
-typedef struct single
-{
-            /// source and destination offsets of each block
-            offset_pair_t   offset;
-            /// number of bytes to read/write per block
-            size_t          nbyte;
-} single_t;
-
-typedef struct multiple
-{
-            /// source and destination offsets of each block
-            offset_pair_t*   offsets;
-            /// number of bytes to read/write per block
-            size_t*          nbytes;
-}  multiple_t;
+    /// number of bytes to read/write per block
+    size_t          nbyte;
+} chunk_info_t;
 
 typedef struct converted_types
 {
@@ -129,9 +120,9 @@ typedef struct converted_types
     /// single entry (e.g. contiguous or stride) or multiple entries (e.g. indexed)
     union
     {
-        single_t single;
+        chunk_info_t single;
 
-        multiple_t multiple;
+        chunk_info_t* multiple;
     };
 } converted_type_t;
 
@@ -149,8 +140,8 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                              converted_type_t* conv_type);
 
 
-dart_ret_t local_get(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_src_segment_id, void* dst, converted_type_t* conv_type);
-dart_ret_t local_put(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_dst_segment_id, const void* src, converted_type_t* conv_type);
+gaspi_return_t local_get(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_src_segment_id, void* dst, converted_type_t* conv_type);
+gaspi_return_t local_put(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_dst_segment_id, const void* src, converted_type_t* conv_type);
 
 gaspi_return_t remote_get(dart_gptr_t* gptr, gaspi_rank_t src_unit, gaspi_segment_id_t src_seg_id, gaspi_segment_id_t dst_seg_id, void* dst, gaspi_queue_id_t* queue, converted_type_t* conv_type);
 gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segment_id_t dst_seg_id, gaspi_segment_id_t src_seg_id, void* src, gaspi_queue_id_t* queue, converted_type_t* conv_type);
@@ -159,5 +150,44 @@ gaspi_return_t put_completion_test(gaspi_rank_t dst_unit, gaspi_queue_id_t queue
 
 dart_ret_t dart_test_impl(dart_handle_t* handleptr, int32_t * is_finished, gaspi_notification_id_t notify_id_to_check);
 dart_ret_t dart_test_all_impl(dart_handle_t handleptr[], size_t num_handles, int32_t * is_finished, access_kind_t access_kind);
+
+dart_ret_t error_cleanup(converted_type_t* conv_type);
+dart_ret_t error_cleanup_seg(gaspi_segment_id_t used_segment_id, converted_type_t* conv_type);
+
+#define DART_CHECK_ERROR_CLEAN_TEMPL(expected, error_code, ret_type, conv_type, func...)  \
+  do {                                                                                       \
+    const ret_type retval = func;                                                            \
+    if (retval != expected) {                                                                \
+      printf("ERROR in %s : %s on line %i return value %i\n", #func,                         \
+                   __FILE__, __LINE__, retval);                                              \
+      error_cleanup(&conv_type);                                                             \
+                                                                                             \
+      return error_code;                                                                     \
+    }                                                                                        \
+  }while (0)
+
+#define DART_CHECK_ERROR_CLEAN_TEMPL_SEG(expected, error_code, ret_type, seg_id, conv_type, func...)  \
+  do {                                                                                       \
+    const ret_type retval = func;                                                            \
+    if (retval != expected) {                                                                \
+      printf("ERROR in %s : %s on line %i return value %i\n", #func,                         \
+                   __FILE__, __LINE__, retval);                                              \
+      error_cleanup_seg(seg_id, &conv_type);                                                     \
+                                                                                             \
+      return error_code;                                                                     \
+    }                                                                                        \
+  }while (0)
+
+#define DART_CHECK_ERROR_CLEAN(conv_type, func...) \
+    DART_CHECK_ERROR_CLEAN_TEMPL(DART_OK, DART_ERR_OTHER, dart_ret_t, conv_type, func)
+
+#define DART_CHECK_ERROR_CLEAN_SEG(seg_id, conv_type, func...) \
+    DART_CHECK_ERROR_CLEAN_TEMPL_SEG(DART_OK, DART_ERR_OTHER, dart_ret_t, seg_id, conv_type, func)
+
+#define DART_CHECK_GASPI_ERROR_CLEAN(conv_type, func...) \
+    DART_CHECK_ERROR_CLEAN_TEMPL(GASPI_SUCCESS, GASPI_ERROR, gaspi_return_t, conv_type, func)
+
+#define DART_CHECK_GASPI_ERROR_CLEAN_SEG(seg_id, conv_type, func...) \
+    DART_CHECK_ERROR_CLEAN_TEMPL_SEG(GASPI_SUCCESS, GASPI_ERROR, gaspi_return_t, seg_id, conv_type, func)
 
 #endif /* DART_COMMUNICATION_PRIV_H */

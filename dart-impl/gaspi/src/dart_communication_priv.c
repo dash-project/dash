@@ -271,7 +271,6 @@ dart_ret_t glob_unit_gaspi_seg(dart_gptr_t* gptr, dart_unit_t* global_unit_id, g
 {
     if(gptr->segid)
     {
-        //dart_team_unit_l2g(gptr.teamid, target_unit, &global_target_unit);
         DART_CHECK_ERROR(unit_l2g(gptr->flags, global_unit_id, gptr->unitid));
         if(dart_adapt_transtable_get_gaspi_seg_id(gptr->segid, gptr->unitid, gaspi_seg_id) == -1)
         {
@@ -288,25 +287,24 @@ void set_multiple_block(converted_type_t* conv_type, size_t num_blocks)
 {
     conv_type->num_blocks = num_blocks;
     conv_type->kind = DART_BLOCK_MULTIPLE;
-    conv_type->multiple = (multiple_t){(offset_pair_t*) malloc(sizeof(offset_pair_t) * num_blocks),
-                                        (size_t*) malloc(sizeof(size_t) * num_blocks)};
+    conv_type->multiple = (chunk_info_t*)malloc(sizeof(chunk_info_t) * num_blocks);
 }
 
-void set_single_block(converted_type_t* conv_type, size_t num_blocks, offset_pair_t offset_pair, size_t nbytes)
+void set_single_block(converted_type_t* conv_type, size_t num_blocks, chunk_info_t chunk_info)
 {
     conv_type->num_blocks = num_blocks;
     conv_type->kind = DART_BLOCK_SINGLE;
-    conv_type->single = (single_t){offset_pair, nbytes};
+    conv_type->single = chunk_info;
 }
 
 void free_converted_type(converted_type_t* conv_type)
 {
     if(conv_type->kind == DART_BLOCK_MULTIPLE)
     {
-      if(conv_type->multiple.offsets != NULL)
-        free(conv_type->multiple.offsets);
-      if(conv_type->multiple.nbytes != NULL)
-        free(conv_type->multiple.nbytes);
+      if(conv_type->multiple != NULL) {
+        free(conv_type->multiple);
+        conv_type->multiple = NULL;
+      }
     }
 }
 
@@ -319,7 +317,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
 
     if (datatype_iscontiguous(dts_src) && datatype_iscontiguous(dts_dst))
     {
-        set_single_block(conv_type, 1, (offset_pair_t){0,0}, nelem * nbytes_elem);
+        set_single_block(conv_type, 1, (chunk_info_t){0,0, nelem * nbytes_elem});
 
         return DART_OK;
     }
@@ -333,7 +331,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                 size_t num_blocks = nelem / dts_dst->num_elem;
                 size_t num_elem_byte = dts_dst->num_elem * nbytes_elem;
 
-                set_single_block(conv_type, num_blocks, (offset_pair_t){num_elem_byte,dts_dst->strided.stride * nbytes_elem}, num_elem_byte);
+                set_single_block(conv_type, num_blocks, (chunk_info_t){num_elem_byte,dts_dst->strided.stride * nbytes_elem, num_elem_byte});
 
                 return DART_OK;
             }
@@ -346,8 +344,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                 for(int i = 0; i < num_blocks; ++i)
                 {
                     size_t num_elem_byte = dts_dst->indexed.blocklens[i] * nbytes_elem;
-                    conv_type->multiple.nbytes[i] = num_elem_byte;
-                    conv_type->multiple.offsets[i] = (offset_pair_t){offset_src, dts_dst->indexed.offsets[i] * nbytes_elem};
+                    conv_type->multiple[i] = (chunk_info_t){offset_src, dts_dst->indexed.offsets[i] * nbytes_elem, num_elem_byte};
                     offset_src += num_elem_byte;
                 }
 
@@ -361,7 +358,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                 size_t num_blocks = nelem / dts_src->num_elem;
                 size_t num_elem_byte = dts_src->num_elem * nbytes_elem;
 
-                set_single_block(conv_type, num_blocks, (offset_pair_t){dts_src->strided.stride * nbytes_elem, num_elem_byte}, num_elem_byte);
+                set_single_block(conv_type, num_blocks, (chunk_info_t){dts_src->strided.stride * nbytes_elem, num_elem_byte, num_elem_byte});
 
                 return DART_OK;
             }
@@ -374,8 +371,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                 for(int i = 0; i < num_blocks; ++i)
                 {
                     size_t num_elem_byte = dts_src->indexed.blocklens[i] * nbytes_elem;
-                    conv_type->multiple.nbytes[i] = num_elem_byte;
-                    conv_type->multiple.offsets[i] = (offset_pair_t){dts_src->indexed.offsets[i] * nbytes_elem, offset_dst};
+                    conv_type->multiple[i] = (chunk_info_t){dts_src->indexed.offsets[i] * nbytes_elem, offset_dst, num_elem_byte};
                     offset_dst += num_elem_byte;
                 }
 
@@ -397,7 +393,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
     if(datatype_isstrided(dts_src) && datatype_isstrided(dts_dst) && dts_src->num_elem == dts_dst->num_elem)
     {
         size_t num_blocks = nelem / dts_src->num_elem;
-        set_single_block(conv_type, num_blocks, (offset_pair_t){dts_src->strided.stride * nbytes_elem, dts_dst->strided.stride * nbytes_elem}, dts_src->num_elem * nbytes_elem);
+        set_single_block(conv_type, num_blocks, (chunk_info_t){dts_src->strided.stride * nbytes_elem, dts_dst->strided.stride * nbytes_elem, dts_src->num_elem * nbytes_elem});
 
         return DART_OK;
     }
@@ -423,8 +419,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
     {
         size_t min_elem = MIN(elems_src, elems_dst);
         size_t nelem_byte = min_elem * nbytes_elem;
-        conv_type->multiple.nbytes[block_id] = nelem_byte;
-        conv_type->multiple.offsets[block_id] = (offset_pair_t){offset_src, offset_dst};
+        conv_type->multiple[block_id] = (chunk_info_t){offset_src, offset_dst, nelem_byte};
 
         elems_src -= min_elem;
         elems_dst -= min_elem;
@@ -494,16 +489,16 @@ void local_copy_impl(char* src, char* dst, converted_type_t* conv_type)
     {
       if(conv_type->kind == DART_BLOCK_MULTIPLE)
       {
-        offset_src = conv_type->multiple.offsets[i].src;
-        offset_dst = conv_type->multiple.offsets[i].dst;
-        nbytes_read = conv_type->multiple.nbytes[i];
+        offset_src = conv_type->multiple[i].src;
+        offset_dst = conv_type->multiple[i].dst;
+        nbytes_read = conv_type->multiple[i].nbyte;
       }
       memcpy((void*)(dst + offset_dst), (void*)(src + offset_src), nbytes_read);
 
       if(conv_type->kind == DART_BLOCK_SINGLE)
       {
-        offset_src += conv_type->single.offset.src;
-        offset_dst += conv_type->single.offset.dst;
+        offset_src += conv_type->single.src;
+        offset_dst += conv_type->single.dst;
       }
     }
 }
@@ -512,21 +507,21 @@ void print_converted_type(converted_type_t* conv_type)
 {
     if(conv_type->kind == DART_BLOCK_SINGLE)
     {
-        printf("conv_type: blocks=%d, kind=%d, off_src=%d, off_dst=%d, nbyte=%d\n",conv_type->num_blocks,conv_type->kind,conv_type->single.offset.src, conv_type->single.offset.dst, conv_type->single.nbyte);
+        printf("conv_type: blocks=%d, kind=%d, off_src=%d, off_dst=%d, nbyte=%d\n",conv_type->num_blocks,conv_type->kind,conv_type->single.src, conv_type->single.dst, conv_type->single.nbyte);
     }
     else
     {
         printf("conv_type: blocks=%d, kind=%d {",conv_type->num_blocks,conv_type->kind);
         for(size_t i = 0; i < conv_type->num_blocks; ++i)
         {
-            printf(" [i] off_src=%d, off_dst=%d, nbyte=%d ; ",conv_type->multiple.offsets[i].src, conv_type->multiple.offsets[i].dst, conv_type->multiple.nbytes[i]);
+            printf(" [i] off_src=%d, off_dst=%d, nbyte=%d ; ",conv_type->multiple[i].src, conv_type->multiple[i].dst, conv_type->multiple[i].nbyte);
         }
         printf(")\n");
         fflush(stdout);
     }
 }
 
-dart_ret_t local_get(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_src_segment_id, void* dst, converted_type_t* conv_type)
+gaspi_return_t local_get(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_src_segment_id, void* dst, converted_type_t* conv_type)
 {
     gaspi_pointer_t src_seg_ptr = NULL;
     DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_src_segment_id, &src_seg_ptr));
@@ -536,7 +531,7 @@ dart_ret_t local_get(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_src_segment_id,
     return DART_OK;
 }
 
-dart_ret_t local_put(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_dst_segment_id, const void* src, converted_type_t* conv_type)
+gaspi_return_t local_put(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_dst_segment_id, const void* src, converted_type_t* conv_type)
 {
     gaspi_pointer_t dst_seg_ptr = NULL;
     DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_dst_segment_id, &dst_seg_ptr));
@@ -558,13 +553,13 @@ gaspi_return_t remote_get(dart_gptr_t* gptr, gaspi_rank_t src_unit, gaspi_segmen
 
     if(conv_type->kind == DART_BLOCK_SINGLE)
     {
-      nbytes_segment = conv_type->num_blocks * conv_type->single.offset.dst + conv_type->single.nbyte;
+      nbytes_segment = conv_type->num_blocks * conv_type->single.dst + conv_type->single.nbyte;
       nbytes_read = conv_type->single.nbyte;
     }
     else
     {
       size_t last_block = conv_type->num_blocks - 1;
-      nbytes_segment = conv_type->multiple.offsets[last_block].dst + conv_type->multiple.nbytes[last_block];
+      nbytes_segment = conv_type->multiple[last_block].dst + conv_type->multiple[last_block].nbyte;
     }
 
     DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dst_seg_id, dst, nbytes_segment, 0));
@@ -576,9 +571,9 @@ gaspi_return_t remote_get(dart_gptr_t* gptr, gaspi_rank_t src_unit, gaspi_segmen
     {
       if(conv_type->kind == DART_BLOCK_MULTIPLE)
       {
-        offset_src = gptr->addr_or_offs.offset + conv_type->multiple.offsets[i].src;
-        offset_dst = conv_type->multiple.offsets[i].dst;
-        nbytes_read = conv_type->multiple.nbytes[i];
+        offset_src = gptr->addr_or_offs.offset + conv_type->multiple[i].src;
+        offset_dst = conv_type->multiple[i].dst;
+        nbytes_read = conv_type->multiple[i].nbyte;
       }
 
       DART_CHECK_GASPI_ERROR(
@@ -593,8 +588,8 @@ gaspi_return_t remote_get(dart_gptr_t* gptr, gaspi_rank_t src_unit, gaspi_segmen
      );
       if(conv_type->kind == DART_BLOCK_SINGLE)
       {
-        offset_src += conv_type->single.offset.src;
-        offset_dst += conv_type->single.offset.dst;
+        offset_src += conv_type->single.src;
+        offset_dst += conv_type->single.dst;
       }
     }
 
@@ -615,13 +610,13 @@ gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segmen
 
     if(conv_type->kind == DART_BLOCK_SINGLE)
     {
-      nbytes_segment = conv_type->num_blocks * conv_type->single.offset.src + conv_type->single.nbyte;
+      nbytes_segment = conv_type->num_blocks * conv_type->single.src + conv_type->single.nbyte;
       nbytes_read = conv_type->single.nbyte;
     }
     else
     {
       size_t last_block = conv_type->num_blocks - 1;
-      nbytes_segment = conv_type->multiple.offsets[last_block].src + conv_type->multiple.nbytes[last_block];
+      nbytes_segment = conv_type->multiple[last_block].src + conv_type->multiple[last_block].nbyte;
     }
 
     DART_CHECK_GASPI_ERROR(gaspi_segment_bind(src_seg_id, src, nbytes_segment, 0));
@@ -633,9 +628,9 @@ gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segmen
     {
       if(conv_type->kind == DART_BLOCK_MULTIPLE)
       {
-        offset_src = conv_type->multiple.offsets[i].src;
-        offset_dst = gptr->addr_or_offs.offset + conv_type->multiple.offsets[i].dst;
-        nbytes_read = conv_type->multiple.nbytes[i];
+        offset_src = conv_type->multiple[i].src;
+        offset_dst = gptr->addr_or_offs.offset + conv_type->multiple[i].dst;
+        nbytes_read = conv_type->multiple[i].nbyte;
       }
 
       DART_CHECK_GASPI_ERROR(
@@ -650,8 +645,8 @@ gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segmen
      );
       if(conv_type->kind == DART_BLOCK_SINGLE)
       {
-        offset_src += conv_type->single.offset.src;
-        offset_dst += conv_type->single.offset.dst;
+        offset_src += conv_type->single.src;
+        offset_dst += conv_type->single.dst;
       }
     }
 
@@ -744,3 +739,18 @@ dart_ret_t dart_test_all_impl(dart_handle_t handles[], size_t num_handles, int32
     return DART_OK;
 }
 
+dart_ret_t error_cleanup(converted_type_t* conv_type)
+{
+    free_converted_type(conv_type);
+
+    return DART_ERR_OTHER;
+}
+
+dart_ret_t error_cleanup_seg(gaspi_segment_id_t used_segment_id, converted_type_t* conv_type)
+{
+    DART_CHECK_ERROR(gaspi_segment_delete(used_segment_id));
+    DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, used_segment_id));
+    error_cleanup(conv_type);
+
+    return DART_ERR_OTHER;
+}
