@@ -44,17 +44,17 @@ char put_completion_dst_storage = PUT_COMPLETION_VALUE;
 const size_t dart_coll_seg_count = 245;
 /*********************************************************/
 static int _init_by_dart = 0;
-static int _count_init = 0;
 static int _dart_initialized = 0;
-
-
 
 dart_ret_t dart_init(int *argc, char ***argv)
 {
     gaspi_return_t ret = gaspi_proc_init(GASPI_BLOCK);
 
-    if(ret)
-        ++_count_init;
+    if(ret == GASPI_SUCCESS)
+    {
+        _init_by_dart = 1;
+    }
+
     DART_CHECK_ERROR(gaspi_proc_rank(&dart_gaspi_rank));
     DART_CHECK_ERROR(gaspi_proc_num(&dart_gaspi_rank_num));
 
@@ -134,7 +134,14 @@ dart_ret_t dart_init(int *argc, char ***argv)
      * dart fallback segment is not allocated at default
      */
     dart_fallback_seg_is_allocated = false;
+
+    DART_LOG_DEBUG("dart_init: communication backend initialization finished");
+    _dart_initialized = 1;
+
     dart__base__locality__init();
+
+    DART_LOG_DEBUG("dart_init > initialization finished");
+    _dart_initialized = 2;
 
     return DART_OK;
 }
@@ -169,10 +176,10 @@ dart_ret_t dart_exit()
 
     datatype_fini();
 
-    if(_count_init == 0)
-        DART_CHECK_ERROR(gaspi_proc_term(GASPI_BLOCK));
-    --_count_init;
-
+   if(_init_by_dart)
+   {
+       DART_CHECK_ERROR(gaspi_proc_term(GASPI_BLOCK));
+   }
     return DART_OK;
 }
 
