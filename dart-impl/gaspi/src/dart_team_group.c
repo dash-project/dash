@@ -19,15 +19,10 @@ dart_ret_t dart_team_get_group (dart_team_t teamid, dart_group_t *group)
 }
 
 /**
- * TODO what happens if rank isn't a part of a group ???
- * TODO use return values of gaspi operations
+ *
  */
 dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_team_t *newteam)
 {
-    // SplitAddition
-
-
-
     gaspi_group_t new_gaspi_group = 0;
     gaspi_group_t gaspi_group_max = 0;
 
@@ -98,7 +93,6 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
     memcpy(dart_teams[index].group, group, sizeof(struct dart_group_struct));
 
     free(group_members);
-
 
     return DART_OK;
 }
@@ -212,18 +206,45 @@ dart_ret_t dart_team_unit_g2l(
     return DART_OK;
 }
 
-dart_ret_t dart_myid(dart_global_unit_t *myid)
+dart_ret_t dart_myid(dart_global_unit_t *unitid)
 {
-    gaspi_rank_t r;
-    DART_CHECK_ERROR(gaspi_proc_rank(&r));
-    myid->id = r;
+    if(!dart_initialized())
+    {
+        unitid->id = -1;
+        return DART_ERR_OTHER;
+    }
+
+    static dart_unit_t gaspi_id = DART_UNDEFINED_UNIT_ID;
+
+    if (gaspi_id == DART_UNDEFINED_UNIT_ID)
+    {
+        gaspi_rank_t gaspi_rank;
+        DART_CHECK_ERROR(gaspi_proc_rank(&gaspi_rank));
+        gaspi_id = gaspi_rank;
+    }
+    unitid->id = gaspi_id;
+
     return DART_OK;
 }
 
 dart_ret_t dart_size(size_t *size)
 {
-    gaspi_rank_t s;
-    DART_CHECK_ERROR(gaspi_proc_num(&s));
-    *size = s;
+    if(!dart_initialized())
+    {
+        *size = 0;
+        return DART_ERR_OTHER;
+    }
+
+    static size_t gaspi_size = 0;
+
+    if (gaspi_size == 0)
+    {
+        gaspi_rank_t gaspi_size_tmp;
+        DART_CHECK_ERROR(gaspi_proc_num(&gaspi_size_tmp));
+        gaspi_size = gaspi_size_tmp;
+    }
+
+    *size = gaspi_size;
+
     return DART_OK;
 }
