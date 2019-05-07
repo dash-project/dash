@@ -70,13 +70,13 @@ public:
       }
     }
 
-  iterator begin() noexcept {
+  iterator begin() DASH_NOEXCEPT {
     return iterator(static_cast<pointer>(_event_counts.begin()));
   }
 
-  const_iterator begin() const noexcept {
+  const_iterator begin() const DASH_NOEXCEPT {
     // TODO FIXME
-    //CoevenIter is not const correct, so we need a hack and unpack a nonconst
+    //CoeventIter is not const correct, so we need a hack and unpack a nonconst
     //pointer from a const iterator to make the comiler happy.
     //return const_iterator(static_cast<const_pointer>(_event_counts.begin()));
     auto dart_ptr = _event_counts.begin().dart_gptr();

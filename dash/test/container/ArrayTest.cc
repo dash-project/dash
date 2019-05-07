@@ -21,6 +21,18 @@ TEST_F(ArrayTest, Declaration)
   dash::Array<int> arr;
 }
 
+
+TEST_F(ArrayTest, Empty)
+{
+  dash::Array<int> arr{0};
+
+  auto begin = arr.begin();
+  auto end   = arr.end();
+  auto gptr  = begin.dart_gptr();
+
+  ASSERT_EQ_U(begin, end);
+}
+
 TEST_F(ArrayTest, Initialization)
 {
   dash::Array<int> array_local(19 * dash::size(), dash::BLOCKED);

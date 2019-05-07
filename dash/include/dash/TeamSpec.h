@@ -404,7 +404,7 @@ public:
   /**
    * Change the extent of the cartesian space in the given dimension.
    */
-  void resize(dim_t dim, SizeType extent)
+  void resize_dim(dim_t dim, SizeType extent)
   {
     this->_extents[dim] = extent;
     resize(this->_extents);
