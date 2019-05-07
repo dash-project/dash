@@ -79,18 +79,17 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
     baseptr[i] = dash::myid().id;
   }
 
-  dash::Array<dart_gptr_t> arr(dash::size());
-  arr.local[0] = gptr;
-  arr.barrier();
+  dash::barrier();
 
-  value_t neighbor_val;
-  size_t  neighbor_id = (dash::myid().id + 1) % dash::size();
+  value_t neighbor_val = 0;
+  value_t neighbor_id = (dash::myid().id + 1) % dash::size();
   dash::dart_storage<value_t> ds(1);
+  gptr.unitid = neighbor_id;
   ASSERT_EQ_U(
     DART_OK,
     dart_get_blocking(
         &neighbor_val,
-        arr[neighbor_id],
+        gptr,
         ds.nelem,
         ds.dtype,
         ds.dtype));
@@ -99,8 +98,7 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
     neighbor_id,
     neighbor_val);
 
-  arr.barrier();
-
+  dash::barrier();
   ASSERT_EQ_U(
     DART_OK,
     dart_memfree(gptr));
