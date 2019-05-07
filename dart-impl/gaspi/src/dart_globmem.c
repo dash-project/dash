@@ -31,9 +31,9 @@ dart_ret_t dart_memalloc(
     dart_myid(&unitid);
 
     gptr->unitid = unitid.id;
-    gptr->segid = 0; /* For local allocation, the segid is marked as '0'. */
-    gptr->flags = 0; /* For local allocation, the flag is marked as '0'. */
-    gptr->segid   = DART_TEAM_ALL; /* For local allocation, the segid is marked as '0'. */
+    gptr->segid  = 0; /* For local allocation, the segid is marked as '0'. */
+    gptr->flags  = 0; /* For local allocation, the flag is marked as '0'. */
+    gptr->teamid = DART_TEAM_ALL; /* For local allocation, the segid is marked as '0'. */
     gptr->addr_or_offs.offset = dart_buddy_alloc(dart_localpool, nbytes);
     if (gptr->addr_or_offs.offset == -1)
     {
