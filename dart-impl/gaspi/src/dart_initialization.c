@@ -9,8 +9,6 @@
 
 #include <limits.h>
 
-#define DART_LOCAL_ALLOC_SIZE (1024UL*1024*16)
-
 gaspi_rank_t dart_gaspi_rank_num;
 gaspi_rank_t dart_gaspi_rank;
 
@@ -21,11 +19,10 @@ gaspi_rank_t dart_gaspi_rank;
 gaspi_pointer_t dart_gaspi_buffer_ptr;
 const gaspi_segment_id_t dart_gaspi_buffer_id = 0;
 /*********************************************************/
-const gaspi_segment_id_t dart_fallback_seg = 2;
-const gaspi_segment_id_t dart_onesided_seg = 3;
-bool dart_fallback_seg_is_allocated;
+
 /***************** non-collective memory *****************/
 #define DART_BUDDY_ORDER 24
+#define DART_LOCAL_ALLOC_SIZE (1024UL*1024*16)
 
 // 10 fixed id's for special purposes
 /* Gaspi segment number for non-collective memory */
@@ -35,15 +32,22 @@ char * dart_mempool_localalloc;
 /* Help to do memory management work for local allocation/free */
 struct dart_buddy* dart_localpool;
 /******************* collective memory *******************/
-const gaspi_segment_id_t dart_coll_seg_id_begin = 4;
-
+const gaspi_segment_id_t dart_fallback_seg = 2;
+const gaspi_segment_id_t dart_onesided_seg = 3;
+bool dart_fallback_seg_is_allocated;
 // segment to trigger remote completion with gaspi write
-const gaspi_segment_id_t put_completion_src_seg = 5;
-const gaspi_segment_id_t put_completion_dst_seg = 6;
+const gaspi_segment_id_t put_completion_src_seg = 4;
+const gaspi_segment_id_t put_completion_dst_seg = 5;
 char put_completion_dst_storage = PUT_COMPLETION_VALUE;
 
-// gaspi segment id pool
-const size_t dart_coll_seg_count = 245;
+seg_stack_t pool_gaspi_seg_ids;
+const gaspi_segment_id_t pool_gaspi_seg_ids_begin = 6;
+const size_t pool_gaspi_seg_ids_count = 245;
+
+seg_stack_t pool_dart_seg_ids;
+// id 0 is reserved for non collective memory
+const gaspi_segment_id_t pool_dart_seg_ids_begin = 1;
+const size_t pool_dart_seg_ids_count = 254;
 /*********************************************************/
 static int _init_by_dart = 0;
 static int _dart_initialized = 0;
@@ -68,7 +72,6 @@ dart_ret_t dart_init(int *argc, char ***argv)
 
     datatype_init();
 
-    dart_memid = 1;
     dart_next_availteamid = DART_TEAM_ALL;
     gaspi_group_id_top = 0;
 
@@ -101,7 +104,7 @@ dart_ret_t dart_init(int *argc, char ***argv)
     /*
      * non-collective memory initialization
      */
-    dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
+    dart_localpool = dart_buddy_new (DART_LOCAL_ALLOC_SIZE);
 
     DART_CHECK_ERROR(gaspi_segment_create(dart_mempool_seg_localalloc,
                                           DART_LOCAL_ALLOC_SIZE,
@@ -125,13 +128,15 @@ dart_ret_t dart_init(int *argc, char ***argv)
 
     DART_CHECK_ERROR(gaspi_segment_ptr(dart_gaspi_buffer_id, &dart_gaspi_buffer_ptr));
     /*
-     * Create the segment id stack
+     * Initializes free gaspi segment ids for collective memory and temporarily memory bindings
      */
-    DART_CHECK_ERROR(seg_stack_init(&dart_free_coll_seg_ids, dart_coll_seg_count));
+    DART_CHECK_ERROR(seg_stack_init(&pool_gaspi_seg_ids, pool_gaspi_seg_ids_begin, pool_gaspi_seg_ids_count));
+
     /*
-     * Set free segment ids in the stack
+     * Initializes free dart segment ids for collective memory
      */
-    DART_CHECK_ERROR(seg_stack_fill(&dart_free_coll_seg_ids, dart_coll_seg_id_begin, dart_coll_seg_count));
+    DART_CHECK_ERROR(seg_stack_init(&pool_dart_seg_ids, pool_dart_seg_ids_begin, pool_dart_seg_ids_count));
+
     /*
      * dart fallback segment is not allocated at default
      */
@@ -174,7 +179,9 @@ dart_ret_t dart_exit()
 
     DART_CHECK_ERROR(dart_adapt_teamlist_destroy());
 
-    DART_CHECK_ERROR(seg_stack_finish(&dart_free_coll_seg_ids));
+    DART_CHECK_ERROR(seg_stack_finish(&pool_gaspi_seg_ids));
+
+    DART_CHECK_ERROR(seg_stack_finish(&pool_dart_seg_ids));
 
     datatype_fini();
 

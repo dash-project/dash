@@ -183,7 +183,7 @@ dart_ret_t free_segment_ids(request_table_entry_t* request_entry)
     while(current_seg_id != NULL)
     {
       DART_CHECK_ERROR(gaspi_segment_delete(current_seg_id->local_gseg_id));
-      DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, current_seg_id->local_gseg_id));
+      DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, current_seg_id->local_gseg_id));
       local_gseg_id_entry_t* tmp = current_seg_id->next;
       free(current_seg_id);
       current_seg_id = tmp;
@@ -277,6 +277,11 @@ dart_ret_t glob_unit_gaspi_seg(dart_gptr_t* gptr, dart_unit_t* global_unit_id, g
             fprintf(stderr, "Can't find given segment id in %s\n", location);
             return DART_ERR_NOTFOUND;
         }
+    }
+    else
+    {
+        *gaspi_seg_id = dart_mempool_seg_localalloc;
+        *global_unit_id = gptr->unitid;
     }
 
     return DART_OK;
@@ -749,7 +754,7 @@ dart_ret_t error_cleanup(converted_type_t* conv_type)
 dart_ret_t error_cleanup_seg(gaspi_segment_id_t used_segment_id, converted_type_t* conv_type)
 {
     DART_CHECK_ERROR(gaspi_segment_delete(used_segment_id));
-    DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, used_segment_id));
+    DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, used_segment_id));
     error_cleanup(conv_type);
 
     return DART_ERR_OTHER;

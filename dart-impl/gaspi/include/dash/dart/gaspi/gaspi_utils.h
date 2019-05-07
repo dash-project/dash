@@ -87,6 +87,15 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
 #define DART_CHECK_ERROR_RET(ret, func...)                                       \
     do {                                                                         \
       ret = func;                                                                \
+      if (ret != DART_OK) {                                                \
+        printf("ERROR in %s : %s on line %i return value %i\n", #func,     \
+                     __FILE__, __LINE__, ret);                                   \
+      }                                                                          \
+    }while (0)
+
+#define DART_CHECK_GASPI_ERROR_RET(ret, func...)                                       \
+    do {                                                                         \
+      ret = func;                                                                \
       if (ret != GASPI_SUCCESS) {                                                \
         printf("ERROR in %s : %s on line %i return value %i\n", #func,     \
                      __FILE__, __LINE__, ret);                                   \

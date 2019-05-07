@@ -669,7 +669,7 @@ dart_ret_t dart_handle_free(
     }
 
     DART_CHECK_GASPI_ERROR(gaspi_segment_delete(handle->local_seg_id));
-    DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, handle->local_seg_id));
+    DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, handle->local_seg_id));
 
     free(handle);
     *handleptr = DART_HANDLE_NULL;
@@ -843,7 +843,7 @@ dart_ret_t dart_get_handle(
         // get gaspi segment id and bind it to dst
         gaspi_segment_id_t free_seg_id;
         DART_CHECK_GASPI_ERROR_CLEAN(conv_type,
-            seg_stack_pop(&dart_free_coll_seg_ids, &free_seg_id));
+            seg_stack_pop(&pool_gaspi_seg_ids, &free_seg_id));
 
         gaspi_queue_id_t queue = (gaspi_queue_id_t) -1;
 
@@ -915,7 +915,7 @@ dart_ret_t dart_put_handle(
         // get gaspi segment id and bind it to dst
         gaspi_segment_id_t free_seg_id;
         DART_CHECK_GASPI_ERROR_CLEAN(conv_type,
-            seg_stack_pop(&dart_free_coll_seg_ids, &free_seg_id));
+            seg_stack_pop(&pool_gaspi_seg_ids, &free_seg_id));
 
         gaspi_queue_id_t queue = (gaspi_queue_id_t) -1;
 
@@ -1041,7 +1041,7 @@ dart_ret_t dart_get(
         // get gaspi segment id and bind it to dst
         gaspi_segment_id_t free_seg_id;
         DART_CHECK_GASPI_ERROR_CLEAN(conv_type,
-            seg_stack_pop(&dart_free_coll_seg_ids, &free_seg_id));
+            seg_stack_pop(&pool_gaspi_seg_ids, &free_seg_id));
 
         // communitcation request
         request_table_entry_t* request_entry = NULL;
@@ -1097,7 +1097,7 @@ dart_ret_t dart_put(
         // get gaspi segment id and bind it to dst
         gaspi_segment_id_t free_seg_id;
         DART_CHECK_GASPI_ERROR_CLEAN(conv_type,
-            seg_stack_pop(&dart_free_coll_seg_ids, &free_seg_id));
+            seg_stack_pop(&pool_gaspi_seg_ids, &free_seg_id));
 
         // communitcation request
         request_table_entry_t* request_entry = NULL;
@@ -1862,7 +1862,7 @@ dart_ret_t dart_reduce(
      default: DART_LOG_ERROR(stderr, "dart_reduce: operation not supported!\n" );
               ret = DART_ERR_INVAL;
   }
-  //DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, free_id));
+  //DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, free_id));
   return ret;
 }
 

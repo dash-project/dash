@@ -41,7 +41,6 @@ struct node
 typedef struct node node_info_t;
 typedef node_info_t* node_t;
 
-
 /* -- The operations on translation table -- */
 
 /** @brief Initialize this global translation table.

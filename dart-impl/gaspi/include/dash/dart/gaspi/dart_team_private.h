@@ -131,26 +131,11 @@
 #ifndef DART_ADAPT_TEAM_PRIVATE_H_INCLUDED
 #define DART_ADAPT_TEAM_PRIVATE_H_INCLUDED
 
-#include <GASPI.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_team_group.h>
-#include "dart_gaspi.h"
-#include "dart_group_impl.h"
-#include "dart_seg_stack.h"
-
-typedef enum dart_gaspi_segment_state
-{
-    DART_GASPI_SEG_NULL,
-    DART_GASPI_SEG_ALLOCATED
-}dart_gaspi_segment_state_t;
-
-typedef struct dart_gaspi_segment
-{
-    gaspi_segment_id_t seg_id;
-    dart_gaspi_segment_state_t state;
-
-}dart_gaspi_segment_t;
-
+#include <dash/dart/gaspi/dart_gaspi.h>
+#include <dash/dart/gaspi/dart_group_impl.h>
+#include <dash/dart/gaspi/dart_seg_stack.h>
 
 typedef struct dart_team_struct{
     gaspi_group_t id;
@@ -159,8 +144,6 @@ typedef struct dart_team_struct{
 
 extern gaspi_group_t gaspi_group_id_top;
 
-extern seg_stack_t dart_free_coll_seg_ids;
-extern gaspi_segment_id_t dart_gaspi_segment_cnt;
 extern dart_team_t dart_next_availteamid;
 /* @brief Translate the given teamid (indicated uniquely by the index) into its corresponding communicator.
  *

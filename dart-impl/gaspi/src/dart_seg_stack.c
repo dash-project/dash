@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-dart_ret_t seg_stack_init(seg_stack_t * stack, size_t count)
+dart_ret_t seg_stack_init(seg_stack_t * stack, gaspi_segment_id_t begin, size_t count)
 {
     stack->segids = (gaspi_segment_id_t *) malloc(sizeof(gaspi_segment_id_t) * count);
 
@@ -13,6 +13,14 @@ dart_ret_t seg_stack_init(seg_stack_t * stack, size_t count)
 
     stack->top  = -1;
     stack->size = count;
+
+    for(gaspi_segment_id_t i = (begin + count-1); i >= begin  ; --i)
+    {
+        if(seg_stack_push(stack, i) != DART_OK)
+        {
+            return DART_ERR_OTHER;
+        }
+    }
 
     return DART_OK;
 }

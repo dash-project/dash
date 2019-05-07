@@ -23,10 +23,13 @@ dart_ret_t dart_memalloc(
   dart_datatype_t   dtype,
   dart_gptr_t     * gptr)
 {
+    dart_datatype_struct_t* dtype_base =
+      datatype_base_struct(get_datatype_struct(dtype));
+    size_t nbytes = datatype_sizeof(dtype_base) * nelem;
 
-    size_t nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
     dart_global_unit_t unitid;
     dart_myid(&unitid);
+
     gptr->unitid = unitid.id;
     gptr->segid = 0; /* For local allocation, the segid is marked as '0'. */
     gptr->flags = 0; /* For local allocation, the flag is marked as '0'. */
@@ -50,13 +53,13 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
 
     return DART_OK;
 }
-//(dart_team_t teamid, size_t nbytes, dart_gptr_t *gptr)
 
-dart_ret_t dart_team_memalloc_aligned(
+dart_ret_t dart_team_mem_impl(
   dart_team_t       teamid,
   size_t            nelem,
   dart_datatype_t   dtype,
-  dart_gptr_t      *gptr)
+  void            * addr,
+  dart_gptr_t     * gptr)
 {
     size_t nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
     size_t teamsize;
@@ -68,14 +71,10 @@ dart_ret_t dart_team_memalloc_aligned(
     int result = dart_adapt_teamlist_convert(teamid, &index);
     if (result == -1)
     {
-        goto dart_error_label;
+        return DART_ERR_INVAL;
     }
 
     gaspi_group_t gaspi_group = dart_teams[index].id;
-
-    /* get a free gaspi segment id */
-    gaspi_segment_id_t   gaspi_seg_id;
-    DART_CHECK_ERROR_GOTO(dart_error_label, seg_stack_pop(&dart_free_coll_seg_ids, &gaspi_seg_id));
 
     // GPI2 can't allocate 0 bytes
     if( nbytes == 0 )
@@ -83,12 +82,29 @@ dart_ret_t dart_team_memalloc_aligned(
         nbytes = 1;
     }
 
-    /* Create the gaspi-segment with memory allocation */
-    DART_CHECK_GASPI_ERROR(gaspi_segment_create(gaspi_seg_id,
-                                                nbytes,
-                                                gaspi_group,
-                                                GASPI_BLOCK,
-                                                GASPI_MEM_INITIALIZED));
+    /* get a free gaspi segment id */
+    gaspi_segment_id_t   gaspi_seg_id;
+    DART_CHECK_ERROR(seg_stack_pop(&pool_gaspi_seg_ids, &gaspi_seg_id));
+
+    if(addr == NULL)
+    {
+        /* Create the gaspi-segment with memory allocation */
+        DART_CHECK_GASPI_ERROR(gaspi_segment_create(gaspi_seg_id,
+                                                    nbytes,
+                                                    gaspi_group,
+                                                    GASPI_BLOCK,
+                                                    GASPI_MEM_INITIALIZED));
+    }
+    else
+    {
+        /* Binds and registers given memory to a gaspi-segment */
+        DART_CHECK_GASPI_ERROR(gaspi_segment_use(gaspi_seg_id,
+                                                 addr,
+                                                 nbytes,
+                                                 gaspi_group,
+                                                 GASPI_BLOCK,
+                                                 0));
+    }
 
     /**
      * collect the other segment numbers of the team
@@ -97,22 +113,35 @@ dart_ret_t dart_team_memalloc_aligned(
      */
     gaspi_segment_id_t * gaspi_seg_ids = (gaspi_segment_id_t *) malloc(sizeof(gaspi_segment_id_t) * teamsize);
     assert(gaspi_seg_ids);
-    DART_CHECK_ERROR_GOTO(dart_error_label, dart_allgather(&gaspi_seg_id,
-                                                           gaspi_seg_ids,
-                                                           1,
-                                                           DART_TYPE_BYTE,
-                                                           teamid));
 
-    /* -- Updating infos on gptr -- */
+    gaspi_return_t ret;
+    DART_CHECK_GASPI_ERROR_RET(ret, dart_allgather(&gaspi_seg_id,
+                                                    gaspi_seg_ids,
+                                                    1,
+                                                    DART_TYPE_BYTE,
+                                                    teamid));
+    if(ret != GASPI_SUCCESS)
+    {
+        free(gaspi_seg_ids);
+        DART_CHECK_ERROR(gaspi_segment_delete(gaspi_seg_id));
+        DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, gaspi_seg_id));
+
+        return DART_ERR_INVAL;
+    }
+
+    gaspi_segment_id_t dart_seg_id;
+    DART_CHECK_ERROR(seg_stack_pop(&pool_dart_seg_ids, &dart_seg_id));
+
+    /* sets gptr properties */
     gptr->unitid = unitid.id;
-    gptr->segid = dart_memid; /* Segid equals to dart_memid (always a positive integer), identifies an unique collective global memory. */
+    gptr->segid = (int16_t) dart_seg_id; /* Segid equals to dart_memid (always a positive integer), identifies an unique collective global memory. */
     gptr->flags = index; /* For collective allocation, the flag is marked as 'index' */
     gptr->teamid = teamid;
     gptr->addr_or_offs.offset = 0;
 
-    /* -- Updating the translation table of teamid with the created (segment) infos -- */
+    /* Creates new segment entry in the translation table */
     info_t item;
-    item.seg_id           = dart_memid;
+    item.seg_id           = (int16_t) dart_seg_id;
     item.size             = nbytes;
     item.gaspi_seg_ids    = gaspi_seg_ids;
     item.own_gaspi_seg_id = gaspi_seg_id;
@@ -121,75 +150,81 @@ dart_ret_t dart_team_memalloc_aligned(
     /* Add this newly generated correspondence relationship record into the translation table. */
     dart_adapt_transtable_add(item);
     inital_rma_request_entry(item.seg_id);
-    dart_memid++;
+
+    dart_barrier(teamid);
 
     return DART_OK;
+}
 
-dart_error_label:
-    free(gaspi_seg_ids);
-    return DART_ERR_INVAL;
-
+dart_ret_t dart_team_memalloc_aligned(
+  dart_team_t       teamid,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_gptr_t      *gptr)
+{
+    return dart_team_mem_impl(teamid, nelem, dtype, NULL, gptr);
 }
 
 dart_ret_t dart_team_memfree(dart_gptr_t gptr)
 {
     int16_t            seg_id = gptr.segid;
-    gaspi_segment_id_t segs;
+    gaspi_segment_id_t gaspi_seg_id;
     /*
      * TODO May be wait on local completion ??
      */
     DART_CHECK_ERROR(delete_rma_requests(seg_id));
-    if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &segs) == -1)
+    if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &gaspi_seg_id) == -1)
     {
         return DART_ERR_INVAL;
     }
 
-    if(seg_stack_isfull(&dart_free_coll_seg_ids))
+    if(seg_stack_isfull(&pool_gaspi_seg_ids))
     {
         printf("ERROR because of full seg_stack in dart_team_memfree\n");
     }
 
-    DART_CHECK_ERROR(gaspi_segment_delete(segs));
-    DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, segs));
+    DART_CHECK_ERROR(gaspi_segment_delete(gaspi_seg_id));
+
+    DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, gaspi_seg_id));
 
     /* Remove the related correspondence relation record from the related translation table. */
     if(dart_adapt_transtable_remove(seg_id) == -1)
     {
         return DART_ERR_INVAL;
     }
+
+    DART_CHECK_ERROR(seg_stack_push(&pool_dart_seg_ids, seg_id));
+
+    dart_barrier(gptr.teamid);
 
     return DART_OK;
 }
 
+dart_ret_t dart_team_memregister(
+   dart_team_t       teamid,
+   size_t            nelem,
+   dart_datatype_t   dtype,
+   void            * addr,
+   dart_gptr_t     * gptr)
+{
+    if(addr == NULL)
+    {
+        DART_LOG_ERROR("Invalid memory address pointer -> NULL!"); \
+
+        return DART_ERR_INVAL;
+    }
+
+    return dart_team_mem_impl(teamid, nelem, dtype, addr, gptr);
+}
+
 /*
- *DASH documantation says, it wont deallocate memory. In fact, gaspi only supports
- *delete with similar deallocation of the segment. Therefore it will be dealocated
- *if invoked in it's current implementation. Basically renamed dart_team_memfree.
+ * gaspi_segment_delete deallocates memory + notify in case gaspi_segment_create was used,
+ * but only deallocates the notify part for binded memory.
+ * Therefore dart_team_memderegister can simply call dart_team_memfree.
  */
 dart_ret_t dart_team_memderegister(dart_gptr_t gptr)
 {
-    int16_t            seg_id = gptr.segid;
-    gaspi_segment_id_t segs;
-    /*
-     * TODO May be wait on local completion ??
-     */
-    DART_CHECK_ERROR(delete_rma_requests(seg_id));
-    if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &segs) == -1)
-    {
-        return DART_ERR_INVAL;
-    }
-
-    DART_CHECK_ERROR(gaspi_segment_delete(segs));
-
-    DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, segs));
-
-    /* Remove the related correspondence relation record from the related translation table. */
-    if(dart_adapt_transtable_remove(seg_id) == -1)
-    {
-        return DART_ERR_INVAL;
-    }
-
-    return DART_OK;
+    return dart_team_memfree(gptr);
 }
 
 dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
@@ -250,92 +285,4 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
     }
     return DART_OK;
 }
-/*
-Implementation already defined in dart_globalmem.h
-dart_ret_t dart_gptr_incaddr(
-  dart_gptr_t * gptr,
-  int64_t       offs)
-{
-    gptr->addr_or_offs.offset += offs;
-    return DART_OK;
-}
 
-
-dart_ret_t dart_gptr_setunit(
-  dart_gptr_t      * gptr,
-  dart_team_unit_t   unit)
-{
-    gptr->unitid = unit.id;
-    return DART_OK;
-}
-*/
-dart_ret_t dart_team_memregister(
-   dart_team_t       teamid,
-   size_t            nelem,
-   dart_datatype_t   dtype,
-   void            * addr,
-   dart_gptr_t     * gptr)
-{
-    size_t nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
-    size_t teamsize;
-    dart_team_unit_t unitid;
-    DART_CHECK_ERROR(dart_team_myid(teamid, &unitid));
-    DART_CHECK_ERROR(dart_team_size(teamid, &teamsize));
-
-    gaspi_segment_id_t   gaspi_seg_id;
-    gaspi_segment_id_t * gaspi_seg_ids = (gaspi_segment_id_t *) malloc(sizeof(gaspi_segment_id_t) * teamsize);
-    assert(gaspi_seg_ids);
-
-    uint16_t index;
-    int result = dart_adapt_teamlist_convert(teamid, &index);
-    if (result == -1)
-    {
-        goto dart_error_label;
-    }
-
-    gaspi_memory_description_t segment_descrition = 0;
-    /* get a free gaspi segment id */
-    DART_CHECK_ERROR_GOTO(dart_error_label, seg_stack_pop(&dart_free_coll_seg_ids, &gaspi_seg_id));
-
-    /* Create the gaspi-segment with memory allocation */
-    DART_CHECK_ERROR_GOTO(dart_error_label, gaspi_segment_bind(gaspi_seg_id,
-                                                                 addr,
-                                                                 nbytes,
-                                                                 segment_descrition));
-    /**
-     * collect the other segment numbers of the team
-     * gaspi_segemt_id_t is currently defined as unsigned char.
-     * therefore DART_TYPE_BYTE is used as it has the same size
-     */
-    DART_CHECK_ERROR_GOTO(dart_error_label, dart_allgather(&gaspi_seg_id,
-                                                           gaspi_seg_ids,
-                                                           1,
-                                                           DART_TYPE_BYTE,
-                                                           teamid));
-    /* -- Updating infos on gptr -- */
-    gptr->unitid = unitid.id;
-    gptr->segid  = dart_memid; /* Segid equals to dart_memid (always a positive integer), identifies an unique collective global memory. */
-    gptr->flags  = index; /* For collective allocation, the flag is marked as 'index' */
-    gptr->teamid = teamid;
-    gptr->addr_or_offs.offset = 0;
-
-    /* -- Updating the translation table of teamid with the created (segment) infos -- */
-    info_t item;
-    item.seg_id           = dart_memid;
-    item.size             = nbytes;
-    item.gaspi_seg_ids    = gaspi_seg_ids;
-    item.own_gaspi_seg_id = gaspi_seg_id;
-    item.unit_count       = teamsize;
-
-    /* Add this newly generated correspondence relationship record into the translation table. */
-    dart_adapt_transtable_add(item);
-    DART_CHECK_ERROR_GOTO(dart_error_label, inital_rma_request_entry(item.seg_id));
-    dart_memid++;
-
-    return DART_OK;
-
-dart_error_label:
-    free(gaspi_seg_ids);
-    return DART_ERR_INVAL;
-
-}

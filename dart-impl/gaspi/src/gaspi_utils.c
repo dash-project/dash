@@ -99,7 +99,7 @@ gaspi_return_t gaspi_reduce_user (
    //find one free Id within range (0, max_num_segments)
    gaspi_segment_id_t* current_segments = (gaspi_segment_id_t*) malloc (num_of_segments * sizeof(gaspi_segment_id_t));
    gaspi_segment_id_t useable_id = 0;
-   DART_CHECK_ERROR(seg_stack_pop(&dart_free_coll_seg_ids, &useable_id));
+   DART_CHECK_ERROR(seg_stack_pop(&pool_gaspi_seg_ids, &useable_id));
 
    //create segment to read from for each process using one id found above
    size_t num_bytes = element_size * num;

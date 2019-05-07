@@ -37,7 +37,7 @@ struct dart_buddy {
 
 /* Help to do memory management work for local allocation/free */
 char* dart_mempool_localalloc;
-struct dart_buddy  *  dart_localpool;
+struct dart_buddy*  dart_localpool;
 
 static inline unsigned int
 num_level(size_t size)
@@ -76,7 +76,7 @@ dart_buddy_new(size_t size)
     return NULL;
   }
   unsigned int lsize  = (((unsigned int) 1) << level);
-	struct dart_buddy * self =
+  struct dart_buddy * self =
     malloc(sizeof(struct dart_buddy) + sizeof(uint8_t) * (lsize * 2 - 2));
 	self->level = level;
 	memset(self->tree, NODE_UNUSED, lsize * 2 - 1);

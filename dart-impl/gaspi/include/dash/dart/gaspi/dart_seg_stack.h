@@ -11,7 +11,7 @@ typedef struct seg_stack{
     gaspi_segment_id_t * segids;
 }seg_stack_t;
 
-dart_ret_t seg_stack_init(seg_stack_t * stack, size_t count);
+dart_ret_t seg_stack_init(seg_stack_t * stack, gaspi_segment_id_t begin, size_t count);
 dart_ret_t seg_stack_finish(seg_stack_t * stack);
 dart_ret_t seg_stack_fill(seg_stack_t * stack, gaspi_segment_id_t begin, size_t count);
 dart_ret_t seg_stack_pop(seg_stack_t * stack, gaspi_segment_id_t * segid_out);

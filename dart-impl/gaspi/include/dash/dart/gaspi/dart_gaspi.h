@@ -9,7 +9,8 @@ extern "C" {
 #include <GASPI.h>
 #include <dash/dart/if/dart.h>
 #include <dash/dart/if/dart_types.h>
-#include "gaspi_utils.h"
+#include <dash/dart/gaspi/dart_seg_stack.h>
+#include <dash/dart/gaspi/gaspi_utils.h>
 
 #define DART_MAX_TEAM_NUMBER (256)
 #define DART_INTERFACE_ON
@@ -29,6 +30,9 @@ extern gaspi_pointer_t dart_gaspi_buffer_ptr;
 extern const gaspi_segment_id_t dart_mempool_seg_localalloc;
 extern const gaspi_segment_id_t dart_fallback_seg;
 extern bool dart_fallback_seg_is_allocated;
+
+extern seg_stack_t pool_gaspi_seg_ids;
+extern seg_stack_t pool_dart_seg_ids;
 
 #define DART_INTERFACE_OFF
 

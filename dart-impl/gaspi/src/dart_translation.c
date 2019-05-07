@@ -28,18 +28,19 @@ int dart_adapt_transtable_add (info_t item)
     if (dart_transtable_globalalloc == NULL)
     {
         dart_transtable_globalalloc = p;
+
+        return 0;
     }
     /* Otherwise, insert the added item into the translation table. */
-    else
+
+    q = dart_transtable_globalalloc;
+    while (q != NULL)
     {
-        q = dart_transtable_globalalloc;
-        while (q != NULL)
-        {
-            pre = q;
-            q = q -> next;
-        }
-        pre -> next = p;
+        pre = q;
+        q = q -> next;
     }
+    pre->next = p;
+
     return 0;
 }
 
@@ -58,11 +59,13 @@ int dart_adapt_transtable_remove (int16_t seg_id)
             pre = p;
             p = p->next;
         }
-        if (!p)
+
+        if (p == NULL)
         {
-            fprintf(stderr,"Invalid seg_id: %d,can't remove the record from translation table", seg_id);
+            fprintf(stderr,"Invalid seg_id: %d,can't remove the record from translation table\n", seg_id);
             return -1;
         }
+
         pre->next = p->next;
     }
     free(p->trans.gaspi_seg_ids);
@@ -75,11 +78,11 @@ int dart_adapt_transtable_get_local_gaspi_seg_id(int16_t seg_id, gaspi_segment_i
     node_t p;
     p = dart_transtable_globalalloc;
 
-    while ((p != NULL) && (seg_id > ((p->trans).seg_id)))
+    while ((p != NULL) && (seg_id != ((p->trans).seg_id)))
     {
         p = p->next;
     }
-    if ((!p) || (seg_id != ((p->trans).seg_id)))
+    if (p == NULL)
     {
 
         fprintf(stderr,"Invalid seg_id: %d, can not get the related window object", seg_id);

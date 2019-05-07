@@ -11,8 +11,7 @@ dart_team_t dart_next_availteamid;
 
 dart_team_struct_t dart_teams[DART_MAX_TEAM_NUMBER];
 
-seg_stack_t dart_free_coll_seg_ids;
-gaspi_segment_id_t dart_gaspi_segment_cnt;
+
 
 struct dart_free_teamlist_entry
 {
