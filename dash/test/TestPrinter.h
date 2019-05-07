@@ -162,7 +162,7 @@ class TestPrinter : public EmptyTestEventListener {
                     GASPI_OP_SUM, GASPI_TYPE_INT,
                     GASPI_GROUP_ALL, GASPI_BLOCK);
 #endif
-
+    std::cout << std::flush;
     if(_myid == 0){
       passed            = (success_units == _size);
       _testcase_passed &= passed;
