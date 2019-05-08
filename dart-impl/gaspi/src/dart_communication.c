@@ -1866,6 +1866,7 @@ dart_ret_t dart_reduce(
   return ret;
 }
 
+/* Warning: This implementation ignores tags */
 dart_ret_t dart_recv(
   void                * recvbuf,
   size_t                nelem,
@@ -1873,11 +1874,38 @@ dart_ret_t dart_recv(
   int                   tag,
   dart_global_unit_t    unit)
 {
-    DART_LOG_ERROR("dart_recv for gaspi not supported!");
-    printf("dart_recv for gaspi not supported!\n");
-    return DART_ERR_INVAL;
+    dart_datatype_struct_t* dts = get_datatype_struct(dtype);
+    if(!datatype_isbasic(dts))
+    {
+      DART_LOG_ERROR("complex datatypes are not supported!");
+
+      return DART_ERR_INVAL;
+    }
+
+    size_t nbytes_elem = datatype_sizeof(dts);
+
+    // get gaspi segment id and bind it to dst
+    gaspi_segment_id_t free_seg_id;
+    DART_CHECK_GASPI_ERROR(seg_stack_pop(&pool_gaspi_seg_ids, &free_seg_id));
+    //DART_CHECK_GASPI_ERROR(gaspi_segment_use(free_seg_id, recvbuf, nbytes_elem, GASPI_GROUP_ALL, GASPI_BLOCK, 0));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(free_seg_id, recvbuf, nbytes_elem, 0));
+    gaspi_rank_t rank;
+    gaspi_passive_receive(free_seg_id, 0, &rank, nbytes_elem, GASPI_BLOCK);
+
+    DART_CHECK_GASPI_ERROR(gaspi_segment_delete(free_seg_id));
+    DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, free_seg_id));
+
+    if(rank != unit.id)
+    {
+      DART_LOG_ERROR("Rank id of sender doesn't match.");
+
+      return DART_ERR_OTHER;
+    }
+
+    return DART_OK;
 }
 
+/* Warning: This implementation ignores tags */
 dart_ret_t dart_send(
   const void         * sendbuf,
   size_t               nelem,
@@ -1885,9 +1913,28 @@ dart_ret_t dart_send(
   int                  tag,
   dart_global_unit_t   unit)
 {
-    DART_LOG_ERROR("dart_send for gaspi not supported!");
-    printf("dart_send for gaspi not supported!\n");
-    return DART_ERR_INVAL;
+    dart_datatype_struct_t* dts = get_datatype_struct(dtype);
+    if(!datatype_isbasic(dts))
+    {
+      DART_LOG_ERROR("complex datatypes are not supported!");
+
+      return DART_ERR_INVAL;
+    }
+
+    size_t nbytes_elem = datatype_sizeof(dts);
+
+    // get gaspi segment id and bind it to dst
+    gaspi_segment_id_t free_seg_id;
+    DART_CHECK_GASPI_ERROR(seg_stack_pop(&pool_gaspi_seg_ids, &free_seg_id));
+    //DART_CHECK_GASPI_ERROR(gaspi_segment_use(free_seg_id, sendbuf, nbytes_elem, GASPI_GROUP_ALL, GASPI_BLOCK, 0));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(free_seg_id, sendbuf, nbytes_elem, 0));
+
+    gaspi_passive_send(free_seg_id, 0, unit.id, nbytes_elem, GASPI_BLOCK);
+
+    DART_CHECK_GASPI_ERROR(gaspi_segment_delete(free_seg_id));
+    DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, free_seg_id));
+
+    return DART_OK;
 }
 
 dart_ret_t dart_sendrecv(
@@ -1902,8 +1949,8 @@ dart_ret_t dart_sendrecv(
   int                  recv_tag,
   dart_global_unit_t   src)
 {
-    DART_LOG_ERROR("dart_sendrecv for gaspi not supported!");
-    printf("dart_send for gaspi not supported!\n");
+    DART_LOG_ERROR("dart_fetch_and_op for gaspi not supported!");
+
     return DART_ERR_INVAL;
 }
 
