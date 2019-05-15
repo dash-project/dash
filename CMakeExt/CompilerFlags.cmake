@@ -147,7 +147,7 @@ endif()
 set (CXX_GDB_FLAG "-g"
     CACHE STRING "C++ compiler (clang++) debug symbols flag")
 if(OPENMP_FOUND)
-    set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
+        #set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
 endif()
 
 
