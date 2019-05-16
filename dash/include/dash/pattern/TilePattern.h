@@ -823,7 +823,7 @@ public:
     }
     std::array<IndexType, NumDimensions> g_coords =
       global(_myid, l_coords);
-    auto offset = _memory_layout.at(g_coords);
+    auto offset = global_at(g_coords);
     DASH_LOG_TRACE_VAR("TilePattern.global >", offset);
     return offset;
   }
