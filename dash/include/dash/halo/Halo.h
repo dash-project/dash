@@ -953,7 +953,7 @@ public:
    * \see DashGlobalIteratorConcept
    */
   pattern_index_t gpos() const {
-    return _pattern->at(glob_coords(_idx));
+    return _pattern->global_at(glob_coords(_idx));
   }
 
   std::array<pattern_index_t, NumDimensions> gcoords() const {
