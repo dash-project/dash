@@ -876,7 +876,7 @@ public:
     // Coordinates of the block containing the element:
     std::array<IndexType, NumDimensions> block_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto vs_coord     = global_coords[d] + viewspec.offset(d);
+      auto vs_coord     = view_coords[d] + viewspec.offset(d);
       phase_coords[d]   = vs_coord % _blocksize_spec.extent(d);
       block_coords[d]   = vs_coord / _blocksize_spec.extent(d);
     }
@@ -916,6 +916,7 @@ public:
     std::array<IndexType, NumDimensions> phase_coords;
     // Coordinates of the block containing the element:
     std::array<IndexType, NumDimensions> block_coords;
+
     for (auto d = 0; d < NumDimensions; ++d) {
       auto vs_coord     = global_coords[d];
       phase_coords[d]   = vs_coord % _blocksize_spec.extent(d);
@@ -1059,7 +1060,7 @@ public:
     DASH_LOG_TRACE_VAR("TilePattern.has_local_elements()", unit);
     DASH_LOG_TRACE_VAR("TilePattern.has_local_elements()", viewspec);
     // Apply viewspec offset in dimension to given position
-    dim_offset += viewspec[dim].offset;
+    dim_offset += viewspec.offset(dim);
     // Offset to block offset
     IndexType block_coord_d    = dim_offset / _blocksize_spec.extent(dim);
     DASH_LOG_TRACE_VAR("TilePattern.has_local_elements", block_coord_d);

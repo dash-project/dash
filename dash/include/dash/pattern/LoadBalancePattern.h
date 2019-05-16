@@ -431,7 +431,7 @@ public:
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t                           & viewspec) const
   {
-    return unit_at(coords[0] + viewspec[0].offset);
+    return unit_at(coords[0] + viewspec.offset(0));
   }
 
   /**
@@ -456,7 +456,7 @@ public:
     /// View to apply global position
     const ViewSpec_t & viewspec) const
   {
-    return unit_at(global_pos + viewspec[0].offset);
+    return unit_at(global_pos + viewspec.offset(0));
   }
 
   /**
@@ -561,7 +561,7 @@ public:
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const
   {
-    return local_coords[0] + viewspec[0].offset;
+    return local_coords[0] + viewspec.offset(0);
   }
 
   /**
@@ -760,7 +760,7 @@ public:
     const ViewSpec_t & viewspec) const
   {
     auto vs_coords = g_coords;
-    vs_coords[0] += viewspec[0].offset;
+    vs_coords[0] += viewspec.offset(0);
     return local_coords(vs_coords)[0];
   }
 

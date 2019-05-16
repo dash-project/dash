@@ -436,7 +436,7 @@ public:
     // Apply viewspec offsets to coordinates:
     std::array<IndexType, NumDimensions> vs_coords;
     for (auto d = 0; d < NumDimensions; ++d) {
-      vs_coords[d] = coords[d] + viewspec[d].offset;
+      vs_coords[d] = coords[d] + viewspec.offset(0);
     }
     return unit_at(vs_coords);
   }
@@ -937,7 +937,7 @@ public:
     DASH_LOG_TRACE_VAR("BlockPattern.has_local_elements()", dim_offset);
     DASH_LOG_TRACE_VAR("BlockPattern.has_local_elements()", unit);
     // Apply viewspec offset in dimension to given position
-    dim_offset += viewspec[dim].offset;
+    dim_offset += viewspec.offset(0);
     // Offset to block offset
     IndexType block_coord_d    = dim_offset / _blocksize_spec.extent(dim);
     DASH_LOG_TRACE_VAR("BlockPattern.has_local_elements", block_coord_d);

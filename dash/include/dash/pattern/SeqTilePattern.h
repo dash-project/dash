@@ -1091,7 +1091,7 @@ public:
     DASH_LOG_TRACE_VAR("SeqTilePattern.has_local_elements()", unit);
     DASH_LOG_TRACE_VAR("SeqTilePattern.has_local_elements()", viewspec);
     // Apply viewspec offset in dimension to given position
-    dim_offset += viewspec[dim].offset;
+    dim_offset += viewspec.offset(dim);
     // Offset to block offset
     IndexType block_coord_d    = dim_offset / _blocksize_spec.extent(dim);
     DASH_LOG_TRACE_VAR("SeqTilePattern.has_local_elements", block_coord_d);

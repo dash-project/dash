@@ -372,7 +372,7 @@ public:
     const ViewSpec_t & viewspec) const {
     DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at()", coords);
     // Apply viewspec offsets to coordinates:
-    team_unit_t unit_id(((coords[0] + viewspec[0].offset) / _blocksize)
+    team_unit_t unit_id(((coords[0] + viewspec.offset(0)) / _blocksize)
                           % _nunits);
     DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at >", unit_id);
     return unit_id;
@@ -404,7 +404,7 @@ public:
   ) const {
     DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at()", global_pos);
     // Apply viewspec offsets to coordinates:
-    team_unit_t unit_id(((global_pos + viewspec[0].offset) / _blocksize)
+    team_unit_t unit_id(((global_pos + viewspec.offset(0)) / _blocksize)
                           % _nunits);
     DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at >", unit_id);
     return unit_id;
@@ -485,7 +485,7 @@ public:
     const std::array<IndexType, NumDimensions> & local_coords,
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
-    return local_coords[0] + viewspec[0].offset;
+    return local_coords[0] + viewspec.offset(0);
   }
 
   /**
@@ -712,7 +712,7 @@ public:
     const std::array<IndexType, NumDimensions> & g_coords,
     const ViewSpec_t & viewspec) const {
     auto vs_coords = g_coords;
-    vs_coords[0] += viewspec[0].offset;
+    vs_coords[0] += viewspec.offset(0);
     return local_coords(vs_coords)[0];
   }
 
