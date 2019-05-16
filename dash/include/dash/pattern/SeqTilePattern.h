@@ -1398,25 +1398,6 @@ public:
   }
 
   /**
-   * Cartesian index space representing the underlying memory model of the
-   * pattern.
-   *
-   * \see DashPatternConcept
-   */
-  const MemoryLayout_t & memory_layout() const {
-    return _memory_layout;
-  }
-
-  /**
-   * Cartesian index space representing the underlying local memory model
-   * of this pattern for the calling unit.
-   * Not part of DASH Pattern concept.
-   */
-  const LocalMemoryLayout_t & local_memory_layout() const {
-    return _local_memory_layout;
-  }
-
-  /**
    * Cartesian arrangement of the Team containing the units to which this
    * pattern's elements are mapped.
    *
@@ -1435,6 +1416,18 @@ public:
   std::array<IndexType, NumDimensions> coords(
     IndexType index) const {
     return _memory_layout.coords(index);
+  }
+
+  /**
+   * Convert given global linear offset (index) to global cartesian
+   * coordinates using viewspec.
+   *
+   * \see DashPatternConcept
+   */
+  std::array<IndexType, NumDimensions> coords(
+    IndexType          index,
+    const ViewSpec_t & viewspec) const {
+    return _memory_layout.coords(index, viewspec);
   }
 
   /**

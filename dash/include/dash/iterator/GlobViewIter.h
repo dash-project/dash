@@ -655,7 +655,7 @@ public:
       auto g_coords = coords(idx);
       DASH_LOG_TRACE_VAR("GlobViewIter.gpos", _idx);
       DASH_LOG_TRACE_VAR("GlobViewIter.gpos", g_coords);
-      auto g_idx    = _pattern->memory_layout().at(g_coords);
+      auto g_idx    = _pattern->global_at(g_coords);
       DASH_LOG_TRACE_VAR("GlobViewIter.gpos", g_idx);
       g_idx += offset;
       DASH_LOG_TRACE_VAR("GlobViewIter.gpos >", g_idx);
@@ -718,7 +718,7 @@ public:
     if (_viewspec != nullptr) {
       return *_viewspec;
     }
-    return ViewSpecType(_pattern->memory_layout().extents());
+    return ViewSpecType(_pattern->extents());
   }
 
   /**
@@ -1004,7 +1004,7 @@ private:
         glob_coords[d]  += dim_offset;
       }
     } else {
-      glob_coords = _pattern->memory_layout().coords(glob_index);
+      glob_coords = _pattern->coords(glob_index);
     }
     DASH_LOG_TRACE_VAR("GlobViewIter.coords >", glob_coords);
     return glob_coords;

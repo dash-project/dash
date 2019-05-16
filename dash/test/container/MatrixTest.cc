@@ -487,7 +487,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
       auto l_coords   = pattern.local_coords(g_coords);
       auto unit_id    = pattern.unit_at(g_coords);
       auto local_idx  = pattern.local_at(l_coords);
-      auto global_idx = pattern.memory_layout().at(g_coords);
+      auto global_idx = pattern.global_at(g_coords);
       auto exp_value  = ((unit_id + 1) * 1000) + local_idx;
       bool is_local   = unit_id == pattern.team().myid();
       element_t value = column[row];
