@@ -937,7 +937,7 @@ public:
     DASH_LOG_TRACE_VAR("BlockPattern.has_local_elements()", dim_offset);
     DASH_LOG_TRACE_VAR("BlockPattern.has_local_elements()", unit);
     // Apply viewspec offset in dimension to given position
-    dim_offset += viewspec.offset(0);
+    dim_offset += viewspec.offset(dim);
     // Offset to block offset
     IndexType block_coord_d    = dim_offset / _blocksize_spec.extent(dim);
     DASH_LOG_TRACE_VAR("BlockPattern.has_local_elements", block_coord_d);
