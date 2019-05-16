@@ -876,7 +876,7 @@ public:
     // Coordinates of the block containing the element:
     std::array<IndexType, NumDimensions> block_coords{};
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto vs_coord     = view_coords[d] + viewspec.offset(d);
+      auto vs_coord     = global_coords[d] + viewspec.offset(d);
       phase_coords[d]   = vs_coord % _blocksize_spec.extent(d);
       block_coords[d]   = vs_coord / _blocksize_spec.extent(d);
     }
