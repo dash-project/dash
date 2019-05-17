@@ -13,16 +13,6 @@ TEST_F(DARTCollectiveTest, Send_Recv) {
     data[i] = i;
   }
 
-  std::vector<int> data2(units);
-  for(int i = 0; i < units; ++i) {
-    data2[i] = (i + 1) * 10;
-  }
-
-  std::vector<int> data3(units);
-  for(int i = 0; i < units; ++i) {
-    data3[i] = (i + 1) * 100;
-  }
-
   // only use non-excess units
   if(_dash_id < units) {
     // every other unit sends data to the next unit
