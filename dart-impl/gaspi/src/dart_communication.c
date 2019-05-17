@@ -1123,7 +1123,52 @@ dart_ret_t dart_put(
    return DART_OK;
 }
 
+#define DART_GET_OP_INT(_op_name) \
+    case DART_TYPE_SHORT: return DART_NAME_OP(_op_name, short); \
+    case DART_TYPE_INT: return DART_NAME_OP(_op_name, int);     \
+    case DART_TYPE_UINT: return DART_NAME_OP(_op_name, uInt); \
+    case DART_TYPE_LONG: return DART_NAME_OP(_op_name, long); \
+    case DART_TYPE_ULONG: return DART_NAME_OP(_op_name, uLong); \
+    case DART_TYPE_LONGLONG: return DART_NAME_OP(_op_name, longLong); \
+    case DART_TYPE_ULONGLONG: return DART_NAME_OP(_op_name, uLongLong);
 
+#define DART_GET_OP_INT_BYTE(_op_name) \
+   case DART_TYPE_BYTE: return DART_NAME_OP(_op_name, char); \
+   DART_GET_OP_INT(_op_name)
+
+#define DART_GET_OP_ALL(_op_name) \
+   DART_GET_OP_INT_BYTE(_op_name) \
+   case DART_TYPE_FLOAT: return DART_NAME_OP(_op_name, float); \
+   case DART_TYPE_DOUBLE: return DART_NAME_OP(_op_name, double); \
+   case DART_TYPE_LONG_DOUBLE: return DART_NAME_OP(_op_name, longDouble); \
+
+#define DART_GET_OP(_op_name, _types) \
+    switch(dtype) \
+    { \
+        DART_GET_OP_##_types(_op_name) \
+        default: return NULL; \
+    }
+
+gaspi_reduce_operation_t gaspi_get_op(dart_operation_t op, dart_datatype_t dtype)
+{
+    switch(op)
+    {
+      case DART_OP_MINMAX: DART_GET_OP(MINMAX, ALL)
+      case DART_OP_MIN   : DART_GET_OP(MIN, ALL)
+      case DART_OP_MAX   : DART_GET_OP(MAX, ALL)
+      case DART_OP_SUM   : DART_GET_OP(SUM, ALL)
+      case DART_OP_PROD  : DART_GET_OP(PROD, ALL)
+      case DART_OP_LAND  : DART_GET_OP(LAND, INT)
+      case DART_OP_LOR   : DART_GET_OP(LOR, INT)
+      case DART_OP_LXOR  : DART_GET_OP(LXOR, INT)
+      case DART_OP_BAND  : DART_GET_OP(BAND, INT_BYTE)
+      case DART_OP_BOR   : DART_GET_OP(BOR, INT_BYTE)
+      case DART_OP_BXOR  : DART_GET_OP(BXOR, INT_BYTE)
+      default: DART_LOG_ERROR("ERROR: Operation not supported!");
+    }
+
+    return NULL;
+}
 dart_ret_t dart_allreduce(
   const void       * sendbuf,
   void             * recvbuf,
@@ -1132,385 +1177,37 @@ dart_ret_t dart_allreduce(
   dart_operation_t   op,
   dart_team_t        team)
 {
-  dart_team_unit_t        myid;
-  size_t                  team_size;
-  uint16_t                index;
-  size_t                  elem_size = dart_gaspi_datatype_sizeof(dtype);
-  DART_CHECK_ERROR(dart_team_myid(team, &myid));
-  DART_CHECK_ERROR(dart_team_size(team, &team_size));
+    dart_datatype_struct_t* dts = get_datatype_struct(dtype);
+    if(!datatype_isbasic(dts))
+    {
+      DART_LOG_ERROR("complex datatypes are not supported!");
 
-  if(dart_adapt_teamlist_convert(team, &index) == -1)
-  {
-    DART_LOG_ERROR(stderr, "dart_allreduce: can't find index of given team\n");
-    return DART_ERR_OTHER;
-  }
-  /*
-   * while DART supports 9 different datatypes when this was written
-   * gaspi only supports 6. To keep DART compatible and easy to use
-   * the gaspi_data_type isn't used in this case.
-   */
-  gaspi_reduce_state_t reduce_state = GASPI_STATE_HEALTHY;
-  dart_ret_t ret = DART_OK;
-  gaspi_group_t gaspi_group_id = dart_teams[index].id;
-  switch (op) {
-     case DART_OP_MINMAX:
-     switch(dtype){
-        case DART_TYPE_SHORT:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MINMAX_short,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_INT:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MINMAX_int,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_BYTE:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MINMAX_char,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_UINT:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MINMAX_uInt,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_LONG:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MINMAX_long,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_ULONG:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MINMAX_uLong,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_LONGLONG:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MINMAX_longLong,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_FLOAT:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MINMAX_float,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_DOUBLE:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MINMAX_double,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_MINMAX!!\n");
-                 ret = DART_ERR_INVAL;
-                 break;
+      return DART_ERR_INVAL;
+    }
+    dart_team_unit_t myid;
+    DART_CHECK_ERROR(dart_team_myid(team, &myid));
 
-     }
-     break;
-     case DART_OP_MIN:
-     switch(dtype){
-        case DART_TYPE_SHORT:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_short,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_INT:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_int,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_BYTE:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_char,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_UINT:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_uInt,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_LONG:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_long,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_ULONG:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_uLong,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_LONGLONG:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_longLong,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_FLOAT:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_float,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_DOUBLE:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_double,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_MIN!!\n");
-                 ret = DART_ERR_INVAL;
-                 break;
-       }
-       break;
-       case DART_OP_MAX:
-       switch(dtype){
-          case DART_TYPE_SHORT:
-            gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_short,
-                                 reduce_state, gaspi_group_id, GASPI_BLOCK);
-            break;
-          case DART_TYPE_INT:
-            gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_int,
-                                 reduce_state, gaspi_group_id, GASPI_BLOCK);
-            break;
-          case DART_TYPE_BYTE:
-            gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_char,
-                                 reduce_state, gaspi_group_id, GASPI_BLOCK);
-            break;
-          case DART_TYPE_UINT:
-            gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_uInt,
-                                 reduce_state, gaspi_group_id, GASPI_BLOCK);
-            break;
-          case DART_TYPE_LONG:
-            gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_long,
-                                 reduce_state, gaspi_group_id, GASPI_BLOCK);
-            break;
-          case DART_TYPE_ULONG:
-            gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_uLong,
-                                 reduce_state, gaspi_group_id, GASPI_BLOCK);
-            break;
-          case DART_TYPE_LONGLONG:
-            gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_longLong,
-                                 reduce_state, gaspi_group_id, GASPI_BLOCK);
-            break;
-          case DART_TYPE_FLOAT:
-            gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_float,
-                                 reduce_state, gaspi_group_id, GASPI_BLOCK);
-            break;
-          case DART_TYPE_DOUBLE:
-            gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_double,
-                                 reduce_state, gaspi_group_id, GASPI_BLOCK);
-            break;
-          default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_MAX!\n");
-                   ret = DART_ERR_INVAL;
-                   break;
-       }
-       break;
-     case DART_OP_SUM:
-     switch(dtype){
-        case DART_TYPE_SHORT:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_short,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_INT:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_int,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_BYTE:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_char,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_UINT:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_uInt,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_LONG:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_long,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_ULONG:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_uLong,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_LONGLONG:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_longLong,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_FLOAT:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_float,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        case DART_TYPE_DOUBLE:
-          gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_double,
-                               reduce_state, gaspi_group_id, GASPI_BLOCK);
-          break;
-        default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_SUM!\n");
-                 ret = DART_ERR_INVAL;
-                 break;
-     }
-     break;
-     case DART_OP_PROD:
-       switch(dtype){
-         case DART_TYPE_SHORT:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_short,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       case DART_TYPE_INT:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_int,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       case DART_TYPE_BYTE:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_char,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       case DART_TYPE_UINT:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_uInt,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       case DART_TYPE_LONG:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_long,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       case DART_TYPE_ULONG:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_uLong,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       case DART_TYPE_LONGLONG:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_longLong,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       case DART_TYPE_FLOAT:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_float,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       case DART_TYPE_DOUBLE:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_double,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_PROD!\n");
-                ret = DART_ERR_INVAL;
-                break;
-     }
+    size_t team_size;
+    DART_CHECK_ERROR(dart_team_size(team, &team_size));
 
-     break;
-     case DART_OP_BAND:
-     switch(dtype){
-       case DART_TYPE_BYTE:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_BAND_char,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       case DART_TYPE_INT:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_BAND_int,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_BAND!\n");
-                ret = DART_ERR_INVAL;
-                break;
-     }
-     break;
-     case DART_OP_LAND:
-     switch(dtype){
-      case DART_TYPE_INT:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_LAND_int,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-      default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_PROD!\n");
-                ret = DART_ERR_INVAL;
-                break;
-     }
-     break;
-     case DART_OP_BOR:
-     switch(dtype){
-       case DART_TYPE_BYTE:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_BOR_char,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       case DART_TYPE_INT:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_BOR_int,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_BAND!\n");
-                ret = DART_ERR_INVAL;
-                break;
-     }
-     break;
-     case DART_OP_LOR:
-     switch(dtype){
-       case DART_TYPE_BYTE:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_LOR_char,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       case DART_TYPE_INT:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_LOR_int,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_BAND!\n");
-                ret = DART_ERR_INVAL;
-                break;
-     }
-     break;
-     case DART_OP_BXOR:
-     switch(dtype){
-       case DART_TYPE_BYTE:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_BXOR_char,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       case DART_TYPE_INT:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_BXOR_int,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-       default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_BAND!\n");
-                ret = DART_ERR_INVAL;
-                break;
-     }
-     break;
-     case DART_OP_LXOR:
-     switch(dtype){
-      case DART_TYPE_INT:
-         gaspi_allreduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_LAND_int,
-                              reduce_state, gaspi_group_id, GASPI_BLOCK);
-         break;
-      default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_PROD!\n");
-               ret = DART_ERR_INVAL;
-               break;
-     }
-     break;
-     default: DART_LOG_ERROR(stderr, "dart_allreduce: operation not supported!\n" );
-              ret = DART_ERR_INVAL;
-  }
-  return ret;
+    uint16_t index;
+    if(dart_adapt_teamlist_convert(team, &index) == -1)
+    {
+      DART_LOG_ERROR("Can't find index of given team!");
+      return DART_ERR_OTHER;
+    }
+
+    gaspi_reduce_operation_t gaspi_op = gaspi_get_op(op, dtype);
+    if(gaspi_op == NULL)
+    {
+      return DART_ERR_INVAL;
+    }
+
+    gaspi_allreduce_user(sendbuf, recvbuf, nelem,
+                        datatype_sizeof(dts), gaspi_op,
+                        NULL, dart_teams[index].id, GASPI_BLOCK);
+
+    return DART_OK;
 }
 
 dart_ret_t dart_reduce(
@@ -1522,15 +1219,24 @@ dart_ret_t dart_reduce(
   dart_team_unit_t   root,
   dart_team_t        team)
 {
-  dart_team_unit_t        myid;
-  size_t                  team_size;
+    dart_datatype_struct_t* dts = get_datatype_struct(dtype);
+    if(!datatype_isbasic(dts))
+    {
+      DART_LOG_ERROR("complex datatypes are not supported!");
+
+      return DART_ERR_INVAL;
+    }
   gaspi_segment_id_t      gaspi_seg_id = dart_gaspi_buffer_id;
   gaspi_pointer_t         seg_ptr      = NULL;
-  uint16_t                index;
-  size_t                  elem_size = dart_gaspi_datatype_sizeof(dtype);
+
+
+
+  dart_team_unit_t        myid;
+  size_t                  team_size;
   DART_CHECK_ERROR(dart_team_myid(team, &myid));
   DART_CHECK_ERROR(dart_team_size(team, &team_size));
 
+  uint16_t                index;
   if(dart_adapt_teamlist_convert(team, &index) == -1)
   {
     DART_LOG_ERROR(stderr, "dart_reduce: can't find index of given team\n");
@@ -1557,313 +1263,17 @@ dart_ret_t dart_reduce(
   dart_unit_t gaspi_root_proc;
   DART_CHECK_ERROR(unit_l2g(index, &gaspi_root_proc, root.id));
 
-  switch (op) {
-     case DART_OP_MIN:
-     switch(dtype){
-        case DART_TYPE_SHORT:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_short,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_INT:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_int,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_BYTE:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_char,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_UINT:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_uInt,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_LONG:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_long,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_ULONG:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_uLong,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_LONGLONG:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_longLong,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_FLOAT:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_float,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_DOUBLE:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_MIN_double,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_MIN!!\n");
-                 ret = DART_ERR_INVAL;
-                 break;
-       }
-       break;
-     case DART_OP_MAX:
-     switch(dtype){
-          case DART_TYPE_SHORT:
-            gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_short,
-                                 reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-            break;
-          case DART_TYPE_INT:
-            gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_int,
-                                 reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-            break;
-          case DART_TYPE_BYTE:
-            gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_char,
-                                 reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-            break;
-          case DART_TYPE_UINT:
-            gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_uInt,
-                                 reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-            break;
-          case DART_TYPE_LONG:
-            gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_long,
-                                 reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-            break;
-          case DART_TYPE_ULONG:
-            gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_uLong,
-                                 reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-            break;
-          case DART_TYPE_LONGLONG:
-            gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_longLong,
-                                 reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-            break;
-          case DART_TYPE_FLOAT:
-            gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_float,
-                                 reduce_state, gaspi_group_id, segment_ids ,gaspi_root_proc, GASPI_BLOCK);
-            break;
-          case DART_TYPE_DOUBLE:
-            gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                                 elem_size, gaspi_op_MAX_double,
-                                 reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-            break;
-          default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_MAX!\n");
-                   ret = DART_ERR_INVAL;
-                   break;
-       }
-       break;
-     case DART_OP_SUM:
-     switch(dtype){
-        case DART_TYPE_SHORT:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_short,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_INT:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_int,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_BYTE:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_char,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_UINT:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_uInt,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_LONG:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_long,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_ULONG:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_uLong,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_LONGLONG:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_longLong,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_FLOAT:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_float,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        case DART_TYPE_DOUBLE:
-          gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                               elem_size, gaspi_op_SUM_double,
-                               reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-          break;
-        default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_SUM!\n");
-                 ret = DART_ERR_INVAL;
-                 break;
-     }
-     break;
-     case DART_OP_PROD:
-       switch(dtype){
-         case DART_TYPE_SHORT:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_short,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       case DART_TYPE_INT:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_int,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       case DART_TYPE_BYTE:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_char,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       case DART_TYPE_UINT:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_uInt,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       case DART_TYPE_LONG:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_long,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       case DART_TYPE_ULONG:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_uLong,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       case DART_TYPE_LONGLONG:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_longLong,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       case DART_TYPE_FLOAT:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_float,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       case DART_TYPE_DOUBLE:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_PROD_double,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_PROD!\n");
-                ret = DART_ERR_INVAL;
-                break;
-     }
-
-     break;
-     case DART_OP_BAND:
-     switch(dtype){
-       case DART_TYPE_BYTE:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_BAND_char,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       case DART_TYPE_INT:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_BAND_int,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_BAND!\n");
-                ret = DART_ERR_INVAL;
-                break;
-     }
-     break;
-     case DART_OP_LAND:
-     switch(dtype){
-      case DART_TYPE_INT:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_LAND_int,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-      default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_PROD!\n");
-                ret = DART_ERR_INVAL;
-                break;
-     }
-     break;
-     case DART_OP_BOR:
-     switch(dtype){
-       case DART_TYPE_BYTE:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_BOR_char,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       case DART_TYPE_INT:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_BOR_int,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_BAND!\n");
-                ret = DART_ERR_INVAL;
-                break;
-     }
-     break;
-     case DART_OP_LOR:
-     switch(dtype){
-       case DART_TYPE_BYTE:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_LOR_char,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       case DART_TYPE_INT:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_LOR_int,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_BAND!\n");
-                ret = DART_ERR_INVAL;
-                break;
-     }
-     break;
-     case DART_OP_BXOR:
-     switch(dtype){
-       case DART_TYPE_BYTE:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_BXOR_char,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       case DART_TYPE_INT:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_BXOR_int,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-       default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_BAND!\n");
-                ret = DART_ERR_INVAL;
-                break;
-     }
-     break;
-     case DART_OP_LXOR:
-     switch(dtype){
-      case DART_TYPE_INT:
-         gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                              elem_size, gaspi_op_LAND_int,
-                              reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
-         break;
-      default: DART_LOG_ERROR("ERROR: Datatype not supported for DART_OP_PROD!\n");
-               ret = DART_ERR_INVAL;
-               break;
-     }
-     break;
-     default: DART_LOG_ERROR(stderr, "dart_reduce: operation not supported!\n" );
-              ret = DART_ERR_INVAL;
+  gaspi_reduce_operation_t gaspi_op = gaspi_get_op(op, dtype);
+  if(gaspi_op == NULL)
+  {
+    return DART_ERR_INVAL;
   }
-  //DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, free_id));
-  return ret;
+  size_t elem_size = dart_gaspi_datatype_sizeof(dtype);
+  gaspi_reduce_user(sendbuf, recvbuf, nelem,
+                    elem_size, gaspi_op,
+                    reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
+
+  return DART_OK;
 }
 
 /* Warning: This implementation ignores tags */
@@ -1949,7 +1359,7 @@ dart_ret_t dart_sendrecv(
   int                  recv_tag,
   dart_global_unit_t   src)
 {
-    DART_LOG_ERROR("dart_fetch_and_op for gaspi not supported!");
+    DART_LOG_ERROR("dart_sendrecv not supported!");
 
     return DART_ERR_INVAL;
 }
@@ -1962,10 +1372,32 @@ dart_ret_t dart_fetch_and_op(
   dart_datatype_t  dtype,
   dart_operation_t op)
 {
+  if(value == NULL || result == NULL)
+  {
+      DART_LOG_ERROR("No valid adress (NULL)");
+      return DART_ERR_INVAL;
+  }
 
-  DART_LOG_ERROR("dart_fetch_and_op for gaspi not supported!");
-  printf("dart_fetch_and_op for gaspi not supported!\n");
-  return DART_ERR_INVAL;
+  if(op != DART_OP_SUM)
+  {
+      DART_LOG_ERROR("dart_fetch_and_op operator not supported.");
+      return DART_ERR_INVAL;
+  }
+
+  dart_unit_t global_dst_unit_id;
+  gaspi_segment_id_t gaspi_dst_seg_id;
+  DART_CHECK_ERROR(glob_unit_gaspi_seg(&gptr, &global_dst_unit_id, &gaspi_dst_seg_id, "dart_put_handle"));
+
+  gaspi_atomic_value_t* value_old = (gaspi_atomic_value_t*) result;
+  DART_CHECK_GASPI_ERROR(
+        gaspi_atomic_fetch_add(global_dst_unit_id,
+                               gptr.addr_or_offs.offset,
+                               global_dst_unit_id,
+                               *((gaspi_atomic_value_t*) value),
+                               value_old,
+                               GASPI_BLOCK));
+
+  return DART_OK;
 }
 
 //Needs to be implemented
@@ -1976,36 +1408,8 @@ dart_ret_t dart_accumulate(
   dart_datatype_t  dtype,
   dart_operation_t op)
 {
-    printf("Entering dart_accumulate (gaspi)\n");
-
-    void *     rec_value;
-    auto teamid = gptr.teamid;
-    auto segid = gptr.segid;
-
-    dart_team_unit_t myrelid;
-    dart_global_unit_t myid;
-    dart_team_t myteamid;
-    dart_myid(&myid);
-    dart_team_myid(teamid, &myrelid);
-    // custom reduction op`s ausschließen
-
-    // check if dtype is basic type
-
-    // convert dart_op to gaspi_op
-
-    // get team id
-
-    // get segment
-
-    // get window?
-
-    // prepare chunks -> need for maximum element value
-
-    // here mpi calls mpi_accumulate
-    dart_reduce(value, rec_value, nelem, dtype, op, myrelid, teamid);
-    //
-
-    return DART_OK;
+    DART_LOG_ERROR("dart_accumulate_blocking_local for gaspi not supported!");
+    return DART_ERR_INVAL;
 }
 
 dart_ret_t dart_accumulate_blocking_local(
@@ -2016,7 +1420,6 @@ dart_ret_t dart_accumulate_blocking_local(
     dart_operation_t op)
 {
     DART_LOG_ERROR("dart_accumulate_blocking_local for gaspi not supported!");
-    printf("dart_accumulate_blocking_local for gaspi not supported!\n");
     return DART_ERR_INVAL;
 }
 
@@ -2027,9 +1430,27 @@ dart_ret_t dart_compare_and_swap(
     void           * result,
     dart_datatype_t  dtype)
 {
-    DART_LOG_ERROR("dart_compare_and_swap for gaspi not supported!");
-    printf("dart_compare_and_swap for gaspi not supported!\n");
-    return DART_ERR_INVAL;
+  if(value == NULL || compare == NULL || result == NULL)
+  {
+      DART_LOG_ERROR("No valid adress (NULL)");
+      return DART_ERR_INVAL;
+  }
+
+  dart_unit_t global_dst_unit_id;
+  gaspi_segment_id_t gaspi_dst_seg_id;
+  DART_CHECK_ERROR(glob_unit_gaspi_seg(&gptr, &global_dst_unit_id, &gaspi_dst_seg_id, "dart_put_handle"));
+
+  gaspi_atomic_value_t* value_old = (gaspi_atomic_value_t*) result;
+  DART_CHECK_GASPI_ERROR(
+        gaspi_atomic_compare_swap(global_dst_unit_id,
+                               gptr.addr_or_offs.offset,
+                               global_dst_unit_id,
+                               *((gaspi_atomic_value_t*) compare),
+                               *((gaspi_atomic_value_t*) value),
+                               value_old,
+                               GASPI_BLOCK));
+
+  return DART_OK;
 }
 
 dart_ret_t dart_alltoall(
@@ -2040,6 +1461,5 @@ dart_ret_t dart_alltoall(
     dart_team_t     teamid)
 {
     DART_LOG_ERROR("dart_alltoall for gaspi not supported!");
-    printf("dart_alltoall for gaspi not supported!\n");
     return DART_ERR_INVAL;
 }

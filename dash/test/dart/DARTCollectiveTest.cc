@@ -13,17 +13,35 @@ TEST_F(DARTCollectiveTest, Send_Recv) {
     data[i] = i;
   }
 
+  std::vector<int> data2(units);
+  for(int i = 0; i < units; ++i) {
+    data2[i] = (i + 1) * 10;
+  }
+
+  std::vector<int> data3(units);
+  for(int i = 0; i < units; ++i) {
+    data3[i] = (i + 1) * 100;
+  }
+
   // only use non-excess units
   if(_dash_id < units) {
     // every other unit sends data to the next unit
     if(_dash_id % 2 == 0) {
       dart_unit_t send_to = _dash_id + 1;
-      dart_send(&data[_dash_id], 1, DART_TYPE_INT, 0, send_to);
+      dart_send(&data[_dash_id], 1, DART_TYPE_INT, 1, send_to);
+      dart_send(&data2[_dash_id], 1, DART_TYPE_INT, 3, send_to);
+      dart_send(&data3[_dash_id], 1, DART_TYPE_INT, 4, send_to);
     } else {
-      int recv;
+      int recv[3];
       dart_unit_t recv_from = _dash_id - 1;
-      dart_recv(&recv, 1, DART_TYPE_INT, 0, recv_from);
-      ASSERT_EQ(recv, data[recv_from]);
+
+
+      dart_recv(&recv[0], 1, DART_TYPE_INT, 1, recv_from);
+      dart_recv(&recv[1], 1, DART_TYPE_INT, 3, recv_from);
+      dart_recv(&recv[2], 1, DART_TYPE_INT, 4, recv_from);
+      ASSERT_EQ(recv[0], data[recv_from]);
+      ASSERT_EQ(recv[1], data2[recv_from]);
+      ASSERT_EQ(recv[2], data3[recv_from]);
     }
   }
 }
@@ -73,6 +91,27 @@ TEST_F(DARTCollectiveTest, MinMax) {
   ASSERT_EQ_U(min_max_out[DART_OP_MINMAX_MAX], 2*dash::size()-1);
   ASSERT_EQ_U(min_max_out[DART_OP_MINMAX_MIN], 0);
 
+}
+
+TEST_F(DARTCollectiveTest, Sum) {
+
+  using elem_t = long;
+
+  elem_t value = static_cast<elem_t>(dash::myid());
+  elem_t sum = 0;
+  dart_allreduce(
+      &value,                        // send buffer
+      &sum,                       // receive buffer
+      1,                                  // buffer size
+      dash::dart_datatype<elem_t>::value,  // data type
+      DART_OP_SUM,                     // operation
+      dash::Team::All().dart_id()         // team
+      );
+
+  elem_t expected = 0;
+  for(int i = 0; i < dash::size(); ++i)
+    expected += i;
+  ASSERT_EQ_U(expected, sum);
 }
 
 TEST_F(DARTCollectiveTest, MinMaxInt64t) {

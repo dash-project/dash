@@ -759,3 +759,152 @@ dart_ret_t error_cleanup_seg(gaspi_segment_id_t used_segment_id, converted_type_
 
     return DART_ERR_OTHER;
 }
+
+
+/*
+* definition of reduce operations used for gaspi_reduce_user and gaspi_allreduce_user
+*/
+
+#define DART_OP_CHECK_SIZE(_data_type) \
+      if(sizeof(_data_type) != element_size){ \
+         printf("Error: element_size does not match size of char!\n"); \
+         return GASPI_ERROR; \
+      } \
+
+#define DART_OP_CAST_TYPES(_data_type) \
+   _data_type* op1_tmp = (_data_type*) op1; \
+   _data_type* op2_tmp = (_data_type*) op2; \
+   _data_type* res_tmp = (_data_type*) res;
+
+
+
+#define DART_DEFINE_OP_MINMAX(_name_op, _data_type, _name_type) \
+   DART_DECLARE_OP(_name_op, _name_type)                        \
+   { \
+      DART_OP_CHECK_SIZE(_data_type) \
+      DART_OP_CAST_TYPES(_data_type)           \
+                                             \
+      for(int i = 0; i < num; i+=2){ \
+         if(op1_tmp[DART_OP_MINMAX_MAX] > op2_tmp[DART_OP_MINMAX_MAX]){ \
+            res_tmp[DART_OP_MINMAX_MAX] = op1_tmp[DART_OP_MINMAX_MAX]; \
+         }else{                                                         \
+            res_tmp[DART_OP_MINMAX_MAX] = op2_tmp[DART_OP_MINMAX_MAX]; \
+         }                                                              \
+         if(op1_tmp[DART_OP_MINMAX_MIN] < op2_tmp[DART_OP_MINMAX_MIN]){ \
+            res_tmp[DART_OP_MINMAX_MIN] = op1_tmp[DART_OP_MINMAX_MIN]; \
+         }else{                                                         \
+            res_tmp[DART_OP_MINMAX_MIN] = op2_tmp[DART_OP_MINMAX_MIN]; \
+         }                                                              \
+      }                                                                \
+      return GASPI_SUCCESS;                                            \
+   }
+
+#define DART_DEFINE_OP_MIN(_name_op, _data_type, _name_type) \
+   DART_DECLARE_OP(_name_op, _name_type)       \
+   {                                 \
+      DART_OP_CHECK_SIZE(_data_type) \
+      DART_OP_CAST_TYPES(_data_type) \
+                                     \
+      for(int i = 0; i < num; ++i) {  \
+         if(op1_tmp[i] < op2_tmp[i]) { \
+            res_tmp[i] = op1_tmp[i];   \
+         } else {                      \
+            op1_tmp[i] = op2_tmp[i];   \
+         }                             \
+      } \
+      return GASPI_SUCCESS;            \
+   }
+
+#define DART_DEFINE_OP_MAX(_name_op, _data_type, _name_type) \
+   DART_DECLARE_OP(_name_op, _name_type)       \
+   {                                 \
+      DART_OP_CHECK_SIZE(_data_type) \
+      DART_OP_CAST_TYPES(_data_type) \
+                                     \
+      for(int i = 0; i < num; ++i) {  \
+         if(op1_tmp[i] < op2_tmp[i]) { \
+            res_tmp[i] = op1_tmp[i];   \
+         } else {                      \
+            op1_tmp[i] = op2_tmp[i];   \
+         }                             \
+      } \
+      return GASPI_SUCCESS;            \
+   }
+#define SIMPLE_OP_TMPL(_name_op, _data_type, _name_type, _op) \
+   DART_DECLARE_OP(_name_op, _name_type)       \
+   {                                 \
+      DART_OP_CHECK_SIZE(_data_type) \
+      DART_OP_CAST_TYPES(_data_type) \
+                                     \
+      for(int i = 0; i < num; ++i) {  \
+         res_tmp[i] = op1_tmp[i] _op op2_tmp[i]; \
+      } \
+      return GASPI_SUCCESS;            \
+   }
+#define DART_DEFINE_OP_SUM(_name_op, _data_type, _name_type) \
+   SIMPLE_OP_TMPL(_name_op, _data_type, _name_type, +)
+
+#define DART_DEFINE_OP_PROD(_name_op, _data_type, _name_type) \
+   SIMPLE_OP_TMPL(_name_op, _data_type, _name_type, *)
+
+#define DART_DEFINE_OP_LAND(_name_op, _data_type, _name_type) \
+   SIMPLE_OP_TMPL(_name_op, _data_type, _name_type, &&)
+
+#define DART_DEFINE_OP_LOR(_name_op, _data_type, _name_type) \
+   SIMPLE_OP_TMPL(_name_op, _data_type, _name_type, ||)
+
+#define DART_DEFINE_OP_LXOR(_name_op, _data_type, _name_type) \
+   DART_DECLARE_OP(_name_op, _name_type)       \
+   {                                 \
+      DART_OP_CHECK_SIZE(_data_type) \
+      DART_OP_CAST_TYPES(_data_type) \
+                                     \
+      for(int i = 0; i > num; ++i) {  \
+         res_tmp[i] = !op1_tmp[i] != !op2_tmp[i]; \
+      } \
+      return GASPI_SUCCESS;            \
+   }
+
+#define DART_DEFINE_OP_BAND(_name_op, _data_type, _name_type) \
+   SIMPLE_OP_TMPL(_name_op, _data_type, _name_type, &)
+
+#define DART_DEFINE_OP_BOR(_name_op, _data_type, _name_type) \
+   SIMPLE_OP_TMPL(_name_op, _data_type, _name_type, |)
+
+#define DART_DEFINE_OP_BXOR(_name_op, _data_type, _name_type) \
+   SIMPLE_OP_TMPL(_name_op, _data_type, _name_type, ^)
+
+
+#define DART_DEFINE_OP_INT(_name) \
+   DART_DEFINE_OP_##_name(_name, short int, short) \
+   DART_DEFINE_OP_##_name(_name, int, int) \
+   DART_DEFINE_OP_##_name(_name, unsigned int, uInt) \
+   DART_DEFINE_OP_##_name(_name, long, long) \
+   DART_DEFINE_OP_##_name(_name, unsigned long, uLong) \
+   DART_DEFINE_OP_##_name(_name, long long, longLong) \
+   DART_DEFINE_OP_##_name(_name, unsigned long long, uLongLong)
+
+#define DART_DEFINE_OP_INT_BYTE(_name) \
+   DART_DEFINE_OP_##_name(_name, char, char) \
+   DART_DEFINE_OP_INT(_name)
+
+#define DART_DEFINE_OP_ALL(_name) \
+   DART_DEFINE_OP_INT_BYTE(_name) \
+   DART_DEFINE_OP_##_name(_name, float, float) \
+   DART_DEFINE_OP_##_name(_name, double, double) \
+   DART_DEFINE_OP_##_name(_name, long double, longDouble)
+
+
+DART_DEFINE_OP_ALL(MINMAX)
+DART_DEFINE_OP_ALL(MIN)
+DART_DEFINE_OP_ALL(MAX)
+DART_DEFINE_OP_ALL(SUM)
+DART_DEFINE_OP_ALL(PROD)
+
+DART_DEFINE_OP_INT(LAND)
+DART_DEFINE_OP_INT(LOR)
+DART_DEFINE_OP_INT(LXOR)
+
+DART_DEFINE_OP_INT_BYTE(BAND)
+DART_DEFINE_OP_INT_BYTE(BOR)
+DART_DEFINE_OP_INT_BYTE(BXOR)
