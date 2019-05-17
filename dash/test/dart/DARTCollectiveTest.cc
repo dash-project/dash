@@ -29,19 +29,12 @@ TEST_F(DARTCollectiveTest, Send_Recv) {
     if(_dash_id % 2 == 0) {
       dart_unit_t send_to = _dash_id + 1;
       dart_send(&data[_dash_id], 1, DART_TYPE_INT, 1, send_to);
-      dart_send(&data2[_dash_id], 1, DART_TYPE_INT, 3, send_to);
-      dart_send(&data3[_dash_id], 1, DART_TYPE_INT, 4, send_to);
     } else {
-      int recv[3];
+      int recv;
       dart_unit_t recv_from = _dash_id - 1;
 
-
-      dart_recv(&recv[0], 1, DART_TYPE_INT, 1, recv_from);
-      dart_recv(&recv[1], 1, DART_TYPE_INT, 3, recv_from);
-      dart_recv(&recv[2], 1, DART_TYPE_INT, 4, recv_from);
-      ASSERT_EQ(recv[0], data[recv_from]);
-      ASSERT_EQ(recv[1], data2[recv_from]);
-      ASSERT_EQ(recv[2], data3[recv_from]);
+      dart_recv(&recv, 1, DART_TYPE_INT, 1, recv_from);
+      ASSERT_EQ(recv, data[recv_from]);
     }
   }
 }
