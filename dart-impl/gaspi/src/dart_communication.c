@@ -157,8 +157,11 @@ dart_ret_t dart_gather(
     DART_CHECK_ERROR(dart_barrier(teamid));
 
     gaspi_notification_t notify_value = 42;
+
     if(myid.id != root.id)
     {
+        // guarantees contiguous notification ids
+        gaspi_notification_id_t notify_id = (myid.id < root.id) ? myid.id : myid.id - 1;
         dart_unit_t glob_root_id;
         DART_CHECK_ERROR(unit_l2g(index, &glob_root_id, root.id));
         DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_onesided_seg, (void* const) sendbuf, nbytes, 0));
@@ -169,7 +172,7 @@ dart_ret_t dart_gather(
                                                   dart_coll_seg,
                                                   myid.id * nbytes,
                                                   nbytes,
-                                                  myid.id,
+                                                  notify_id,
                                                   notify_value,
                                                   queue,
                                                   GASPI_BLOCK));
@@ -186,7 +189,7 @@ dart_ret_t dart_gather(
         int notifies_left = team_size - 1;
         while(notifies_left > 0)
         {
-            DART_CHECK_GASPI_ERROR(blocking_waitsome(0, team_size, &first_id, &old_value, dart_coll_seg));
+            DART_CHECK_GASPI_ERROR(blocking_waitsome(0, team_size - 1, &first_id, &old_value, dart_coll_seg));
             if(old_value != notify_value)
             {
                 DART_LOG_ERROR("Error in process synchronization -> wrong notification value");
@@ -355,8 +358,11 @@ dart_ret_t dart_allgather(
     DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_onesided_seg, (void* const) sendbuf, nbytes, 0));
 
     gaspi_notification_t notify_value = 42;
+    gaspi_notification_id_t notify_id = 0;
     for(gaspi_rank_t unit_id = 0; unit_id < team_size; ++unit_id)
     {
+        if(unit_id == myid.id) continue;
+
         dart_unit_t glob_unit_id;
         DART_CHECK_ERROR(unit_l2g(index, &glob_unit_id, unit_id));
 
@@ -367,12 +373,12 @@ dart_ret_t dart_allgather(
                                                   dart_coll_seg,
                                                   myid.id * nbytes,
                                                   nbytes,
-                                                  myid.id,
+                                                  notify_id,
                                                   notify_value,
                                                   queue,
                                                   GASPI_BLOCK));
-
-
+        // guarantees contiguous notification ids
+        ++notify_id;
     }
 
     DART_CHECK_GASPI_ERROR(gaspi_segment_delete(dart_onesided_seg));
