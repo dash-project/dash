@@ -147,7 +147,7 @@ TEST_F(DARTCollectiveTest, ReduceMax) {
 
 }
 
-TEST_F(DARTCollectiveTest, AllgatherMax) {
+TEST_F(DARTCollectiveTest, Allgather) {
 
   using elem_t = long;
 
