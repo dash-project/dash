@@ -164,7 +164,7 @@ dart_ret_t dart_gather(
         dart_unit_t glob_root_id;
         DART_CHECK_ERROR(unit_l2g(index, &glob_root_id, root.id));
         DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_onesided_seg, (void* const) sendbuf, nbytes, 0));
-
+        //Todo: error handling
         DART_CHECK_GASPI_ERROR(gaspi_write_notify(dart_onesided_seg,
                                                   0UL,
                                                   glob_root_id,
