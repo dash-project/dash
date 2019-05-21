@@ -8,6 +8,9 @@
 #include <dash/dart/gaspi/dart_communication_priv.h>
 #include <dash/dart/gaspi/dart_translation.h>
 
+#include <dash/dart/base/logging.h>
+#include <dash/dart/base/locality.h>
+
 tree_root * rma_request_table[DART_MAX_SEGS];
 
 static void * request_table_key(struct stree_node * node)
@@ -567,11 +570,14 @@ gaspi_return_t remote_get(dart_gptr_t* gptr, gaspi_rank_t src_unit, gaspi_segmen
       nbytes_segment = conv_type->multiple[last_block].dst + conv_type->multiple[last_block].nbyte;
     }
 
+    DART_LOG_DEBUG("Setting up segment_bind with: dst_seg_id[%d], dst_seg_ptr(%p), byte_size[%d]", dst_seg_id, dst, nbytes_segment);
     DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dst_seg_id, dst, nbytes_segment, 0));
 
     size_t offset_src = gptr->addr_or_offs.offset;
     size_t offset_dst = 0;
 
+    DART_LOG_DEBUG("Reading the get %d times.", conv_type->num_blocks);
+    DART_LOG_DEBUG("Conversion type is: %d", conv_type->kind);
     for(int i = 0; i < conv_type->num_blocks; ++i)
     {
       if(conv_type->kind == DART_BLOCK_MULTIPLE)
@@ -624,11 +630,14 @@ gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segmen
       nbytes_segment = conv_type->multiple[last_block].src + conv_type->multiple[last_block].nbyte;
     }
 
+    DART_LOG_DEBUG("Setting up segment_bind with: src_seg_id[%d], src_seg_ptr(%p), byte_size[%d]", src_seg_id, src, nbytes_segment);
     DART_CHECK_GASPI_ERROR(gaspi_segment_bind(src_seg_id, (void* const) src, nbytes_segment, 0));
 
     size_t offset_src = 0;
     size_t offset_dst = gptr->addr_or_offs.offset;
 
+    DART_LOG_DEBUG("Writing the put %d times with conv_type: .", conv_type->num_blocks);
+    DART_LOG_DEBUG("Conversion type is: %d", conv_type->kind);
     for(int i = 0; i < conv_type->num_blocks; ++i)
     {
       if(conv_type->kind == DART_BLOCK_MULTIPLE)
