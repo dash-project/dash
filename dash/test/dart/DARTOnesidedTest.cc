@@ -100,7 +100,13 @@ TEST_F(DARTOnesidedTest, PutBlockingSingleBlock)
   // put from left neighbour into own memory is not controlled by put_blocking
   dash::barrier();
   LOG_MESSAGE("Validating values");
-  value_t offset = ((dash::myid() - 1) % dash::size()) * 1000;
+  value_t offset = 0;
+  if(dash::myid() == 0){
+    offset = (dash::size() -1) * 1000;
+  } else {
+    offset = (dash::myid() - 1) * 1000;
+  }
+  
   for (size_t l = 0; l < num_elem_per_unit; ++l) {
     value_t expected = offset + l;
     ASSERT_EQ_U(expected, local_ptr[l]);
@@ -337,11 +343,16 @@ TEST_F(DARTOnesidedTest, PutHandleSingleRemote)
     )
   );
   // wait for completion
-  //sleep(3);
   dart_wait(&handle);
   dash::barrier();
   LOG_MESSAGE("Validating values");
-  value_t offset = ((dash::myid() - 1) % dash::size()) * 1000;
+  value_t offset = 0;
+  if(dash::myid() == 0){
+    offset = (dash::size() -1) * 1000;
+  } else {
+    offset = (dash::myid() - 1) * 1000;
+  }
+
   for(int i = 0; i < num_elem_per_unit; ++i)
   {
     auto expected =  offset + i;
