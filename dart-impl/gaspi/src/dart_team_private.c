@@ -4,6 +4,7 @@
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/gaspi/dart_team_private.h>
+#include <dash/dart/base/logging.h>
 
 gaspi_group_t gaspi_group_id_top;
 
@@ -152,10 +153,12 @@ int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index)
 {
     if (teamid == DART_TEAM_ALL)
     {
+        DART_LOG_DEBUG("teamid == DART_TEAM_ALL results in index == 0");
         *index = 0;
         return 0;
     }
     /* Locate the teamid in the allocated teamlist array by using the binary-search approach. */
+    DART_LOG_DEBUG("Using binary search tree to locate teamid: %d", teamid);
     int imin, imax;
     imin = 0;
     imax = dart_allocated_teamlist_size;
@@ -175,11 +178,12 @@ int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index)
     {
         *index = dart_allocated_teamlist_array[imin].index;
         /* If search successfully, the position of the teamid in array is returned. */
+        DART_LOG_DEBUG("Found index: %d for teamid: %d", (*index), teamid);
         return imin;
     }
     else
     {
-        fprintf(stderr,"Invalid teamid input: %d. Total teams: %d. Index %d. Team with this index: %d\n", teamid, dart_allocated_teamlist_size, imin, dart_allocated_teamlist_array[imin].allocated_teamid);
+        DART_LOG_ERROR("Invalid teamid input: %d. Total teams: %d. Index %d. Team with this index: %d\n", teamid, dart_allocated_teamlist_size, imin, dart_allocated_teamlist_array[imin].allocated_teamid);
         return -1;
     }
 }

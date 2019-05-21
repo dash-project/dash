@@ -79,6 +79,7 @@ dart_ret_t dart_team_mem_impl(
     // GPI2 can't allocate 0 bytes
     if( nbytes == 0 )
     {
+        DART_LOG_TRACE("nbytes == 0, setting nbytes = 1 for continuation");
         nbytes = 1;
     }
 
@@ -89,6 +90,7 @@ dart_ret_t dart_team_mem_impl(
     if(addr == NULL)
     {
         /* Create the gaspi-segment with memory allocation */
+        DART_LOG_DEBUG("Creating segment with id: %d, num_bytes: %d, in group: %d", gaspi_seg_id, nbytes, gaspi_group);
         DART_CHECK_GASPI_ERROR(gaspi_segment_create(gaspi_seg_id,
                                                     nbytes,
                                                     gaspi_group,
@@ -98,6 +100,7 @@ dart_ret_t dart_team_mem_impl(
     else
     {
         /* Binds and registers given memory to a gaspi-segment */
+        DART_LOG_DEBUG("Using segment with address (%p) to create gaspi_segment with id: %d, num_bytes: %d, in group: %d", addr, gaspi_seg_id, nbytes, gaspi_group);
         DART_CHECK_GASPI_ERROR(gaspi_segment_use(gaspi_seg_id,
                                                  addr,
                                                  nbytes,
@@ -125,7 +128,7 @@ dart_ret_t dart_team_mem_impl(
         free(gaspi_seg_ids);
         DART_CHECK_ERROR(gaspi_segment_delete(gaspi_seg_id));
         DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, gaspi_seg_id));
-
+        DART_LOG_ERROR("dart_allgather failed");
         return DART_ERR_INVAL;
     }
 
@@ -138,6 +141,7 @@ dart_ret_t dart_team_mem_impl(
     gptr->flags = index; /* For collective allocation, the flag is marked as 'index' */
     gptr->teamid = teamid;
     gptr->addr_or_offs.offset = 0;
+    DART_LOG_DEBUG("Filling gptr: unitid[%d], segid[%d], flags[%d], teamid[%d], addr/offs[0] ", gptr->unitid, gptr->segid, gptr->flags, gptr->teamid);
 
     /* Creates new segment entry in the translation table */
     info_t item;
@@ -146,6 +150,7 @@ dart_ret_t dart_team_mem_impl(
     item.gaspi_seg_ids    = gaspi_seg_ids;
     item.own_gaspi_seg_id = gaspi_seg_id;
     item.unit_count       = teamsize;
+    DART_LOG_DEBUG("New entry in trans_table: seg_id[%d], size[%d], seg_ids(%p), own_seg_id[%d], unit_count[%d]", item.seg_id, item.size, item.gaspi_seg_ids, item.own_gaspi_seg_id, item.unit_count);
 
     /* Add this newly generated correspondence relationship record into the translation table. */
     dart_adapt_transtable_add(item);
@@ -242,6 +247,7 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
             gaspi_segment_id_t local_seg;
             if (dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &local_seg) == -1)
             {
+                DART_LOG_ERROR("Could not locate id of local_seg_id");
                 return DART_ERR_INVAL;
             }
             DART_CHECK_ERROR(gaspi_segment_ptr(local_seg, addr));
@@ -260,6 +266,7 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
         *addr = NULL;
     }
 
+    DART_LOG_TRACE("Returning address(%p) from gptr(%p)", (*addr), &gptr);
     return DART_OK;
 }
 
