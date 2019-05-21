@@ -284,7 +284,7 @@ dart_ret_t dart_group_locality_split(
            dart_group_addmember(gout[g], unit_ids[u]);
            DART_LOG_TRACE("dart_group_locality_split: group[%zu].units[%d] "
                           "global unit id: %d",
-                          g, u, group_unit_ids[u]);
+                          g, u, unit_ids[u].id);
         }
        }
      }
