@@ -607,6 +607,7 @@ dart_ret_t dart_put_blocking(
     converted_type_t conv_type;
     DART_CHECK_ERROR(dart_convert_type(dts_src, dts_dst, nelem, &conv_type));
 
+    DART_LOG_DEBUG("starting put with dest_seg: %d, own_unit_id: %d, conv_type kind: %d", gaspi_dst_seg_id, global_my_unit_id, conv_type.kind);
     if(global_my_unit_id.id == global_dst_unit_id)
     {
         DART_CHECK_GASPI_ERROR_CLEAN(conv_type,
@@ -871,7 +872,7 @@ dart_ret_t dart_get_handle(
 
     free_converted_type(&conv_type);
 
-    DART_LOG_DEBUG("dart_get_handle: handle(%p) dest:%d\n", (void*)(handle), global_src_unit_id);
+    DART_LOG_DEBUG("dart_get_handle: handle(%p) dest:%d\n", (void*)(*handleptr), global_src_unit_id);
 
     return DART_OK;
 }
