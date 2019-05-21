@@ -28,7 +28,7 @@ extern char put_completion_dst_storage;
 
 extern gaspi_pointer_t dart_gaspi_buffer_ptr;
 extern const gaspi_segment_id_t dart_mempool_seg_localalloc;
-extern const gaspi_segment_id_t dart_fallback_seg;
+extern const gaspi_segment_id_t dart_coll_seg;
 extern bool dart_fallback_seg_is_allocated;
 
 extern seg_stack_t pool_gaspi_seg_ids;

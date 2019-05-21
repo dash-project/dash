@@ -50,13 +50,12 @@ dart_ret_t dart_scatter(
 
     if((nbytes * team_size) > DART_GASPI_BUFFER_SIZE)
     {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_fallback_seg,
+        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_coll_seg,
                                                     nbytes * team_size,
                                                     dart_teams[index].id,
                                                     GASPI_BLOCK,
                                                     GASPI_MEM_UNINITIALIZED));
-        gaspi_seg_id = dart_fallback_seg;
-        dart_fallback_seg_is_allocated = true;
+        gaspi_seg_id = dart_coll_seg;
     }
 
     DART_CHECK_ERROR(dart_barrier(teamid));
@@ -105,8 +104,7 @@ dart_ret_t dart_scatter(
 
     if((nbytes * team_size) > DART_GASPI_BUFFER_SIZE)
     {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));
-        dart_fallback_seg_is_allocated = false;
+        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));;
     }
     return DART_OK;
 }
@@ -120,88 +118,89 @@ dart_ret_t dart_gather(
       dart_team_unit_t     root,
       dart_team_t          teamid)
 {
-    uint16_t                index;
-    dart_team_unit_t        relative_id;
-    size_t                  team_size;
-    gaspi_notification_id_t first_id;
-    gaspi_notification_t    old_value;
-    gaspi_segment_id_t      gaspi_seg_id  = dart_gaspi_buffer_id;
-    gaspi_notification_t    notify_value  = 42;
-    gaspi_pointer_t         seg_ptr       = NULL;
-    gaspi_queue_id_t        queue         = 0;
-    gaspi_offset_t          remote_offset = 0;
-    size_t                  nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
+    dart_datatype_struct_t* dts = get_datatype_struct(dtype);
+    if(!datatype_isbasic(dts))
+    {
+      DART_LOG_ERROR("complex datatypes are not supported!");
 
+      return DART_ERR_INVAL;
+    }
+    size_t nbytes_elem = datatype_sizeof(dts);
+    size_t nbytes = nbytes_elem * nelem;
+
+    uint16_t index;
     if(dart_adapt_teamlist_convert(teamid, &index) == -1)
     {
         fprintf(stderr, "dart_gather: no team with id: %d\n", teamid);
         return DART_ERR_OTHER;
     }
 
-    DART_CHECK_ERROR(dart_team_myid(teamid, &relative_id));
+    dart_team_unit_t myid;
+    DART_CHECK_ERROR(dart_team_myid(teamid, &myid));
+    dart_global_unit_t glob_myid;
+    DART_CHECK_ERROR(dart_myid(&glob_myid));
+
+    size_t team_size;
     DART_CHECK_ERROR(dart_team_size(teamid, &team_size));
 
-    if((nbytes * team_size) > DART_GASPI_BUFFER_SIZE)
+    gaspi_queue_id_t queue;
+    DART_CHECK_ERROR( dart_get_minimal_queue(&queue));
+
+    if(myid.id == root.id)
     {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_fallback_seg,
-                                                    nbytes * team_size,
-                                                    dart_teams[index].id,
-                                                    GASPI_BLOCK,
-                                                    GASPI_MEM_UNINITIALIZED));
-        gaspi_seg_id = dart_fallback_seg;
-        dart_fallback_seg_is_allocated = true;
+      DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_coll_seg, recvbuf, nbytes * team_size, 0));
+      for(int i = 0; i < team_size; ++i)
+      {
+        dart_unit_t glob_unit_id;
+        DART_CHECK_ERROR(unit_l2g(index, &glob_unit_id, i));
+        DART_CHECK_GASPI_ERROR(gaspi_segment_register(dart_coll_seg, glob_unit_id, GASPI_BLOCK));
+      }
     }
-
-    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_seg_id, &seg_ptr));
-
     DART_CHECK_ERROR(dart_barrier(teamid));
 
-    if(relative_id.id != root.id)
+    gaspi_notification_t notify_value = 42;
+    if(myid.id != root.id)
     {
-        dart_unit_t abs_root_id;
-        DART_CHECK_ERROR(unit_l2g(index, &abs_root_id, root.id));
+        dart_unit_t glob_root_id;
+        DART_CHECK_ERROR(unit_l2g(index, &glob_root_id, root.id));
+        DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_onesided_seg, (void* const) sendbuf, nbytes, 0));
 
-        memcpy(seg_ptr, sendbuf, nbytes);
-        remote_offset = relative_id.id * nbytes;
-
-        DART_CHECK_GASPI_ERROR(wait_for_queue_entries(&queue, 2));
-        DART_CHECK_GASPI_ERROR(gaspi_write_notify(gaspi_seg_id,
+        DART_CHECK_GASPI_ERROR(gaspi_write_notify(dart_onesided_seg,
                                                   0UL,
-                                                  abs_root_id,
-                                                  gaspi_seg_id,
-                                                  remote_offset,
+                                                  glob_root_id,
+                                                  dart_coll_seg,
+                                                  myid.id * nbytes,
                                                   nbytes,
-                                                  relative_id.id,
+                                                  myid.id,
                                                   notify_value,
                                                   queue,
                                                   GASPI_BLOCK));
+
+        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(dart_onesided_seg));
     }
     else
     {
-        gaspi_offset_t recv_buffer_offset = relative_id.id * nbytes;
-        void         * recv_buffer_ptr    = (void *)((char *) seg_ptr + recv_buffer_offset);
-        memcpy(recv_buffer_ptr, sendbuf, nbytes);
+        memcpy((char*) recvbuf + myid.id * nbytes, sendbuf, nbytes);
 
-        int missing = team_size - 1;
-        while(missing-- > 0)
+        gaspi_notification_id_t first_id;
+        gaspi_notification_t    old_value;
+
+        int notifies_left = team_size - 1;
+        while(notifies_left > 0)
         {
-            DART_CHECK_GASPI_ERROR(blocking_waitsome(0, team_size, &first_id, &old_value, gaspi_seg_id));
+            DART_CHECK_GASPI_ERROR(blocking_waitsome(0, team_size, &first_id, &old_value, dart_coll_seg));
             if(old_value != notify_value)
             {
-                fprintf(stderr, "dart_gather: Error in process synchronization\n");
-                break;
+                DART_LOG_ERROR("Error in process synchronization -> wrong notification value");
+                return DART_ERR_OTHER;
             }
+            --notifies_left;
         }
-        memcpy(recvbuf, seg_ptr, team_size * nbytes);
+
+        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(dart_coll_seg));
     }
 
     DART_CHECK_ERROR(dart_barrier(teamid));
-
-    if((nbytes * team_size) > DART_GASPI_BUFFER_SIZE)
-    {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));
-        dart_fallback_seg_is_allocated = false;
-    }
 
     return DART_OK;
 }
@@ -251,13 +250,12 @@ dart_ret_t dart_bcast(
 
     if(nbytes > DART_GASPI_BUFFER_SIZE)
     {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_fallback_seg,
+        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_coll_seg,
                                                     nbytes,
                                                     dart_teams[index].id,
                                                     GASPI_BLOCK,
                                                     GASPI_MEM_UNINITIALIZED));
-        gaspi_seg_id = dart_fallback_seg;
-        dart_fallback_seg_is_allocated = true;
+        gaspi_seg_id = dart_coll_seg;
     }
 
     if(myid.id == root_abs)
@@ -313,8 +311,7 @@ dart_ret_t dart_bcast(
 
     if(nbytes > DART_GASPI_BUFFER_SIZE)
     {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));
-        dart_fallback_seg_is_allocated = false;
+        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));;
     }
 
     return DART_OK;
@@ -349,13 +346,12 @@ dart_ret_t dart_allgather(
 
     if((nbytes * teamsize) > DART_GASPI_BUFFER_SIZE)
     {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_fallback_seg,
+        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_coll_seg,
                                                     nbytes * teamsize,
                                                     dart_teams[index].id,
                                                     GASPI_BLOCK,
                                                     GASPI_MEM_UNINITIALIZED));
-        gaspi_seg_id = dart_fallback_seg;
-        dart_fallback_seg_is_allocated = true;
+        gaspi_seg_id = dart_coll_seg;
     }
 
 
@@ -403,8 +399,7 @@ dart_ret_t dart_allgather(
 
     if((nbytes * teamsize) > DART_GASPI_BUFFER_SIZE)
     {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));
-        dart_fallback_seg_is_allocated = false;
+        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));;
     }
 
     return DART_OK;
@@ -451,13 +446,12 @@ dart_ret_t dart_allgatherv(
 
     if((n_total_bytes * teamsize) > DART_GASPI_BUFFER_SIZE)
     {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_fallback_seg,
+        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_coll_seg,
                                                     n_total_bytes * teamsize,
                                                     dart_teams[index].id,
                                                     GASPI_BLOCK,
                                                     GASPI_MEM_UNINITIALIZED));
-        gaspi_seg_id = dart_fallback_seg;
-        dart_fallback_seg_is_allocated = true;
+        gaspi_seg_id = dart_coll_seg;
     }
 
     //local offset in Bytes. copies data from sendbuff in local part of the
@@ -508,8 +502,7 @@ dart_ret_t dart_allgatherv(
 
     if((nbytes * teamsize) > DART_GASPI_BUFFER_SIZE)
     {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));
-        dart_fallback_seg_is_allocated = false;
+        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));;
     }
 
     return DART_OK;
@@ -547,13 +540,13 @@ dart_ret_t dart_get_blocking(
     gaspi_segment_id_t gaspi_src_seg_id = 0;
     DART_CHECK_ERROR(glob_unit_gaspi_seg(&gptr, &global_src_unit_id, &gaspi_src_seg_id, "dart_get_blocking"));
 
-    dart_global_unit_t global_my_unit_id;
-    DART_CHECK_ERROR(dart_myid(&global_my_unit_id));
+    dart_global_unit_t global_myid;
+    DART_CHECK_ERROR(dart_myid(&global_myid));
 
     converted_type_t conv_type;
     DART_CHECK_ERROR(dart_convert_type(dts_src, dts_dst, nelem, &conv_type));
 
-    if(global_my_unit_id.id == global_src_unit_id)
+    if(global_myid.id == global_src_unit_id)
     {
         DART_CHECK_GASPI_ERROR_CLEAN(conv_type,
             local_get(&gptr, gaspi_src_seg_id, dst, &conv_type));
@@ -601,13 +594,13 @@ dart_ret_t dart_put_blocking(
     gaspi_segment_id_t gaspi_dst_seg_id = 0;
     DART_CHECK_ERROR(glob_unit_gaspi_seg(&gptr, &global_dst_unit_id, &gaspi_dst_seg_id, "dart_put_handle"));
 
-    dart_global_unit_t global_my_unit_id;
-    DART_CHECK_ERROR(dart_myid(&global_my_unit_id));
+    dart_global_unit_t global_myid;
+    DART_CHECK_ERROR(dart_myid(&global_myid));
 
     converted_type_t conv_type;
     DART_CHECK_ERROR(dart_convert_type(dts_src, dts_dst, nelem, &conv_type));
 
-    if(global_my_unit_id.id == global_dst_unit_id)
+    if(global_myid.id == global_dst_unit_id)
     {
         DART_CHECK_GASPI_ERROR_CLEAN(conv_type,
             local_put(&gptr, gaspi_dst_seg_id, src, &conv_type));
@@ -827,13 +820,13 @@ dart_ret_t dart_get_handle(
     gaspi_segment_id_t gaspi_src_seg_id = 0;
     DART_CHECK_ERROR(glob_unit_gaspi_seg(&gptr, &global_src_unit_id, &gaspi_src_seg_id, "dart_get_handled"));
 
-    dart_global_unit_t global_my_unit_id;
-    DART_CHECK_ERROR(dart_myid(&global_my_unit_id));
+    dart_global_unit_t global_myid;
+    DART_CHECK_ERROR(dart_myid(&global_myid));
 
     converted_type_t conv_type;
     DART_CHECK_ERROR(dart_convert_type(dts_src, dts_dst, nelem, &conv_type));
 
-    if(global_my_unit_id.id == global_src_unit_id)
+    if(global_myid.id == global_src_unit_id)
     {
         DART_CHECK_ERROR_CLEAN(conv_type,
             local_get(&gptr, gaspi_src_seg_id, dst, &conv_type));
@@ -858,7 +851,7 @@ dart_ret_t dart_get_handle(
         );
 
         DART_CHECK_GASPI_ERROR_CLEAN_SEG(free_seg_id, conv_type,
-            gaspi_notify(free_seg_id, global_my_unit_id.id, free_seg_id, free_seg_id, queue, GASPI_BLOCK));
+            gaspi_notify(free_seg_id, global_myid.id, free_seg_id, free_seg_id, queue, GASPI_BLOCK));
 
         dart_handle_t handle = (dart_handle_t) malloc(sizeof(*handle));
 
@@ -899,13 +892,13 @@ dart_ret_t dart_put_handle(
     gaspi_segment_id_t gaspi_dst_seg_id = 0;
     DART_CHECK_ERROR(glob_unit_gaspi_seg(&gptr, &global_dst_unit_id, &gaspi_dst_seg_id, "dart_put_handle"));
 
-    dart_global_unit_t global_my_unit_id;
-    DART_CHECK_ERROR(dart_myid(&global_my_unit_id));
+    dart_global_unit_t global_myid;
+    DART_CHECK_ERROR(dart_myid(&global_myid));
 
     converted_type_t conv_type;
     DART_CHECK_ERROR(dart_convert_type(dts_src, dts_dst, nelem, &conv_type));
 
-    if(global_my_unit_id.id == global_dst_unit_id)
+    if(global_myid.id == global_dst_unit_id)
     {
         DART_CHECK_GASPI_ERROR_CLEAN(conv_type,
             local_put(&gptr, gaspi_dst_seg_id, src, &conv_type));
@@ -930,13 +923,13 @@ dart_ret_t dart_put_handle(
         );
 
         DART_CHECK_GASPI_ERROR_CLEAN_SEG(free_seg_id, conv_type,
-            gaspi_notify(free_seg_id, global_my_unit_id.id, free_seg_id, free_seg_id, queue, GASPI_BLOCK));
+            gaspi_notify(free_seg_id, global_myid.id, free_seg_id, free_seg_id, queue, GASPI_BLOCK));
 
         DART_CHECK_GASPI_ERROR_CLEAN_SEG(free_seg_id, conv_type,
             put_completion_test(global_dst_unit_id, queue));
 
         DART_CHECK_GASPI_ERROR_CLEAN_SEG(free_seg_id, conv_type,
-            gaspi_notify(free_seg_id, global_my_unit_id.id, put_completion_dst_seg, put_completion_dst_seg, queue, GASPI_BLOCK));
+            gaspi_notify(free_seg_id, global_myid.id, put_completion_dst_seg, put_completion_dst_seg, queue, GASPI_BLOCK));
 
         handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
         handle->comm_kind     = GASPI_WRITE;
@@ -1025,13 +1018,13 @@ dart_ret_t dart_get(
     gaspi_segment_id_t gaspi_src_seg_id = 0;
     DART_CHECK_ERROR(glob_unit_gaspi_seg(&gptr, &global_src_unit_id, &gaspi_src_seg_id, "dart_get_handled"));
 
-    dart_global_unit_t global_my_unit_id;
-    DART_CHECK_ERROR(dart_myid(&global_my_unit_id));
+    dart_global_unit_t global_myid;
+    DART_CHECK_ERROR(dart_myid(&global_myid));
 
     converted_type_t conv_type;
     DART_CHECK_ERROR(dart_convert_type(dts_src, dts_dst, nelem, &conv_type));
 
-    if(global_my_unit_id.id == global_src_unit_id)
+    if(global_myid.id == global_src_unit_id)
     {
         DART_CHECK_GASPI_ERROR_CLEAN(conv_type,
             local_get(&gptr, gaspi_src_seg_id, dst, &conv_type));
@@ -1081,13 +1074,13 @@ dart_ret_t dart_put(
     gaspi_segment_id_t gaspi_dst_seg_id = 0;
     DART_CHECK_ERROR(glob_unit_gaspi_seg(&gptr, &global_dst_unit_id, &gaspi_dst_seg_id, "dart_put_handle"));
 
-    dart_global_unit_t global_my_unit_id;
-    DART_CHECK_ERROR(dart_myid(&global_my_unit_id));
+    dart_global_unit_t global_myid;
+    DART_CHECK_ERROR(dart_myid(&global_myid));
 
     converted_type_t conv_type;
     DART_CHECK_ERROR(dart_convert_type(dts_src, dts_dst, nelem, &conv_type));
 
-    if(global_my_unit_id.id == global_dst_unit_id)
+    if(global_myid.id == global_dst_unit_id)
     {
         DART_CHECK_GASPI_ERROR_CLEAN(conv_type,
             local_put(&gptr, gaspi_dst_seg_id, src, &conv_type));
@@ -1184,11 +1177,6 @@ dart_ret_t dart_allreduce(
 
       return DART_ERR_INVAL;
     }
-    dart_team_unit_t myid;
-    DART_CHECK_ERROR(dart_team_myid(team, &myid));
-
-    size_t team_size;
-    DART_CHECK_ERROR(dart_team_size(team, &team_size));
 
     uint16_t index;
     if(dart_adapt_teamlist_convert(team, &index) == -1)
@@ -1203,13 +1191,16 @@ dart_ret_t dart_allreduce(
       return DART_ERR_INVAL;
     }
 
-    gaspi_allreduce_user(sendbuf, recvbuf, nelem,
+    gaspi_allreduce_user((void* const)sendbuf, recvbuf, nelem,
                         datatype_sizeof(dts), gaspi_op,
                         NULL, dart_teams[index].id, GASPI_BLOCK);
 
     return DART_OK;
 }
 
+/* slow and simple version of reduce
+ * TODO: more efficient version e.g. inverted binary tree
+ */
 dart_ret_t dart_reduce(
   const void       * sendbuf,
   void             * recvbuf,
@@ -1226,52 +1217,30 @@ dart_ret_t dart_reduce(
 
       return DART_ERR_INVAL;
     }
-  gaspi_segment_id_t      gaspi_seg_id = dart_gaspi_buffer_id;
-  gaspi_pointer_t         seg_ptr      = NULL;
 
+    size_t team_size;
+    DART_CHECK_ERROR(dart_team_size(team, &team_size));
 
+    gaspi_reduce_operation_t gaspi_op = gaspi_get_op(op, dtype);
+    if(gaspi_op == NULL)
+    {
+      return DART_ERR_INVAL;
+    }
 
-  dart_team_unit_t        myid;
-  size_t                  team_size;
-  DART_CHECK_ERROR(dart_team_myid(team, &myid));
-  DART_CHECK_ERROR(dart_team_size(team, &team_size));
+    //TODO error handling
+    size_t nbytes_elem = datatype_sizeof(dts);
+    void* recv_tmp = malloc(nbytes_elem * team_size);
+    DART_CHECK_ERROR(dart_gather(sendbuf, recv_tmp, nelem, dtype, root, team));
 
-  uint16_t                index;
-  if(dart_adapt_teamlist_convert(team, &index) == -1)
-  {
-    DART_LOG_ERROR(stderr, "dart_reduce: can't find index of given team\n");
-    return DART_ERR_OTHER;
-  }
+    void* buffer_tmp = recv_tmp;
+    for(int i = 0; i < team_size; ++i, buffer_tmp += nbytes_elem){
+         DART_CHECK_GASPI_ERROR(
+            gaspi_op(recvbuf, buffer_tmp, recvbuf, NULL, nelem, nbytes_elem, GASPI_BLOCK));
+      }
 
-  DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_seg_id, &seg_ptr));
-  gaspi_segment_id_t* segment_ids = (gaspi_segment_id_t*) seg_ptr;
+    free(recv_tmp);
 
-  for(size_t i = 0; i < team_size; i++)
-  {
-      segment_ids[i]=dart_fallback_seg;
-  }
-
-  /*
-   * while DART supports 9 different datatypes when this was written
-   * gaspi only supports 6. To keep DART compatible and easy to use
-   * the gaspi_data_type isn't used in this case.
-   */
-
-  gaspi_reduce_state_t reduce_state = GASPI_STATE_HEALTHY;
-  dart_ret_t ret = DART_OK;
-  gaspi_group_t gaspi_group_id = dart_teams[index].id;
-  dart_unit_t gaspi_root_proc;
-  DART_CHECK_ERROR(unit_l2g(index, &gaspi_root_proc, root.id));
-
-  gaspi_reduce_operation_t gaspi_op = gaspi_get_op(op, dtype);
-  if(gaspi_op == NULL)
-  {
-    return DART_ERR_INVAL;
-  }
-  size_t elem_size = dart_gaspi_datatype_sizeof(dtype);
-  gaspi_reduce_user(sendbuf, recvbuf, nelem,
-                    elem_size, gaspi_op,
-                    reduce_state, gaspi_group_id, segment_ids, gaspi_root_proc, GASPI_BLOCK);
+    dart_barrier(team);
 
   return DART_OK;
 }
@@ -1297,7 +1266,7 @@ dart_ret_t dart_recv(
     // get gaspi segment id and bind it to dst
     gaspi_segment_id_t free_seg_id;
     DART_CHECK_GASPI_ERROR(seg_stack_pop(&pool_gaspi_seg_ids, &free_seg_id));
-    //DART_CHECK_GASPI_ERROR(gaspi_segment_use(free_seg_id, recvbuf, nbytes_elem, GASPI_GROUP_ALL, GASPI_BLOCK, 0));
+
     DART_CHECK_GASPI_ERROR(gaspi_segment_bind(free_seg_id, recvbuf, nbytes_elem, 0));
     gaspi_rank_t rank;
     gaspi_passive_receive(free_seg_id, 0, &rank, nbytes_elem, GASPI_BLOCK);
@@ -1336,8 +1305,7 @@ dart_ret_t dart_send(
     // get gaspi segment id and bind it to dst
     gaspi_segment_id_t free_seg_id;
     DART_CHECK_GASPI_ERROR(seg_stack_pop(&pool_gaspi_seg_ids, &free_seg_id));
-    //DART_CHECK_GASPI_ERROR(gaspi_segment_use(free_seg_id, sendbuf, nbytes_elem, GASPI_GROUP_ALL, GASPI_BLOCK, 0));
-    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(free_seg_id, sendbuf, nbytes_elem, 0));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(free_seg_id, (void* const) sendbuf, nbytes_elem, 0));
 
     gaspi_passive_send(free_seg_id, 0, unit.id, nbytes_elem, GASPI_BLOCK);
 

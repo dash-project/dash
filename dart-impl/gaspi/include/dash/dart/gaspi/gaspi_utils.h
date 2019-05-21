@@ -6,25 +6,13 @@
 #include <stdio.h>
 #include <GASPI.h>
 
-#define DART_MAX_SEGS 256
+
 
 /* Function to resolve dart_data_type and return
  * size of type
 */
 size_t dart_gaspi_datatype_sizeof(dart_datatype_t in);
 size_t dart_max_segs();
-
-gaspi_return_t gaspi_reduce_user (
-   const void* buffer_send,
-	void* const buffer_receive,
-	const gaspi_number_t num,
-	const gaspi_size_t element_size,
-	gaspi_reduce_operation_t const reduce_operation,
-	gaspi_reduce_state_t const reduce_state,
-	const gaspi_group_t group,
-   gaspi_segment_id_t* segment_ids,
-   const gaspi_rank_t root,
-	const gaspi_timeout_t timeout_ms);
 
 gaspi_return_t create_segment(const gaspi_size_t size,
                               gaspi_segment_id_t *seg_id);

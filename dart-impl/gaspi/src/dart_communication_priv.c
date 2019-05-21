@@ -603,7 +603,7 @@ gaspi_return_t remote_get(dart_gptr_t* gptr, gaspi_rank_t src_unit, gaspi_segmen
     return GASPI_SUCCESS;
 }
 
-gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segment_id_t dst_seg_id, gaspi_segment_id_t src_seg_id, void* src, gaspi_queue_id_t* queue, converted_type_t* conv_type)
+gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segment_id_t dst_seg_id, gaspi_segment_id_t src_seg_id, const void* src, gaspi_queue_id_t* queue, converted_type_t* conv_type)
 {
     size_t nbytes_segment = 0;
     size_t nbytes_read = 0;
@@ -624,7 +624,7 @@ gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segmen
       nbytes_segment = conv_type->multiple[last_block].src + conv_type->multiple[last_block].nbyte;
     }
 
-    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(src_seg_id, src, nbytes_segment, 0));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(src_seg_id, (void* const) src, nbytes_segment, 0));
 
     size_t offset_src = 0;
     size_t offset_dst = gptr->addr_or_offs.offset;
@@ -785,16 +785,10 @@ dart_ret_t error_cleanup_seg(gaspi_segment_id_t used_segment_id, converted_type_
       DART_OP_CAST_TYPES(_data_type)           \
                                              \
       for(int i = 0; i < num; i+=2){ \
-         if(op1_tmp[DART_OP_MINMAX_MAX] > op2_tmp[DART_OP_MINMAX_MAX]){ \
-            res_tmp[DART_OP_MINMAX_MAX] = op1_tmp[DART_OP_MINMAX_MAX]; \
-         }else{                                                         \
-            res_tmp[DART_OP_MINMAX_MAX] = op2_tmp[DART_OP_MINMAX_MAX]; \
-         }                                                              \
-         if(op1_tmp[DART_OP_MINMAX_MIN] < op2_tmp[DART_OP_MINMAX_MIN]){ \
-            res_tmp[DART_OP_MINMAX_MIN] = op1_tmp[DART_OP_MINMAX_MIN]; \
-         }else{                                                         \
-            res_tmp[DART_OP_MINMAX_MIN] = op2_tmp[DART_OP_MINMAX_MIN]; \
-         }                                                              \
+        res_tmp[DART_OP_MINMAX_MAX] = \
+            MAX(op1_tmp[DART_OP_MINMAX_MAX], op2_tmp[DART_OP_MINMAX_MAX]); \
+        res_tmp[DART_OP_MINMAX_MIN] = \
+            MIN(op1_tmp[DART_OP_MINMAX_MIN], op2_tmp[DART_OP_MINMAX_MIN]); \
       }                                                                \
       return GASPI_SUCCESS;                                            \
    }
@@ -806,11 +800,7 @@ dart_ret_t error_cleanup_seg(gaspi_segment_id_t used_segment_id, converted_type_
       DART_OP_CAST_TYPES(_data_type) \
                                      \
       for(int i = 0; i < num; ++i) {  \
-         if(op1_tmp[i] < op2_tmp[i]) { \
-            res_tmp[i] = op1_tmp[i];   \
-         } else {                      \
-            op1_tmp[i] = op2_tmp[i];   \
-         }                             \
+        res_tmp[i] = MIN(op1_tmp[i],op2_tmp[i]);  \
       } \
       return GASPI_SUCCESS;            \
    }
@@ -822,11 +812,7 @@ dart_ret_t error_cleanup_seg(gaspi_segment_id_t used_segment_id, converted_type_
       DART_OP_CAST_TYPES(_data_type) \
                                      \
       for(int i = 0; i < num; ++i) {  \
-         if(op1_tmp[i] < op2_tmp[i]) { \
-            res_tmp[i] = op1_tmp[i];   \
-         } else {                      \
-            op1_tmp[i] = op2_tmp[i];   \
-         }                             \
+        res_tmp[i] = MAX(op1_tmp[i],op2_tmp[i]);  \
       } \
       return GASPI_SUCCESS;            \
    }
