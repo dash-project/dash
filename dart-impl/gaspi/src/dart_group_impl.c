@@ -26,7 +26,7 @@ dart_ret_t dart_group_create(
   dart_group_t *group)
 {
     (*group) = allocate_group();
-    (*group)->nmem = 0;
+    (*group)->nmember = 0;
     for (int i = 0; i < MAXSIZE_GROUP; ++i)
     {
         ((*group)->g2l)[i] = -1;
@@ -37,13 +37,13 @@ dart_ret_t dart_group_create(
 
 dart_ret_t dart_group_destroy(dart_group_t *group)
 {
-    (*group)->nmem = 0;
+    (*group)->nmember = 0;
     return DART_OK;
 }
 
 dart_ret_t dart_group_clone(const dart_group_t gin, dart_group_t *gout)
 {
-    (*gout)->nmem = gin->nmem;
+    (*gout)->nmember = gin->nmember;
     for (int i = 0; i < MAXSIZE_GROUP; ++i)
     {
         ((*gout)->g2l)[i] = (gin->g2l)[i];
@@ -69,7 +69,7 @@ void group_rebuild(dart_group_t* group)
             n++;
         }
     }
-    g->nmem = n;
+    g->nmember = n;
 }
 
 
@@ -147,7 +147,7 @@ dart_ret_t dart_group_size(
   const dart_group_t   g,
   size_t             * size)
 {
-    (*size) = g->nmem;
+    (*size) = g->nmember;
 
     return DART_OK;
 }
@@ -178,9 +178,9 @@ dart_ret_t dart_group_split(
             dart_group_t        * gout)
 {
     int j    = 0;
-    int nmem = (g->nmem);
-    int bdiv = nmem / n;
-    int brem = nmem % n;
+    int nmember = (g->nmember);
+    int bdiv = nmember / n;
+    int brem = nmember % n;
     int bsize;
     //(*gout)->nsplit = n;
     //actual number of groups in wich g is splitted
@@ -192,7 +192,7 @@ dart_ret_t dart_group_split(
         bsize = (i < brem) ? (bdiv + 1) : bdiv;
         dart_group_create(&gout[i]);
 
-        for (int k = 0; (k < bsize) && (j < nmem); ++k, ++j)
+        for (int k = 0; (k < bsize) && (j < nmember); ++k, ++j)
         {
             (gout[i]->g2l)[g->l2g[j]] = 1;
         }

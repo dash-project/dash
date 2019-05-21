@@ -20,7 +20,7 @@ extern "C" {
 //
 struct dart_group_struct {
     // current number of members in the group
-    int nmem;
+    int nmember;
 
     // g2l is indexed by global unit ids, l2g is
     // indexed by local ids, both arrays are initialized to -1

@@ -153,7 +153,7 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size)
         return DART_ERR_INVAL;
     }
 
-    *size = dart_teams[index].group->nmem;
+    *size = dart_teams[index].group->nmember;
 
     return DART_OK;
 }
