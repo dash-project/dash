@@ -190,4 +190,51 @@ dart_ret_t error_cleanup_seg(gaspi_segment_id_t used_segment_id, converted_type_
 #define DART_CHECK_GASPI_ERROR_CLEAN_SEG(seg_id, conv_type, func...) \
     DART_CHECK_ERROR_CLEAN_TEMPL_SEG(GASPI_SUCCESS, GASPI_ERROR, gaspi_return_t, seg_id, conv_type, func)
 
+/*
+* Headers for reduce operations used for gaspi_reduce_user and gaspi_allreduce_user
+*/
+
+#define DART_NAME_OP(_op_type, _name) gaspi_op_##_op_type##_##_name
+
+#define DART_DECLARE_OP(_op_type, _name) \
+gaspi_return_t DART_NAME_OP(_op_type, _name) (            \
+  gaspi_pointer_t op1, gaspi_pointer_t op2, gaspi_pointer_t res, \
+  gaspi_reduce_state_t state, gaspi_number_t num,\
+   gaspi_size_t element_size, gaspi_timeout_t timeout)
+
+#define DART_DECLARE_OP_INT(_name) \
+   DART_DECLARE_OP(_name, short); \
+   DART_DECLARE_OP(_name, int); \
+   DART_DECLARE_OP(_name, uInt); \
+   DART_DECLARE_OP(_name, long); \
+   DART_DECLARE_OP(_name, uLong); \
+   DART_DECLARE_OP(_name, longLong); \
+   DART_DECLARE_OP(_name, uLongLong);
+
+#define DART_DECLARE_OP_INT_BYTE(_name) \
+   DART_DECLARE_OP(_name, char); \
+   DART_DECLARE_OP_INT(_name)
+
+#define DART_DECLARE_OP_ALL(_name) \
+   DART_DECLARE_OP_INT_BYTE(_name) \
+   DART_DECLARE_OP(_name, float); \
+   DART_DECLARE_OP(_name, double); \
+   DART_DECLARE_OP(_name, longDouble);
+
+DART_DECLARE_OP_ALL(MINMAX)
+DART_DECLARE_OP_ALL(MIN)
+DART_DECLARE_OP_ALL(MAX)
+DART_DECLARE_OP_ALL(SUM)
+DART_DECLARE_OP_ALL(PROD)
+
+DART_DECLARE_OP_INT(LAND)
+DART_DECLARE_OP_INT(LOR)
+DART_DECLARE_OP_INT(LXOR)
+
+DART_DECLARE_OP_INT_BYTE(BAND)
+DART_DECLARE_OP_INT_BYTE(BOR)
+DART_DECLARE_OP_INT_BYTE(BXOR)
+
+
+
 #endif /* DART_COMMUNICATION_PRIV_H */

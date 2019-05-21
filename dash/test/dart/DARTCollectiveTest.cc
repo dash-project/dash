@@ -18,11 +18,12 @@ TEST_F(DARTCollectiveTest, Send_Recv) {
     // every other unit sends data to the next unit
     if(_dash_id % 2 == 0) {
       dart_unit_t send_to = _dash_id + 1;
-      dart_send(&data[_dash_id], 1, DART_TYPE_INT, 0, send_to);
+      dart_send(&data[_dash_id], 1, DART_TYPE_INT, 1, send_to);
     } else {
       int recv;
       dart_unit_t recv_from = _dash_id - 1;
-      dart_recv(&recv, 1, DART_TYPE_INT, 0, recv_from);
+
+      dart_recv(&recv, 1, DART_TYPE_INT, 1, recv_from);
       ASSERT_EQ(recv, data[recv_from]);
     }
   }
@@ -73,6 +74,27 @@ TEST_F(DARTCollectiveTest, MinMax) {
   ASSERT_EQ_U(min_max_out[DART_OP_MINMAX_MAX], 2*dash::size()-1);
   ASSERT_EQ_U(min_max_out[DART_OP_MINMAX_MIN], 0);
 
+}
+
+TEST_F(DARTCollectiveTest, Sum) {
+
+  using elem_t = long;
+
+  elem_t value = static_cast<elem_t>(dash::myid());
+  elem_t sum = 0;
+  dart_allreduce(
+      &value,                        // send buffer
+      &sum,                       // receive buffer
+      1,                                  // buffer size
+      dash::dart_datatype<elem_t>::value,  // data type
+      DART_OP_SUM,                     // operation
+      dash::Team::All().dart_id()         // team
+      );
+
+  elem_t expected = 0;
+  for(int i = 0; i < dash::size(); ++i)
+    expected += i;
+  ASSERT_EQ_U(expected, sum);
 }
 
 TEST_F(DARTCollectiveTest, MinMaxInt64t) {
