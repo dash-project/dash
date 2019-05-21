@@ -97,6 +97,77 @@ TEST_F(DARTCollectiveTest, Sum) {
   ASSERT_EQ_U(expected, sum);
 }
 
+TEST_F(DARTCollectiveTest, ReduceSum) {
+
+  using elem_t = double;
+
+  elem_t value = static_cast<elem_t>(dash::myid());
+  elem_t sum = 0;
+  dart_reduce(
+      &value,                        // send buffer
+      &sum,                       // receive buffer
+      1,                                  // number elems
+      dash::dart_datatype<elem_t>::value,  // data type
+      DART_OP_SUM,                     // operation
+      0,
+      dash::Team::All().dart_id()         // team
+      );
+
+  if(dash::myid() == 0) {
+    elem_t expected = 0;
+    for(int i = 0; i < dash::size(); ++i)
+      expected += i;
+    ASSERT_EQ_U(expected, sum);
+  }
+}
+
+TEST_F(DARTCollectiveTest, ReduceMax) {
+
+  using elem_t = long;
+
+  elem_t value = static_cast<elem_t>(dash::myid());
+  elem_t max = 0;
+  dart_reduce(
+      &value,                        // send buffer
+      &max,                       // receive buffer
+      1,                                  // number elems
+      dash::dart_datatype<elem_t>::value,  // data type
+      DART_OP_MAX,                     // operation
+      0,                               // root
+      dash::Team::All().dart_id()         // team
+      );
+
+  if(dash::myid() == 0) {
+    ASSERT_EQ_U(static_cast<elem_t>(dash::size() - 1), max);
+  }
+  else
+  {
+    ASSERT_EQ_U(0, max);
+  }
+
+}
+
+TEST_F(DARTCollectiveTest, AllgatherMax) {
+
+  using elem_t = long;
+
+  elem_t value = static_cast<elem_t>(dash::myid());
+  std::vector<elem_t> recv_buffer(dash::size());
+  elem_t max = 0;
+  dart_allgather(
+      &value,                        // send buffer
+      recv_buffer.data(),            // receive buffer
+      1,                                  // number elems
+      dash::dart_datatype<elem_t>::value,  // data type
+      dash::Team::All().dart_id()         // team
+      );
+
+  for(int i = 0; i < dash::size(); ++i) {
+    ASSERT_EQ_U(i, recv_buffer[i]);
+  }
+
+}
+
 TEST_F(DARTCollectiveTest, MinMaxInt64t) {
 
   using elem_t = int64_t;

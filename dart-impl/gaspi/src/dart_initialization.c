@@ -32,7 +32,7 @@ char * dart_mempool_localalloc;
 /* Help to do memory management work for local allocation/free */
 struct dart_buddy* dart_localpool;
 /******************* collective memory *******************/
-const gaspi_segment_id_t dart_fallback_seg = 2;
+const gaspi_segment_id_t dart_coll_seg = 2;
 const gaspi_segment_id_t dart_onesided_seg = 3;
 bool dart_fallback_seg_is_allocated;
 // segment to trigger remote completion with gaspi write

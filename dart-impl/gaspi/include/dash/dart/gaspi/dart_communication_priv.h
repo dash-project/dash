@@ -10,6 +10,8 @@
 
 #include <dash/dart/base/logging.h>
 
+#define DART_MAX_SEGS 256
+
 
 #define CHECK_EQUAL_BASETYPE(_src_type, _dst_type)                            \
   do {                                                                        \
@@ -144,7 +146,7 @@ gaspi_return_t local_get(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_src_segment
 gaspi_return_t local_put(dart_gptr_t* gptr, gaspi_segment_id_t gaspi_dst_segment_id, const void* src, converted_type_t* conv_type);
 
 gaspi_return_t remote_get(dart_gptr_t* gptr, gaspi_rank_t src_unit, gaspi_segment_id_t src_seg_id, gaspi_segment_id_t dst_seg_id, void* dst, gaspi_queue_id_t* queue, converted_type_t* conv_type);
-gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segment_id_t dst_seg_id, gaspi_segment_id_t src_seg_id, void* src, gaspi_queue_id_t* queue, converted_type_t* conv_type);
+gaspi_return_t remote_put(dart_gptr_t* gptr, gaspi_rank_t dst_unit, gaspi_segment_id_t dst_seg_id, gaspi_segment_id_t src_seg_id, const void* src, gaspi_queue_id_t* queue, converted_type_t* conv_type);
 
 gaspi_return_t put_completion_test(gaspi_rank_t dst_unit, gaspi_queue_id_t queue);
 
