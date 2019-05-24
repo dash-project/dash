@@ -1,4 +1,3 @@
-#include <dash/dart/gaspi/dart_globmem_priv.h>
 #include <dash/dart/gaspi/dart_mem.h>
 #include <dash/dart/gaspi/dart_team_private.h>
 #include <dash/dart/gaspi/dart_gaspi.h>

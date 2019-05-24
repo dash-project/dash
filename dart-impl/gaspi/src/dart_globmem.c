@@ -5,7 +5,6 @@
 
 
 #include <dash/dart/if/dart_types.h>
-#include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_team_group.h>
 
 #include <dash/dart/gaspi/dart_mem.h>

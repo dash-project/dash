@@ -8,8 +8,13 @@
 
 #include <stdio.h>
 #include <GASPI.h>
-#include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_synchronization.h>
+
+#define DART_GPTR_COPY(gptr_, gptrt_)                           \
+    ({gptr_.addr_or_offs.offset = gptrt_.addr_or_offs.offset;   \
+    gptr_.flags = gptrt_.flags;                 \
+    gptr_.segid = gptrt_.segid;                 \
+    gptr_.unitid = gptrt_.unitid;})
 
 /** @brief Dart lock type.
  *  */
