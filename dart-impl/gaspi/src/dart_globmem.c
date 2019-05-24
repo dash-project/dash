@@ -183,21 +183,18 @@ dart_ret_t dart_team_memfree(dart_gptr_t gptr)
     DART_CHECK_ERROR(delete_rma_requests(seg_id));
     if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &gaspi_seg_id) == -1)
     {
+        DART_LOG_ERROR("Could not get seg_id: %d from transtable", seg_id);
         return DART_ERR_INVAL;
     }
 
-    if(seg_stack_isfull(&pool_gaspi_seg_ids))
-    {
-        printf("ERROR because of full seg_stack in dart_team_memfree\n");
-    }
-
+    DART_LOG_TRACE("Delting and pushing gaspi_seg_id: &d back on stack", gaspi_seg_id);
     DART_CHECK_ERROR(gaspi_segment_delete(gaspi_seg_id));
-
     DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, gaspi_seg_id));
 
     /* Remove the related correspondence relation record from the related translation table. */
     if(dart_adapt_transtable_remove(seg_id) == -1)
     {
+        DART_LOG_ERROR("Could not remove seg_id: %d from transtable", seg_id);
         return DART_ERR_INVAL;
     }
 
@@ -218,7 +215,6 @@ dart_ret_t dart_team_memregister(
     if(addr == NULL)
     {
         DART_LOG_ERROR("Invalid memory address pointer -> NULL!"); \
-
         return DART_ERR_INVAL;
     }
 
@@ -255,17 +251,20 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
             }
             DART_CHECK_ERROR(gaspi_segment_ptr(local_seg, addr));
             *addr = offset + (char *)(*addr);
+            DART_LOG_TRACE("seg_id > 0 -->c(%p)", *adr);
         }
         else
         {
             if (unitid.id == gptr.unitid)
             {
+                DART_LOG_TRACE("seg_id == 0 && unitid.id == gptr.unitid --> *adr = NULL");
                 *addr = offset + dart_mempool_localalloc;
             }
         }
     }
     else
     {
+        DART_LOG_TRACE("unitid.id != gptr.unitid --> *adr = NULL");
         *addr = NULL;
     }
 
@@ -277,21 +276,24 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
 {
     int16_t seg_id = gptr->segid;
 
-    /* The modification to addr is reflected in the fact that modifying the offset. */
+    /* The modification to addr is reflected in modifying the offset. */
     if (seg_id)
     {
         gaspi_segment_id_t local_seg;
         gaspi_pointer_t    local_seg_addr;
         if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &local_seg) == -1)
         {
+            DART_LOG_ERROR("Could not get a local_id from transtable");
             return DART_ERR_INVAL;
         }
         DART_CHECK_ERROR(gaspi_segment_ptr(local_seg, &local_seg_addr));
         gptr->addr_or_offs.offset = (char *)addr - (char *)local_seg_addr;
+        DART_LOG_TRACE("seg_id > 0 --> adr_or_offset = %u", gptr->addr_or_offs.offset);
     }
     else
     {
         gptr->addr_or_offs.offset = (char *)addr - dart_mempool_localalloc;
+        DART_LOG_TRACE("seg_id == 0 --> adr_or_offset = %u", gptr->addr_or_offs.offset);
     }
     return DART_OK;
 }
