@@ -233,6 +233,93 @@ int dart_gaspi_cmp_ranks(const void * a, const void * b)
     return c - d;
 }
 
+/************************************************************************************
+ *
+ * collective operations helper functions
+ *
+ ************************************************************************************/
+static unsigned int npot(unsigned int v)
+{
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+
+    return v + 1;
+}
+
+unsigned int gaspi_utils_get_rank(int relative_rank, int root, int rank_count)
+{
+    relative_rank += root;
+    if (relative_rank >= rank_count)
+    {
+        relative_rank -= rank_count;
+    }
+    return relative_rank;
+}
+
+int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gaspi_rank_t size)
+{
+
+
+   /* Be your own parent, ie. the root, by default */
+   *parent = me;
+
+   me -= root;
+   if(me < 0)
+   {
+      me += size;
+   }
+
+   unsigned int size_pot = npot(size);
+   unsigned int number_of_children = 0;
+
+    /* Calculate the number of children for me */
+    unsigned int d;
+    for (d = 1; d; d <<= 1)
+    {
+        /* Actually break condition */
+        if (d > size_pot)
+        {
+            break;
+        }
+
+        /* Check if we are actually a child of someone */
+        if (me & d)
+        {
+            /* Yes, set the parent to our real one, and stop */
+            *parent = me ^ d;
+            *parent = gaspi_utils_get_rank(*parent, root, size);
+            break;
+        }
+
+        /* Only count real children, of the virtual hypercube */
+        if ((me ^ d) < size)
+        {
+            number_of_children++;
+        }
+    }
+
+    /* Put the ranks of all children into a list and return */
+    *children = malloc(sizeof(**children) * number_of_children);
+    unsigned int child = number_of_children;
+
+    d >>= 1;
+    while (d)
+    {
+        if ((me ^ d) < size)
+        {
+            (*children)[--child] = me ^ d;
+            (*children)[child] = gaspi_utils_get_rank((*children)[child], root, size);
+        }
+        d >>= 1;
+    }
+
+    return number_of_children;
+}
+
 dart_ret_t dart_get_minimal_queue(gaspi_queue_id_t * qid)
 {
     gaspi_number_t qsize;
@@ -268,6 +355,36 @@ dart_ret_t dart_get_minimal_queue(gaspi_queue_id_t * qid)
     }
 
     return DART_OK;
+}
+
+gaspi_return_t check_queue_size(gaspi_queue_id_t queue)
+{
+    gaspi_number_t queue_size = 0;
+    DART_CHECK_GASPI_ERROR(gaspi_queue_size(queue, &queue_size));
+
+    gaspi_number_t queue_size_max = 0;
+    DART_CHECK_GASPI_ERROR(gaspi_queue_size_max(&queue_size_max));
+
+    if (queue_size >= queue_size_max)
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_wait(queue, GASPI_BLOCK));
+    }
+    return GASPI_SUCCESS;
+}
+
+gaspi_return_t blocking_waitsome(gaspi_segment_id_t seg,
+                                 gaspi_notification_id_t id_begin,
+                                 gaspi_notification_id_t id_count,
+                                 gaspi_notification_id_t *id_available,
+                                 gaspi_notification_t *notify_val)
+{
+    DART_CHECK_GASPI_ERROR(
+        gaspi_notify_waitsome(seg, id_begin, id_count,
+                              id_available, GASPI_BLOCK));
+
+    DART_CHECK_GASPI_ERROR(gaspi_notify_reset(seg, *id_available, notify_val));
+
+    return GASPI_SUCCESS;
 }
 
 dart_ret_t glob_unit_gaspi_seg(dart_gptr_t* gptr, dart_unit_t* global_unit_id, gaspi_segment_id_t* gaspi_seg_id, const char* location)

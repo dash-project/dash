@@ -43,10 +43,6 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
 
-
-
-
-
 // local gaspi segment id entry
 typedef struct local_gseg_id_entry
 {
@@ -76,6 +72,19 @@ dart_ret_t inital_rma_request_entry(int16_t seg_id);
 dart_ret_t delete_rma_requests(int16_t seg_id);
 
 dart_ret_t free_segment_ids(request_table_entry_t* request_entry);
+
+dart_ret_t unit_g2l (uint16_t index, dart_unit_t abs_id, dart_unit_t *rel_id);
+dart_ret_t unit_l2g (uint16_t index, dart_unit_t *abs_id, dart_unit_t rel_id);
+
+int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gaspi_rank_t size);
+
+dart_ret_t dart_get_minimal_queue(gaspi_queue_id_t * qid);
+gaspi_return_t blocking_waitsome(gaspi_segment_id_t seg,
+                                 gaspi_notification_id_t id_begin,
+                                 gaspi_notification_id_t id_count,
+                                 gaspi_notification_id_t *id_available,
+                                 gaspi_notification_t *notify_val);
+gaspi_return_t check_queue_size(gaspi_queue_id_t queue);
 
 typedef enum {
   GASPI_WRITE = 0,
@@ -128,9 +137,7 @@ typedef struct converted_types
     };
 } converted_type_t;
 
-dart_ret_t unit_g2l (uint16_t index, dart_unit_t abs_id, dart_unit_t *rel_id);
-dart_ret_t unit_l2g (uint16_t index, dart_unit_t *abs_id, dart_unit_t rel_id);
-dart_ret_t dart_get_minimal_queue(gaspi_queue_id_t * qid);
+
 gaspi_queue_id_t dart_handle_get_queue(dart_handle_t handle);
 
 dart_ret_t glob_unit_gaspi_seg(dart_gptr_t* gptr, dart_unit_t* global_unit_id, gaspi_segment_id_t* gaspi_seg_id, const char* location);

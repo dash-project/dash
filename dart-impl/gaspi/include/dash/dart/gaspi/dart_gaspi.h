@@ -34,6 +34,62 @@ extern bool dart_fallback_seg_is_allocated;
 extern seg_stack_t pool_gaspi_seg_ids;
 extern seg_stack_t pool_dart_seg_ids;
 
+#define DART_CHECK_DATA_TYPE(dart_datatype_1, dart_datatype_2)                                   \
+  do{                                                                                            \
+    if(dart_datatype_1 != dart_datatype_2) {                                                     \
+      DART_LOG_ERROR("Types for dst and src have to be same. No type conversion is performed!"); \
+      return DART_ERR_INVAL;                                                                     \
+    }                                                                                            \
+  }while(0)
+
+#define DART_CHECK_ERROR_GOTO_TEMPL(expected, error_code, ret_type, label, func...)          \
+  do {                                                                                       \
+    const ret_type retval = func;                                                            \
+    if (retval != expected) {                                                                \
+      printf("ERROR in %s : %s on line %i return value %i\n", #func,                   \
+                   __FILE__, __LINE__, retval);                                              \
+      goto label;                                                                            \
+    }                                                                                        \
+  }while (0)
+
+#define DART_CHECK_ERROR_GOTO(label, func...) \
+    DART_CHECK_ERROR_GOTO_TEMPL(DART_OK, DART_ERR_OTHER, dart_ret_t, label, func)
+
+#define DART_CHECK_GASPI_ERROR_GOTO(label, func...) \
+    DART_CHECK_ERROR_GOTO_TEMPL(GASPI_SUCCESS, GASPI_ERROR, gaspi_return_t, label, func)
+
+#define DART_CHECK_ERROR_TEMPL(expected, error_code, ret_type, func...)          \
+  do {                                                                           \
+    const ret_type retval = func;                                                \
+    if (retval != expected) {                                                    \
+      printf("ERROR in %s : %s on line %i return value %i\n", #func,       \
+                   __FILE__, __LINE__, retval);                                  \
+      return error_code;                                                         \
+    }                                                                            \
+  }while (0)
+
+#define DART_CHECK_ERROR(func...) DART_CHECK_ERROR_TEMPL(DART_OK, DART_ERR_OTHER, dart_ret_t, func)
+
+#define DART_CHECK_GASPI_ERROR(func...) DART_CHECK_ERROR_TEMPL(GASPI_SUCCESS, GASPI_ERROR, gaspi_return_t, func)
+
+#define DART_CHECK_ERROR_RET(ret, func...)                                       \
+    do {                                                                         \
+      ret = func;                                                                \
+      if (ret != DART_OK) {                                                \
+        printf("ERROR in %s : %s on line %i return value %i\n", #func,     \
+                     __FILE__, __LINE__, ret);                                   \
+      }                                                                          \
+    }while (0)
+
+#define DART_CHECK_GASPI_ERROR_RET(ret, func...)                                       \
+    do {                                                                         \
+      ret = func;                                                                \
+      if (ret != GASPI_SUCCESS) {                                                \
+        printf("ERROR in %s : %s on line %i return value %i\n", #func,     \
+                     __FILE__, __LINE__, ret);                                   \
+      }                                                                          \
+    }while (0)
+
 #define DART_INTERFACE_OFF
 
 #ifdef __cplusplus

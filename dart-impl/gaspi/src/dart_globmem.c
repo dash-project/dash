@@ -61,7 +61,10 @@ dart_ret_t dart_team_mem_impl(
   void            * addr,
   dart_gptr_t     * gptr)
 {
-    size_t nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
+    dart_datatype_struct_t* dtype_base =
+      datatype_base_struct(get_datatype_struct(dtype));
+    size_t nbytes = datatype_sizeof(dtype_base) * nelem;
+
     size_t teamsize;
     dart_team_unit_t unitid;
     DART_CHECK_ERROR(dart_team_myid(teamid, &unitid));

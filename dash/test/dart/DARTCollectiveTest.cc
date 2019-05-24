@@ -1,9 +1,28 @@
-
 #include "DARTCollectiveTest.h"
 
 #include <dash/dart/if/dart.h>
 
+TEST_F(DARTCollectiveTest, Bcast) {
 
+  using elem_t = long;
+
+  elem_t value = 0;
+
+  if(dash::myid() == 0) {
+    value = 42;
+  }
+
+  dart_bcast(
+      &value,           // send (root) and receive buffer
+      1,                                  // number elems
+      dash::dart_datatype<elem_t>::value,  // data type
+      0,                                   // root
+      dash::Team::All().dart_id()         // team
+      );
+
+
+    ASSERT_EQ_U(42, value);
+}
 
 TEST_F(DARTCollectiveTest, Scatter) {
 
@@ -74,6 +93,70 @@ TEST_F(DARTCollectiveTest, Allgather) {
 
   for(int i = 0; i < dash::size(); ++i) {
     ASSERT_EQ_U(i, recv_buffer[i]);
+  }
+}
+
+TEST_F(DARTCollectiveTest, Allgatherv) {
+
+  using elem_t = long;
+
+  std::array<elem_t, 2> values{dash::myid(), (dash::myid() + 1) * 10 };
+  std::vector<elem_t> recv_buffer(dash::size()*2);
+
+  std::vector<size_t> recv_displ(dash::size());
+  std::vector<size_t> recv_nelems(dash::size());
+  for(int i = 0; i < dash::size(); ++i)
+  {
+    recv_displ[i] = i * 2;
+    recv_nelems[i] = (i % 2 == 0) ? 1 : 2;
+  }
+  dart_allgatherv(
+      values.data(),                        // send buffer
+      (dash::myid() % 2 == 0) ? 1 : 2,      // number elems to send
+      dash::dart_datatype<elem_t>::value,  // data type
+      recv_buffer.data(),            // receive buffer
+      recv_nelems.data(),             // number elems to receive per unit
+      recv_displ.data(),              // offset per unit
+      dash::Team::All().dart_id()         // team
+      );
+
+  for(size_t i = 0; i < dash::size(); ++i) {
+    size_t index = i*2;
+    ASSERT_EQ_U(i, recv_buffer[index]);
+    if(i%2 == 0) {
+      ASSERT_EQ_U(0, recv_buffer[index+1]);
+    } else {
+      ASSERT_EQ_U((i + 1) * 10, recv_buffer[index+1]);
+    }
+  }
+}
+
+TEST_F(DARTCollectiveTest, Alltoall) {
+
+  using elem_t = long;
+
+  std::vector<elem_t> send_buffer(dash::size() * 2);
+  std::vector<elem_t> recv_buffer(dash::size() * 2);
+
+  for(auto i = 0; i < send_buffer.size(); ++i) {
+    send_buffer[i] = i * (dash::myid() + 1);
+  }
+
+  dart_alltoall(
+      send_buffer.data(),                        // send buffer
+      recv_buffer.data(),            // receive buffer
+      2,                                  // number elems
+      dash::dart_datatype<elem_t>::value,  // data type
+      dash::Team::All().dart_id()         // team
+      );
+
+  elem_t expected = 0;
+  for(int i = 0; i < dash::size(); ++i) {
+    expected = dash::myid() * (i + 1) * 2;
+    size_t index = i * 2;
+    ASSERT_EQ_U(expected, recv_buffer[index]);
+    expected += i + 1;
+    ASSERT_EQ_U(expected, recv_buffer[index+1]);
   }
 }
 

@@ -8,17 +8,6 @@
 #include <dash/dart/gaspi/dart_communication_priv.h>
 
 
-
-/*********************** Notify Value ************************/
-//gaspi_notification_t dart_notify_value = 42;
-
-
-/********************** Only for testing *********************/
-gaspi_queue_id_t dart_handle_get_queue(dart_handle_t handle)
-{
-    return handle->queue;
-}
-
 dart_ret_t dart_scatter(
    const void        * sendbuf,
    void              * recvbuf,
@@ -103,91 +92,94 @@ dart_ret_t dart_scatter(
     DART_CHECK_ERROR(dart_barrier(teamid));
 
     return DART_OK;
-#if 0
-    dart_team_unit_t             myid;
-    size_t                  team_size;
-    gaspi_notification_id_t first_id;
-    gaspi_notification_t    old_value;
-    gaspi_segment_id_t      gaspi_seg_id = dart_gaspi_buffer_id;
-    gaspi_notification_id_t remote_id    = 0;
-    gaspi_pointer_t         seg_ptr      = NULL;
-    gaspi_queue_id_t        queue        = 0;
-    gaspi_offset_t          local_offset = 0;
-    uint16_t                index;
-    size_t                  nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
+}
 
-    DART_CHECK_ERROR(dart_team_myid(teamid, &myid));
-    DART_CHECK_ERROR(dart_team_size(teamid, &team_size));
+/**
+ * Implemented a binominal tree to broadcast the data
+ */
+dart_ret_t dart_bcast(
+   void              * buf,
+   size_t              nelem,
+   dart_datatype_t     dtype,
+   dart_team_unit_t    root,
+   dart_team_t         teamid
+)
+{
 
+    dart_datatype_struct_t* dts = get_datatype_struct(dtype);
+    if(!datatype_isbasic(dts))
+    {
+      DART_LOG_ERROR("complex datatypes are not supported!");
+
+      return DART_ERR_INVAL;
+    }
+    size_t nbytes_elem = datatype_sizeof(dts);
+    size_t nbytes = nbytes_elem * nelem;
+
+    uint16_t index;
     if(dart_adapt_teamlist_convert(teamid, &index) == -1)
     {
-        fprintf(stderr, "dart_scatter: can't find index of given team\n");
+        fprintf(stderr, "dart_gather: no team with id: %d\n", teamid);
         return DART_ERR_OTHER;
     }
 
-    if((nbytes * team_size) > DART_GASPI_BUFFER_SIZE)
+    dart_team_unit_t myid;
+    DART_CHECK_ERROR(dart_team_myid(teamid, &myid));
+
+    size_t team_size;
+    DART_CHECK_ERROR(dart_team_size(teamid, &team_size));
+
+    gaspi_queue_id_t queue;
+    DART_CHECK_ERROR( dart_get_minimal_queue(&queue));
+
+    DART_CHECK_GASPI_ERROR(gaspi_segment_use(dart_coll_seg, buf, nbytes, dart_teams[index].id, GASPI_BLOCK, 0));
+
+    int  parent;
+    int* children = NULL;
+    int  children_count = gaspi_utils_compute_comms(&parent, &children, myid.id, root.id, team_size);
+
+    gaspi_notification_t notify_value = 42;
+    gaspi_notification_id_t notify_id = 0;
+
+    if (myid.id != parent)
     {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_coll_seg,
-                                                    nbytes * team_size,
-                                                    dart_teams[index].id,
-                                                    GASPI_BLOCK,
-                                                    GASPI_MEM_UNINITIALIZED));
-        gaspi_seg_id = dart_coll_seg;
-    }
+        gaspi_notification_id_t first_id;
+        gaspi_notification_t    old_value;
+        DART_CHECK_GASPI_ERROR(gaspi_notify_waitsome(dart_coll_seg, notify_id, 1, &first_id, GASPI_BLOCK));
+        DART_CHECK_GASPI_ERROR(gaspi_notify_reset(dart_coll_seg, first_id, &old_value));
 
-    DART_CHECK_ERROR(dart_barrier(teamid));
-    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_seg_id, &seg_ptr));
-
-    if(myid.id == root.id)
-    {
-        memcpy( seg_ptr, sendbuf, nbytes * team_size );
-
-        for (dart_unit_t unit = 0; unit < team_size; ++unit)
+        if(old_value != notify_value)
         {
-            if ( unit == myid.id )
-            {
-                continue;
-            }
-
-            local_offset = nbytes * unit;
-            dart_unit_t unit_abs;
-
-            DART_CHECK_ERROR(unit_l2g(index, &unit_abs, unit));
-            DART_CHECK_GASPI_ERROR(wait_for_queue_entries(&queue, 2));
-
-            DART_CHECK_GASPI_ERROR(gaspi_write_notify(gaspi_seg_id,
-                                                      local_offset,
-                                                      unit_abs,
-                                                      gaspi_seg_id,
-                                                      0UL,
-                                                      nbytes,
-                                                      remote_id,
-                                                      42,
-                                                      queue,
-                                                      GASPI_BLOCK));
+            DART_LOG_ERROR("Error in process synchronization -> wrong notification value");
+            return DART_ERR_OTHER;
         }
-
-        memcpy(recvbuf, (void *) ((char *) seg_ptr + (myid.id * nbytes)), nbytes);
     }
-    else
+
+    for (int child = 0; child < children_count; child++)
     {
-        DART_CHECK_GASPI_ERROR(gaspi_notify_waitsome(gaspi_seg_id, remote_id, 1, &first_id, GASPI_BLOCK));
-        DART_CHECK_GASPI_ERROR(gaspi_notify_reset(gaspi_seg_id, first_id, &old_value));
+        dart_unit_t glob_unit_id;
+        DART_CHECK_ERROR(unit_l2g(index, &glob_unit_id, children[child]));
 
-        memcpy(recvbuf, seg_ptr, nbytes);
+        DART_CHECK_GASPI_ERROR(gaspi_write_notify(dart_coll_seg,
+                                                  0,
+                                                  glob_unit_id,
+                                                  dart_coll_seg,
+                                                  0,
+                                                  nbytes,
+                                                  notify_id,
+                                                  notify_value,
+                                                  queue,
+                                                  GASPI_BLOCK));
     }
+
+
+    DART_CHECK_GASPI_ERROR(gaspi_segment_delete(dart_coll_seg));
 
     DART_CHECK_ERROR(dart_barrier(teamid));
 
-    if((nbytes * team_size) > DART_GASPI_BUFFER_SIZE)
-    {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));;
-    }
     return DART_OK;
-#endif
 }
 
-//void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t root, dart_team_t team
 dart_ret_t dart_gather(
       const void         * sendbuf,
       void               * recvbuf,
@@ -267,7 +259,7 @@ dart_ret_t dart_gather(
         int notifies_left = team_size - 1;
         while(notifies_left > 0)
         {
-            DART_CHECK_GASPI_ERROR(blocking_waitsome(0, team_size - 1, &first_id, &old_value, dart_coll_seg));
+            DART_CHECK_GASPI_ERROR(blocking_waitsome(dart_coll_seg, 0, team_size - 1, &first_id, &old_value));
             if(old_value != notify_value)
             {
                 DART_LOG_ERROR("Error in process synchronization -> wrong notification value");
@@ -280,118 +272,6 @@ dart_ret_t dart_gather(
     }
 
     DART_CHECK_ERROR(dart_barrier(teamid));
-
-    return DART_OK;
-}
-/**
- * Implemented a binominal tree to broadcast the data
- *
- * TODO : In error case memory of children will leak
- * TODO : check if nbytes is the actuall number of bytes
- */
- //void *buf, size_t nbytes, dart_unit_t root, dart_team_t team
-dart_ret_t dart_bcast(
-   void              * buf,
-   size_t              nelem,
-   dart_datatype_t     dtype,
-   dart_team_unit_t    root,
-   dart_team_t         teamid
-)
-{
-    const gaspi_notification_id_t notify_id    = 0;
-    gaspi_queue_id_t              queue        = 0;
-    gaspi_pointer_t               seg_ptr      = NULL;
-    const gaspi_notification_t    notify_val   = 42;
-    gaspi_segment_id_t            gaspi_seg_id = dart_gaspi_buffer_id;
-    gaspi_notification_id_t       first_id;
-    gaspi_notification_t          old_value;
-    uint16_t                      index;
-    dart_global_unit_t            myid;
-    dart_unit_t                   root_abs;
-    dart_team_unit_t              team_myid;
-    size_t                        team_size;
-    int                           parent;
-    int                         * children = NULL;
-    int                           children_count;
-    size_t                  nbytes = dart_gaspi_datatype_sizeof(dtype) * nelem;
-    int result = dart_adapt_teamlist_convert(teamid, &index);
-    if(result == -1)
-    {
-        fprintf(stderr, "dart_bcast: can't find index of given team\n");
-        return DART_ERR_INVAL;
-    }
-
-    DART_CHECK_ERROR(unit_l2g(index, &root_abs, root.id));
-    DART_CHECK_ERROR(dart_myid(&myid));
-    DART_CHECK_ERROR(dart_team_myid(teamid, &team_myid));
-    DART_CHECK_ERROR(dart_team_size(teamid, &team_size));
-    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_seg_id, &seg_ptr));
-
-    if(nbytes > DART_GASPI_BUFFER_SIZE)
-    {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_coll_seg,
-                                                    nbytes,
-                                                    dart_teams[index].id,
-                                                    GASPI_BLOCK,
-                                                    GASPI_MEM_UNINITIALIZED));
-        gaspi_seg_id = dart_coll_seg;
-    }
-
-    if(myid.id == root_abs)
-    {
-        memcpy(seg_ptr, buf, nbytes);
-    }
-
-    children_count = gaspi_utils_compute_comms(&parent, &children, team_myid.id, root.id, team_size);
-
-    DART_CHECK_ERROR(dart_barrier(teamid));
-
-    dart_unit_t abs_parent;
-    DART_CHECK_ERROR(unit_l2g(index, &abs_parent, parent));
-    /*
-     * parents + children wait for upper parents data
-     */
-    if (myid.id != abs_parent)
-    {
-        blocking_waitsome(notify_id, 1, &first_id, &old_value, gaspi_seg_id);
-        if(old_value != notify_val)
-        {
-            fprintf(stderr, "dart_bcast : Got wrong notify value -> data transfer error\n");
-        }
-    }
-    /*
-     * write to all childs
-     */
-    for (int child = 0; child < children_count; child++)
-    {
-        dart_unit_t abs_child;
-        DART_CHECK_ERROR(unit_l2g(index, &abs_child, children[child]));
-
-        DART_CHECK_GASPI_ERROR(wait_for_queue_entries(&queue, 2));
-        DART_CHECK_GASPI_ERROR(gaspi_write_notify(gaspi_seg_id,
-                                                  0UL,
-                                                  abs_child,
-                                                  gaspi_seg_id,
-                                                  0UL,
-                                                  nbytes,
-                                                  notify_id,
-                                                  notify_val,
-                                                  queue,
-                                                  GASPI_BLOCK));
-    }
-
-    free(children);
-    DART_CHECK_ERROR(dart_barrier(teamid));
-
-    if(myid.id != root_abs)
-    {
-        memcpy(buf, seg_ptr, nbytes);
-    }
-
-    if(nbytes > DART_GASPI_BUFFER_SIZE)
-    {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));;
-    }
 
     return DART_OK;
 }
@@ -422,8 +302,6 @@ dart_ret_t dart_allgather(
 
     dart_team_unit_t myid;
     DART_CHECK_ERROR(dart_team_myid(teamid, &myid));
-    dart_global_unit_t glob_myid;
-    DART_CHECK_ERROR(dart_myid(&glob_myid));
 
     size_t team_size;
     DART_CHECK_ERROR(dart_team_size(teamid, &team_size));
@@ -436,7 +314,9 @@ dart_ret_t dart_allgather(
     DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_onesided_seg, (void* const) sendbuf, nbytes, 0));
 
     gaspi_notification_t notify_value = 42;
-    gaspi_notification_id_t notify_id = 0;
+    gaspi_notification_id_t notify_id = myid.id;
+    gaspi_offset_t remote_offset = myid.id * nbytes;
+
     for(gaspi_rank_t unit_id = 0; unit_id < team_size; ++unit_id)
     {
         if(unit_id == myid.id) continue;
@@ -449,27 +329,32 @@ dart_ret_t dart_allgather(
                                                   0UL,
                                                   glob_unit_id,
                                                   dart_coll_seg,
-                                                  myid.id * nbytes,
+                                                  remote_offset,
                                                   nbytes,
                                                   notify_id,
                                                   notify_value,
                                                   queue,
                                                   GASPI_BLOCK));
-        // guarantees contiguous notification ids
-        ++notify_id;
     }
 
-    DART_CHECK_GASPI_ERROR(gaspi_segment_delete(dart_onesided_seg));
+    memcpy((char*) recvbuf + remote_offset, sendbuf, nbytes);
 
-    memcpy((char*) recvbuf + myid.id * nbytes, sendbuf, nbytes);
-
-    gaspi_notification_id_t first_id;
+    gaspi_notification_id_t found_id;
     gaspi_notification_t    old_value;
 
     int notifies_left = team_size - 1;
     while(notifies_left > 0)
     {
-        DART_CHECK_GASPI_ERROR(blocking_waitsome(0, team_size - 1, &first_id, &old_value, dart_coll_seg));
+        DART_CHECK_GASPI_ERROR(gaspi_notify_waitsome(dart_coll_seg, 0, team_size,
+                           &found_id, GASPI_BLOCK));
+        DART_CHECK_GASPI_ERROR(gaspi_notify_reset(dart_coll_seg, found_id, &old_value));
+        //shouldn't happen
+        if(found_id == myid.id)
+        {
+          DART_LOG_ERROR("Error in process synchronization -> notify id for local unit");
+          continue;
+        }
+
         if(old_value != notify_value)
         {
             DART_LOG_ERROR("Error in process synchronization -> wrong notification value");
@@ -479,7 +364,7 @@ dart_ret_t dart_allgather(
     }
 
     DART_CHECK_ERROR(dart_barrier(teamid));
-
+    DART_CHECK_GASPI_ERROR(gaspi_segment_delete(dart_onesided_seg));
     DART_CHECK_GASPI_ERROR(gaspi_segment_delete(dart_coll_seg));
 
     return DART_OK;
@@ -489,101 +374,195 @@ dart_ret_t dart_allgather(
 //slightly altered version of gaspi dart_allgather
 dart_ret_t dart_allgatherv(
   const void      * sendbuf,
-  size_t            nsendelem,
+  size_t            nsendelems,
   dart_datatype_t   dtype,
   void            * recvbuf,
-  const size_t    * nrecvcounts,
+  const size_t    * nrecvelems,
   const size_t    * recvdispls,
   dart_team_t       teamid)
 {
-    gaspi_queue_id_t     queue = 0;
+    dart_datatype_struct_t* dts = get_datatype_struct(dtype);
+    if(!datatype_isbasic(dts))
+    {
+      DART_LOG_ERROR("complex datatypes are not supported!");
+
+      return DART_ERR_INVAL;
+    }
+
+    uint16_t index;
+    if(dart_adapt_teamlist_convert(teamid, &index) == -1)
+    {
+        fprintf(stderr, "dart_gather: no team with id: %d\n", teamid);
+        return DART_ERR_OTHER;
+    }
+
+    dart_team_unit_t myid;
+    DART_CHECK_ERROR(dart_team_myid(teamid, &myid));
+    dart_global_unit_t glob_myid;
+    DART_CHECK_ERROR(dart_myid(&glob_myid));
+
+    size_t team_size;
+    DART_CHECK_ERROR(dart_team_size(teamid, &team_size));
+
+    gaspi_queue_id_t queue;
+    DART_CHECK_ERROR( dart_get_minimal_queue(&queue));
+
+    size_t last_index = team_size-1;
+    size_t nbytes_elem = datatype_sizeof(dts);
+    size_t num_total_elemnts = recvdispls[last_index] + nrecvelems[last_index];
+    size_t nbytes_recv = nbytes_elem * num_total_elemnts;
+    size_t nbytes_send = nbytes_elem * nsendelems;
+
+    DART_CHECK_GASPI_ERROR(gaspi_segment_use(dart_coll_seg, recvbuf, nbytes_recv, dart_teams[index].id, GASPI_BLOCK, 0));
+
+    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_onesided_seg, (void* const) sendbuf, nbytes_send, 0));
+
     gaspi_notification_t notify_value = 42;
-    gaspi_segment_id_t   gaspi_seg_id = dart_gaspi_buffer_id;
-    gaspi_pointer_t      seg_ptr      = NULL;
-    dart_team_unit_t     relative_id;
-    gaspi_offset_t       offset;
-    size_t               teamsize;
-    uint16_t             index;
-    size_t               nbytes = dart_gaspi_datatype_sizeof(dtype) * nsendelem;
+    gaspi_notification_id_t notify_id = myid.id;
+    gaspi_offset_t remote_offset = recvdispls[myid.id] * nbytes_elem;
 
-    DART_CHECK_ERROR(dart_team_myid(teamid, &relative_id));
-    DART_CHECK_ERROR(dart_team_size(teamid, &teamsize));
-    DART_CHECK_ERROR(dart_barrier(teamid));
-
-    /*number of all allements
-    *|data+disp of unit 0..n-1|disp for last(n-th) unit|data of last(n-th) unit|
-    *                                                  ^-- pointer recvdispls[teamsize-1]
-    *|----------------------------- num_overall_ellem -------------------------|
-    */
-    size_t num_overall_elemnts = recvdispls[teamsize-1] + nrecvcounts[teamsize-1];
-    size_t n_total_bytes = dart_gaspi_datatype_sizeof(dtype) * num_overall_elemnts;
-
-    int result = dart_adapt_teamlist_convert(teamid, &index);
-    if (result == -1)
+    for(gaspi_rank_t unit_id = 0; unit_id < team_size; ++unit_id)
     {
-        return DART_ERR_INVAL;
-    }
+        if(unit_id == myid.id) continue;
 
-    if((n_total_bytes * teamsize) > DART_GASPI_BUFFER_SIZE)
-    {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_coll_seg,
-                                                    n_total_bytes * teamsize,
-                                                    dart_teams[index].id,
-                                                    GASPI_BLOCK,
-                                                    GASPI_MEM_UNINITIALIZED));
-        gaspi_seg_id = dart_coll_seg;
-    }
+        dart_unit_t glob_unit_id;
+        DART_CHECK_ERROR(unit_l2g(index, &glob_unit_id, unit_id));
 
-    //local offset in Bytes. copies data from sendbuff in local part of the
-    //segment to avoid communication and send to other units.
-    offset = nbytes * relative_id.id + recvdispls[relative_id.id-1] * \
-             dart_gaspi_datatype_sizeof(dtype);
-
-    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_seg_id, &seg_ptr));
-
-    memcpy((void *) ((char *)seg_ptr + offset), sendbuf, nbytes);
-
-    for (dart_unit_t unit = 0; unit < teamsize; ++unit)
-    {
-        //Avoid communication if target is this unit.
-        if(unit == relative_id.id) continue;
-
-        dart_unit_t unit_abs_id;
-        DART_CHECK_ERROR(unit_l2g(index, &unit_abs_id, unit));
-
-        DART_CHECK_GASPI_ERROR(wait_for_queue_entries(&queue, 2));
-        DART_CHECK_GASPI_ERROR(gaspi_write_notify(gaspi_seg_id,
-                                                  offset,
-                                                  unit_abs_id,
-                                                  gaspi_seg_id,
-                                                  offset,
-                                                  nbytes,
-                                                  (gaspi_notification_id_t) relative_id.id,
+        DART_CHECK_GASPI_ERROR(gaspi_write_notify(dart_onesided_seg,
+                                                  0UL,
+                                                  glob_unit_id,
+                                                  dart_coll_seg,
+                                                  remote_offset,
+                                                  nbytes_send,
+                                                  notify_id,
                                                   notify_value,
                                                   queue,
                                                   GASPI_BLOCK));
     }
 
-    int missing = teamsize - 1;
-    gaspi_notification_id_t id_available;
-    gaspi_notification_t    id_val;
+    memcpy((char*) recvbuf + remote_offset, sendbuf, nbytes_send);
 
-    while(missing-- > 0)
+    gaspi_notification_id_t found_id;
+    gaspi_notification_t    old_value;
+
+    int notifies_left = team_size - 1;
+    while(notifies_left > 0)
     {
-        DART_CHECK_GASPI_ERROR(blocking_waitsome(0, teamsize, &id_available, &id_val, gaspi_seg_id));
-        if(id_val != notify_value)
+        DART_CHECK_GASPI_ERROR(gaspi_notify_waitsome(dart_coll_seg, 0, team_size,
+                           &found_id, GASPI_BLOCK));
+        DART_CHECK_GASPI_ERROR(gaspi_notify_reset(dart_coll_seg, found_id, &old_value));
+        //shouldn't happen
+        if(found_id == myid.id)
         {
-            fprintf(stderr, "Error: Get wrong notify in allgather\n");
+          DART_LOG_ERROR("Error in process synchronization -> notify id for local unit");
+          continue;
         }
+
+        if(old_value != notify_value)
+        {
+            DART_LOG_ERROR("Error in process synchronization -> wrong notification value");
+            return DART_ERR_OTHER;
+        }
+        --notifies_left;
     }
 
-    memcpy(recvbuf, seg_ptr, nbytes * teamsize);
     DART_CHECK_ERROR(dart_barrier(teamid));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_delete(dart_onesided_seg));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_delete(dart_coll_seg));
 
-    if((nbytes * teamsize) > DART_GASPI_BUFFER_SIZE)
+    return DART_OK;
+}
+
+dart_ret_t dart_alltoall(
+    const void *    sendbuf,
+    void *          recvbuf,
+    size_t          nelem,
+    dart_datatype_t dtype,
+    dart_team_t     teamid)
+{
+        dart_datatype_struct_t* dts = get_datatype_struct(dtype);
+    if(!datatype_isbasic(dts))
     {
-        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));;
+      DART_LOG_ERROR("complex datatypes are not supported!");
+
+      return DART_ERR_INVAL;
     }
+    size_t nbytes_elem = datatype_sizeof(dts);
+    size_t nbytes = nbytes_elem * nelem;
+
+    uint16_t index;
+    if(dart_adapt_teamlist_convert(teamid, &index) == -1)
+    {
+        fprintf(stderr, "dart_gather: no team with id: %d\n", teamid);
+        return DART_ERR_OTHER;
+    }
+
+    dart_team_unit_t myid;
+    DART_CHECK_ERROR(dart_team_myid(teamid, &myid));
+
+    size_t team_size;
+    DART_CHECK_ERROR(dart_team_size(teamid, &team_size));
+
+    gaspi_queue_id_t queue;
+    DART_CHECK_ERROR( dart_get_minimal_queue(&queue));
+
+    DART_CHECK_GASPI_ERROR(gaspi_segment_use(dart_coll_seg, recvbuf, nbytes * team_size, dart_teams[index].id, GASPI_BLOCK, 0));
+
+    DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_onesided_seg, (void* const) sendbuf, nbytes * team_size, 0));
+
+    gaspi_notification_t notify_value = 42;
+    gaspi_notification_id_t notify_id = myid.id;
+    gaspi_offset_t remote_offset = myid.id * nbytes;
+
+    for(gaspi_rank_t unit_id = 0; unit_id < team_size; ++unit_id)
+    {
+        if(unit_id == myid.id) continue;
+
+        dart_unit_t glob_unit_id;
+        DART_CHECK_ERROR(unit_l2g(index, &glob_unit_id, unit_id));
+
+
+        DART_CHECK_GASPI_ERROR(gaspi_write_notify(dart_onesided_seg,
+                                                  unit_id * nbytes,
+                                                  glob_unit_id,
+                                                  dart_coll_seg,
+                                                  remote_offset,
+                                                  nbytes,
+                                                  notify_id,
+                                                  notify_value,
+                                                  queue,
+                                                  GASPI_BLOCK));
+    }
+
+    memcpy((char*) recvbuf + remote_offset, sendbuf + remote_offset, nbytes);
+
+    gaspi_notification_id_t found_id;
+    gaspi_notification_t    old_value;
+
+    int notifies_left = team_size - 1;
+    while(notifies_left > 0)
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_notify_waitsome(dart_coll_seg, 0, team_size,
+                           &found_id, GASPI_BLOCK));
+        DART_CHECK_GASPI_ERROR(gaspi_notify_reset(dart_coll_seg, found_id, &old_value));
+        //shouldn't happen
+        if(found_id == myid.id)
+        {
+          DART_LOG_ERROR("Error in process synchronization -> notify id for local unit");
+          continue;
+        }
+
+        if(old_value != notify_value)
+        {
+            DART_LOG_ERROR("Error in process synchronization -> wrong notification value");
+            return DART_ERR_OTHER;
+        }
+        --notifies_left;
+    }
+
+    DART_CHECK_ERROR(dart_barrier(teamid));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_delete(dart_onesided_seg));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_delete(dart_coll_seg));
 
     return DART_OK;
 }
@@ -1501,15 +1480,4 @@ dart_ret_t dart_compare_and_swap(
                                GASPI_BLOCK));
 
   return DART_OK;
-}
-
-dart_ret_t dart_alltoall(
-    const void *    sendbuf,
-    void *          recvbuf,
-    size_t          nelem,
-    dart_datatype_t dtype,
-    dart_team_t     teamid)
-{
-    DART_LOG_ERROR("dart_alltoall for gaspi not supported!");
-    return DART_ERR_INVAL;
 }
