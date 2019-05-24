@@ -23,6 +23,7 @@
 #include <dash/dart/tasking/dart_tasking_copyin.h>
 #include <dash/dart/tasking/dart_tasking_extrae.h>
 #include <dash/dart/tasking/dart_tasking_craypat.h>
+#include <dash/dart/tasking/dart_tasking_instrumentation.h>
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -249,13 +250,16 @@ invoke_taskfn(dart_task_t *task)
   DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p descr:'%s')",
                  task, task->fn, task->data, task->descr);
   if (setjmp(task->taskctx->cancel_return) == 0) {
+    dart__tasking__instrument_task_begin(task, dart__tasking__current_thread());
     task->fn(task->data);
     DART_LOG_DEBUG("Done with task %p (fn:%p data:%p descr:'%s')",
                    task, task->fn, task->data, task->descr);
+    dart__tasking__instrument_task_end(task, dart__tasking__current_thread());
   } else {
     // we got here through longjmp, the task is cancelled
     task->state = DART_TASK_CANCELLED;
     DART_LOG_DEBUG("Task %p (fn:%p data:%p) cancelled", task, task->fn, task->data);
+    dart__tasking__instrument_task_cancel(task, dart__tasking__current_thread());
   }
 }
 
@@ -375,6 +379,8 @@ dart__tasking__yield(int delay)
       // we got a task, store it in the thread and leave this task
       DART_ASSERT(thread->next_task == NULL);
       thread->next_task = next;
+      // instrumentation
+      dart__tasking__instrument_task_yield_leave(current_task, thread);
       // here we leave this task
       dart__tasking__context_swap(current_task->taskctx, &thread->retctx);
       // sanity check after returning
@@ -387,6 +393,8 @@ dart__tasking__yield(int delay)
     // sanity checks after returning to this task
     DART_LOG_TRACE("Yield: got back into task %p", get_current_task());
     DART_ASSERT(get_current_task() == current_task);
+    // instrumentation
+    dart__tasking__instrument_task_yield_resume(current_task, thread);
   } else {
     //DART_LOG_TRACE("Yield: no task to yield to from task %p",
     //                current_task);
@@ -721,6 +729,8 @@ dart_task_t * create_task(
   UNLOCK_TASK(task->parent);
   task->children = NULL;
 #endif // TRACK_CHILDREN
+
+  dart__tasking__instrument_task_create(task, prio, descr);
 
   return task;
 }
