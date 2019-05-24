@@ -14,9 +14,6 @@
 #include <dash/dart/gaspi/dart_communication_priv.h>
 
 
-
-int16_t dart_memid;
-
 // (size_t nbytes, dart_gptr_t *gptr)
 dart_ret_t dart_memalloc(
   size_t            nelem,
