@@ -886,10 +886,24 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
     }
 
     bool needs_insert = true;
-    if (local == NULL) {
+
+    dart_dephash_elem_t *dummy_task = NULL;
+    if (local != NULL && local->is_dummy) {
+      dummy_task = local;
       // if there are no previous output dependencies we can release directly
-      runnable = true;
-      if (prev != NULL && prev->is_dummy) {
+      if (prev == NULL) {
+        runnable = true;
+      }
+    } else if (prev != NULL && prev->is_dummy) {
+      dummy_task = prev;
+      // if there are no previous output dependencies we can release directly
+      if (local == NULL) {
+        runnable = true;
+      }
+    }
+    //if (local == NULL) {
+    //  if (prev != NULL && prev->is_dummy) {
+    if (dummy_task != NULL) {
         /**
         * We found a dummy dependency that was created in a later phase.
         * Thus, we can capture it. All input dependencies in this dummy have a
@@ -898,15 +912,24 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
         * before thanks to the ordered insertion).
         */
         DART_LOG_TRACE("Capturing dummy dependency %p for remote dependency %p",
-                       prev, rdep);
-        prev->task   = rdep->task;
-        prev->origin = rdep->origin;
+                       dummy_task, rdep);
+        dummy_task->task   = rdep->task;
+        dummy_task->origin = rdep->origin;
         // release the remote depedendency object, we're working on the existing on
         dephash_recycle_elem(rdep);
-        rdep = prev; // defensive!
+        rdep = dummy_task; // defensive!
         needs_insert = false;
+        // there is nothing else to do with `local`
+        local = NULL;
+        // mark all tasks dependent on dummy_task to actually have a dependency
+        dart_dephash_elem_t *dep;
+        for (dep = dummy_task->dep_list;
+             dep != NULL;
+             dep = dep->next) {
+          DART_INC_AND_FETCH32(&dep->task.local->unresolved_deps);
+        }
       }
-    }
+    //}
 
 
     if (needs_insert) {
