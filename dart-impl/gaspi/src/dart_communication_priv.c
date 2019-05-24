@@ -4,7 +4,6 @@
 
 #include <dash/dart/if/dart_communication.h>
 
-#include <dash/dart/gaspi/gaspi_utils.h>
 #include <dash/dart/gaspi/dart_communication_priv.h>
 #include <dash/dart/gaspi/dart_translation.h>
 

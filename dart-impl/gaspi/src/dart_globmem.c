@@ -251,7 +251,7 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
             }
             DART_CHECK_ERROR(gaspi_segment_ptr(local_seg, addr));
             *addr = offset + (char *)(*addr);
-            DART_LOG_TRACE("seg_id > 0 -->c(%p)", *adr);
+            DART_LOG_TRACE("seg_id > 0 -->c(%p)", *addr);
         }
         else
         {

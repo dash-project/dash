@@ -6,7 +6,7 @@
 #include <dash/dart/if/dart.h>
 #include <dash/dart/gaspi/dart_types.h>
 #include <dash/dart/gaspi/rbtree.h>
-#include "dart_team_private.h"
+#include <dash/dart/gaspi/dart_team_private.h>
 
 #include <dash/dart/base/logging.h>
 

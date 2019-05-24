@@ -1,7 +1,6 @@
 #include <string.h>
 
 #include <dash/dart/gaspi/dart_gaspi.h>
-#include <dash/dart/gaspi/gaspi_utils.h>
 #include <dash/dart/gaspi/dart_team_private.h>
 #include <dash/dart/gaspi/dart_translation.h>
 #include <dash/dart/gaspi/dart_mem.h>

@@ -10,7 +10,6 @@ extern "C" {
 #include <dash/dart/if/dart.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/gaspi/dart_seg_stack.h>
-#include <dash/dart/gaspi/gaspi_utils.h>
 
 #define DART_MAX_TEAM_NUMBER (256)
 #define DART_INTERFACE_ON
