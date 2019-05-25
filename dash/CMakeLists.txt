@@ -400,6 +400,13 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           ${CMAKE_SOURCE_DIR}/dash/include
           ${ADDITIONAL_INCLUDES}
         )
+        set(EXAMPLE_COMPILE_FLAGS "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused")
+        set(EXAMPLE_LINK_FLAGS "")
+        if (exampletarget MATCHES ".*-omp")
+          set(EXAMPLE_COMPILE_FLAGS "${EXAMPLE_COMPILE_FLAGS} ${CXX_OMP_FLAG}")
+          set(EXAMPLE_LINK_FLAGS "${CXX_OMP_FLAG}")
+          message(STATUS "${EXAMPLE_LINK_FLAGS}")
+        endif()
         target_link_libraries(
           ${exampletarget}
           ${DASH_LIBRARY}
@@ -428,14 +435,12 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
               ${PLASMA_LIBRARIES})
           endif()
         endif()
-        set(EXAMPLE_COMPILE_FLAGS "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused")
-        if (exampletarget MATCHES ".*-omp")
-          set(EXAMPLE_COMPILE_FLAGS "${EXAMPLE_COMPILE_FLAGS} ${CXX_OMP_FLAG}")
-        endif()
         set_target_properties(
           ${exampletarget} PROPERTIES
           COMPILE_FLAGS
           ${EXAMPLE_COMPILE_FLAGS}
+          LINK_FLAGS
+          "${EXAMPLE_LINK_FLAGS}"
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
