@@ -20,6 +20,7 @@ namespace dash {
 
 #include <dash/internal/Config.h>
 
+#include <dash/Version.h>
 #include <dash/Types.h>
 #include <dash/Meta.h>
 #include <dash/Init.h>

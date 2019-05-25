@@ -4,7 +4,6 @@
 #include <dash/GlobAsyncRef.h>
 #include <dash/GlobRef.h>
 
-#include <dash/algorithm/Accumulate.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
 
@@ -89,7 +88,7 @@ OutputIt transform(
  * \endcode
  *
  * \returns  Output iterator to the element past the last element transformed.
- * \see      dash::accumulate
+ * \see      dash::reduce
  * \see      DashReduceOperations
  *
  * \tparam   InputIt         Iterator on first (local) input range
@@ -198,7 +197,7 @@ GlobOutputIt transform_local(
     InputAIt        in_a_first,
     InputAIt        in_a_last,
     InputBIt        in_b_first,
-    GlobOutputIt        out_first,
+    GlobOutputIt    out_first,
     BinaryOperation binary_op)
 {
   DASH_LOG_DEBUG("dash::transform_local()");
@@ -255,6 +254,9 @@ GlobOutputIt transform_local(
   return out_first + num_gvalues;
 }
 
+/**
+ * Specialization of \c dash::transform for global lhs input range.
+ */
 template <
     class InputIt,
     class GlobInputIt,
@@ -433,8 +435,6 @@ GlobOutputIt transform(
 }
 
 } // namespace internal
-
-
 
 template <
     class InputIt,

@@ -7,7 +7,7 @@
 #include <climits>
 
 #include <unistd.h>   // POSIX flags
-#include <time.h>     // clock_gettime(), time()
+#include <ctime>      // clock_gettime(), time()
 #include <sys/time.h> // gethrtime(), gettimeofday() fallbacks
 
 #include <utility>
@@ -96,7 +96,8 @@ class TimestampClockPosix : public Timestamp
     return *this;
   }
 
-  inline const Timestamp::counter_t & Value() const {
+  inline const Timestamp::counter_t& Value() const override
+  {
     return value;
   }
 

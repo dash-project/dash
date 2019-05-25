@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <time.h>
@@ -26,7 +27,7 @@
 /* Width of line number field in log messages in number of characters */
 #define LINE_WIDTH 4
 /* Maximum length of a single log message in number of characters */
-#define MAX_MESSAGE_LENGTH 256;
+#define MAX_MESSAGE_LENGTH 256
 
 static const struct dart_env_str2int env_vals[] = {
   {"ERROR", DART_LOGLEVEL_ERROR},
@@ -120,9 +121,8 @@ dart__base__log_message(
   }
   va_list argp;
   va_start(argp, format);
-  const int maxlen = MAX_MESSAGE_LENGTH;
-  char      msg_buf[maxlen];
-  vsnprintf(msg_buf, maxlen, format, argp);
+  char      msg_buf[MAX_MESSAGE_LENGTH];
+  vsnprintf(msg_buf, MAX_MESSAGE_LENGTH, format, argp);
 //  if (sn_ret < 0 || sn_ret >= maxlen) {
 //    break;
 //  }

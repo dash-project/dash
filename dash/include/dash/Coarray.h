@@ -82,25 +82,28 @@ constexpr bool type_is_complete() {
 template<
   typename element_type,
   typename pattern_type,
-  int rank>
+  int rank,
+  typename LocalMemSpaceT>
 struct local_ref_type {
   using type = LocalMatrixRef<element_type,
                               rank+1,
                               rank-1,
-                              pattern_type>;
+                              pattern_type, LocalMemSpaceT>;
 };
 
 template<
   typename element_type,
-  typename pattern_type>
-struct local_ref_type<dash::Atomic<element_type>, pattern_type, 1> {
+  typename pattern_type,
+  typename LocalMemSpaceT>
+struct local_ref_type<dash::Atomic<element_type>, pattern_type, 1, LocalMemSpaceT> {
   using type = GlobRef<element_type>;
 };
 
 template<
   typename element_type,
-  typename pattern_type>
-struct local_ref_type<element_type, pattern_type, 1> {
+  typename pattern_type,
+  typename LocalMemSpaceT>
+struct local_ref_type<element_type, pattern_type, 1, LocalMemSpaceT> {
   using type = element_type &;
 };
 
@@ -176,7 +179,8 @@ struct make_coarray_symmetric_pattern {
 template<
   typename T,
   typename IndexType = dash::default_index_t,
-  MemArrange Arrangement = ROW_MAJOR >
+  MemArrange Arrangement = ROW_MAJOR,
+  typename LocalMemSpaceT = HostSpace>
 class Coarray {
 private:
 
@@ -205,7 +209,7 @@ private:
   using _local_ref_type = typename coarray::detail::local_ref_type<
                                       _element_type,
                                       _pattern_type,
-                                      _valuetype_rank::value>::type;
+                                      _valuetype_rank::value, LocalMemSpaceT>::type;
 
   using _offset_type    = std::array<IndexType, _rank::value>;
 
@@ -217,10 +221,10 @@ public:
   using difference_type        = IndexType;
   using index_type             = IndexType;
   using size_type              = _size_type;
-  using iterator               = GlobIter<_element_type, _pattern_type>;
-  using const_iterator         = GlobIter<const _element_type, _pattern_type>;
-  using reverse_iterator       = GlobIter<_element_type, _pattern_type>;
-  using const_reverse_iterator = GlobIter<const _element_type, _pattern_type>;
+  using iterator               = typename _storage_type::iterator;
+  using const_iterator         = typename _storage_type::const_iterator;
+  using reverse_iterator       = typename _storage_type::reverse_iterator;
+  using const_reverse_iterator = typename _storage_type::const_reverse_iterator;
   using reference              = typename coarray::detail::ref_type<_element_type>::type;
   using const_reference        = typename coarray::detail::const_ref_type<_element_type>::type;
   using local_pointer          = _element_type *;
@@ -650,7 +654,7 @@ public:
     int __valuetype_rank = _valuetype_rank::value,
     typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline MEMTYPE & member(size_t offs) {
-    char * s_begin = reinterpret_cast<char *>(_storage.lbegin());
+    auto *s_begin = reinterpret_cast<char *>(_storage.lbegin());
     s_begin += offs;
     return *(reinterpret_cast<MEMTYPE*>(s_begin));
   }
@@ -669,7 +673,7 @@ public:
     int __valuetype_rank = _valuetype_rank::value,
     typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline MEMTYPE & member(const MEMTYPE P::*mem) {
-    size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
+    auto offs = (size_t) & (reinterpret_cast<P *>(0)->*mem);
     return member<MEMTYPE>(offs);
   }
 
@@ -838,7 +842,7 @@ public:
   inline value_base_type operator ++() {
     return ++(operator()(_myid()));
   }
- 
+
   /**
    * allows fortran like local access of scalars
    */

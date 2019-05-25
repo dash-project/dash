@@ -48,6 +48,8 @@
 
 #else // !DOXYGEN
 
+#include <dash/internal/Macro.h>
+
 // Architecture defines
 
 #if defined(__x86_64__)
@@ -181,6 +183,39 @@
 #    define DASH__OPENMP_VERSION 30
 #  endif
 #endif
+
+// Compiler ID
+#if defined (__GNUC_MINOR__)
+// GCC
+#define DASH_COMPILER_ID            \
+  "GCC-"                            \
+  dash__toxstr(__GNUC__) "."        \
+  dash__toxstr(__GNUC_MINOR__) "."  \
+  dash__toxstr(__GNUC_PATCHLEVEL__)
+#elif defined (__INTEL_COMPILER)
+#define DASH_COMPILER_ID            \
+  "Intel-"                          \
+  dash__toxstr(__INTEL_COMPILER)    \
+#elif defined (__clang__)
+#define DASH_COMPILER_ID            \
+  "Clang-"                          \
+  dash__toxstr(__clang_major__) "." \
+  dash__toxstr(__clang_minor__) "." \
+  dash__toxstr(__clang_patchlevel__)
+#elif defined (_CRAYC)
+#define DASH_COMPILER_ID            \
+  "Cray-"                           \
+  dash__toxstr(_RELEASE) "."        \
+  dash__toxstr(_RELEASE_MINOR)
+#elif defined (__IBMC__)
+#define DASH_COMPILER_ID
+  "IBM-"                            \
+  dash__toxstr(__IBMC__)
+#else
+#define COMPILER_ID                 \
+  "UNKNOWN"
+#endif
+
 
 #endif // DOXYGEN
 

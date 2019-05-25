@@ -66,6 +66,7 @@ struct iterator_traits : std::iterator_traits<Iterator> {
   using is_global_iterator = typename detail::is_global_iterator<Iterator>;
   using index_type =
       typename detail::iterator_traits_index_type<Iterator>::type;
+  using value_type = typename std::iterator_traits<Iterator>::value_type;
 };
 
 }  // namespace dash

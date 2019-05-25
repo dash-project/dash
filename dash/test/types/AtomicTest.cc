@@ -136,6 +136,8 @@ std::ostream & operator<<(
   return operator<<(os, ss.str());
 }
 
+#if 0
+
 TEST_F(AtomicTest, PunnedType)
 {
   typedef struct container<short> value_t;
@@ -143,6 +145,8 @@ TEST_F(AtomicTest, PunnedType)
   value_t           val_init = { -1, 10 };
   value_t           val_exch = {  1, 20 };
   dash::team_unit_t owner(dash::size() - 1);
+
+  static_assert(dash::is_atomic_compatible<value_t>::value, "must be true");
 
   dash::Shared< dash::Atomic<value_t> > shared(owner);
 
@@ -219,6 +223,7 @@ TEST_F(AtomicTest, PunnedTypeFetchOp)
   value_t           val_zero = { 0x00, 0x00 };
   dash::team_unit_t owner(dash::size() - 1);
 
+  static_assert(std::is_standard_layout<value_t>::value, "invalid type for dash::Atomic");
   dash::Shared< dash::Atomic<value_t> > shared(owner);
 
   if (dash::myid() == 0) {
@@ -243,6 +248,8 @@ TEST_F(AtomicTest, PunnedTypeFetchOp)
   }
 }
 
+#endif
+
 TEST_F(AtomicTest, ArrayElements)
 {
   typedef int value_t;
@@ -256,7 +263,7 @@ TEST_F(AtomicTest, ArrayElements)
   value_t expect_init_acc = (dash::size() * (dash::size() + 1)) / 2;
   if (dash::myid() == 0) {
     // Create local copy for logging:
-    value_t *            l_copy = new value_t[array.size()];
+    auto*                l_copy = new value_t[array.size()];
     std::vector<value_t> v_copy(array.size());
     dash::copy(array.begin(), array.end(), l_copy);
     std::copy(l_copy, l_copy + array.size(), v_copy.begin());
@@ -300,7 +307,7 @@ TEST_F(AtomicTest, ArrayElements)
 
   if (dash::myid() == 0) {
     // Create local copy for logging:
-    value_t *            l_copy = new value_t[array.size()];
+    auto*                l_copy = new value_t[array.size()];
     std::vector<value_t> v_copy(array.size());
     dash::copy(array.begin(), array.end(), l_copy);
     std::copy(l_copy, l_copy + array.size(), v_copy.begin());
@@ -507,6 +514,15 @@ TEST_F(AtomicTest, MutexInterface){
   }
 }
 
+dash::Mutex mx_delayed;
+
+TEST_F(AtomicTest, MutexInterfaceDelayed){
+  ASSERT_TRUE_U(mx_delayed.init());
+  {
+    std::lock_guard<dash::Mutex> lg(mx_delayed);
+    LOG_MESSAGE("thread %d acquired lock", dash::Team::All().myid().id);
+  }
+}
 
 TEST_F(AtomicTest, AtomicSignal){
   using value_t = int;

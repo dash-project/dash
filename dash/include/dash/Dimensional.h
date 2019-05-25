@@ -8,7 +8,7 @@
 
 #include <array>
 #include <sstream>
-
+#include <utility>
 /**
  * \defgroup  DashNDimConcepts  Multidimensional Concepts
  *
@@ -28,7 +28,7 @@
  * \ingroup DashNDimConcepts
  * \{
  * \par Description
- * 
+ *
  * Definitions for multidimensional value expressions.
  *
  * \see DashIteratorConcept
@@ -127,9 +127,9 @@ public:
   /**
    * Constructor, expects array containing values for every dimension.
    */
-  constexpr Dimensional(
-    const std::array<ElementType, NumDimensions> & values)
-  : _values(values) {
+  constexpr Dimensional(std::array<ElementType, NumDimensions> values)
+    : _values(std::move(values))
+  {
   }
 
   constexpr Dimensional(const self_t & other) = default;
@@ -236,7 +236,7 @@ public:
    * (BLOCKED, NONE*).
    */
   DistributionSpec()
-  : _is_tiled(false) {
+  {
     this->_values[0] = BLOCKED;
     for (dim_t i = 1; i < NumDimensions; ++i) {
       this->_values[i] = NONE;
@@ -254,11 +254,9 @@ public:
    *   DistributionSpec<3> ds(NONE, BLOCKED, CYCLIC);
    * \endcode
    */
-  template <typename ... Values>
-  DistributionSpec(
-    Distribution value, Values ... values)
-  : Dimensional<Distribution, NumDimensions>::Dimensional(value, values...),
-    _is_tiled(false)
+  template <typename... Values>
+  DistributionSpec(Distribution value, Values... values)
+    : Dimensional<Distribution, NumDimensions>::Dimensional(value, values...)
   {
     for (dim_t i = 1; i < NumDimensions; ++i) {
       if (this->_values[i].type == dash::internal::DIST_TILE) {
@@ -279,10 +277,8 @@ public:
    *   DistributionSpec<3> ds(NONE, BLOCKED, CYCLIC);
    * \endcode
    */
-  DistributionSpec(
-    const std::array<Distribution, NumDimensions> & values)
-  : Dimensional<Distribution, NumDimensions>::Dimensional(values),
-    _is_tiled(false)
+  DistributionSpec(const std::array<Distribution, NumDimensions>& values)
+    : Dimensional<Distribution, NumDimensions>::Dimensional(values)
   {
     DASH_LOG_TRACE_VAR("DistributionSpec(distribution[])", values);
     for (dim_t i = 1; i < NumDimensions; ++i) {
@@ -310,7 +306,7 @@ public:
   }
 
 private:
-  bool _is_tiled;
+  bool _is_tiled{false};
 };
 
 template<dim_t NumDimensions>
@@ -597,7 +593,7 @@ public:
   }
 
   /**
-   * Slice the view in the specified dimension at the given offset. 
+   * Slice the view in the specified dimension at the given offset.
    * This is different from resizing the dimension to extent 1
    * (\c resize_dim) which does not affect the view dimensionality or
    * rank.

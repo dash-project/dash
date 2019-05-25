@@ -395,7 +395,7 @@ static dart_ret_t dart__base__host_topology__update_module_locations(
    * local node:
    */
   if (DART_UNDEFINED_UNIT_ID != local_leader_unit_id.id) {
-    dart_team_t      local_team; 
+    dart_team_t      local_team;
     dart_team_unit_t host_topo_bcast_root = local_leader_unit_id;
     dart_team_t      host_topo_bcast_team = team;
     if (num_hosts > 1) {
@@ -575,8 +575,6 @@ dart_ret_t dart__base__host_topology__create(
   /* Number of units mapped to current host: */
   int    num_host_units = 0;
   for (size_t u = 0; u < num_units; ++u) {
-    ++num_host_units;
-    if (u == last_host_idx) { continue; }
     /* copies next differing host name to the left, like:
      *
      *     [ a a a a b b b c c c ]  last_host_index++ = 1
@@ -590,14 +588,17 @@ dart_ret_t dart__base__host_topology__create(
      */
     if (strcmp(hostnames[u], hostnames[last_host_idx]) != 0) {
       ++last_host_idx;
-      strncpy(hostnames[last_host_idx], hostnames[u], max_host_len);
+      if (last_host_idx != u) {
+        strncpy(hostnames[last_host_idx], hostnames[u], max_host_len);
+      }
       if (num_host_units > max_host_units) {
         max_host_units = num_host_units;
       }
       num_host_units = 0;
     }
+    ++num_host_units;
   }
-  if (max_host_units == 0) {
+  if (max_host_units < num_host_units) {
     /* All units mapped to same host: */
     max_host_units = num_host_units;
   }
@@ -686,7 +687,7 @@ dart_ret_t dart__base__host_topology__create(
       DART_ASSERT(host_units->units     != NULL ||
                   host_units->num_units  > 0);
       // Note: realloc with zero-size is argued unsafe in certain scenarios:
-      // https://www.securecoding.cert.org/confluence/display/c/\
+      // https://www.securecoding.cert.org/confluence/display/c/
       //   MEM04-C.+Beware+of+zero-length+allocations
       if (host_units->num_units > 0) {
         host_units->units = realloc(host_units->units,

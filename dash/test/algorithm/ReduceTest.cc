@@ -2,16 +2,16 @@
 #include <gtest/gtest.h>
 
 #include "../TestBase.h"
-#include "AccumulateTest.h"
+#include "ReduceTest.h"
 
 #include <dash/Array.h>
-#include <dash/algorithm/Accumulate.h>
+#include <dash/algorithm/Reduce.h>
 #include <dash/algorithm/Fill.h>
 
 #include <array>
 
 
-TEST_F(AccumulateTest, SimpleStart) {
+TEST_F(ReduceTest, SimpleStart) {
   const size_t num_elem_local = 100;
   size_t num_elem_total       = _dash_size * num_elem_local;
   auto value = 2, start = 10;
@@ -22,17 +22,21 @@ TEST_F(AccumulateTest, SimpleStart) {
 
   dash::barrier();
 
-  int result = dash::accumulate(target.begin(),
-				target.end(),
-				start); //start value
+  int result = dash::reduce(target.begin(),
+        target.end(),
+        start); //start value
 
-  if(dash::myid() == 0) {
-    ASSERT_EQ_U(num_elem_total * value + start, result);
-  }
+  ASSERT_EQ_U(num_elem_total * value + start, result);
+
+  result = dash::reduce(target.begin(), target.end(), 0);
+  ASSERT_EQ_U(num_elem_total * value, result);
+
+  result = dash::reduce(target.lbegin(), target.lend(), 0);
+  ASSERT_EQ_U(num_elem_total * value, result);
 }
 
 
-TEST_F(AccumulateTest, OpMult) {
+TEST_F(ReduceTest, OpMult) {
   const size_t num_elem_local = 1;
   using value_t = uint64_t;
   size_t num_elem_total       = std::max(static_cast<size_t>(32), dash::size());
@@ -44,18 +48,16 @@ TEST_F(AccumulateTest, OpMult) {
 
   dash::barrier();
 
-  auto result = dash::accumulate(target.begin(),
-                                 target.end(),
-                                 start, //start value
-                                 dash::multiply<value_t>());
+  auto result = dash::reduce(target.begin(),
+                             target.end(),
+                             start, //start value
+                             dash::multiply<value_t>());
 
-  if(dash::myid() == 0) {
-    ASSERT_EQ_U((1ULL<<num_elem_total) * start, result);
-  }
+  ASSERT_EQ_U((1ULL<<num_elem_total) * start, result);
 }
 
 
-TEST_F(AccumulateTest, SimpleStruct) {
+TEST_F(ReduceTest, SimpleStruct) {
   struct value_struct {
     int x{0}, y{0};
     value_struct() = default;
@@ -88,26 +90,22 @@ TEST_F(AccumulateTest, SimpleStruct) {
   dash::barrier();
 
   // full-range reduce
-  auto result = dash::accumulate(target.begin(), target.end(),
-                                 value_struct(10, 20));
+  auto result = dash::reduce(target.begin(), target.end(),
+                             value_struct(10, 20));
 
-  if(dash::myid() == 0) {
-    ASSERT_EQ_U(num_elem_total * x + 10, result.x);
-    ASSERT_EQ_U(num_elem_total * y + 20, result.y);
-  }
+  ASSERT_EQ_U(num_elem_total * x + 10, result.x);
+  ASSERT_EQ_U(num_elem_total * y + 20, result.y);
 
   // half-range reduce
-  result = dash::accumulate(target.begin(), target.begin() + num_elem_total/2,
-                            value_struct(10, 20));
+  result = dash::reduce(target.begin(), target.begin() + num_elem_total/2,
+                        value_struct(10, 20));
 
-  if(dash::myid() == 0) {
-    ASSERT_EQ_U(num_elem_total/2 * x + 10, result.x);
-    ASSERT_EQ_U(num_elem_total/2 * y + 20, result.y);
-  }
+  ASSERT_EQ_U(num_elem_total/2 * x + 10, result.x);
+  ASSERT_EQ_U(num_elem_total/2 * y + 20, result.y);
 }
 
 
-TEST_F(AccumulateTest, StringConcatOperaton) {
+TEST_F(ReduceTest, StringConcatOperaton) {
   const size_t num_elem_local = 100;
   size_t num_elem_total       = _dash_size * num_elem_local;
   auto value = 2;
@@ -134,3 +132,25 @@ TEST_F(AccumulateTest, StringConcatOperaton) {
   }
 }
 
+
+TEST_F(ReduceTest, LocalPredefined) {
+  int value = 2;
+
+  // perform a reduction similar to MPI_Allreduce
+  auto result = dash::reduce(&value, std::next(&value), 1, dash::plus<int>(), true);
+
+
+  ASSERT_EQ_U(dash::size()*value + 1, result);
+}
+
+TEST_F(ReduceTest, LocalStdIterator) {
+  std::list<int> list;
+  list.push_back(1*dash::myid());
+  list.push_back(2*dash::myid());
+  list.push_back(3*dash::myid());
+
+  auto result = dash::reduce(list.begin(), list.end(),
+                             1, dash::plus<int>(), true);
+
+  ASSERT_EQ_U(((dash::size()-1)*(dash::size())/2) * (1 + 2 + 3)  + 1, result);
+}

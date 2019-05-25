@@ -58,7 +58,7 @@ rm -Rf $BUILD_DIR/*
                         -DBUILD_SHARED_LIBS=OFF \
                         -DBUILD_GENERIC=OFF \
                         -DENVIRONMENT_TYPE=default \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.4.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
@@ -68,7 +68,6 @@ rm -Rf $BUILD_DIR/*
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
                         -DENABLE_DYNAMIC_WINDOWS=ON \
-                        -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                         \
                         -DENABLE_LOGGING=OFF \
@@ -87,6 +86,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_HDF5=ON \
                         -DENABLE_VALGRIND=OFF \
                         -DENABLE_TCMALLOC=ON \
+                        -DENABLE_MEMKIND=ON \
                         \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \

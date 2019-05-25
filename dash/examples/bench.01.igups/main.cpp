@@ -346,8 +346,8 @@ double test_dash_local_global_iter(
   // Global offset of first local element:
   auto l_begin_gidx = a.pattern().lbegin();
 
-  dash::GlobIter<value_t, pattern_t>       l_git  = a.begin() + l_begin_gidx;
-  const dash::GlobIter<value_t, pattern_t> l_gend = l_git + ELEM_PER_UNIT;
+  auto   l_git  = a.begin() + l_begin_gidx;
+  auto const  l_gend = l_git + ELEM_PER_UNIT;
 
   // Iterate over local elements but use global iterator to dereference
   // elements.

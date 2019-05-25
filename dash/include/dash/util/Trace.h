@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iomanip>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace dash {
@@ -23,8 +24,8 @@ public:
   typedef typename timer_t::timestamp_t
     timestamp_t;
   typedef struct {
-    timestamp_t start;
-    timestamp_t end;
+    timestamp_t start{};
+    timestamp_t end{};
     state_t     state;
   } state_timespan_t;
   typedef std::vector<state_timespan_t>
@@ -72,7 +73,7 @@ public:
   /**
    * Write trace data to given output stream.
    */
-  static void write(std::ostream & out);
+  static void write(std::ostream & out, bool printHeader = true);
 
   /**
    * Write trace data to file.
@@ -108,8 +109,8 @@ public:
   Trace() : Trace("global")
   { }
 
-  Trace(const std::string & context)
-  : _context(context)
+  Trace(std::string context)
+    : _context(std::move(context))
   {
     if (!TraceStore::enabled()) {
       return;

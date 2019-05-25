@@ -95,7 +95,7 @@ mkdir -p $BUILD_DIR/$REPORT_DIR
                         -DENABLE_COMPTIME_RED=OFF \
                         \
                         -DDART_IF_VERSION=3.2 \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.4.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
@@ -104,7 +104,6 @@ mkdir -p $BUILD_DIR/$REPORT_DIR
                         -DENABLE_ASSERTIONS=ON \
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
-                        -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DYNAMIC_WINDOWS=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                         \
@@ -123,6 +122,7 @@ mkdir -p $BUILD_DIR/$REPORT_DIR
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
                         -DENABLE_VALGRIND=OFF \
+                        -DENABLE_MEMKIND=ON \
                         \
                         -DBUILD_EXAMPLES=OFF \
                         -DBUILD_TESTS=OFF \

@@ -50,7 +50,7 @@ private:
     Timestamp_t;
 #else
   // No PAPI, no POSIX
-  #pragma error "dash::util::Timer requires POSIX platform or PAPI"
+  #error "dash::util::Timer requires POSIX platform or PAPI"
 #endif
 
 public:
@@ -59,11 +59,11 @@ public:
 
 public:
   inline Timer()
-  : timestampStart(Timer::Now())
-  { }
+    : timestampStart(Timer::Now())
+  {
+  }
 
-  inline Timer(const self_t & other) : timestampStart(other.timestampStart)
-  { }
+  inline Timer(const self_t& other) = default;
 
   inline Timer & operator=(const self_t & other)
   {
@@ -190,7 +190,7 @@ private:
     Timestamp_t;
 #else
   // No PAPI, no POSIX
-  #pragma error "dash::util::Timer requires POSIX platform or PAPI"
+  #error "dash::util::Timer requires POSIX platform or PAPI"
 #endif
 
 public:
@@ -202,8 +202,7 @@ public:
   : timestampStart(Timer::Now())
   { }
 
-  inline Timer(const self_t & other) : timestampStart(other.timestampStart)
-  { }
+  inline Timer(const self_t& other) = default;
 
   inline Timer & operator=(const self_t & other)
   {

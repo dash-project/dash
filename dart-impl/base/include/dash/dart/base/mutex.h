@@ -51,7 +51,7 @@ dart__base__mutex_init(dart_mutex_t *mutex)
 #elif defined(DART_HAVE_PTHREADS)
   // pthread_mutex_init always succeeds
   pthread_mutex_init(&mutex->mutex, NULL);
-  DART_LOG_TRACE("%s: Initialized fast mutex %p", __FUNCTION__, mutex);
+  DART_LOG_TRACE("%s: Initialized fast mutex %p", __func__, mutex);
   return DART_OK;
 #else
   static int single = 0;
@@ -83,7 +83,7 @@ dart__base__mutex_init_recursive(dart_mutex_t *mutex)
   }
   pthread_mutex_init(&mutex->mutex, &attr);
   pthread_mutexattr_destroy(&attr);
-  DART_LOG_TRACE("%s: Initialized recursive mutex %p", __FUNCTION__, mutex);
+  DART_LOG_TRACE("%s: Initialized recursive mutex %p", __func__, mutex);
   return DART_OK;
 #else
   static int single = 0;
@@ -105,7 +105,7 @@ dart__base__mutex_lock(dart_mutex_t *mutex)
 #elif defined(DART_HAVE_PTHREADS)
   int ret = pthread_mutex_lock(&mutex->mutex);
   if (ret != 0) {
-    DART_LOG_TRACE("%s: Failed to lock mutex (%i)", __FUNCTION__, ret);
+    DART_LOG_TRACE("%s: Failed to lock mutex (%i)", __func__, ret);
     return DART_ERR_OTHER;
   }
   return DART_OK;
@@ -124,7 +124,7 @@ dart__base__mutex_unlock(dart_mutex_t *mutex)
 #elif defined(DART_HAVE_PTHREADS)
   int ret = pthread_mutex_unlock(&mutex->mutex);
   if (ret != 0) {
-    DART_LOG_TRACE("%s: Failed to unlock mutex (%i)", __FUNCTION__, ret);
+    DART_LOG_TRACE("%s: Failed to unlock mutex (%i)", __func__, ret);
     return DART_ERR_OTHER;
   }
   return DART_OK;
@@ -157,7 +157,7 @@ dart__base__mutex_destroy(dart_mutex_t *mutex)
 #elif defined(DART_HAVE_PTHREADS)
   int ret = pthread_mutex_destroy(&mutex->mutex);
   if (ret != 0) {
-    DART_LOG_TRACE("%s: Failed to destroy mutex (%i)", __FUNCTION__, ret);
+    DART_LOG_TRACE("%s: Failed to destroy mutex (%i)", __func__, ret);
     return DART_ERR_OTHER;
   }
   return DART_OK;

@@ -59,9 +59,12 @@ private:
 public:
   typedef T value_type;
 
-  constexpr Atomic()                                 = default;
-  constexpr Atomic(const Atomic<T> & other)          = default;
-  self_t & operator=(const self_t & other)           = default;
+  constexpr Atomic()                       = default;
+  constexpr Atomic(const Atomic<T>& other) = default;
+  constexpr Atomic(Atomic<T>&& other)      = default;
+
+  self_t& operator=(const self_t& other)   = default;
+  self_t& operator=(self_t&& other)        = default;
 
   /**
    * Initializes the underlying value with desired.
@@ -119,4 +122,3 @@ std::ostream & operator<<(
 #include <dash/atomic/Operation.h>
 
 #endif // DASH__ATOMIC_H__INCLUDED
-

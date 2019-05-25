@@ -53,8 +53,6 @@ option(ENABLE_DART_LOGGING
        "Specify whether messages from DART should be logged" off)
 option(ENABLE_ASSERTIONS
        "Specify whether runtime assertions should be checked" off)
-option(ENABLE_UNIFIED_MEMORY_MODEL
-       "Specify whether to assume unified memory model" on)
 option(ENABLE_SHARED_WINDOWS
        "Specify whether shared memory features are enabled" on)
 option(ENABLE_DYNAMIC_WINDOWS
@@ -85,6 +83,8 @@ option(ENABLE_PLASMA
        "Specify whether PLASMA features are enabled" on)
 option(ENABLE_HDF5
        "Specify whether HDF5 features are enabled" on)
+option(ENABLE_MEMKIND
+       "Specify whether Memkind features are enabled" on)
 option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
 option(ENABLE_VALGRIND
@@ -116,7 +116,7 @@ if (ENABLE_THREADSUPPORT)
 endif()
 
 if (ENABLE_COMPTIME_RED)
-  include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
+    #include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
 endif()
 
 # Load build modules to locate libraries after environment setup
@@ -132,6 +132,8 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Ayudame.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Valgrind.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Tcmalloc.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Memkind.cmake)
+
 if (ENABLE_MKL)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 endif()
@@ -146,21 +148,22 @@ endif()
 # prepare StaticConfig.h generation
 include(${CMAKE_SOURCE_DIR}/CMakeExt/GenerateConfig.cmake)
 
-## Version number
 set(DASH_VERSION_MAJOR 0 CACHE STRING "DASH major version number.")
-set(DASH_VERSION_MINOR 3 CACHE STRING "DASH minor version number.")
+set(DASH_VERSION_MINOR 4 CACHE STRING "DASH minor version number.")
 set(DASH_VERSION_PATCH 0 CACHE STRING "DASH patch version number.")
 mark_as_advanced(
   DASH_VERSION_MAJOR
   DASH_VERSION_MINOR
   DASH_VERSION_PATCH)
-
 set(DASH_VERSION
     "${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
     CACHE STRING INTERNAL FORCE)
 set(DASH_VERSIONED_PROJECT_NAME
     "dash-${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
     CACHE STRING INTERNAL FORCE)
+
+# check the git commit hash
+include (CMakeExt/Gitcommit.cmake)
 
 set(CMAKE_RULE_MESSAGES OFF)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
@@ -266,8 +269,6 @@ message(INFO "DART log messages:        (ENABLE_DART_LOGGING)            "
         ${ENABLE_DART_LOGGING})
 message(INFO "Runtime assertions:       (ENABLE_ASSERTIONS)              "
         ${ENABLE_ASSERTIONS})
-message(INFO "Unified RMA memory model: (ENABLE_UNIFIED_MEMORY_MODEL)    "
-        ${ENABLE_UNIFIED_MEMORY_MODEL})
 message(INFO "MPI shared windows:       (ENABLE_SHARED_WINDOWS)          "
         ${ENABLE_SHARED_WINDOWS})
 message(INFO "MPI dynamic windows:      (ENABLE_DYNAMIC_WINDOWS)         "
@@ -302,6 +303,8 @@ message(INFO "Valgrind support:         (ENABLE_VALGRIND)                "
         ${ENABLE_VALGRIND})
 message(INFO "TCmalloc support:         (ENABLE_TCMALLOC)                "
         ${ENABLE_TCMALLOC})
+message(INFO "Memkind support:          (ENABLE_MEMKIND)                    "
+        ${ENABLE_MEMKIND})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
@@ -392,6 +395,15 @@ if (ENABLE_HDF5)
   endif()
 else()
   message(NOTE "HDF5                      disabled")
+endif()
+if (ENABLE_MEMKIND)
+  if (MEMKIND_FOUND)
+    message(INFO "MEMKIND                   enabled")
+  else()
+    message(NOTE "MEMKIND                   not found")
+  endif()
+else()
+  message(NOTE "MEMKIND                   disabled")
 endif()
 if (ENABLE_LIBNUMA)
   if (NUMA_FOUND)

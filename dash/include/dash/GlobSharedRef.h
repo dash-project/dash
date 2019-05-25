@@ -2,29 +2,25 @@
 #define DASH__GLOB_SHARED_EF_H_
 
 #include <dash/Init.h>
-#include <dash/memory/GlobStaticMem.h>
-#include <dash/memory/GlobHeapMem.h>
+#include <dash/internal/Logging.h>
+#include <dash/Onesided.h>
 #include <dash/algorithm/Operation.h>
 
 
 namespace dash {
 
 // Forward declaration
-template<typename T, class A> class GlobStaticMem;
-// Forward declaration
-template<typename T, class A> class GlobHeapMem;
-// Forward declaration
 template<typename T, class MemSpaceT> class GlobPtr;
 
 template<
   typename T,
-  typename GlobalPointerType = GlobPtr<T> >
+  typename GlobalPointerType>
 class GlobSharedRef
 {
-  template<typename U>
+  template<typename U, typename P>
   friend std::ostream & operator<<(
     std::ostream & os,
-    const GlobSharedRef<U> & gref);
+    const GlobSharedRef<U, P> & gref);
 
 private:
   typedef GlobSharedRef<T, GlobalPointerType>
@@ -46,7 +42,7 @@ public:
     typedef GlobSharedRef<
               U,
               // recursively rebind depending global pointer type:
-              typename GlobalPointerType::template rebind<U>::other
+              typename GlobalPointerType::template rebind<U>
             > other;
   };
 
@@ -237,7 +233,7 @@ public:
     return *this;
   }
 
-  GlobSharedRef<T> & operator+=(const T& ref)
+  GlobSharedRef<T, GlobalPointerType> & operator+=(const T& ref)
   {
 #if 0
     T add_val = ref;
@@ -340,10 +336,10 @@ public:
 
 };
 
-template<typename T>
+template<typename T, typename P>
 std::ostream & operator<<(
   std::ostream & os,
-  const GlobSharedRef<T> & gref) {
+  const GlobSharedRef<T, P> & gref) {
   char buf[100];
   sprintf(buf,
           "(%06X|%02X|%04X|%04X|%016lX)",

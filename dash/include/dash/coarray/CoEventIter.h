@@ -13,7 +13,12 @@ namespace coarray {
 class CoEventIter {
 private:
   using self_t = CoEventIter;
-  using gptr_t = GlobPtr<dash::Atomic<int>>;
+  //TODO rko: fix this hard coded information it is related to Coevent
+  //which uses dash::Array internally
+  using globmem_t =
+      dash::GlobStaticMem<HostSpace>;
+  using gptr_t = GlobPtr<dash::Atomic<int>, globmem_t>;
+
 public:
   using difference_type   = typename gptr_t::gptrdiff_t;
   using value_type        = CoEventRef;
@@ -104,4 +109,3 @@ private:
 
 
 #endif /* DASH__COARRAY__COEVENTITER_H */
-

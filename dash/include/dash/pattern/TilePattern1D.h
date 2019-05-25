@@ -6,6 +6,7 @@
 #include <functional>
 #include <array>
 #include <type_traits>
+#include <utility>
 
 #include <dash/Types.h>
 #include <dash/Distribution.h>
@@ -260,34 +261,26 @@ public:
    * \endcode
    */
   TilePattern(
-    /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t &         sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE).
-    /// Defaults to BLOCKED in first.
-    const DistributionSpec_t & dist = DistributionSpec_t(),
-    /// Team containing units to which this pattern maps its elements
-    Team &                     team = dash::Team::All())
-  : _size(sizespec.size()),
-    _memory_layout(std::array<SizeType, 1> {{ _size }}),
-    _distspec(dist),
-    _team(&team),
-    _teamspec(_distspec, *_team),
-    _nunits(_team->size()),
-    _blocksize(initialize_blocksize(
-        _size,
-        _distspec,
-        _nunits)),
-    _nblocks(initialize_num_blocks(
-        _size,
-        _blocksize,
-        _nunits)),
-    _local_size(
-        initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
-    _nlblocks(initialize_num_local_blocks(
-        _blocksize,
-        _local_size)),
-    _local_capacity(initialize_local_capacity()) {
+      /// Pattern size (extent, number of elements) in every dimension
+      const SizeSpec_t &sizespec,
+      /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE).
+      /// Defaults to BLOCKED in first.
+      DistributionSpec_t dist = DistributionSpec_t(),
+      /// Team containing units to which this pattern maps its elements
+      Team &team = dash::Team::All())
+    : _size(sizespec.size())
+    , _memory_layout(std::array<SizeType, 1>{{_size}})
+    , _distspec(std::move(dist))
+    , _team(&team)
+    , _teamspec(_distspec, *_team)
+    , _nunits(_team->size())
+    , _blocksize(initialize_blocksize(_size, _distspec, _nunits))
+    , _nblocks(initialize_num_blocks(_size, _blocksize, _nunits))
+    , _local_size(initialize_local_extent(_team->myid()))
+    , _local_memory_layout(std::array<SizeType, 1>{{_local_size}})
+    , _nlblocks(initialize_num_local_blocks(_blocksize, _local_size))
+    , _local_capacity(initialize_local_capacity())
+  {
     DASH_LOG_TRACE("TilePattern<1>()", "(sizespec, dist, team)");
     initialize_local_range();
     DASH_LOG_TRACE("TilePattern<1>()", "TilePattern initialized");

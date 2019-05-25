@@ -28,6 +28,7 @@ typedef struct
   uint16_t     flags;       /* 16 bit flags */
   dart_segid_t segid;       /* ID of the segment, globally unique in a team */
   bool         is_dynamic;  /* whether this is a shared memory segment */
+  bool         sync_needed; /* whether a call to MPI_WIN_SYNC is needed */
 } dart_segment_info_t;
 
 // forward declaration to make the compiler happy

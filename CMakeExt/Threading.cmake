@@ -42,15 +42,19 @@ if (ENABLE_THREADSUPPORT)
 
     # Find support for pthreads
     find_package(Threads REQUIRED)
-    set(CMAKE_C_FLAGS
-        "${CMAKE_C_FLAGS} -pthread")
+    if (THREADS_HAVE_PTHREAD_ARG)
+      set(CMAKE_C_FLAGS
+          "${CMAKE_C_FLAGS} -pthread")
+      set(CMAKE_CXX_FLAGS
+          "${CMAKE_CXX_FLAGS} -pthread")
+    endif()
+    if (CMAKE_THREAD_LIBS_INIT)
+      set(CMAKE_EXE_LINKER_FLAGS
+          "${CMAKE_EXE_LINKER_FLAGS} ${CMAKE_THREAD_LIBS_INIT}")
+    endif()
     set(CMAKE_C_FLAGS
         "${CMAKE_C_FLAGS} -DDART_HAVE_PTHREADS")
     set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS} -pthread")
-    set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} -DDART_HAVE_PTHREADS")
-    set(CMAKE_EXE_LINKER_FLAGS
-        "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 
 endif()

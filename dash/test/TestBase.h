@@ -130,9 +130,12 @@ class EQAsserter {
   using rhs_t = typename std::remove_cv<S>::type;
 
 public:
-  void operator()(lhs_t const & _e, rhs_t const & _a)
+  void operator()(lhs_t const & expected,
+                  rhs_t const & actual,
+                  const char *_file, int line)
   {
-    EXPECT_EQ(_e, _a) << "Unit " << dash::myid().id;
+    EXPECT_EQ(expected, actual) << "Unit " << dash::myid().id << ": "
+                                << _file << ":" << line;
   }
 };
 
@@ -146,36 +149,30 @@ class EQAsserter<T, S, true> {
   using rhs_t = typename std::remove_cv<S>::type;
 
 public:
-  void operator()(lhs_t const& _e, rhs_t const& _a)
+  void operator()(lhs_t const& expected,
+                  rhs_t const& actual,
+                  const char *_file, int line)
   {
     if (std::is_same<value_t, double>::value) {
-      EXPECT_DOUBLE_EQ(_e, _a) << "Unit " << dash::myid().id;
+      EXPECT_DOUBLE_EQ(expected, actual) << "Unit " << dash::myid().id << ": "
+                                         << _file << ":" << line;
     }
     else if (std::is_same<value_t, float>::value) {
-      EXPECT_FLOAT_EQ(_e, _a) << "Unit " << dash::myid().id;
+      EXPECT_FLOAT_EQ(expected, actual)  << "Unit " << dash::myid().id << ": "
+                                         << _file << ":" << line;
     }
   }
 };
 
 #define ASSERT_EQ_U(_e, _a)                                                \
   do {                                                                     \
-    ::testing::internal::EQAsserter<decltype(_e), decltype(_a)>{}(_e, _a); \
+    ::testing::internal::EQAsserter<decltype(_e), decltype(_a)>{}(_e, _a,  \
+                                                                  __FILE__,\
+                                                                  __LINE__); \
   } while (0)
 
 #define EXPECT_EQ_U(e,a) ASSERT_EQ_U(e,a)
 
-
-enum GTestColor {
-    COLOR_DEFAULT,
-    COLOR_RED,
-    COLOR_GREEN,
-    COLOR_YELLOW
-};
-
-extern void ColoredPrintf(
-  GTestColor color,
-  const char* fmt,
-  ...);
 
 } // namespace internal
 } // namespace testing

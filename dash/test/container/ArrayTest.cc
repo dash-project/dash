@@ -21,6 +21,18 @@ TEST_F(ArrayTest, Declaration)
   dash::Array<int> arr;
 }
 
+
+TEST_F(ArrayTest, Empty)
+{
+  dash::Array<int> arr{0};
+
+  auto begin = arr.begin();
+  auto end   = arr.end();
+  auto gptr  = begin.dart_gptr();
+
+  ASSERT_EQ_U(begin, end);
+}
+
 TEST_F(ArrayTest, Initialization)
 {
   dash::Array<int> array_local(19 * dash::size(), dash::BLOCKED);
@@ -58,6 +70,7 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
     // Initialize arrays
     LOG_MESSAGE("Initialize arr1");
     dash::Array<value_t> arr1(array_size);
+
     LOG_MESSAGE("Initialize arr2");
     dash::Array<value_t> arr2(array_size,
                               dash::BLOCKED);
@@ -277,7 +290,6 @@ TEST_F(ArrayTest, MoveSemantics){
     ASSERT_EQ_U(*(array_b.lbegin()), 1);
   }
 }
-
 TEST_F(ArrayTest, ElementCompare){
   using value_t = int;
   using array_t = dash::Array<value_t>;
@@ -305,3 +317,41 @@ TEST_F(ArrayTest, ElementCompare){
     ASSERT_NE_U(arr[0], arr[dash::myid()]);
   }
 }
+
+TEST_F(ArrayTest, HBWSpace){
+  using index_t = dash::default_index_t;
+  using pattern_t = dash::BlockPattern<1, dash::ROW_MAJOR, index_t>;
+  using array_t = dash::Array<int, index_t, pattern_t, dash::HBWSpace>;
+
+  array_t array{static_cast<pattern_t::size_type>(dash::size()) * 100};
+
+
+  // Fill
+  std::function< void(const int &, index_t)>
+  fill = [&array](int el, index_t i) {
+    auto coords = array.pattern().coords(i);
+    array[i] = coords[0];
+  };
+
+  // Verify
+  std::function< void(const int &, index_t)>
+  verify = [&array](int el, index_t i) {
+    auto coords  = array.pattern().coords(i);
+    auto desired = coords[0];
+    ASSERT_EQ_U(
+      desired,
+      el);
+  };
+
+  // Fill
+  dash::for_each_with_index(
+    array.begin(),
+    array.end(),
+    fill);
+
+  dash::for_each_with_index(
+    array.begin(),
+    array.end(),
+    verify);
+}
+

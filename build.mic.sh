@@ -48,7 +48,7 @@ rm -Rf $BUILD_DIR/*
                         -DENVIRONMENT_TYPE=supermic \
                         -DCMAKE_C_COMPILER=mpiicc \
                         -DCMAKE_CXX_COMPILER=mpiicc \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-mic/ \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.4.0-mic/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=OFF \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
@@ -57,7 +57,6 @@ rm -Rf $BUILD_DIR/*
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
                         -DENABLE_DYNAMIC_WINDOWS=ON \
-                        -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                         \
                         -DENABLE_LOGGING=OFF \

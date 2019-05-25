@@ -4,7 +4,7 @@ use strict;
 use File::Basename;
 
 my $rdir    = "RELEASE";
-my $version = "0.3.0";
+my $version = "0.4.0";
 my $base    = "$rdir/dash-$version";
 
 if( -e "$base" ) {
@@ -51,8 +51,9 @@ my @files;
 	  # DASH source and header files
 	  #
 	  "dash/include/*.h",
-	  "dash/include/dash/*.h",
-	  "dash/include/dash/algorithm/*.h",
+          "dash/include/cpp17/*.h",	  
+          "dash/include/dash/*.h",
+          "dash/include/dash/algorithm/*.h",
 	  "dash/include/dash/algorithm/internal/*.h",
 	  "dash/include/dash/allocator/*.h",
 	  "dash/include/dash/allocator/internal/*.h",
@@ -83,10 +84,16 @@ my @files;
 	  "dash/include/dash/util/*.h.in",
 	  "dash/include/dash/util/internal/*.h",
 	  "dash/include/dash/view/*.h",
+          "dash/include/dash/std/*.h",
 	  "dash/src/*.cc",
 	  "dash/src/algorithm/*.cc",
+          "dash/src/allocator/*.cc",
+          "dash/src/allocator/internal/*.cc",
+          "dash/src/cpp17/*.cc",
 	  "dash/src/exception/*.cc",
 	  "dash/src/io/*.cc",
+          "dash/src/memory/*.cc",
+          "dash/src/memory/internal/*.cc",
 	  "dash/src/util/*.cc",
 	  "dash/src/Makefile",
 	  "dash/make.defs",
@@ -119,12 +126,16 @@ my @files;
 	  # DASH scripts
 	  #
 	  "dash/scripts/*.sh",
-          "dash/scripts/dashcc/*.in",
-          #
+	  "dash/scripts/dashcc/*.in",
+	  #
 	  # Documentation
 	  #
 	  "doc/config/*.dox",
-	  "doc/config/*.in"
+	  "doc/config/*.in",
+	  #
+	  # GoogleTest
+	  #
+	  "vendor/googletest/*"
         );
 
 
@@ -142,7 +153,7 @@ foreach my $path (@files)
 	if( $file =~ /\.(c|h|cc|cpp)$/ && -e "LICENSE" ) {
 	    system("cat ./LICENSE $file > $base/$file");
 	} else {
-	    system("cp $file $dirname");
+	    system("cp -r $file $dirname");
 	}
     }
 }
