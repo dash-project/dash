@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+
+#include <dash/dart/base/logging.h>
 #include <dash/dart/gaspi/rbtree.h>
 
 tree_node RBNIL = {
@@ -13,8 +15,7 @@ tree_node RBNIL = {
 };
 
 static tree_node* new_rbtree_node(void* node) {
-    tree_node *z = alloc(tree_node, 1);
-
+    tree_node *z = (tree_node*) malloc(sizeof(tree_node));
     z->node = node;
     z->parent = &RBNIL;
     z->left = &RBNIL;
@@ -37,7 +38,7 @@ tree_root* new_simple_rbtree() {
 
 tree_root* new_rbtree(void* (*key_function_pointer)(struct stree_node* node),
                       int64_t (*compare_function_pointer)(void* keyA, void* keyB)) {
-    tree_root* r = alloc(tree_root, 1);
+    tree_root* r = (tree_root*) malloc(sizeof(tree_root));
     r->root = &RBNIL;
     if(key_function_pointer == NULL && compare_function_pointer == NULL) {
         r->key = &__pointer;
@@ -309,7 +310,7 @@ void* rb_tree_delete(tree_root* root, void* key) {
     hold_node_to_delete = y = z = __search_rbtree_node(*root, key);
 
     if(y == NULL) {
-        log(W, "Trying to remove a node from tree that does not exist.");
+        DART_LOG_WARN("Trying to remove a node from tree that does not exist.");
         return NULL;
     }
 
@@ -349,7 +350,7 @@ void* rb_tree_delete(tree_root* root, void* key) {
 
 tree_iterator* new_tree_iterator(tree_root* root) {
     tree_node* aux = root->root;
-    tree_iterator* it = alloc(tree_iterator, 1);
+    tree_iterator* it = (tree_iterator*) malloc(sizeof(tree_iterator));
 
     while(aux->left != &RBNIL || aux->right != &RBNIL) {
         while(aux->left != &RBNIL)
