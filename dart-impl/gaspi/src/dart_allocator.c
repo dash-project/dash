@@ -22,6 +22,7 @@ dart_allocator_new(
   // dart_buddy_new will round up to next power of 2
   struct dart_buddy * buddy_allocator = dart_buddy_new(pool_size);
   if (buddy_allocator == NULL) {
+    DART_LOG_DEBUG("Could not create new buddy allocator");
     return DART_ERR_INVAL;
   }
 
@@ -42,7 +43,7 @@ dart_allocator_new(
   struct dart_allocator_struct *allocator = malloc(sizeof(*allocator));
   allocator->buddy_allocator = buddy_allocator;
   allocator->base_gptr       = base_gptr;
-
+  DART_LOG_DEBUG("Created new allocator [bud_a: (%p), gptr: (%p)]", buddy_allocator, &base_gptr);
   *new_allocator = allocator;
 
   return DART_OK;
@@ -117,6 +118,7 @@ dart_allocator_destroy(dart_allocator_t *allocator)
   if (ret != DART_OK) {
     DART_LOG_ERROR("Failed to deallocate memory pool!");
   }
+  DART_LOG_TRACE("Deallocate allocator (%p)", allocator);
   free(alloc);
   *allocator = NULL;
 
