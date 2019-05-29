@@ -192,7 +192,7 @@ dart_ret_t free_segment_ids(request_table_entry_t* request_entry)
 
     request_entry->begin_seg_ids = NULL;
     request_entry->end_seg_ids = NULL;
-    DART_LOG_TRACE("Freed request_entry: (%p)", request_entry)
+    DART_LOG_TRACE("Freed request_entry: (%p)", request_entry);
     return DART_OK;
 }
 
@@ -872,7 +872,7 @@ dart_ret_t dart_test_all_impl(dart_handle_t handles[], size_t num_handles, int32
 dart_ret_t error_cleanup(converted_type_t* conv_type)
 {
     free_converted_type(conv_type);
-    
+
     return DART_ERR_OTHER;
 }
 
