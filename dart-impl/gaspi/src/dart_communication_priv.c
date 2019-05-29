@@ -174,7 +174,6 @@ dart_ret_t free_segment_ids(request_table_entry_t* request_entry)
     if(request_entry == NULL)
     {
         DART_LOG_DEBUG("dart_flush: no queue found");
-
         return DART_OK;
     }
 
@@ -193,7 +192,7 @@ dart_ret_t free_segment_ids(request_table_entry_t* request_entry)
 
     request_entry->begin_seg_ids = NULL;
     request_entry->end_seg_ids = NULL;
-
+    DART_LOG_TRACE("Freed request_entry: (%p)", request_entry)
     return DART_OK;
 }
 
@@ -393,7 +392,7 @@ dart_ret_t glob_unit_gaspi_seg(dart_gptr_t* gptr, dart_unit_t* global_unit_id, g
         DART_CHECK_ERROR(unit_l2g(gptr->flags, global_unit_id, gptr->unitid));
         if(dart_adapt_transtable_get_gaspi_seg_id(gptr->segid, gptr->unitid, gaspi_seg_id) == -1)
         {
-            fprintf(stderr, "Can't find given segment id in %s\n", location);
+            DART_LOG_ERROR("Can't find given segment id in %s\n", location);
             return DART_ERR_NOTFOUND;
         }
     }
@@ -442,7 +441,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
     if (datatype_iscontiguous(dts_src) && datatype_iscontiguous(dts_dst))
     {
         set_single_block(conv_type, 1, (chunk_info_t){0,0, nelem * nbytes_elem});
-
+        DART_LOG_DEBUG("Convert contiguous type to contiguous type");
         return DART_OK;
     }
 
@@ -456,7 +455,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                 size_t num_elem_byte = dts_dst->num_elem * nbytes_elem;
 
                 set_single_block(conv_type, num_blocks, (chunk_info_t){num_elem_byte,dts_dst->strided.stride * nbytes_elem, num_elem_byte});
-
+                DART_LOG_TRACE("Convert contiguous type to strided");
                 return DART_OK;
             }
 
@@ -471,7 +470,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                     conv_type->multiple[i] = (chunk_info_t){offset_src, dts_dst->indexed.offsets[i] * nbytes_elem, num_elem_byte};
                     offset_src += num_elem_byte;
                 }
-
+                DART_LOG_TRACE("Convert contiguous type to indexed");
                 return DART_OK;
             }
         }
@@ -483,7 +482,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                 size_t num_elem_byte = dts_src->num_elem * nbytes_elem;
 
                 set_single_block(conv_type, num_blocks, (chunk_info_t){dts_src->strided.stride * nbytes_elem, num_elem_byte, num_elem_byte});
-
+                DART_LOG_TRACE("Convert strided type to contiguous");
                 return DART_OK;
             }
 
@@ -498,18 +497,19 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
                     conv_type->multiple[i] = (chunk_info_t){dts_src->indexed.offsets[i] * nbytes_elem, offset_dst, num_elem_byte};
                     offset_dst += num_elem_byte;
                 }
-
+                DART_LOG_TRACE("Convert indexed type to contiguous");
                 return DART_OK;
             }
         }
-
+        DART_LOG_ERROR("src or dst where contiguous but not anymore");
         return DART_ERR_INVAL;
     }
 
-    // only strided and indexed datatypes should left
+    // only strided and indexed datatypes should be left
     if(!(datatype_isstrided(dts_src) || datatype_isindexed(dts_src)) &&
        !(datatype_isstrided(dts_dst) || datatype_isindexed(dts_dst)))
     {
+        DART_LOG_ERROR("src and dst are neither strided, indexed or contiguous");
         return DART_ERR_INVAL;
     }
 
@@ -518,7 +518,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
     {
         size_t num_blocks = nelem / dts_src->num_elem;
         set_single_block(conv_type, num_blocks, (chunk_info_t){dts_src->strided.stride * nbytes_elem, dts_dst->strided.stride * nbytes_elem, dts_src->num_elem * nbytes_elem});
-
+        DART_LOG_TRACE("Convert strided type to strided with equal num_elem");
         return DART_OK;
     }
 
@@ -528,6 +528,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
     // doesn't need to calculte the exact number of blocks (more complex)
     set_multiple_block(conv_type, nblocks_src + nblocks_dst);
 
+    DART_LOG_DEBUG("Prepare offsets and num_elem");
     size_t block_src = 0;
     size_t block_dst = 0;
 
@@ -539,6 +540,7 @@ dart_ret_t dart_convert_type(dart_datatype_struct_t* dts_src,
     size_t elems_done = 0;
     size_t block_id = 0;
 
+    DART_LOG_DEBUG("Write %d elements", nelem);
     do
     {
         size_t min_elem = MIN(elems_src, elems_dst);
@@ -816,7 +818,6 @@ dart_ret_t dart_test_impl(dart_handle_t* handleptr, int32_t * is_finished, gaspi
     if(test != GASPI_SUCCESS)
     {
         DART_LOG_ERROR("gaspi_notify_waitsome failed");
-
         return DART_ERR_OTHER;
     }
 
@@ -855,7 +856,6 @@ dart_ret_t dart_test_all_impl(dart_handle_t handles[], size_t num_handles, int32
             if(test != GASPI_SUCCESS)
             {
                 DART_LOG_ERROR("gaspi_notify_waitsome failed.");
-
                 return DART_ERR_OTHER;
             }
         }
@@ -872,7 +872,7 @@ dart_ret_t dart_test_all_impl(dart_handle_t handles[], size_t num_handles, int32
 dart_ret_t error_cleanup(converted_type_t* conv_type)
 {
     free_converted_type(conv_type);
-
+    
     return DART_ERR_OTHER;
 }
 
@@ -892,7 +892,7 @@ dart_ret_t error_cleanup_seg(gaspi_segment_id_t used_segment_id, converted_type_
 
 #define DART_OP_CHECK_SIZE(_data_type) \
       if(sizeof(_data_type) != element_size){ \
-         printf("Error: element_size does not match size of char!\n"); \
+         DART_LOG_ERROR("Error: element_size does not match size of char!"); \
          return GASPI_ERROR; \
       } \
 

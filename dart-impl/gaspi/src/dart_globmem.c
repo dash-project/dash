@@ -11,6 +11,7 @@
 #include <dash/dart/gaspi/dart_translation.h>
 #include <dash/dart/gaspi/dart_team_private.h>
 #include <dash/dart/gaspi/dart_communication_priv.h>
+#include <dash/dart/base/logging.h>
 
 
 // (size_t nbytes, dart_gptr_t *gptr)
@@ -33,7 +34,7 @@ dart_ret_t dart_memalloc(
     gptr->addr_or_offs.offset = dart_buddy_alloc(dart_localpool, nbytes);
     if (gptr->addr_or_offs.offset == -1)
     {
-        fprintf(stderr, "Out of bound: the global memory is exhausted");
+        DART_LOG_ERROR("Out of bound: the global memory is exhausted");
         return DART_ERR_OTHER;
     }
     return DART_OK;
@@ -43,7 +44,7 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
 {
     if (dart_buddy_free (dart_localpool, gptr.addr_or_offs.offset) == -1)
     {
-        fprintf(stderr, "Free invalid local global pointer: invalid offset = %lu\n", gptr.addr_or_offs.offset);
+        DART_LOG_ERROR("Free invalid local global pointer: invalid offset = %lu\n", gptr.addr_or_offs.offset);
         return DART_ERR_INVAL;
     }
 
