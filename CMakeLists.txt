@@ -61,6 +61,8 @@ option(ENABLE_DEFAULT_INDEX_TYPE_LONG
        "Specify whether to use int64_t as default index type" on)
 option(ENABLE_LIBNUMA
        "Specify whether libnuma features are enabled" on)
+option(ENABLE_IBVERBS
+       "Specify whether libibverbs features are enabled" on)
 option(ENABLE_HWLOC
        "Specify whether hwloc features are enabled" on)
 option(ENABLE_HWLOC_PCI
@@ -125,6 +127,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Memkind.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Ibverbs.cmake)
 
 if (ENABLE_MKL)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
@@ -268,6 +271,8 @@ message(INFO "Default index type long:  (ENABLE_DEFAULT_INDEX_TYPE_LONG) "
         ${ENABLE_DEFAULT_INDEX_TYPE_LONG})
 message(INFO "libnuma support:          (ENABLE_LIBNUMA)                 "
         ${ENABLE_LIBNUMA})
+message(INFO "libibverbs support:       (ENABLE_IBVERBS)                 "
+        ${ENABLE_IBVERBS})
 message(INFO "hwloc support:            (ENABLE_HWLOC)                   "
         ${ENABLE_HWLOC})
 message(INFO "hwloc PCI support:        (ENABLE_HWLOC_PCI)               "
@@ -399,6 +404,15 @@ if (ENABLE_LIBNUMA)
   endif()
 else()
   message(NOTE "libnuma                   disabled")
+endif()
+if (ENABLE_IBVERBS)
+  if (IBVERBS_FOUND)
+    message(INFO "libibverbs                enabled")
+  else()
+    message(NOTE "libibverbs                not found")
+  endif()
+else()
+  message(NOTE "libibverbs                disabled")
 endif()
 if (ENABLE_NASTYMPI)
     message(INFO "NastyMPI                  enabled")
