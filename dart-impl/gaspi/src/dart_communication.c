@@ -29,7 +29,7 @@ dart_ret_t dart_scatter(
     uint16_t index;
     if(dart_adapt_teamlist_convert(teamid, &index) == -1)
     {
-        fprintf(stderr, "dart_gather: no team with id: %d\n", teamid);
+        DART_LOG_ERROR("dart_gather: no team with id: %d\n", teamid);
         return DART_ERR_OTHER;
     }
 
@@ -49,6 +49,7 @@ dart_ret_t dart_scatter(
     if(myid.id == root.id)
     {
         DART_CHECK_GASPI_ERROR(gaspi_segment_bind(dart_onesided_seg, (void* const) sendbuf, nbytes * team_size, 0));
+        DART_LOG_TRACE("Starting to scatter for size %d ", team_size);
         for(gaspi_rank_t unit_id = 0; unit_id < team_size; ++unit_id)
         {
             if(myid.id == unit_id) continue;
@@ -76,6 +77,7 @@ dart_ret_t dart_scatter(
     {
         gaspi_notification_id_t first_id;
         gaspi_notification_t    old_value;
+        DART_LOG_TRACE("Waiting to receive from scatter root %d", root.id);
         DART_CHECK_GASPI_ERROR(gaspi_notify_waitsome(dart_coll_seg, notify_id, 1, &first_id, GASPI_BLOCK));
         DART_CHECK_GASPI_ERROR(gaspi_notify_reset(dart_coll_seg, first_id, &old_value));
 
@@ -118,7 +120,7 @@ dart_ret_t dart_bcast(
     uint16_t index;
     if(dart_adapt_teamlist_convert(teamid, &index) == -1)
     {
-        fprintf(stderr, "dart_gather: no team with id: %d\n", teamid);
+        DART_LOG_ERROR("dart_gather: no team with id: %d", teamid);
         return DART_ERR_OTHER;
     }
 
@@ -139,9 +141,10 @@ dart_ret_t dart_bcast(
 
     gaspi_notification_t notify_value = 42;
     gaspi_notification_id_t notify_id = 0;
-
+    DART_LOG_DEBUG("Preparing for broadcast with %d childern and unit %d", children_count);
     if (myid.id != parent)
     {
+        DART_LOG_TRACE("Waiting for brodcast as child");
         gaspi_notification_id_t first_id;
         gaspi_notification_t    old_value;
         DART_CHECK_GASPI_ERROR(gaspi_notify_waitsome(dart_coll_seg, notify_id, 1, &first_id, GASPI_BLOCK));
@@ -191,7 +194,6 @@ dart_ret_t dart_gather(
     if(!datatype_isbasic(dts))
     {
       DART_LOG_ERROR("complex datatypes are not supported!");
-
       return DART_ERR_INVAL;
     }
     size_t nbytes_elem = datatype_sizeof(dts);
@@ -200,7 +202,7 @@ dart_ret_t dart_gather(
     uint16_t index;
     if(dart_adapt_teamlist_convert(teamid, &index) == -1)
     {
-        fprintf(stderr, "dart_gather: no team with id: %d\n", teamid);
+        DART_LOG_ERROR("dart_gather: no team with id: %d\n", teamid);
         return DART_ERR_OTHER;
     }
 
@@ -212,6 +214,7 @@ dart_ret_t dart_gather(
 
     gaspi_queue_id_t queue;
     DART_CHECK_ERROR( dart_get_minimal_queue(&queue));
+
 
     if(myid.id == root.id)
     {
@@ -295,7 +298,7 @@ dart_ret_t dart_allgather(
     uint16_t index;
     if(dart_adapt_teamlist_convert(teamid, &index) == -1)
     {
-        fprintf(stderr, "dart_gather: no team with id: %d\n", teamid);
+        DART_LOG_ERROR(stderr, "dart_gather: no team with id: %d\n", teamid);
         return DART_ERR_OTHER;
     }
 
@@ -350,8 +353,8 @@ dart_ret_t dart_allgather(
         //shouldn't happen
         if(found_id == myid.id)
         {
-          DART_LOG_ERROR("Error in process synchronization -> notify id for local unit");
-          continue;
+            DART_LOG_ERROR("Error in process synchronization -> notify id for local unit");
+            continue;
         }
 
         if(old_value != notify_value)
@@ -391,7 +394,7 @@ dart_ret_t dart_allgatherv(
     uint16_t index;
     if(dart_adapt_teamlist_convert(teamid, &index) == -1)
     {
-        fprintf(stderr, "dart_gather: no team with id: %d\n", teamid);
+        DART_LOG_ERROR("dart_gather: no team with id: %d\n", teamid);
         return DART_ERR_OTHER;
     }
 
@@ -492,7 +495,7 @@ dart_ret_t dart_alltoall(
     uint16_t index;
     if(dart_adapt_teamlist_convert(teamid, &index) == -1)
     {
-        fprintf(stderr, "dart_gather: no team with id: %d\n", teamid);
+        DART_LOG_ERROR("dart_gather: no team with id: %d\n", teamid);
         return DART_ERR_OTHER;
     }
 

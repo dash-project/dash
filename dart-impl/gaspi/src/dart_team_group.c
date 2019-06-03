@@ -10,6 +10,7 @@ dart_ret_t dart_team_get_group (dart_team_t teamid, dart_group_t *group)
     uint16_t index;
     int result = dart_adapt_teamlist_convert (teamid, &index);
     if (result == -1){
+        DART_LOG_ERROR("Could not get index from team: %d", teamid);
         return DART_ERR_INVAL;
     }
 
@@ -30,6 +31,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
     int result = dart_adapt_teamlist_convert(teamid, &index);
     if (result == -1)
     {
+        DART_LOG_ERROR("Could not get index from team: %d", teamid);
         return DART_ERR_INVAL;
     }
 
@@ -37,10 +39,11 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
 
     /* Get the maximum next_availteamid among all the units belonging to the parent team specified by 'teamid'. */
     dart_team_t   max_teamid = -1;
+    
     DART_CHECK_ERROR(dart_allreduce(&dart_next_availteamid,
                                     &max_teamid,
                                     1, DART_TYPE_SHORT, DART_OP_MAX, teamid));
-
+    DART_LOG_DEBUG("Maximum next_availteamid: %d in team: %d", max_teamid, teamid);
 
     // TODO: Only relevant for splitting
     //       find more efficient method -> each split partner can hold the same group id, this solution creates for
@@ -57,6 +60,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
     if(!ismember)
         return DART_OK;
 
+    // Update local dart_next_availteamid
     dart_next_availteamid = max_teamid + 1;
 
     *newteam = DART_TEAM_NULL;
@@ -66,7 +70,8 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
     assert(group_members);
 
 
-
+    // create an empty group  
+    // multiple creates for the split case to get all ranks up to the same count
     while(new_gaspi_group <= gaspi_group_max )
     {
         DART_CHECK_ERROR(gaspi_group_create(&new_gaspi_group));
@@ -84,9 +89,11 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t group, dart_
     result = dart_adapt_teamlist_alloc (max_teamid, &index);
     if (result == -1)
     {
+        DART_LOG_ERROR("Could not allocate team: %d", max_teamid);
         return DART_ERR_OTHER;
     }
     /* max_teamid is thought to be the new created team ID. */
+    DART_LOG_DEBUG("Finishing up creating team: %d  with %d members", max_teamid, gsize);
     *newteam = max_teamid;
     dart_teams[index].id = new_gaspi_group;
     dart_teams[index].group = (dart_group_t) malloc(sizeof(struct dart_group_struct));
@@ -112,6 +119,7 @@ dart_ret_t dart_team_destroy (dart_team_t *teamid)
 
     if (result == -1)
     {
+        DART_LOG_ERROR("Could not get index from team: %d", (*teamid));
         return DART_ERR_INVAL;
     }
 
@@ -150,6 +158,7 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size)
 
     if (result == -1)
     {
+        DART_LOG_ERROR("Could not convert team: %d", teamid);
         return DART_ERR_INVAL;
     }
 
@@ -176,6 +185,7 @@ dart_ret_t dart_team_unit_l2g(
     int result = dart_adapt_teamlist_convert(teamid, &index);
     if (result == -1)
     {
+        DART_LOG_ERROR("Could not convert team: %d", teamid);
         return DART_ERR_INVAL;
     }
     globalid->id = dart_teams[index].group->l2g[localid.id];
@@ -199,6 +209,7 @@ dart_ret_t dart_team_unit_g2l(
     int result = dart_adapt_teamlist_convert(teamid, &index);
     if (result == -1)
     {
+        DART_LOG_ERROR("Could not convert team: %d", teamid);
         return DART_ERR_INVAL;
     }
     localid->id = dart_teams[index].group->g2l[globalid.id];
