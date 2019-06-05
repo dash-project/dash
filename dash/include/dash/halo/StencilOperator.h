@@ -155,8 +155,8 @@ public:
       return;
     }
 
-    if(end == this->end())
-      end -= 1;
+    end -= 1;
+
     const auto& view = this->view();
     const auto& offsets_view = view.offsets();
     const auto& extents_view = view.extents();
@@ -165,8 +165,8 @@ public:
       end_coords_view[d] += extents_view[d];
     }
 
-    auto& begin_coords = begin.coords();
-    auto& end_coords   = end.coords();
+    auto begin_coords = begin.coords();
+    auto end_coords   = end.coords();
 
     auto center  = _stencil_op->_local_memory;
     auto offsets = _stencil_op->set_dimension_offsets();
@@ -195,31 +195,33 @@ public:
       auto center_i     = center;
       auto center_dst_i = center_dst;
       auto offset_i     = offset;
-      for(int j = begin_coords[1]; j <= end_coords_view[1];
+      auto align_offset = begin_coords[1] - offsets_view[1];
+      for(int j = begin_coords[1]; j < end_coords_view[1];
           ++j, ++center_i, ++center_dst_i, ++offset_i) {
         operation(center_i, center_dst_i, offset_i,
                   _stencil_op->_stencil_offsets);
       }
 
-      center += offsets[0];
-      center_dst += offsets[0];
-      offset += offsets[0];
+      center += offsets[0] - align_offset;
+      center_dst += offsets[0] - align_offset;
+      offset += offsets[0] - align_offset;
       for(int i = begin_coords[0] + 1; i < end_coords[0]; ++i,
               center += offsets[0], center_dst += offsets[0],
               offset += offsets[0]) {
         center_i     = center;
         center_dst_i = center_dst;
         offset_i     = offset;
-        for(int j = offsets_view[1]; j <= end_coords_view[1];
+        for(int j = offsets_view[1]; j < end_coords_view[1];
             ++j, ++center_i, ++center_dst_i, ++offset_i) {
           operation(center_i, center_dst_i, offset_i,
                     _stencil_op->_stencil_offsets);
         }
       }
+
       center_i     = center;
       center_dst_i = center_dst;
       offset_i     = offset;
-      for(int j = offsets_view[0]; j <= end_coords[1];
+      for(int j = offsets_view[1]; j <= end_coords[1];
           ++j, ++center_i, ++center_dst_i, ++offset_i) {
         operation(center_i, center_dst_i, offset_i,
                   _stencil_op->_stencil_offsets);
@@ -298,7 +300,7 @@ public:
 
     // specialization for 2-D
     if(NumDimensions == 2) {
-      for(int i = begin_coords[0] + 1; i < end_coords[0]; ++i,
+      for(int i = begin_coords[0]; i <= end_coords[0]; ++i,
               center += offsets[0], center_dst += offsets[0],
               offset += offsets[0]) {
         auto center_i     = center;
