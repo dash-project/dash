@@ -426,7 +426,7 @@ public:
   static constexpr uint8_t REGION_INDEX_BASE = 3;
 
   /// number of maximal possible regions
-  static constexpr auto MaxIndex =
+  static constexpr auto NumRegionsMax =
     ce::pow(REGION_INDEX_BASE, static_cast<udim_t>(NumDimensions));
 
 public:
@@ -669,7 +669,7 @@ private:
 
 public:
   using RegionSpec_t    = RegionSpec<NumDimensions>;
-  using Specs_t         = std::array<RegionSpec_t, RegionCoords_t::MaxIndex>;
+  using Specs_t         = std::array<RegionSpec_t, RegionCoords_t::NumRegionsMax>;
   using region_index_t  = typename RegionCoords_t::region_index_t;
   using region_size_t   = typename RegionCoords_t::region_index_t;
   using region_extent_t = typename RegionSpec_t::region_extent_t;
@@ -1580,11 +1580,11 @@ private:
 
   RegionVector_t _halo_regions;
 
-  std::array<Region_t*, RegionCoords_t::MaxIndex> _halo_reg_mapping{};
+  std::array<Region_t*, RegionCoords_t::NumRegionsMax> _halo_reg_mapping{};
 
   RegionVector_t _boundary_regions;
 
-  std::array<Region_t*, RegionCoords_t::MaxIndex> _boundary_reg_mapping{};
+  std::array<Region_t*, RegionCoords_t::NumRegionsMax> _boundary_reg_mapping{};
 
   BoundaryViews_t _boundary_views;
 
@@ -1643,7 +1643,7 @@ private:
   using RegionCoords_t = RegionCoords<NumDimensions>;
   using Pattern_t      = typename HaloBlockT::Pattern_t;
 
-  static constexpr auto MaxIndex      = RegionCoords_t::MaxIndex;
+  static constexpr auto NumRegionsMax      = RegionCoords_t::NumRegionsMax;
   static constexpr auto MemoryArrange = Pattern_t::memory_order();
 
 public:
@@ -1797,7 +1797,7 @@ public:
 private:
   const HaloBlockT&              _haloblock;
   HaloBuffer_t                   _halobuffer;
-  std::array<iterator, MaxIndex> _halo_offsets{};
+  std::array<iterator, NumRegionsMax> _halo_offsets{};
 };  // class HaloMemory
 
 }  // namespace halo
