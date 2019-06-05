@@ -147,8 +147,23 @@ public:
   */
   template <typename Op>
   void update(iterator begin, iterator end, ElementT* begin_dst, Op operation) {
+    if(begin < this->begin() || end < this->begin() ||
+       begin > this->end() || end > this->end()) {
+
+      DASH_LOG_ERROR("Begin or End iterator located outside of inner view.");
+
+      return;
+    }
+
     if(end == this->end())
       end -= 1;
+    const auto& view = this->view();
+    const auto& offsets_view = view.offsets();
+    const auto& extents_view = view.extents();
+    auto end_coords_view = offsets_view;
+    for(auto d = 0; d < NumDimensions; ++d) {
+      end_coords_view[d] += extents_view[d];
+    }
 
     auto& begin_coords = begin.coords();
     auto& end_coords   = end.coords();
@@ -164,7 +179,126 @@ public:
 
     // specialization for 2-D
     if(NumDimensions == 2) {
+      if(begin_coords[0] == end_coords[0]) {
+        auto center_i     = center;
+        auto center_dst_i = center_dst;
+        auto offset_i     = offset;
+        for(int j = begin_coords[1]; j <= end_coords[1];
+            ++j, ++center_i, ++center_dst_i, ++offset_i) {
+          operation(center_i, center_dst_i, offset_i,
+                    _stencil_op->_stencil_offsets);
+        }
+
+        return;
+      }
+
+      auto center_i     = center;
+      auto center_dst_i = center_dst;
+      auto offset_i     = offset;
+      for(int j = begin_coords[1]; j <= end_coords_view[1];
+          ++j, ++center_i, ++center_dst_i, ++offset_i) {
+        operation(center_i, center_dst_i, offset_i,
+                  _stencil_op->_stencil_offsets);
+      }
+
+      center += offsets[0];
+      center_dst += offsets[0];
+      offset += offsets[0];
+      for(int i = begin_coords[0] + 1; i < end_coords[0]; ++i,
+              center += offsets[0], center_dst += offsets[0],
+              offset += offsets[0]) {
+        center_i     = center;
+        center_dst_i = center_dst;
+        offset_i     = offset;
+        for(int j = offsets_view[1]; j <= end_coords_view[1];
+            ++j, ++center_i, ++center_dst_i, ++offset_i) {
+          operation(center_i, center_dst_i, offset_i,
+                    _stencil_op->_stencil_offsets);
+        }
+      }
+      center_i     = center;
+      center_dst_i = center_dst;
+      offset_i     = offset;
+      for(int j = offsets_view[0]; j <= end_coords[1];
+          ++j, ++center_i, ++center_dst_i, ++offset_i) {
+        operation(center_i, center_dst_i, offset_i,
+                  _stencil_op->_stencil_offsets);
+      }
+      return;
+    }
+
+    // specialization for 3-D
+    if(NumDimensions == 3) {
       for(int i = begin_coords[0]; i <= end_coords[0]; ++i,
+              center += offsets[0], center_dst += offsets[0],
+              offset += offsets[0]) {
+        auto center_i     = center;
+        auto center_dst_i = center_dst;
+        auto offset_i     = offset;
+        for(int j = begin_coords[1]; j <= end_coords[1]; ++j,
+                center_i += offsets[1], center_dst_i += offsets[1],
+                offset_i += offsets[1]) {
+          auto center_j     = center_i;
+          auto center_dst_j = center_dst_i;
+          auto offset_j     = offset_i;
+          for(int k = begin_coords[2]; k <= end_coords[2];
+              ++k, ++center_j, ++center_dst_j, ++offset_j) {
+            operation(center_j, center_dst_j, offset_j,
+                      _stencil_op->_stencil_offsets);
+          }
+        }
+      }
+
+      return;
+    }
+
+    // dimensions above 3-D
+    for(int i = begin_coords[0]; i <= end_coords[0]; ++i, center += offsets[0],
+            center_dst += offsets[0], offset += offsets[0]) {
+      Loop<1, Op>()(_stencil_op->_stencil_offsets, offsets, begin_coords,
+                    end_coords, center, center_dst, offset, operation);
+    }
+  }
+
+  /**
+   * Updates all inner elements within a user defined range using a user-defined
+   * stencil operation.
+   *
+   * \param begin Iterator of the beginnning inner data element
+   * \param end Iterator of the last inner data element
+   * \param begin_dst Pointer to the beginning of the destination memory
+   * \param operation User-definied operation for updating all inner elements
+  */
+  template <typename Op>
+  void update_blocked(const ElementCoords_t& begin_coords, const ElementCoords_t& end_coords, ElementT* begin_dst, Op operation) {
+    const auto& view = this->view();
+    const auto& offsets_view = view.offsets();
+    const auto& extents_view = view.extents();
+    for(auto d = 0; d < NumDimensions; ++d) {
+      auto end_coord = offsets_view[d] + extents_view[d];
+      if(begin_coords[d] < offsets_view[d] ||
+         end_coords[d] < offsets_view[d] ||
+         begin_coords[d] >= end_coord ||
+         end_coords[d] >= end_coord) {
+
+        DASH_LOG_ERROR("Begin or End coordinates located outside of inner view.");
+
+        return;
+      }
+    }
+
+    auto center  = _stencil_op->_local_memory;
+    auto offsets = _stencil_op->set_dimension_offsets();
+    auto offset  = 0;
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      offset += offsets[d] * begin_coords[d];
+    }
+    center += offset;
+    auto center_dst = begin_dst + offset;
+
+    // specialization for 2-D
+    if(NumDimensions == 2) {
+      for(int i = begin_coords[0] + 1; i < end_coords[0]; ++i,
               center += offsets[0], center_dst += offsets[0],
               offset += offsets[0]) {
         auto center_i     = center;
