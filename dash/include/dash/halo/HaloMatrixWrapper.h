@@ -323,17 +323,34 @@ public:
   }
 
   /**
-   * Waits until the halo updates for the given halo region is finished.
+   * Tests for the completion of halo update of the given halo region.
    * Only useful for asynchronous halo updates.
    */
   bool test(region_index_t index) {
     int32_t flag = 1;
     auto it_find = _region_data.find(index);
     if(it_find != _region_data.end())
-      dart_test_local(&it_find->second.halo_data.handle, &flag);
+      dart_test_local(&it_find->second.handle, &flag);
 
     return !(flag == 0);
   }
+
+  /**
+   * Test for completion of the halo updates for all halo regions.
+   * Only useful for asynchronous halo updates.
+   */
+  bool test() {
+    int ret = 1;
+    for(auto& region : _region_data) {
+      if (region.second.handle != DART_HANDLE_NULL) {
+        int flag;
+        dart_test_local(&region.second.handle, &flag);
+        ret &= flag;
+      }
+    }
+    return !(ret == 0);
+  }
+
 
 
   /**
