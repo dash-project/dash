@@ -316,8 +316,7 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  //Self_t& operator=(const Self_t& other) = default;
-  Self_t& operator=(const Self_t& other) = delete;
+  Self_t& operator=(const Self_t& other) = default;
 
   /**
    * The number of dimensions of the iterator's underlying pattern.
@@ -464,7 +463,7 @@ public:
     return res;
   }
 
-  difference_type operator-(Self_t& other) const { return _idx - other._idx; }
+  difference_type operator-(const Self_t& other) const { return _idx - other._idx; }
 
   bool operator<(const Self_t& other) const {
     return compare(other, std::less<pattern_index_t>());
@@ -700,11 +699,11 @@ private:
   HaloMemory_t*                           _halomemory;
   const StencilSpecT*                     _stencil_spec;
   const StencilOffsets_t*                 _stencil_offsets;
-  const ViewSpec_t                        _view;
-  const BoundaryViews_t                   _boundary_views{};
+  ViewSpec_t                              _view;
+  BoundaryViews_t                         _boundary_views{};
   ElementT*                               _local_memory;
   std::array<ElementT*, NumStencilPoints> _stencil_mem_ptr;
-  const LocalLayout_t                     _local_layout;
+  LocalLayout_t                           _local_layout;
   pattern_index_t                         _idx{ 0 };
   // extension of the fastest index dimension minus the halo extension
   std::pair<pattern_index_t, pattern_index_t> _ext_dim_reduced;
