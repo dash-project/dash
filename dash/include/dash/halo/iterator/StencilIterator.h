@@ -347,7 +347,7 @@ public:
 
   pattern_index_t lpos() const { return _offset; }
 
-  const ElementCoords_t& coords() const { return _coords; };
+  ElementCoords_t coords() const { return _coords; };
 
   bool is_halo_value(const region_index_t index_stencil) {
     if(Scope == StencilViewScope::INNER)
