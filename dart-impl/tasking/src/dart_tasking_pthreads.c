@@ -742,6 +742,12 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 
     DART_ASSERT_MSG(IS_ACTIVE_TASK(task), "Invalid state of task %p: %d",
                     task, task->state);
+    DART_ASSERT_MSG(task->unresolved_deps == 0,
+                    "Runnable task %p has %d unresolved local dependencies",
+                    task, task->unresolved_deps);
+    DART_ASSERT_MSG(task->unresolved_remote_deps == 0,
+                    "Runnable task %p has %d unresolved remote dependencies",
+                    task, task->unresolved_remote_deps);
 
     // set task to running state, protected to prevent race conditions with
     // dependency handling code
@@ -1351,8 +1357,9 @@ dart__tasking__create_task(
   task->state = DART_TASK_CREATED;
   bool is_runnable = dart_tasking_datadeps_is_runnable(task);
   UNLOCK_TASK(task);
-  DART_LOG_TRACE("  Task %p ('%s') created: runnable %i, prio %d",
-                 task, task->descr, is_runnable, task->prio);
+  DART_LOG_TRACE("  Task %p ('%s') created: runnable %i, prio %d, ndeps %d, nrdeps %d",
+                 task, task->descr, is_runnable, task->prio,
+                 task->unresolved_deps, task->unresolved_remote_deps);
   if (is_runnable) {
     dart__tasking__enqueue_runnable(task);
   }
