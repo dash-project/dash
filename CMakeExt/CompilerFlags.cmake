@@ -224,7 +224,7 @@ elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU")
     # using GCC
     set (CC_STD_FLAG "--std=c${DART_C_STD_PREFERED}"
         CACHE STRING "C compiler std flag")
-    set (CC_GDB_FLAG "-ggdb3")
+    set (CC_GDB_FLAG "-ggdb3 -rdynamic")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Intel")
     # using Intel C++
     set (CC_STD_FLAG "-std=c${DART_C_STD_PREFERED}"
