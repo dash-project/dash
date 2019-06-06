@@ -217,7 +217,7 @@ int main(int argc, char *argv[])
       }
       {
         auto it_pair = current_op->boundary.iterator_at(dim, dash::halo::RegionPos::POST);
-        auto new_it_pair = new_op->boundary.iterator_at(dim, dash::halo::RegionPos::PRE);
+        auto new_it_pair = new_op->boundary.iterator_at(dim, dash::halo::RegionPos::POST);
         auto idx = dash::halo::RegionCoords<2>::index(dim, dash::halo::RegionPos::POST);
         auto region_ptr = current_halo->halo_block().halo_region(idx);
 
