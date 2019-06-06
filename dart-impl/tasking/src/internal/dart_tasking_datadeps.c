@@ -806,7 +806,7 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
           check_elem = prev;
         }
         if (check_elem != NULL) {
-          DART_ASSERT_MSG(local->dep.phase != rdep->dep.phase,
+          DART_ASSERT_MSG(check_elem->dep.phase != rdep->dep.phase,
                           "Found conflicting dependencies on local memory address %p in phase %d: local task %p ('%s'), remote ");
         }
       }
