@@ -151,10 +151,21 @@ int main(int argc, char *argv[])
           while (!current_halo->test()) dash::tasks::yield();
           //std::cout << "END   UPDATE HALO @ALL" << std::endl;
         },
-      // dummy dependency to synchronize with previous iteration
-      dash::tasks::in(*new_halo),
-      // dependency to synchronize with the boundary update tasks
-      dash::tasks::out(*current_halo));
+        [&](auto deps){
+          // dummy dependency to synchronize with previous iteration
+          deps = dash::tasks::in(*new_halo);
+          // dependency to synchronize with the boundary update tasks
+          deps = dash::tasks::out(*current_halo);
+          // neighbor halos
+          for (int idx = 0; idx < max_idx; ++idx) {
+            auto region_ptr = current_halo->halo_block().halo_region(idx);
+            // region_ptr may be nullptr!
+            // region_ptr represents the remote halo region
+            if (region_ptr != nullptr) {
+              deps = dash::tasks::in(region_ptr->begin());
+            }
+          }
+        });
     //}
 
     // optimized calculation of inner matrix elements
@@ -181,7 +192,7 @@ int main(int argc, char *argv[])
 #if 1
     dash::tasks::taskloop(
       current_op->inner.begin(), current_op->inner.end(),
-      [current_op, &new_matrix](auto begin, auto end){
+      [current_op, &new_matrix, dx, dy](auto begin, auto end){
         current_op->inner.update(begin, end, new_matrix.lbegin(),
             [&](auto* center, auto* center_dst, auto offset, const auto& offsets) {
               //std::cout << "INNER " << dash::distance(begin, end) << std::endl;
@@ -227,6 +238,7 @@ int main(int argc, char *argv[])
     for (int dim = 0; dim < 2; ++dim) {
       {
         auto it_pair = current_op->boundary.iterator_at(dim, dash::halo::RegionPos::PRE);
+        auto new_it_pair = new_op->boundary.iterator_at(dim, dash::halo::RegionPos::PRE);
         auto idx = dash::halo::RegionCoords<2>::index(dim, dash::halo::RegionPos::PRE);
         auto block = current_halo->halo_block();
         auto region_ptr = block.halo_region(idx);
@@ -236,7 +248,7 @@ int main(int argc, char *argv[])
         // region_ptr may be nullptr!
         if (region_ptr != nullptr) {
           auto lbegin = new_matrix.lbegin();
-          dash::tasks::async("UPDATE_BOUNDARY", [lbegin, it_pair, current_op, idx](){
+          dash::tasks::async("UPDATE_BOUNDARY", [&, lbegin, it_pair, current_op, idx](){
             //std::cout << "BEGIN UPDATE BOUNDARY @" << idx << std::endl;
             current_op->boundary.update(
               it_pair.first, it_pair.second, lbegin,
@@ -251,11 +263,13 @@ int main(int argc, char *argv[])
           // dummy dependency to synchronize with the halo update
           dash::tasks::in(*current_halo),
           // dummy dependency to synchronize with next iteration
-          dash::tasks::in(*new_halo));
+          dash::tasks::in(*new_halo),
+          dash::tasks::out(*new_it_pair.first));
         }
       }
       {
         auto it_pair = current_op->boundary.iterator_at(dim, dash::halo::RegionPos::POST);
+        auto new_it_pair = new_op->boundary.iterator_at(dim, dash::halo::RegionPos::PRE);
         auto idx = dash::halo::RegionCoords<2>::index(dim, dash::halo::RegionPos::POST);
         auto block = current_halo->halo_block();
         auto region_ptr = block.halo_region(idx);
@@ -267,7 +281,7 @@ int main(int argc, char *argv[])
         if (region_ptr != nullptr) {
 
           auto lbegin = new_matrix.lbegin();
-          dash::tasks::async("UPDATE_BOUNDARY", [lbegin, it_pair, current_op, idx](){
+          dash::tasks::async("UPDATE_BOUNDARY", [&, lbegin, it_pair, current_op, idx](){
             //std::cout << "BEGIN UPDATE BOUNDARY @" << idx << std::endl;
             current_op->boundary.update(
               it_pair.first, it_pair.second, lbegin,
@@ -282,7 +296,9 @@ int main(int argc, char *argv[])
           // dummy dependency to synchronize with the halo update
           dash::tasks::in(*current_halo),
           // dummy dependency to synchronize with next iteration
-          dash::tasks::in(*new_halo));
+          dash::tasks::in(*new_halo),
+          // output dependency
+          dash::tasks::out(*new_it_pair.first));
         }
       }
     }
@@ -303,7 +319,7 @@ int main(int argc, char *argv[])
     std::swap(current_op, new_op);
     //current_matrix.barrier();
     dash::tasks::async_barrier();
-  dash::tasks::complete();
+  //dash::tasks::complete();
   }
   // wait for all tasks to complete
   dash::tasks::complete();
