@@ -187,6 +187,112 @@ TEST_F(HaloTest, HaloSpecStencils)
   }
 }
 
+TEST_F(HaloTest, HaloRegionDependencies2D)
+{
+  using Pattern_t  = dash::Pattern<2>;
+  using index_type = typename Pattern_t::index_type;
+  using Matrix_t   = dash::Matrix<long, 2, index_type, Pattern_t>;
+  using DistSpec_t = dash::DistributionSpec<2>;
+  using TeamSpec_t = dash::TeamSpec<2>;
+  using SizeSpec_t = dash::SizeSpec<2>;
+
+  using GlobBoundSpec_t = GlobalBoundarySpec<2>;
+  using StencilP_t      = StencilPoint<2>;
+  using StencilSpec_t   = StencilSpec<StencilP_t, 8>;
+
+  auto myid(dash::myid());
+
+  DistSpec_t dist_spec(dash::BLOCKED, dash::BLOCKED);
+  TeamSpec_t team_spec{};
+  team_spec.balance_extents();
+  Pattern_t pattern(SizeSpec_t(ext_per_dim,ext_per_dim), dist_spec, team_spec, dash::Team::All());
+
+  Matrix_t matrix_halo(pattern);
+
+  dash::Team::All().barrier();
+
+  StencilSpec_t stencil_spec(
+      StencilP_t(-1,-1), StencilP_t(-1, 0), StencilP_t(-1, 1),
+      StencilP_t( 0,-1),                    StencilP_t( 0, 1),
+      StencilP_t( 1,-1), StencilP_t( 1, 0), StencilP_t( 1, 1));
+
+  HaloMatrixWrapper<Matrix_t> halo_wrapper(matrix_halo, stencil_spec);
+  auto& halo_block = halo_wrapper.halo_block();
+
+  // center
+  auto reg_dep_indices = halo_block.boundary_dependencies(4);
+  EXPECT_EQ(0, reg_dep_indices.size());
+  // main regions
+  reg_dep_indices = halo_block.boundary_dependencies(1);
+  EXPECT_EQ(1, reg_dep_indices.size());
+  EXPECT_EQ(1, reg_dep_indices[0]);
+  reg_dep_indices = halo_block.boundary_dependencies(3);
+  EXPECT_EQ(1, reg_dep_indices.size());
+  EXPECT_EQ(3, reg_dep_indices[0]);
+  reg_dep_indices = halo_block.boundary_dependencies(5);
+  EXPECT_EQ(1, reg_dep_indices.size());
+  EXPECT_EQ(5, reg_dep_indices[0]);
+  reg_dep_indices = halo_block.boundary_dependencies(7);
+  EXPECT_EQ(1, reg_dep_indices.size());
+  EXPECT_EQ(7, reg_dep_indices[0]);
+
+  reg_dep_indices = halo_block.boundary_dependencies(0);
+  EXPECT_EQ(3, reg_dep_indices.size());
+  EXPECT_EQ(0, reg_dep_indices[0]);
+  EXPECT_EQ(3, reg_dep_indices[1]);
+  EXPECT_EQ(1, reg_dep_indices[2]);
+  reg_dep_indices = halo_block.boundary_dependencies(2);
+  EXPECT_EQ(3, reg_dep_indices.size());
+  EXPECT_EQ(2, reg_dep_indices[0]);
+  EXPECT_EQ(5, reg_dep_indices[1]);
+  EXPECT_EQ(1, reg_dep_indices[2]);
+  reg_dep_indices = halo_block.boundary_dependencies(6);
+  EXPECT_EQ(3, reg_dep_indices.size());
+  EXPECT_EQ(6, reg_dep_indices[0]);
+  EXPECT_EQ(3, reg_dep_indices[1]);
+  EXPECT_EQ(7, reg_dep_indices[2]);
+  reg_dep_indices = halo_block.boundary_dependencies(8);
+  EXPECT_EQ(3, reg_dep_indices.size());
+  EXPECT_EQ(8, reg_dep_indices[0]);
+  EXPECT_EQ(5, reg_dep_indices[1]);
+  EXPECT_EQ(7, reg_dep_indices[2]);
+
+  StencilSpec<StencilP_t, 2> stencil_spec_2( StencilP_t(-1, 0), StencilP_t( 1, 0));
+
+  HaloMatrixWrapper<Matrix_t> halo_wrapper_2(matrix_halo, stencil_spec_2);
+  auto& halo_block_2 = halo_wrapper_2.halo_block();
+
+  // center
+  reg_dep_indices = halo_block_2.boundary_dependencies(4);
+  EXPECT_EQ(0, reg_dep_indices.size());
+  // main regions
+  reg_dep_indices = halo_block_2.boundary_dependencies(1);
+  EXPECT_EQ(1, reg_dep_indices.size());
+  EXPECT_EQ(1, reg_dep_indices[0]);
+  reg_dep_indices = halo_block_2.boundary_dependencies(3);
+  EXPECT_EQ(0, reg_dep_indices.size());
+  reg_dep_indices = halo_block_2.boundary_dependencies(5);
+  EXPECT_EQ(0, reg_dep_indices.size());
+  reg_dep_indices = halo_block_2.boundary_dependencies(7);
+  EXPECT_EQ(1, reg_dep_indices.size());
+  EXPECT_EQ(7, reg_dep_indices[0]);
+
+  reg_dep_indices = halo_block_2.boundary_dependencies(0);
+  EXPECT_EQ(1, reg_dep_indices.size());
+  EXPECT_EQ(1, reg_dep_indices[0]);
+  reg_dep_indices = halo_block_2.boundary_dependencies(2);
+  EXPECT_EQ(1, reg_dep_indices.size());
+  EXPECT_EQ(1, reg_dep_indices[0]);
+  reg_dep_indices = halo_block_2.boundary_dependencies(6);
+  EXPECT_EQ(1, reg_dep_indices.size());
+  EXPECT_EQ(7, reg_dep_indices[0]);
+  reg_dep_indices = halo_block_2.boundary_dependencies(8);
+  EXPECT_EQ(1, reg_dep_indices.size());
+  EXPECT_EQ(7, reg_dep_indices[0]);
+
+  dash::Team::All().barrier();
+}
+
 TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
 {
   using Pattern_t  = dash::Pattern<2>;
