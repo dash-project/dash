@@ -130,7 +130,7 @@ dart_ret_t dart__base__locality__domain__destruct(
     domain->unit_ids = NULL;
   }
   if (NULL != domain->aliases) {
-//  free(domain->aliases);
+    free(domain->aliases);
     domain->aliases  = NULL;
   }
   domain->num_domains = 0;
