@@ -14,6 +14,9 @@
 
 #include <dash/dart/if/dart_communication.h>
 
+#include <dash/algorithm/internal/TransformReduce.h>
+
+
 #ifdef DASH_ENABLE_OPENMP
 #include <omp.h>
 #endif
