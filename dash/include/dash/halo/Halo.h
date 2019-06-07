@@ -439,7 +439,6 @@ public:
     for(dim_t i = 0; i < NumDimensions; ++i) {
       this->_values[i] = 1;
     }
-    _index = index(this->_values);
   }
 
   /**
@@ -449,20 +448,19 @@ public:
   template <typename... Values>
   RegionCoords(region_coord_t value, Values... values)
   : Base_t::Dimensional(value, values...) {
-    _index = index(this->_values);
   }
 
   /**
    * Constructor takes a region index to set up the region coordinates
    */
-  RegionCoords(region_index_t index) : _index(index) {
-    this->_values = coords(index);
+  RegionCoords(region_index_t index) {
+    this->_values = Self_t::coords(index);
   }
 
   /**
    * \return region index
    */
-  constexpr region_index_t index() const { return _index; }
+  constexpr region_index_t index() const { return index(this->_values); }
 
   /**
    * Returns a region index for a given dimension and \ref RegionPos
@@ -487,8 +485,14 @@ public:
    */
   static region_index_t index(const Coords_t& coords) {
     region_index_t index = coords[0];
-    for(auto i = 1; i < NumDimensions; ++i)
-      index = coords[i] + index * REGION_INDEX_BASE;
+    for(dim_t d = 1; d < NumDimensions; ++d) {
+      // in case a wrong region coordinate was set
+      if(coords[d] > 2) {
+        index = coords[d] + index * REGION_INDEX_BASE;
+      } else {
+        index = coords[d] + index * REGION_INDEX_BASE;
+      }
+    }
 
     return index;
   }
@@ -511,16 +515,61 @@ public:
     return coords;
   }
 
+  /**
+   * Returns the highest dimension with region values != 1
+   */
+  static dim_t relevant_dim(const Coords_t& coords) {
+    dim_t dim = 1;
+    for(auto d = 1; d < NumDimensions; ++d) {
+      if(coords[d] != 1)
+        dim = d + 1;
+    }
+
+    return dim;
+  }
+
+  /**
+   * Returns the highest dimension with region values != 1
+   */
+  dim_t relevant_dim() { return relevant_dim(this->_values); }
+
+  /**
+   * returns the number of coordinates unequal to the center (1) for
+   * all dimensions
+   *
+   * level = 0 -> center (1,1)
+   * level = 1 -> main regions (e.g. 2D: (0,1) (2,1) (1,0) (1,2)
+   * level = 2 e.g. 2D corner regions or 3D edge regions
+   * ... for dimensions higher than 2D relevant
+   */
+  static dim_t level(const Coords_t& coords) {
+    dim_t level = 0;
+    for(auto d = 0; d < NumDimensions; ++d) {
+      if(coords[d] != 1)
+        ++level;
+    }
+    return level;
+  }
+
+  /**
+   * returns the number of coordinates unequal to the center (1) for
+   * all dimensions
+   *
+   * level = 0 -> center (1,1)
+   * level = 1 -> main regions (e.g. 2D: (0,1) (2,1) (1,0) (1,2)
+   * level = 2 e.g. 2D corner regions or 3D edge regions
+   * ... for dimensions higher than 2D relevant
+   */
+  dim_t level() { return level(this->_values); }
+
   constexpr bool operator==(const Self_t& other) const {
-    return _index == other._index && this->_values == other._values;
+
+    return this->_values == other._values;
   }
 
   constexpr bool operator!=(const Self_t& other) const {
     return !(*this == other);
   }
-
-private:
-  region_index_t _index;
 };  // RegionCoords
 
 /**
@@ -528,7 +577,7 @@ private:
  * The region extent applies to all dimensions.
  */
 template <dim_t NumDimensions>
-class RegionSpec : public Dimensional<uint8_t, NumDimensions> {
+class RegionSpec {
 private:
   using Self_t = RegionSpec<NumDimensions>;
 
@@ -543,19 +592,22 @@ public:
    * Constructor using RegionCoords and the extent
    */
   RegionSpec(const RegionCoords_t& coords, const region_extent_t extent)
-  : _coords(coords), _extent(extent), _rel_dim(init_rel_dim()) {
-    init_level();
-  }
+  : _coords(coords), _index(coords.index()), _extent(extent),
+    _rel_dim(RegionCoords_t::relevant_dim(coords.values())),
+    _level(RegionCoords_t::level(coords.values())) {}
 
   /**
    * Constructor using a region index and an extent
    */
   RegionSpec(region_index_t index, const region_extent_t extent)
-  : _coords(RegionCoords_t(index)), _extent(extent), _rel_dim(init_rel_dim()) {
-    init_level();
-  }
+  : _coords(RegionCoords_t(index)), _index(index), _extent(extent),
+    _rel_dim(RegionCoords_t::relevant_dim(_coords.values())),
+    _level(RegionCoords_t::level(_coords.values())) {}
 
-  RegionSpec() = default;
+  RegionSpec()
+  : _coords(), _index(_coords.index()), _extent(0),
+    _rel_dim(RegionCoords_t::relevant_dim(_coords.values())),
+    _level(RegionCoords_t::level(_coords.values())) {}
 
   /**
    * Returns the region index for a given \ref StencilPoint
@@ -582,7 +634,7 @@ public:
   /**
    * Returns the region index
    */
-  constexpr region_index_t index() const { return _coords.index(); }
+  constexpr region_index_t index() const { return _index; }
 
   /**
    * Returns the \ref RegionCoords
@@ -621,26 +673,8 @@ public:
   dim_t level() const { return _level; }
 
 private:
-  // TODO put init_rel_dim and level together
-  dim_t init_rel_dim() {
-    dim_t dim = 1;
-    for(auto d = 1; d < NumDimensions; ++d) {
-      if(_coords[d] != 1)
-        dim = d + 1;
-    }
-
-    return dim;
-  }
-
-  void init_level() {
-    for(auto d = 0; d < NumDimensions; ++d) {
-      if(_coords[d] != 1)
-        ++_level;
-    }
-  }
-
-private:
   RegionCoords_t  _coords{};
+  region_index_t  _index;
   region_extent_t _extent  = 0;
   dim_t           _rel_dim = 1;
   dim_t           _level   = 0;
@@ -1224,6 +1258,8 @@ private:
   using RegionSpec_t    = RegionSpec<NumDimensions>;
   using Region_t        = Region<ElementT, PatternT, GlobMemT>;
   using RegionCoords_t  = RegionCoords<NumDimensions>;
+  using Coords_t        = typename RegionCoords_t::Coords_t;
+  using CoordsVec_t     = std::vector<RegionCoords_t>;
   using region_extent_t = typename RegionSpec_t::region_extent_t;
 
 public:
@@ -1237,6 +1273,7 @@ public:
   using HaloSpec_t      = HaloSpec<NumDimensions>;
   using RegionVector_t  = std::vector<Region_t>;
   using region_index_t  = typename RegionSpec_t::region_index_t;
+  using RegIndDepVec_t  = std::vector<region_index_t>;
   using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
 
   using HaloExtsMaxPair_t = std::pair<region_extent_t, region_extent_t>;
@@ -1469,6 +1506,46 @@ public:
    */
   const RegionVector_t& boundary_regions() const { return _boundary_regions; }
 
+  RegIndDepVec_t boundary_dependencies(region_index_t index) const {
+    RegIndDepVec_t index_dep{};
+
+    if(index >= RegionCoords_t::NumRegionsMax) {
+      DASH_LOG_ERROR("Invalid region index: %d", index);
+
+      return index_dep;
+    }
+
+
+    auto region_coords = RegionCoords_t(index);
+    auto level = region_coords.level();
+
+    if(level == 0) {
+      return index_dep;
+    }
+
+    if(level == 1) {
+      auto region = halo_region(index);
+      if(region != nullptr) {
+        index_dep.push_back(index);
+      }
+
+      return index_dep;
+    }
+
+    CoordsVec_t found_coords{};
+    find_dep_regions(0, region_coords, found_coords);
+
+    for(auto& reg_coords : found_coords) {
+      auto found_index = reg_coords.index();
+      auto region = halo_region(found_index);
+      if(region != nullptr) {
+        index_dep.push_back(found_index);
+      }
+    }
+
+    return index_dep;
+  }
+
   /**
    * Returns the initial global \ref ViewSpec
    */
@@ -1562,6 +1639,19 @@ private:
     _size_bnd_elems += boundary_next.size();
     _boundary_views.push_back(std::move(boundary_next));
   }
+
+  void find_dep_regions(dim_t dim_change, const RegionCoords_t& current_coords, CoordsVec_t& dep_coords) const {
+    dep_coords.push_back(current_coords);
+
+    for(dim_t d = dim_change; d < NumDimensions; ++d) {
+      if(current_coords[d] != 1) {
+        auto new_coords = current_coords;
+        new_coords[d] = 1;
+        find_dep_regions(d+1, new_coords, dep_coords);
+      }
+    }
+  }
+
 
 private:
   GlobMem_t& _globmem;
