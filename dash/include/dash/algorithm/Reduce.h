@@ -68,21 +68,20 @@ namespace internal {
  */
 
 template <
-  class LocalInputIter,
-  class InitType,
-  class BinaryOperation
-        = dash::plus<typename std::iterator_traits<LocalInputIter>::value_type>,
-  typename = typename std::enable_if<
-                        !dash::detail::is_global_iterator<LocalInputIter>::value
-                      >::type>
-typename std::iterator_traits<LocalInputIter>::value_type
-reduce(
-  LocalInputIter    in_first,
-  LocalInputIter    in_last,
-  InitType          init,
-  BinaryOperation   binary_op = BinaryOperation(),
-  bool              non_empty = true,
-  dash::Team      & team = dash::Team::All())
+    class LocalInputIter,
+    class InitType,
+    class BinaryOperation =
+        dash::plus<typename std::iterator_traits<LocalInputIter>::value_type>,
+    typename = typename std::enable_if<
+        !dash::detail::is_global_iterator<LocalInputIter>::value>::type>
+typename std::iterator_traits<LocalInputIter>::value_type reduce(
+    LocalInputIter           in_first,
+    LocalInputIter           in_last,
+    InitType                 init,
+    BinaryOperation          binary_op = BinaryOperation(),
+    bool                     non_empty = true,
+    const dash::Team&        team      = dash::Team::All(),
+    const dash::team_unit_t* root      = nullptr)
 {
   using value_t    = typename std::iterator_traits<LocalInputIter>::value_type;
   using local_result_t = struct dash::internal::local_result<value_t>;
@@ -111,14 +110,30 @@ reduce(
     dart_op_create(
       &dash::internal::reduce_custom_fn<value_t, BinaryOperation>,
       &binary_op, true, dtype, true, &dop);
-    dart_allreduce(&l_result, &g_result, 1, dtype, dop, team.dart_id());
+    if (root == nullptr) {
+      dart_allreduce(&l_result, &g_result, 1, dtype, dop, team.dart_id());
+    } else {
+      dart_reduce(&l_result, &g_result, 1, dtype, dop, *root, team.dart_id());
+    }
     dart_op_destroy(&dop);
     dart_type_destroy(&dtype);
   } else {
     // ideal case: we can use DART predefined reductions
-    dart_allreduce(&l_result.value, &g_result.value, 1, dtype, dop, team.dart_id());
-    g_result.valid = true;
-  }
+    if (root == nullptr) {
+      dart_allreduce(
+          &l_result.value, &g_result.value, 1, dtype, dop, team.dart_id());
+    } else {
+      dart_reduce(
+          &l_result.value,
+          &g_result.value,
+          1,
+          dtype,
+          dop,
+          *root,
+          team.dart_id());
+    }
+      g_result.valid = true;
+    }
   if (!g_result.valid) {
     DASH_LOG_ERROR("Found invalid reduction value!");
   }
