@@ -72,7 +72,7 @@ dart_buddy_new(size_t size)
   /* Modern CPUs are able to use 48-bits virtual addresses,
    * this allows to address up to 256 TiB of memory */
   if(level > 48) {
-    DART_LOG_ERROR("Level of buddy allocator invalid");
+    DART_LOG_ERROR("dart_buddy_new: Level of buddy allocator invalid");
     return NULL;
   }
   unsigned int lsize  = (((unsigned int) 1) << level);
@@ -137,7 +137,7 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
   size_t length = 1 << self->level;
 
   if (size > length) {
-    DART_LOG_ERROR("Allocation size larger than total allocator size (%zu > %zu)",
+    DART_LOG_ERROR("dart_buddy_alloc: allocation size larger than total allocator size (%zu > %zu)",
                    s, length<<DART_MEM_ALIGN_BITS);
     return -1;
   }
@@ -196,7 +196,7 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 
   dart__base__mutex_unlock(&self->mutex);
   DART_LOG_ERROR(
-    "Allocation larger than remaining available allocator memory (%zu)", s);
+    "dart_buddy_alloc: allocation larger than remaining available allocator memory (%zu)", s);
   return -1;
 }
 
@@ -242,7 +242,7 @@ int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
       dart__base__mutex_unlock(&self->mutex);
       return 0;
     case NODE_UNUSED:
-      DART_LOG_ERROR("Invalid offset %lX in dart_buddy_free(alloc:%p)!",
+      DART_LOG_ERROR("dart_buddy_free: invalid offset %lX in dart_buddy_free(alloc:%p)!",
                     offset, self);
       dart_abort(DART_EXIT_ABORT);
       dart__base__mutex_unlock(&self->mutex);
@@ -263,7 +263,7 @@ int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
   dart__base__mutex_unlock(&self->mutex);
 
   // TODO: is this ever reached?
-  DART_LOG_ERROR("Failed to free buddy allocation!");
+  DART_LOG_ERROR("dart_buddy_free: failed to free buddy allocation!");
   dart_abort(DART_EXIT_ABORT);
   return -1;
 }
@@ -298,7 +298,7 @@ int buddy_size(struct dart_buddy * self, uint64_t offset)
 	}
 
   // TODO: is this ever reached?
-  DART_LOG_ERROR("Failed to free buddy allocation!");
+  DART_LOG_ERROR("buddy_size: failed to free buddy allocation!");
   dart_abort(DART_EXIT_ABORT);
 
   return -1;

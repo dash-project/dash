@@ -54,7 +54,7 @@ dart_type_create_strided(
   dart_datatype_t * newtype)
 {
     if (newtype == NULL) {
-        DART_LOG_ERROR("newtype pointer may not be NULL!");
+        DART_LOG_ERROR("dart_type_create_strided: newtype pointer may not be NULL!");
         return DART_ERR_INVAL;
     }
 
@@ -62,7 +62,7 @@ dart_type_create_strided(
 
     dart_datatype_struct_t* dts_src = get_datatype_struct(basetype);
     if (!datatype_iscontiguous(dts_src)) {
-        DART_LOG_ERROR("Only contiguous data types allowed in strided datatypes!");
+        DART_LOG_ERROR("dart_type_create_strided: Only contiguous data types allowed in strided datatypes!");
         return DART_ERR_INVAL;
     }
 
@@ -74,7 +74,7 @@ dart_type_create_strided(
 
     *newtype = (dart_datatype_t)strided_type;
 
-    DART_LOG_TRACE("Created new strided data type %p", strided_type);
+    DART_LOG_TRACE("dart_type_create_strided: Created new strided data type %p", strided_type);
 
     return DART_OK;
 }
@@ -88,7 +88,7 @@ dart_type_create_indexed(
   dart_datatype_t * newtype)
 {
     if (newtype == NULL) {
-      DART_LOG_ERROR("newtype pointer may not be NULL!");
+      DART_LOG_ERROR("dart_type_create_indexed: newtype pointer may not be NULL!");
       return DART_ERR_INVAL;
     }
 
@@ -96,7 +96,7 @@ dart_type_create_indexed(
 
     dart_datatype_struct_t* dts_src = get_datatype_struct(basetype);
     if (!datatype_iscontiguous(dts_src)) {
-      DART_LOG_ERROR("Only contiguous data types allowed in indexed datatypes!");
+      DART_LOG_ERROR("dart_type_create_indexed: Only contiguous data types allowed in indexed datatypes!");
       return DART_ERR_INVAL;
     }
 
@@ -121,7 +121,7 @@ dart_type_create_indexed(
 
     *newtype = (dart_datatype_t)new_indexed_type;
 
-    DART_LOG_TRACE("Created new indexed data type %p with %zu elements",
+    DART_LOG_TRACE("dart_type_create_indexed: Created new indexed data type %p with %zu elements",
                   new_indexed_type, num_elem);
 
     return DART_OK;
@@ -133,7 +133,7 @@ dart_type_create_custom(
   dart_datatype_t * newtype)
 {
     if (newtype == NULL) {
-      DART_LOG_ERROR("newtype pointer may not be NULL!");
+      DART_LOG_ERROR("dart_type_create_custom: newtype pointer may not be NULL!");
       return DART_ERR_INVAL;
     }
 
@@ -148,7 +148,7 @@ dart_type_create_custom(
     new_custom_type->contiguous.size     = num_bytes;
 
     *newtype = (dart_datatype_t)new_custom_type;
-    DART_LOG_TRACE("Created new custom data type %p with %zu bytes`",
+    DART_LOG_TRACE("dart_type_create_custom: Created new custom data type %p with %zu bytes`",
                   new_custom_type, num_bytes);
 
     return DART_OK;
@@ -158,6 +158,7 @@ dart_ret_t
 dart_type_destroy(dart_datatype_t* dart_type)
 {
     if (dart_type == NULL) {
+      DART_LOG_ERROR("dart_type_destroy: Cannot destroy dart_type == NULL");
       return DART_ERR_INVAL;
     }
 
@@ -190,12 +191,14 @@ dart_op_create(
   bool               dtype_is_tmp,
   dart_operation_t * new_op)
   {
-      return DART_OK;
+    DART_LOG_ERROR("dart_op_create: Not implemented");
+    return DART_OK;
   }
 
 
 dart_ret_t
 dart_op_destroy(dart_operation_t *op)
 {
-    return DART_OK;
+  DART_LOG_ERROR("dart_op_destroy: Not implemented");
+  return DART_OK;
 }

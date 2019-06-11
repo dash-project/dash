@@ -16,6 +16,8 @@
 #include <dash/dart/gaspi/dart_synchronization_priv.h>
 #include <dash/dart/gaspi/dart_communication_priv.h>
 
+#include <dash/dart/base/logging.h>
+
 #define DART_UNLOCK_VAL 999999
 
 /**
@@ -84,7 +86,7 @@ dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *result)
 
     if(lock->is_acquired)
     {
-        fprintf(stderr, "dart_lock_try_acquire: lock is already acquired\n");
+        DART_LOG_ERROR("dart_lock_try_acquire: lock is already acquired");
         return DART_ERR_OTHER;
     }
 

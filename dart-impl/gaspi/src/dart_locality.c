@@ -38,7 +38,7 @@ dart_ret_t dart_domain_team_locality(
   const char                    * domain_tag,
   dart_domain_locality_t       ** team_domain_out)
 {
-  DART_LOG_DEBUG("dart_domain_team_locality() team(%d) domain(%s)",
+  DART_LOG_DEBUG("dart_domain_team_locality: team(%d) domain(%s)",
                  team, domain_tag);
   dart_ret_t ret;
 
@@ -107,7 +107,7 @@ dart_ret_t dart_domain_find(
   const char                    * domain_tag,
   dart_domain_locality_t       ** subdomain_out)
 {
-  DART_LOG_DEBUG("dart_domain_find() domain_in(%p) domain_tag(%s)",
+  DART_LOG_DEBUG("dart_domain_find: domain_in(%p) domain_tag(%s)",
                  (void*)domain_in, domain_tag);
   dart_ret_t ret = dart__base__locality__domain(
                      domain_in, domain_tag, subdomain_out);
@@ -165,7 +165,7 @@ dart_ret_t dart_domain_split_scope(
   int                             num_parts,
   dart_domain_locality_t        * domains_out)
 {
-  DART_LOG_DEBUG("dart_domain_split_scope() team(%d) domain(%s) "
+  DART_LOG_DEBUG("dart_domain_split_scope: team(%d) domain(%s) "
                  "into %d parts at scope %d",
                  domain_in->team, domain_in->domain_tag, num_parts,
                  scope);
@@ -284,7 +284,7 @@ dart_ret_t dart_unit_locality(
   dart_team_unit_t                unit,
   dart_unit_locality_t         ** locality)
 {
-  DART_LOG_DEBUG("dart_unit_locality() team(%d) unit(%d)", team, unit.id);
+  DART_LOG_DEBUG("dart_unit_locality: team(%d) unit(%d)", team, unit.id);
 
   dart_ret_t ret = dart__base__locality__unit(team, unit, locality);
   if (ret != DART_OK) {

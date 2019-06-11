@@ -6,7 +6,7 @@
 
 dart_ret_t seg_stack_init(seg_stack_t * stack, gaspi_segment_id_t begin, size_t count)
 {
-    DART_LOG_TRACE("Initing seg_stack");
+    DART_LOG_TRACE("seg_stack_init");
     stack->segids = (gaspi_segment_id_t *) malloc(sizeof(gaspi_segment_id_t) * count);
 
     if(stack->segids == NULL)
@@ -42,7 +42,7 @@ dart_ret_t seg_stack_push(seg_stack_t * stack, gaspi_segment_id_t segid_in)
 {
     if(stack->segids == NULL || seg_stack_isfull(stack))
     {
-        DART_LOG_ERROR("seg_stack is full, no further push possible");
+        DART_LOG_ERROR("seg_stack_push: seg_stack is full, no further push possible");
         return DART_ERR_OTHER;
     }
     stack->segids[++(stack->top)] = segid_in;
@@ -54,7 +54,7 @@ dart_ret_t seg_stack_pop(seg_stack_t * stack, gaspi_segment_id_t * segid_out)
 {
     if(stack->segids == NULL || seg_stack_isempty(stack))
     {
-        DART_LOG_ERROR("seg_stack is empty, no further pop possible")
+        DART_LOG_ERROR("seg_stack_pop: seg_stack is empty, no further pop possible")
         return DART_ERR_OTHER;
     }
     *segid_out = stack->segids[(stack->top)--];
@@ -66,7 +66,7 @@ dart_ret_t seg_stack_fill(seg_stack_t * stack, gaspi_segment_id_t begin, size_t 
 {
     if(stack->segids == NULL || seg_stack_isfull(stack) || !seg_stack_isempty(stack))
     {
-        DART_LOG_ERROR("stack->segids == NULL || seg_stack_isfull || !seg_stack_isempty");
+        DART_LOG_ERROR("seg_stack_fill: stack->segids == NULL || seg_stack_isfull || !seg_stack_isempty");
         return DART_ERR_OTHER;
     }
 
@@ -74,7 +74,7 @@ dart_ret_t seg_stack_fill(seg_stack_t * stack, gaspi_segment_id_t begin, size_t 
     {
         if(seg_stack_push(stack, i) != DART_OK)
         {
-            DART_LOG_ERROR("could not push onto seg_stack while seg_stack_fill");
+            DART_LOG_ERROR("seg_stack_fill: could not push onto seg_stack while seg_stack_fill");
             return DART_ERR_OTHER;
         }
     }

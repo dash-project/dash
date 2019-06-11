@@ -183,7 +183,7 @@ dart_ret_t dart_exit()
     DART_CHECK_ERROR(seg_stack_finish(&pool_dart_seg_ids));
 
     datatype_fini();
-
+    printf("dart_exit: finishes dart");
    if(_init_by_dart)
    {
        DART_CHECK_ERROR(gaspi_proc_term(GASPI_BLOCK));

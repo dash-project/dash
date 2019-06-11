@@ -219,7 +219,7 @@ dart_ret_t dart_group_locality_split(
    dart_team_t team = domain->team;
 
    if (group == NULL) {
-     DART_LOG_ERROR("Invalid group argument: %p", group);
+     DART_LOG_ERROR("dart_group_locality_split: invalid group argument: %p", group);
      return DART_ERR_INVAL;
    }
 
@@ -244,7 +244,7 @@ dart_ret_t dart_group_locality_split(
      *nout      = num_groups;
    }
    if(num_groups == 0) {
-     DART_LOG_ERROR("num_groups has to be greater than 0");
+     DART_LOG_ERROR("dart_group_locality_split: num_groups has to be greater than 0");
      return DART_ERR_OTHER;
    }
 

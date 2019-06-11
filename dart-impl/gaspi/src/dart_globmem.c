@@ -34,7 +34,7 @@ dart_ret_t dart_memalloc(
     gptr->addr_or_offs.offset = dart_buddy_alloc(dart_localpool, nbytes);
     if (gptr->addr_or_offs.offset == -1)
     {
-        DART_LOG_ERROR("Out of bound: the global memory is exhausted");
+        DART_LOG_ERROR("dart_memalloc: Out of bound, the global memory is exhausted");
         return DART_ERR_OTHER;
     }
     return DART_OK;
@@ -44,7 +44,7 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
 {
     if (dart_buddy_free (dart_localpool, gptr.addr_or_offs.offset) == -1)
     {
-        DART_LOG_ERROR("Free invalid local global pointer: invalid offset = %lu\n", gptr.addr_or_offs.offset);
+        DART_LOG_ERROR("dart_memfree: Free invalid local global pointer: invalid offset = %lu\n", gptr.addr_or_offs.offset);
         return DART_ERR_INVAL;
     }
 
@@ -79,7 +79,7 @@ dart_ret_t dart_team_mem_impl(
     // GPI2 can't allocate 0 bytes
     if( nbytes == 0 )
     {
-        DART_LOG_TRACE("nbytes == 0, setting nbytes = 1 for continuation");
+        DART_LOG_TRACE("dart_team_mem_impl: nbytes == 0, setting nbytes = 1 for continuation");
         nbytes = 1;
     }
 
@@ -90,7 +90,7 @@ dart_ret_t dart_team_mem_impl(
     if(addr == NULL)
     {
         /* Create the gaspi-segment with memory allocation */
-        DART_LOG_DEBUG("Creating segment with id: %d, num_bytes: %d, in group: %d", gaspi_seg_id, nbytes, gaspi_group);
+        DART_LOG_DEBUG("dart_team_mem_impl: Creating segment with id: %d, num_bytes: %d, in group: %d", gaspi_seg_id, nbytes, gaspi_group);
         DART_CHECK_GASPI_ERROR(gaspi_segment_create(gaspi_seg_id,
                                                     nbytes,
                                                     gaspi_group,
@@ -100,7 +100,7 @@ dart_ret_t dart_team_mem_impl(
     else
     {
         /* Binds and registers given memory to a gaspi-segment */
-        DART_LOG_DEBUG("Using segment with address (%p) to create gaspi_segment with id: %d, num_bytes: %d, in group: %d", addr, gaspi_seg_id, nbytes, gaspi_group);
+        DART_LOG_DEBUG("dart_team_mem_impl: Using segment with address (%p) to create gaspi_segment with id: %d, num_bytes: %d, in group: %d", addr, gaspi_seg_id, nbytes, gaspi_group);
         DART_CHECK_GASPI_ERROR(gaspi_segment_use(gaspi_seg_id,
                                                  addr,
                                                  nbytes,
@@ -128,7 +128,7 @@ dart_ret_t dart_team_mem_impl(
         free(gaspi_seg_ids);
         DART_CHECK_ERROR(gaspi_segment_delete(gaspi_seg_id));
         DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, gaspi_seg_id));
-        DART_LOG_ERROR("dart_allgather failed");
+        DART_LOG_ERROR("dart_team_mem_impl: dart_allgather failed");
         return DART_ERR_INVAL;
     }
 
@@ -141,7 +141,7 @@ dart_ret_t dart_team_mem_impl(
     gptr->flags = index; /* For collective allocation, the flag is marked as 'index' */
     gptr->teamid = teamid;
     gptr->addr_or_offs.offset = 0;
-    DART_LOG_DEBUG("Filling gptr: unitid[%d], segid[%d], flags[%d], teamid[%d], addr/offs[0] ", gptr->unitid, gptr->segid, gptr->flags, gptr->teamid);
+    DART_LOG_DEBUG("dart_team_mem_impl: Filling gptr: unitid[%d], segid[%d], flags[%d], teamid[%d], addr/offs[0] ", gptr->unitid, gptr->segid, gptr->flags, gptr->teamid);
 
     /* Creates new segment entry in the translation table */
     info_t item;
@@ -150,7 +150,7 @@ dart_ret_t dart_team_mem_impl(
     item.gaspi_seg_ids    = gaspi_seg_ids;
     item.own_gaspi_seg_id = gaspi_seg_id;
     item.unit_count       = teamsize;
-    DART_LOG_DEBUG("New entry in trans_table: seg_id[%d], size[%d], seg_ids(%p), own_seg_id[%d], unit_count[%d]", item.seg_id, item.size, item.gaspi_seg_ids, item.own_gaspi_seg_id, item.unit_count);
+    DART_LOG_DEBUG("dart_team_mem_impl: New entry in trans_table: seg_id[%d], size[%d], seg_ids(%p), own_seg_id[%d], unit_count[%d]", item.seg_id, item.size, item.gaspi_seg_ids, item.own_gaspi_seg_id, item.unit_count);
 
     /* Add this newly generated correspondence relationship record into the translation table. */
     dart_adapt_transtable_add(item);
@@ -180,18 +180,18 @@ dart_ret_t dart_team_memfree(dart_gptr_t gptr)
     DART_CHECK_ERROR(delete_rma_requests(seg_id));
     if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &gaspi_seg_id) == -1)
     {
-        DART_LOG_ERROR("Could not get seg_id: %d from transtable", seg_id);
+        DART_LOG_ERROR("dart_team_memfree: could not get seg_id: %d from transtable", seg_id);
         return DART_ERR_INVAL;
     }
 
-    DART_LOG_TRACE("Delting and pushing gaspi_seg_id: &d back on stack", gaspi_seg_id);
+    DART_LOG_TRACE("dart_team_memfree: delting and pushing gaspi_seg_id: &d back on stack", gaspi_seg_id);
     DART_CHECK_ERROR(gaspi_segment_delete(gaspi_seg_id));
     DART_CHECK_ERROR(seg_stack_push(&pool_gaspi_seg_ids, gaspi_seg_id));
 
     /* Remove the related correspondence relation record from the related translation table. */
     if(dart_adapt_transtable_remove(seg_id) == -1)
     {
-        DART_LOG_ERROR("Could not remove seg_id: %d from transtable", seg_id);
+        DART_LOG_ERROR("dart_team_memfree: could not remove seg_id: %d from transtable", seg_id);
         return DART_ERR_INVAL;
     }
 
@@ -211,7 +211,7 @@ dart_ret_t dart_team_memregister(
 {
     if(addr == NULL)
     {
-        DART_LOG_ERROR("Invalid memory address pointer -> NULL!"); \
+        DART_LOG_ERROR("dart_team_memregister: invalid memory address pointer -> NULL!"); \
         return DART_ERR_INVAL;
     }
 
@@ -243,29 +243,29 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
             gaspi_segment_id_t local_seg;
             if (dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &local_seg) == -1)
             {
-                DART_LOG_ERROR("Could not locate id of local_seg_id");
+                DART_LOG_ERROR("dart_gptr_getaddr: could not locate id of local_seg_id");
                 return DART_ERR_INVAL;
             }
             DART_CHECK_ERROR(gaspi_segment_ptr(local_seg, addr));
             *addr = offset + (char *)(*addr);
-            DART_LOG_TRACE("seg_id > 0 -->c(%p)", *addr);
+            DART_LOG_TRACE("dart_gptr_getaddr: seg_id > 0 -->c(%p)", *addr);
         }
         else
         {
             if (unitid.id == gptr.unitid)
             {
-                DART_LOG_TRACE("seg_id == 0 && unitid.id == gptr.unitid --> *adr = NULL");
+                DART_LOG_TRACE("dart_gptr_getaddr: seg_id == 0 && unitid.id == gptr.unitid --> *adr = NULL");
                 *addr = offset + dart_mempool_localalloc;
             }
         }
     }
     else
     {
-        DART_LOG_TRACE("unitid.id != gptr.unitid --> *adr = NULL");
+        DART_LOG_TRACE("dart_gptr_getaddr: unitid.id != gptr.unitid --> *adr = NULL");
         *addr = NULL;
     }
 
-    DART_LOG_TRACE("Returning address(%p) from gptr(%p)", (*addr), &gptr);
+    DART_LOG_TRACE("dart_gptr_getaddr: returning address(%p) from gptr(%p)", (*addr), &gptr);
     return DART_OK;
 }
 
@@ -280,17 +280,17 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
         gaspi_pointer_t    local_seg_addr;
         if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &local_seg) == -1)
         {
-            DART_LOG_ERROR("Could not get a local_id from transtable");
+            DART_LOG_ERROR("dart_gptr_setaddr: could not get a local_id from transtable");
             return DART_ERR_INVAL;
         }
         DART_CHECK_ERROR(gaspi_segment_ptr(local_seg, &local_seg_addr));
         gptr->addr_or_offs.offset = (char *)addr - (char *)local_seg_addr;
-        DART_LOG_TRACE("seg_id > 0 --> adr_or_offset = %u", gptr->addr_or_offs.offset);
+        DART_LOG_TRACE("dart_gptr_setaddr: seg_id > 0 --> adr_or_offset = %u", gptr->addr_or_offs.offset);
     }
     else
     {
         gptr->addr_or_offs.offset = (char *)addr - dart_mempool_localalloc;
-        DART_LOG_TRACE("seg_id == 0 --> adr_or_offset = %u", gptr->addr_or_offs.offset);
+        DART_LOG_TRACE("dart_gptr_setaddr: seg_id == 0 --> adr_or_offset = %u", gptr->addr_or_offs.offset);
     }
     return DART_OK;
 }
