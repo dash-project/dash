@@ -1176,7 +1176,8 @@ public:
   using RegionSpec_t   = RegionSpec<NumDimensions>;
   using GlobMem_t      = GlobMemT;
   using ViewSpec_t     = typename PatternT::viewspec_type;
-  using Border_t       = std::array<bool, NumDimensions>;
+  using BorderMeta_t   = std::pair<bool, bool>;
+  using Border_t       = std::array<BorderMeta_t, NumDimensions>;
   using region_index_t = typename RegionSpec_t::region_index_t;
   using pattern_size_t = typename PatternT::size_type;
 
@@ -1187,7 +1188,9 @@ public:
   : _region_spec(region_spec), _region(region), _border(border),
     _border_region(
       std::any_of(border.begin(), border.end(),
-                  [](bool border_dim) { return border_dim == true; })),
+                  [](BorderMeta_t border_dim) {
+                    return border_dim.first == true ||
+                           border_dim.second == true; })),
     _custom_region(custom_region),
     _beg(&globmem, &pattern, _region, 0, _region.size()),
     _end(&globmem, &pattern, _region, _region.size(), _region.size()) {}
@@ -1198,15 +1201,30 @@ public:
 
   const ViewSpec_t& view() const { return _region; }
 
-  constexpr pattern_size_t size() const { return _region.size(); }
+  pattern_size_t size() const { return _region.size(); }
 
-  constexpr Border_t border() const { return _border; }
+  const Border_t& border() const { return _border; }
 
   bool is_border_region() const { return _border_region; };
 
   bool is_custom_region() const { return _custom_region; };
 
-  constexpr bool border_dim(dim_t dim) const { return _border[dim]; }
+
+  /**
+   * Returns a pair of two booleans for a given dimension.
+   * In case the region is the global border in this dimension
+   * the value is true, otherwise false
+   * first -> Pre center position; second -> Post center position
+   */
+  BorderMeta_t border_dim(dim_t dim) const { return _border[dim]; }
+
+  bool border_dim(dim_t dim, RegionPos pos) const {
+    if(pos == RegionPos::PRE) {
+      return _border[dim].first;
+    }
+
+    return _border[dim].second;
+  }
 
   iterator begin() const { return _beg; }
 
@@ -1261,6 +1279,8 @@ private:
   using Coords_t        = typename RegionCoords_t::Coords_t;
   using CoordsVec_t     = std::vector<RegionCoords_t>;
   using region_extent_t = typename RegionSpec_t::region_extent_t;
+  using BorderMeta_t    = typename Region_t::BorderMeta_t;
+  using Border_t        = typename Region_t::Border_t;
 
 public:
   using Element_t = ElementT;
@@ -1295,6 +1315,8 @@ public:
     // TODO put functionallity to HaloSpec
     _halo_regions.reserve(_halo_reg_spec.num_regions());
     _boundary_regions.reserve(_halo_reg_spec.num_regions());
+
+    Border_t border{};
     /*
      * Setup for all halo and boundary regions and properties like:
      * is the region a global boundary region and is the region custom or not
@@ -1304,8 +1326,8 @@ public:
       if(!halo_extent)
         continue;
 
-      std::array<bool, NumDimensions> border{};
-      bool                            custom_region = false;
+      Border_t border_region{};
+      bool     custom_region = false;
 
       auto halo_region_offsets = view.offsets();
       auto halo_region_extents = view.extents();
@@ -1323,7 +1345,8 @@ public:
           _halo_extents_max[d].first =
             std::max(_halo_extents_max[d].first, halo_extent);
           if(view_offset < _halo_extents_max[d].first) {
-            border[d] = true;
+            border_region[d].first = true;
+            border[d].first = true;
 
             if(bound_spec[d] == BoundaryProp::NONE) {
               halo_region_offsets[d] = 0;
@@ -1349,7 +1372,8 @@ public:
           auto check_extent =
             view_offset + view_extent + _halo_extents_max[d].second;
           if(check_extent > _pattern.extent(d)) {
-            border[d] = true;
+            border_region[d].second = true;
+            border[d].second = true;
 
             if(bound_spec[d] == BoundaryProp::NONE) {
               halo_region_offsets[d] = 0;
@@ -1375,13 +1399,13 @@ public:
       auto index = spec.index();
       _halo_regions.push_back(
         Region_t(spec, ViewSpec_t(halo_region_offsets, halo_region_extents),
-                 _globmem, _pattern, border, custom_region));
+                 _globmem, _pattern, border_region, custom_region));
       auto& region_tmp = _halo_regions.back();
       _size_halo_elems += region_tmp.size();
       _halo_reg_mapping[index] = &region_tmp;
       _boundary_regions.push_back(
         Region_t(spec, ViewSpec_t(bnd_region_offsets, bnd_region_extents),
-                 _globmem, _pattern, border, custom_region));
+                 _globmem, _pattern, border_region, custom_region));
       _boundary_reg_mapping[index] = &_boundary_regions.back();
     }
 
@@ -1406,38 +1430,28 @@ public:
       _view_inner.resize_dim(
         d, _halo_extents_max[d].first,
         view_extent - _halo_extents_max[d].first - _halo_extents_max[d].second);
-      if(bound_spec[d] == BoundaryProp::NONE) {
-        auto safe_offset = global_offset;
+
+      auto safe_offset = global_offset;
         auto safe_extent = view_extent;
-        if(global_offset < _halo_extents_max[d].first) {
-          safe_offset = _halo_extents_max[d].first;
-          safe_extent -= _halo_extents_max[d].first - global_offset;
-        } else {
-          bnd_elem_offsets[d] -= global_offset;
-          push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents,
-                         _halo_extents_max, bound_spec);
-        }
-        auto check_extent =
-          global_offset + view_extent + _halo_extents_max[d].second;
-        if(check_extent > _pattern.extent(d)) {
-          safe_extent -= check_extent - _pattern.extent(d);
-        } else {
-          bnd_elem_offsets[d] += view_extent - _halo_extents_max[d].first;
-          bnd_elem_extents[d] = _halo_extents_max[d].second;
-          push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents,
-                         _halo_extents_max, bound_spec);
-        }
-        _view_inner_with_boundaries.resize_dim(d, safe_offset - global_offset,
-                                               safe_extent);
+      if(border[d].first && bound_spec[d] == BoundaryProp::NONE) {
+        safe_offset = _halo_extents_max[d].first;
+        safe_extent -= _halo_extents_max[d].first;
       } else {
         bnd_elem_offsets[d] -= global_offset;
-        push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents, _halo_extents_max,
-                       bound_spec);
+        push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents,
+                        _halo_extents_max, bound_spec);
+      }
+
+      if(border[d].second && bound_spec[d] == BoundaryProp::NONE) {
+        safe_extent -= _halo_extents_max[d].second;
+      } else {
         bnd_elem_offsets[d] += view_extent - _halo_extents_max[d].first;
         bnd_elem_extents[d] = _halo_extents_max[d].second;
-        push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents, _halo_extents_max,
-                       bound_spec);
+        push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents,
+                       _halo_extents_max, bound_spec);
       }
+      _view_inner_with_boundaries.resize_dim(d, safe_offset - global_offset,
+                                               safe_extent);
     }
   }
 
