@@ -63,7 +63,7 @@ int dart_adapt_transtable_remove (int16_t seg_id)
 
         if (p == NULL)
         {
-            DART_LOG_ERROR("Invalid seg_id: %d,can't remove the record from translation table\n", seg_id);
+            DART_LOG_ERROR("dart_adapt_transtable_remove: Invalid seg_id: %d,can't remove the record from translation table", seg_id);
             return -1;
         }
 
@@ -86,7 +86,7 @@ int dart_adapt_transtable_get_local_gaspi_seg_id(int16_t seg_id, gaspi_segment_i
     if (p == NULL)
     {
 
-        DART_LOG_ERROR("Invalid seg_id: %d, can not get the related window object", seg_id);
+        DART_LOG_ERROR("dart_adapt_transtable_get_local_gaspi_seg_id: Invalid seg_id: %d, can not get the related window object", seg_id);
         return -1;
     }
 
@@ -106,7 +106,7 @@ int dart_adapt_transtable_get_gaspi_seg_id(int16_t seg_id, dart_unit_t rel_uniti
 
     if ((!p) || (seg_id != (p->trans).seg_id))
     {
-        DART_LOG_ERROR("Invalid seg_id: %d, can not get the related displacement", seg_id);
+        DART_LOG_ERROR("dart_adapt_transtable_get_gaspi_seg_id: Invalid seg_id: %d, can not get the related displacement", seg_id);
         return -1;
     }
 
@@ -126,7 +126,7 @@ int dart_adapt_transtable_add_handle(int16_t seg_id, dart_unit_t rel_unit, struc
 
     if ((!p) || (seg_id != (p->trans).seg_id))
     {
-        DART_LOG_ERROR("Invalid seg_id: %d, can not get the related displacement", seg_id);
+        DART_LOG_ERROR("dart_adapt_transtable_add_handle: Invalid seg_id: %d, can not get the related displacement", seg_id);
         return -1;
     }
 
@@ -145,7 +145,7 @@ int dart_adapt_transtable_get_entry(int16_t seg_id, node_t * entry)
 
     if ((!p) || (seg_id) != (p->trans).seg_id)
     {
-        DART_LOG_ERROR("Invalid seg_id: %d, can not get the related memory size", seg_id);
+        DART_LOG_ERROR("dart_adapt_transtable_get_entry: Invalid seg_id: %d, can not get the related memory size", seg_id);
         return -1;
     }
     *entry = p;
@@ -164,7 +164,7 @@ int dart_adapt_transtable_get_size (int16_t seg_id, size_t *size)
 
     if ((!p) || (seg_id) != (p->trans).seg_id)
     {
-        DART_LOG_ERROR("Invalid seg_id: %d, can not get the related memory size", seg_id);
+        DART_LOG_ERROR("dart_adapt_transtable_get_size: Invalid seg_id: %d, can not get the related memory size", seg_id);
         return -1;
     }
     *size = (p->trans).size;

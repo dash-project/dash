@@ -123,7 +123,7 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, uint16_t* index)
     }
     else
     {
-        fprintf(stderr,"Out of bound: exceed the MAX_TEAM_NUMBER limit");
+        DART_LOG_ERROR("dart_adapt_teamlist_alloc: Out of bound: exceed the MAX_TEAM_NUMBER limit");
         return -1;
     }
 }

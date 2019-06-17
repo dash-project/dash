@@ -117,7 +117,7 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 {
     if(lock->is_acquired)
     {
-        fprintf(stderr, "dart_lock_acquire: lock is already acquired\n");
+        DART_LOG_ERROR("dart_lock_acquire: lock is already acquired");
         return DART_ERR_OTHER;
     }
 
@@ -148,7 +148,7 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 
     if(((gaspi_atomic_value_t) myid.id) != old_lock_val)
     {
-        fprintf(stderr, "Lock release failed\n");
+        DART_LOG_ERROR("Lock release failed");
         return DART_ERR_INVAL;
     }
 

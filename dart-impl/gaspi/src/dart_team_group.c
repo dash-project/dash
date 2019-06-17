@@ -221,6 +221,7 @@ dart_ret_t dart_myid(dart_global_unit_t *unitid)
 {
     if(!dart_initialized())
     {
+        fprintf(stderr, "dart_myid: cant get id while dart is not initialized.");
         unitid->id = -1;
         return DART_ERR_OTHER;
     }
@@ -242,6 +243,7 @@ dart_ret_t dart_size(size_t *size)
 {
     if(!dart_initialized())
     {
+        fprintf(stderr, "dart_size: cant get size while dart is not initialized.");
         *size = 0;
         return DART_ERR_OTHER;
     }
