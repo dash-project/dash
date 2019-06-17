@@ -232,7 +232,7 @@ dart_ret_t dart_gather(
 
     if(myid.id != root.id)
     {
-        DART_LOG_DEBUG("dart_gather: write_notify from root");
+        DART_LOG_DEBUG("dart_gather: write_notify from non root");
         // guarantees contiguous notification ids
         gaspi_notification_id_t notify_id = (myid.id < root.id) ? myid.id : myid.id - 1;
         dart_unit_t glob_root_id;
@@ -254,7 +254,7 @@ dart_ret_t dart_gather(
     }
     else
     {
-        DART_LOG_TRACE("dart_gather: wait for write as non root as long as notifies are left");
+        DART_LOG_TRACE("dart_gather: wait for write as root as long as notifies are left");
         memcpy((char*) recvbuf + myid.id * nbytes, sendbuf, nbytes);
 
         gaspi_notification_id_t first_id;
