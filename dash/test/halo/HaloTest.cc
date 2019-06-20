@@ -446,16 +446,11 @@ unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper, StencilOpT stencil_op, b
   halo_wrapper.wait();
 
   if(region_wise) {
-    for( auto d = 0; d < 3; ++d) {
-      auto it_bnd = stencil_op.boundary.iterator_at(d, RegionPos::PRE);
+    for( auto r = 0; r < dash::halo::RegionCoords<3>::NumRegionsMax; ++r) {
+      auto it_bnd = stencil_op.boundary.iterator_at(r);
+      if(it_bnd.first == it_bnd.second)
+        continue;
       for(auto it = it_bnd.first; it != it_bnd.second; ++it) {
-        for(auto i = 0; i < num_stencil_points; ++i)
-          *sum_local += it.value_at(i);
-
-        *sum_local += *it;
-      }
-      auto it_bnd_2 = stencil_op.boundary.iterator_at(d, RegionPos::POST);
-      for(auto it = it_bnd_2.first; it != it_bnd_2.second; ++it) {
         for(auto i = 0; i < num_stencil_points; ++i)
           *sum_local += it.value_at(i);
 

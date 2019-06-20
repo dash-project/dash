@@ -441,6 +441,9 @@ public:
   typedef ViewRegion<NumDimensions, IndexType> region_type;
   typedef ViewRange<IndexType>                 range_type;
 
+  using index_type = IndexType;
+  using size_type  = SizeType;
+
 public:
   template<dim_t NDim_, typename IndexType_>
   friend std::ostream& operator<<(
