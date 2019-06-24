@@ -3,7 +3,8 @@
 
 #include <dash/dart/base/macro.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
-
+//new
+#include <dash/dart/if/dart_tools.h>
 /**
  * Instrumentation point of a task creation event. Called as soon as a task is
  * inserted into the scheduler, before dependencies are handled.
