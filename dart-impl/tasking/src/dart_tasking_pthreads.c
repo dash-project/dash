@@ -32,7 +32,8 @@
 #include <errno.h>
 #include <setjmp.h>
 #include <stddef.h>
-
+//testing
+#include <dlfcn.h>
 #define EVENT_ENTER(_ev) do {\
   EXTRAE_ENTER(_ev);         \
   CRAYPAT_ENTER(_ev); \
@@ -98,6 +99,9 @@ static bool bind_threads = false;
 static dart_taskqueue_t *task_queue;
 
 static size_t num_units;
+
+//testing
+
 
 enum dart_thread_idle_t {
   DART_THREAD_IDLE_POLL,
@@ -1202,7 +1206,28 @@ dart__tasking__init()
 
   // install signal handler
   dart__tasking__install_signalhandler();
-
+  //testing
+  void *handle;
+  void (*toolinit)(const char *);
+  //int toolhandle;
+  const char* var = dart__base__env__string("TOOL_PATH");
+  printf("TOOL_PATH=%s\n", var);
+  handle = dlopen("/home/ptrck/src/examples/libpatrick.so", RTLD_LAZY);
+  if (!handle) {
+        /* fail to load the library */
+        printf("failed to load library\n");
+        fprintf(stderr, "Error: %s\n", dlerror());
+  }
+  printf("handle: %d\n", handle);
+  *(void **)(&toolinit) = dlsym(handle, "init_ext_tool");
+  if (!toolinit) {
+        /* no such symbol */
+        fprintf(stderr, "Error: %s\n", dlerror());
+        dlclose(handle);
+  }
+  toolinit("Some String hehe");
+  //printf("toolhandle: %d (should be 1)\n", toolhandle);
+  //testing
   initialized = true;
 
   return DART_OK;

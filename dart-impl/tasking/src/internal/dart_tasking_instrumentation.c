@@ -1,11 +1,12 @@
 #include <dash/dart/tasking/dart_tasking_instrumentation.h>
 #include <stdio.h>
+
 struct dart_tool_task_create_cb {
     dart_tool_task_create_cb_t cb;
     void *userdata;
 };
 typedef struct dart_tool_task_create_cb dart_tool_task_create_cb;
-struct dart_tool_task_create_cb internal_cb;
+struct dart_tool_task_create_cb internal_cb; //data structure to save the function pointer from the callback
 
 /**
 struct dart_tool_task_begin_cb {
@@ -28,9 +29,7 @@ void dart__tasking__instrument_task_create(
   const char       *name)
 {
   printf("[INSTR]: task create: name: %s  with prio %d and dart_task_t: %s with state %d and unresolved deps: %d \n", name, prio, task->descr, task->state, task->unresolved_deps);
-  uint64_t l = 10;
-  //internal_cb.cb(task, prio, name, internal_cb.userdata);
-  internal_cb.cb(task, prio, name, internal_cb.userdata);
+  internal_cb.cb((uint64_t) task, prio, name, internal_cb.userdata);
 }
 
 void dart__tasking__instrument_task_begin(

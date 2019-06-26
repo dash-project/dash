@@ -1,5 +1,6 @@
-//#include <dash/dart/base/macro.h>
-//#include <dash/dart/tasking/dart_tasking_priv.h>
+#ifndef DART__TOOLS_H_
+#define DART__TOOLS_H_
+
 #include <dash/dart/if/dart_tasking.h>
 #ifdef __cplusplus
 extern "C" {
@@ -15,3 +16,5 @@ int dart_tool_register_task_begin (dart_tool_task_begin_cb_t cb, void *userdata)
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* DART__TOOLS_H_*/
