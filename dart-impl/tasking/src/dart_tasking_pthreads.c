@@ -1206,28 +1206,42 @@ dart__tasking__init()
 
   // install signal handler
   dart__tasking__install_signalhandler();
-  //testing
+  /* Before finishing initialization, a tool library is loaded if needed */
   void *handle;
-  void (*toolinit)(const char *);
-  //int toolhandle;
-  const char* var = dart__base__env__string("TOOL_PATH");
-  printf("TOOL_PATH=%s\n", var);
-  handle = dlopen("/home/ptrck/src/examples/libpatrick.so", RTLD_LAZY);
-  if (!handle) {
-        /* fail to load the library */
-        printf("failed to load library\n");
-        fprintf(stderr, "Error: %s\n", dlerror());
+  int (*toolinit)(const char *);
+  int toolhandle;
+  /**
+   * The name of the environment variable containing the path to the tool is stored in 
+   * DART__TOOLS_TOOL_ENV_VAR_PATH
+  */
+  const char* var = dart__base__env__string(DART__TOOLS_TOOL_ENV_VAR_PATH);
+  if ((var != NULL ) && var[0] == '\0') {
+      DART_LOG_ERROR("Environment variable is an empty string!");
+      return DART_ERR_INVAL;
+  } else {
+      printf("TOOL_PATH=%s\n", var);
+      handle = dlopen(var, RTLD_LAZY);
+      if (!handle) {
+          /* failed to load the tool */
+          printf("Failed to load the tool\n");
+          fprintf(stderr, "Error: %s\n", dlerror());
+      }
+      printf("handle: %d\n", handle);
+      /**
+       * The init function name has to be stored in DART__TOOLS_TOOL_INIT_FUNCTION_NAME
+       *In dart_tools.h 
+      */
+      *(int **)(&toolinit) = dlsym(handle, DART__TOOLS_TOOL_INIT_FUNCTION_NAME);
+      if (!toolinit) {
+          /* no such symbol */
+          fprintf(stderr, "Error: %s\n", dlerror());
+          dlclose(handle);
+      }
+      /* Output only for testing purposes */
+      toolhandle = toolinit("<Some String hehe>");
+      printf("toolhandle: %d (should be 0)\n", toolhandle);
   }
-  printf("handle: %d\n", handle);
-  *(void **)(&toolinit) = dlsym(handle, "init_ext_tool");
-  if (!toolinit) {
-        /* no such symbol */
-        fprintf(stderr, "Error: %s\n", dlerror());
-        dlclose(handle);
-  }
-  toolinit("Some String hehe");
-  //printf("toolhandle: %d (should be 1)\n", toolhandle);
-  //testing
+  
   initialized = true;
 
   return DART_OK;
