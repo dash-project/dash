@@ -52,5 +52,11 @@ void dart__tasking__instrument_task_yield_leave(
 void dart__tasking__instrument_task_yield_resume(
   dart_task_t   *task,
   dart_thread_t *thread) DART_INTERNAL;
+  
+/** Instrumentation point of an all task ended event.
+ * 
+*/
+void dart__tasking__instrument_task_all_end(
+  ) DART_INTERNAL;
 
 #endif /* DART_TASKING_INSTRUMENTATION_H_ */

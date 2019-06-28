@@ -25,15 +25,22 @@ struct dart_tool_task_yield_resume_cb {
     dart_tool_task_yield_resume_cb_t cb;
     void *userdata;
 };
+
+struct dart_tool_task_all_end_cb {
+    dart_tool_task_all_end_cb_t cb;
+    void *userdata;
+};
 typedef struct dart_tool_task_create_cb dart_tool_task_create_cb;
 typedef struct dart_tool_task_begin_cb dart_tool_task_begin_cb;
 typedef struct dart_tool_task_cancel_cb dart_tool_task_cancel_cb;
 typedef struct dart_tool_task_yield_leave_cb dart_task_yield_leave_cb;
 typedef struct dart_tool_task_yield_resume_cb dart_task_yield_resume_cb;
+typedef struct dart_tool_task_all_end_cb dart_tool_task_all_end_cb;
 /* data structures to save the function pointer and user data from the callback */
 struct dart_tool_task_create_cb dart_tool_task_create_cb_data;
 struct dart_tool_task_begin_cb dart_tool_task_begin_cb_data;
 struct dart_tool_task_end_cb dart_tool_task_end_cb_data;
+struct dart_tool_task_all_end_cb dart_tool_task_all_end_cb_data;
 
 
 
@@ -59,6 +66,12 @@ int dart_tool_register_task_end (dart_tool_task_end_cb_t cb, void *userdata_task
     return 0;
 }
 
+int dart_tool_register_task_all_end(dart_tool_task_all_end_cb_t cb, void *userdata_task_all_end) {
+    dart_tool_task_all_end_cb_data.cb = cb;
+    dart_tool_task_all_end_cb_data.userdata = userdata_task_all_end;
+    printf("dart_tool_register_task_all_end was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_task_all_end);
+    return 0;
+}
 
 
 
@@ -87,8 +100,6 @@ void dart__tasking__instrument_task_end(
   dart_task_t   *task,
   dart_thread_t *thread)
 {
-  //printf("[INSTR]: task %s end with state %d\n", task->descr, task->state);
-  //printf("[INSTR]: dart_task_t: %s, dart_thread_t.thread_id: %d\n", task->descr, thread->thread_id);
     if (dart_tool_task_end_cb_data.cb) {
         dart_tool_task_end_cb_data.cb((uint64_t) task, (uint64_t) thread, dart_tool_task_end_cb_data.userdata);
     }
@@ -118,4 +129,11 @@ void dart__tasking__instrument_task_yield_resume(
 {
   //printf("DASH: task yield resume\n");
   // TODO
+}
+
+void dart__tasking__instrument_task_all_end ()
+{
+    if (dart_tool_task_all_end_cb_data.cb) {
+        dart_tool_task_all_end_cb_data.cb(dart_tool_task_end_cb_data.userdata);
+    }
 }

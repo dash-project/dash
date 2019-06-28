@@ -1215,6 +1215,7 @@ dart__tasking__init()
    * DART__TOOLS_TOOL_ENV_VAR_PATH
   */
   const char* var = dart__base__env__string(DART__TOOLS_TOOL_ENV_VAR_PATH);
+  printf("var = %s\n", var);
   if ((var != NULL ) && var[0] == '\0') {
       DART_LOG_ERROR("Environment variable is an empty string!");
       return DART_ERR_INVAL;
@@ -1229,7 +1230,7 @@ dart__tasking__init()
       printf("handle: %d\n", handle);
       /**
        * The init function name has to be stored in DART__TOOLS_TOOL_INIT_FUNCTION_NAME
-       *In dart_tools.h 
+       * in dart_tools.h 
       */
       *(int **)(&toolinit) = dlsym(handle, DART__TOOLS_TOOL_INIT_FUNCTION_NAME);
       if (!toolinit) {
@@ -1764,6 +1765,8 @@ dart__tasking__fini()
   dart_tasking_tasklist_fini();
 
   dart__tasking__cancellation_fini();
+  
+  dart__tasking__instrument_task_all_end();
 
   initialized = false;
   DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");

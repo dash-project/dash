@@ -15,7 +15,7 @@ typedef void (*dart_tool_task_end_cb_t) (uint64_t task, uint64_t thread, void *u
 typedef void (*dart_tool_task_cancel_cb_t) (uint64_t task, uint64_t thread, void *userdata);
 typedef void (*dart_tool_task_yield_leave_cb_t) (uint64_t task, uint64_t thread, void *userdata);
 typedef void (*dart_tool_task_yield_resume_cb_t) (uint64_t task, uint64_t thread, void *userdata);
-
+typedef void (*dart_tool_task_all_end_cb_t) (void *userdata);
 
 
 
@@ -26,6 +26,7 @@ int dart_tool_register_task_end(dart_tool_task_end_cb_t cb, void* userdata);
 int dart_tool_register_task_cancel (dart_tool_task_cancel_cb_t cb, void *userdata);
 int dart_tool_register_yield_leave (dart_tool_task_yield_leave_cb_t cb, void *userdata);
 int dart_tool_register_yield_resume (dart_tool_task_yield_resume_cb_t cb, void *userdata);
+int dart_tool_register_task_all_end (dart_tool_task_all_end_cb_t cb, void *userdata);
 
 
 #ifdef __cplusplus
