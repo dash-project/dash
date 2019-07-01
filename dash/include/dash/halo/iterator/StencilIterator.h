@@ -51,7 +51,7 @@ public:
   using pattern_size_t  = typename Pattern_t::size_type;
 
 public:
-  StencilSpecificViews(const HaloBlockT&   haloblock,
+  StencilSpecificViews(const HaloBlockT&   halo_block,
                        const StencilSpecT& stencil_spec,
                        const ViewSpec_t*   view_local)
   : _view_local(view_local) {
@@ -59,10 +59,10 @@ public:
     for(auto& dist : minmax_dist)
       dist.first = std::abs(dist.first);
 
-    auto inner_off       = haloblock.view_inner().offsets();
-    auto inner_ext       = haloblock.view_inner().extents();
-    auto inner_bound_off = haloblock.view_inner_with_boundaries().offsets();
-    auto inner_bound_ext = haloblock.view_inner_with_boundaries().extents();
+    auto inner_off       = halo_block.view_inner().offsets();
+    auto inner_ext       = halo_block.view_inner().extents();
+    auto inner_bound_off = halo_block.view_inner_with_boundaries().offsets();
+    auto inner_bound_ext = halo_block.view_inner_with_boundaries().extents();
     for(auto d = 0; d < NumDimensions; ++d) {
       resize_offset(inner_off[d], inner_ext[d], minmax_dist[d].first);
       resize_extent(inner_off[d], inner_ext[d], _view_local->extent(d),
@@ -75,7 +75,30 @@ public:
     _view_inner                 = ViewSpec_t(inner_off, inner_ext);
     _view_inner_with_boundaries = ViewSpec_t(inner_bound_off, inner_bound_ext);
 
-    using RegionCoords_t = RegionCoords<NumDimensions>;
+    BoundaryRegionMapping<HaloBlockT> bound_mapping(stencil_spec, halo_block);
+
+    auto bound_regions = bound_mapping.views();
+    _size_bnd_elems = bound_mapping.num_elements();
+    //_size_bnd_elems = 0;
+    for(auto r = 0; r < bound_regions.size(); ++r ) {
+      _boundary_views.push_back(bound_regions[r]);
+      /*/auto bnd_region = halo_block.boundary_region(r);
+      if(bnd_region != nullptr) {
+        if(bnd_region->size() == 0) {
+          _boundary_views.push_back(ViewSpec_t());
+          //_size_bnd_elems -= bound_regions[r].size();
+        } else {
+          _boundary_views.push_back(bound_regions[r]);
+          _size_bnd_elems += bound_regions[r].size();
+        }
+      } else {
+        _boundary_views.push_back(ViewSpec_t());
+        //_size_bnd_elems -= bound_regions[r].size();
+      }*/
+    }
+
+
+    /*/using RegionCoords_t = RegionCoords<NumDimensions>;
     using region_index_t = typename RegionCoords_t::region_index_t;
 
     const auto& bnd_elems    = haloblock.boundary_views();
@@ -100,7 +123,7 @@ public:
         push_boundary_views(*it_views, halo_ext_max, minmax_dist);
         ++it_views;
       }
-    }
+    }*/
   }
 
   /**
@@ -131,7 +154,7 @@ public:
   pattern_size_t boundary_size() const { return _size_bnd_elems; }
 
 private:
-  template <typename MaxExtT, typename MaxDistT>
+  /*template <typename MaxExtT, typename MaxDistT>
   void push_boundary_views(const ViewSpec_t& view, const MaxExtT& max_ext,
                            const MaxDistT& max_dist) {
     auto view_off = view.offsets();
@@ -151,7 +174,7 @@ private:
     ViewSpec_t tmp(view_off, view_ext);
     _size_bnd_elems += tmp.size();
     _boundary_views.push_back(std::move(tmp));
-  }
+  }*/
 
   template <typename OffT, typename ExtT, typename MaxT>
   void resize_offset(OffT& offset, ExtT& extent, MaxT max) {
@@ -182,7 +205,7 @@ std::ostream& operator<<(
   const StencilSpecificViews<HaloBlockT, StencilSpecT>& stencil_views) {
   std::ostringstream ss;
   ss << "dash::halo::StencilSpecificViews"
-     << "(local: " << stencil_views.local()
+     << "(local: " << stencil_views.view()
      << "; inner: " << stencil_views.inner()
      << "; inner_bound: " << stencil_views.inner_with_boundaries()
      << "; boundary_views: " << stencil_views.boundary_views()

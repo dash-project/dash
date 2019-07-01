@@ -412,6 +412,8 @@ public:
   using iterator        = typename StencilOperator_t::iterator_bnd;
   using const_iterator  = const iterator;
   using BoundaryViews_t = typename StencilSpecViews_t::BoundaryViews_t;
+  using RegionCoords_t  = RegionCoords<NumDimensions>;
+  using region_index_t  = typename RegionCoords_t::region_index_t;
 
 public:
   StencilOperatorBoundary(const StencilOperator_t* stencil_op)
@@ -520,6 +522,22 @@ public:
 
     return std::make_pair(it_begin, it_begin + it_views->size());
   }
+
+  std::pair<iterator, iterator> iterator_at(region_index_t index) {
+    DASH_ASSERT_LT(index, RegionCoords_t::NumRegionsMax, "Given index out of range");
+    const auto&    bnd_views = _stencil_op->_spec_views.boundary_views();
+    pattern_size_t offset    = 0;
+    auto           it_views  = std::begin(bnd_views);
+    for(region_index_t r = 0; r < index; ++r) {
+      offset += bnd_views[r].size();
+    }
+
+    auto it_begin = _stencil_op->_bbegin + offset;
+
+    return std::make_pair(it_begin, it_begin + bnd_views[index].size());
+  }
+
+
 
   /**
    * Returns the result of the given operation done on all stencil point

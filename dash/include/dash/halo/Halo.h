@@ -177,8 +177,8 @@ public:
   using StencilArray_t   = std::array<StencilPointT, NumStencilPoints>;
   using StencilPoint_t   = StencilPointT;
   using point_value_t    = typename StencilPoint_t::point_value_t;
-  using MaxDistanceDim_t = std::pair<point_value_t, point_value_t>;
-  using MaxDistanceAll_t = std::array<MaxDistanceDim_t, NumDimensions>;
+  using DistanceDim_t = std::pair<point_value_t, point_value_t>;
+  using DistanceAll_t = std::array<DistanceDim_t, NumDimensions>;
 
 public:
   /**
@@ -240,8 +240,8 @@ public:
    * Returns the minimal and maximal distances of all stencil points for all
    * dimensions.
    */
-  MaxDistanceAll_t minmax_distances() const {
-    MaxDistanceAll_t max_dist{};
+  DistanceAll_t minmax_distances() const {
+    DistanceAll_t max_dist{};
     for(const auto& stencil_point : _specs) {
       for(auto d = 0; d < NumDimensions; ++d) {
         if(stencil_point[d] < max_dist[d].first) {
@@ -260,8 +260,8 @@ public:
    * Returns the minimal and maximal distances of all stencil points for the
    * given dimension.
    */
-  MaxDistanceDim_t minmax_distances(dim_t dim) const {
-    MaxDistanceDim_t max_dist{};
+  DistanceDim_t minmax_distances(dim_t dim) const {
+    DistanceDim_t max_dist{};
     for(const auto& stencil_point : _specs) {
       if(stencil_point[dim] < max_dist.first) {
         max_dist.first = stencil_point[dim];
@@ -421,6 +421,9 @@ public:
   using region_index_t = uint32_t;
   using region_size_t  = uint32_t;
   using Coords_t       = std::array<uint8_t, NumDimensions>;
+  using CoordsVec_t    = std::vector<Self_t>;
+  using RegIndDepVec_t = std::vector<region_index_t>;
+  using RegIndexDim_t  = std::pair<region_index_t, region_index_t>;
 
   /// index calculation base - 3^N regions for N-Dimensions
   static constexpr uint8_t REGION_INDEX_BASE = 3;
@@ -439,7 +442,6 @@ public:
     for(dim_t i = 0; i < NumDimensions; ++i) {
       this->_values[i] = 1;
     }
-    _index = index(this->_values);
   }
 
   /**
@@ -449,25 +451,54 @@ public:
   template <typename... Values>
   RegionCoords(region_coord_t value, Values... values)
   : Base_t::Dimensional(value, values...) {
-    _index = index(this->_values);
   }
 
   /**
    * Constructor takes a region index to set up the region coordinates
    */
-  RegionCoords(region_index_t index) : _index(index) {
-    this->_values = coords(index);
+  RegionCoords(region_index_t index) {
+    this->_values = Self_t::coords(index);
+  }
+
+  static region_index_t center_index() {
+    return NumRegionsMax / 2;
+  }
+
+  static Coords_t center_coords() {
+    Coords_t reg_coords;
+    reg_coords.fill(1);
+
+    return reg_coords;
   }
 
   /**
    * \return region index
    */
-  constexpr region_index_t index() const { return _index; }
+  constexpr region_index_t index() const { return index(this->_values); }
 
   /**
    * Returns a region index for a given dimension and \ref RegionPos
    */
-  static region_index_t index(dim_t dim, RegionPos pos) {
+  static constexpr RegIndexDim_t index(dim_t dim) {
+    RegIndexDim_t index_dim = std::make_pair(0,0);
+
+    for(dim_t d = 0; d < NumDimensions; ++d)
+      if(dim == d) {
+        index_dim.first = index_dim.first * REGION_INDEX_BASE;
+        index_dim.second = 2 + index_dim.second * REGION_INDEX_BASE;
+      }
+      else {
+        index_dim.first = 1 + index_dim.first * REGION_INDEX_BASE;
+        index_dim.second = 1 + index_dim.second * REGION_INDEX_BASE;
+      }
+
+    return index_dim;
+  }
+
+  /**
+   * Returns a region index for a given dimension and \ref RegionPos
+   */
+  static constexpr region_index_t index(dim_t dim, RegionPos pos) {
     region_coord_t coord = (pos == RegionPos::PRE) ? 0 : 2;
 
     region_index_t index = 0;
@@ -487,8 +518,14 @@ public:
    */
   static region_index_t index(const Coords_t& coords) {
     region_index_t index = coords[0];
-    for(auto i = 1; i < NumDimensions; ++i)
-      index = coords[i] + index * REGION_INDEX_BASE;
+    for(dim_t d = 1; d < NumDimensions; ++d) {
+      // in case a wrong region coordinate was set
+      if(coords[d] > 2) {
+        index = coords[d] + index * REGION_INDEX_BASE;
+      } else {
+        index = coords[d] + index * REGION_INDEX_BASE;
+      }
+    }
 
     return index;
   }
@@ -511,8 +548,88 @@ public:
     return coords;
   }
 
+  /**
+   * Returns the highest dimension with region values != 1
+   */
+  static dim_t relevant_dim(const Coords_t& coords) {
+    dim_t dim = 1;
+    for(auto d = 1; d < NumDimensions; ++d) {
+      if(coords[d] != 1)
+        dim = d + 1;
+    }
+
+    return dim;
+  }
+
+  /**
+   * Returns the highest dimension with region values != 1
+   */
+  dim_t relevant_dim() { return relevant_dim(this->_values); }
+
+  /**
+   * returns the number of coordinates unequal to the center (1) for
+   * all dimensions
+   *
+   * level = 0 -> center (1,1)
+   * level = 1 -> main regions (e.g. 2D: (0,1) (2,1) (1,0) (1,2)
+   * level = 2 e.g. 2D corner regions or 3D edge regions
+   * ... for dimensions higher than 2D relevant
+   */
+  static dim_t level(const Coords_t& coords) {
+    dim_t level = 0;
+    for(auto d = 0; d < NumDimensions; ++d) {
+      if(coords[d] != 1)
+        ++level;
+    }
+    return level;
+  }
+
+  /**
+   * returns the number of coordinates unequal to the center (1) for
+   * all dimensions
+   *
+   * level = 0 -> center (1,1)
+   * level = 1 -> main regions (e.g. 2D: (0,1) (2,1) (1,0) (1,2)
+   * level = 2 e.g. 2D corner regions or 3D edge regions
+   * ... for dimensions higher than 2D relevant
+   */
+  dim_t level() { return level(this->_values); }
+
+  static RegIndDepVec_t boundary_dependencies(region_index_t index) {
+    RegIndDepVec_t index_dep{};
+
+    if(index >= NumRegionsMax) {
+      DASH_LOG_ERROR("Invalid region index: %d", index);
+
+      return index_dep;
+    }
+
+    auto region_coords = Self_t(index);
+    auto level = region_coords.level();
+
+    if(level == 0) {
+      return index_dep;
+    }
+
+    if(level == 1) {
+      index_dep.push_back(index);
+
+      return index_dep;
+    }
+
+    CoordsVec_t found_coords{};
+    find_dep_regions(0, region_coords, found_coords);
+
+    for(auto& reg_coords : found_coords) {
+      index_dep.push_back(reg_coords.index());
+    }
+
+    return index_dep;
+  }
+
   constexpr bool operator==(const Self_t& other) const {
-    return _index == other._index && this->_values == other._values;
+
+    return this->_values == other._values;
   }
 
   constexpr bool operator!=(const Self_t& other) const {
@@ -520,7 +637,18 @@ public:
   }
 
 private:
-  region_index_t _index;
+
+  static void find_dep_regions(dim_t dim_change, const Self_t& current_coords, CoordsVec_t& dep_coords) {
+    dep_coords.push_back(current_coords);
+
+    for(dim_t d = dim_change; d < NumDimensions; ++d) {
+      if(current_coords[d] != 1) {
+        auto new_coords = current_coords;
+        new_coords[d] = 1;
+        find_dep_regions(d+1, new_coords, dep_coords);
+      }
+    }
+  }
 };  // RegionCoords
 
 /**
@@ -528,7 +656,7 @@ private:
  * The region extent applies to all dimensions.
  */
 template <dim_t NumDimensions>
-class RegionSpec : public Dimensional<uint8_t, NumDimensions> {
+class RegionSpec {
 private:
   using Self_t = RegionSpec<NumDimensions>;
 
@@ -543,19 +671,22 @@ public:
    * Constructor using RegionCoords and the extent
    */
   RegionSpec(const RegionCoords_t& coords, const region_extent_t extent)
-  : _coords(coords), _extent(extent), _rel_dim(init_rel_dim()) {
-    init_level();
-  }
+  : _coords(coords), _index(coords.index()), _extent(extent),
+    _rel_dim(RegionCoords_t::relevant_dim(coords.values())),
+    _level(RegionCoords_t::level(coords.values())) {}
 
   /**
    * Constructor using a region index and an extent
    */
   RegionSpec(region_index_t index, const region_extent_t extent)
-  : _coords(RegionCoords_t(index)), _extent(extent), _rel_dim(init_rel_dim()) {
-    init_level();
-  }
+  : _coords(RegionCoords_t(index)), _index(index), _extent(extent),
+    _rel_dim(RegionCoords_t::relevant_dim(_coords.values())),
+    _level(RegionCoords_t::level(_coords.values())) {}
 
-  RegionSpec() = default;
+  RegionSpec()
+  : _coords(), _index(_coords.index()), _extent(0),
+    _rel_dim(RegionCoords_t::relevant_dim(_coords.values())),
+    _level(RegionCoords_t::level(_coords.values())) {}
 
   /**
    * Returns the region index for a given \ref StencilPoint
@@ -582,7 +713,7 @@ public:
   /**
    * Returns the region index
    */
-  constexpr region_index_t index() const { return _coords.index(); }
+  constexpr region_index_t index() const { return _index; }
 
   /**
    * Returns the \ref RegionCoords
@@ -621,26 +752,8 @@ public:
   dim_t level() const { return _level; }
 
 private:
-  // TODO put init_rel_dim and level together
-  dim_t init_rel_dim() {
-    dim_t dim = 1;
-    for(auto d = 1; d < NumDimensions; ++d) {
-      if(_coords[d] != 1)
-        dim = d + 1;
-    }
-
-    return dim;
-  }
-
-  void init_level() {
-    for(auto d = 0; d < NumDimensions; ++d) {
-      if(_coords[d] != 1)
-        ++_level;
-    }
-  }
-
-private:
   RegionCoords_t  _coords{};
+  region_index_t  _index;
   region_extent_t _extent  = 0;
   dim_t           _rel_dim = 1;
   dim_t           _level   = 0;
@@ -799,6 +912,157 @@ std::ostream& operator<<(std::ostream& os, const HaloSpec<NumDimensions>& hs) {
 
   return os;
 }
+
+/**
+ * Contains all Boundary regions defined via a \ref StencilSpec.
+ */
+template <typename HaloBlockT>
+class BoundaryRegionMapping {
+private:
+  static constexpr auto NumDimensions = HaloBlockT::ndim();
+
+  using Self_t         = BoundaryRegionMapping<HaloBlockT>;
+  using RegionCoords_t = RegionCoords<NumDimensions>;
+
+public:
+  using ViewSpec_t      = typename HaloBlockT::ViewSpec_t;
+  using GlobalBndSpec_t = GlobalBoundarySpec<NumDimensions>;
+  using RegionSpec_t    = RegionSpec<NumDimensions>;
+  using Views_t         = std::array<ViewSpec_t, RegionCoords_t::NumRegionsMax>;
+  using region_index_t  = typename RegionCoords_t::region_index_t;
+  using region_size_t   = typename RegionCoords_t::region_index_t;
+  using view_size_t     = typename ViewSpec_t::size_type;
+
+public:
+  constexpr BoundaryRegionMapping(const Views_t& views) : _views(views) {
+    for(const auto& view : _views) {
+      _num_elems += _views.size();
+    }
+  }
+
+  template <typename StencilSpecT>
+  BoundaryRegionMapping(const StencilSpecT& stencil_spec, HaloBlockT halo_block) {
+    read_stencil_points(stencil_spec, halo_block);
+  }
+
+  BoundaryRegionMapping(const Self_t& other) { _views = other._views; }
+
+  /**
+   * Matching \ref RegionSpec for a given region index
+   */
+  constexpr ViewSpec_t view(const region_index_t index) const {
+    return _views[index];
+  }
+
+  /**
+   * Number of specified regions
+   */
+  constexpr region_size_t num_regions() const { return RegionCoords_t::NumRegionsMax; }
+
+  /**
+   * Number of elements reflected by all boundary views
+   */
+  region_size_t num_elements() const { return _num_elems; }
+
+  /**
+   * Used \ref RegionSpec instance
+   */
+  const Views_t& views() const { return _views; }
+
+private:
+  template<typename CoordsT, typename DistT>
+  bool check_valid_region(const CoordsT& coords, region_index_t index, const DistT& dist,
+    const HaloBlockT& halo_block) {
+
+    const auto& glob_bnd_spec = halo_block.global_boundary_spec();
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      if(coords[d] == 1) {
+        continue;
+      }
+
+      if(glob_bnd_spec[d] == BoundaryProp::NONE) {
+        auto reg_index_dim = RegionCoords_t::index(d);
+        if(coords[d] < 1) {
+          auto bnd_region = halo_block.boundary_region(reg_index_dim.first);
+          if(bnd_region == nullptr || bnd_region->border_dim(d).first) {
+            return false;
+          }
+        }
+
+        if(coords[d] > 1) {
+          auto bnd_region = halo_block.boundary_region(reg_index_dim.second);
+          if(bnd_region == nullptr || bnd_region->border_dim(d).second) {
+            return false;
+          }
+        }
+      }
+
+      auto min = dist[d].first;
+      if(coords[d] < 1 && min == 0)
+        return false;
+
+      auto max = dist[d].second;
+      if(coords[d] > 1 && max == 0)
+        return false;
+    }
+
+    return true;
+  }
+
+  /*
+   * Reads all stencil points of the given stencil spec and sets the region
+   * specification.
+   */
+  template <typename StencilSpecT>
+  void read_stencil_points(const StencilSpecT& stencil_spec, const HaloBlockT& halo_block) {
+
+    using view_ext_t = typename ViewSpec_t::size_type;
+    const auto& view = halo_block.view_local();
+
+    _num_elems = 0;
+    auto center = RegionCoords_t::center_index();
+    auto dist_dims = stencil_spec.minmax_distances();
+    for(auto r = 0;  r < RegionCoords_t::NumRegionsMax; ++r) {
+      auto reg_coords = RegionCoords_t::coords(r);
+      if(r == center || !check_valid_region(reg_coords, r, dist_dims, halo_block)){
+        continue;
+      }
+
+      auto offsets = _views[r].offsets();
+      auto extents = _views[r].extents();
+
+      for(dim_t d = 0; d < NumDimensions; ++d) {
+        auto dist_min = dist_dims[d].first;
+        if(reg_coords[d] < 1 && dist_min < 0) {
+          extents[d] = static_cast<view_ext_t>(dist_min * -1);
+
+          continue;
+        }
+
+        auto dist_max = dist_dims[d].second;
+        if(reg_coords[d] == 1) {
+          offsets[d] = static_cast<view_ext_t>(dist_min * -1);
+          if(extents[d] == 0) {
+            extents[d] = view.extent(d);
+          }
+          extents[d] = extents[d] - offsets[d] - dist_max;
+          continue;
+        }
+
+        if(dist_max > 0) {
+          extents[d] = static_cast<view_ext_t>(dist_max);
+          offsets[d] = view.extent(d) - extents[d];
+        }
+      }
+      _views[r] = ViewSpec_t(offsets, extents);
+      _num_elems += _views[r].size();
+    }
+  }
+
+private:
+  Views_t     _views{};
+  view_size_t _num_elems;
+};  // BoundaryRegionMapping
 
 /**
  * Iterator to iterate over all region elements defined by \ref Region
@@ -1142,7 +1406,8 @@ public:
   using RegionSpec_t   = RegionSpec<NumDimensions>;
   using GlobMem_t      = GlobMemT;
   using ViewSpec_t     = typename PatternT::viewspec_type;
-  using Border_t       = std::array<bool, NumDimensions>;
+  using BorderMeta_t   = std::pair<bool, bool>;
+  using Border_t       = std::array<BorderMeta_t, NumDimensions>;
   using region_index_t = typename RegionSpec_t::region_index_t;
   using pattern_size_t = typename PatternT::size_type;
 
@@ -1153,7 +1418,9 @@ public:
   : _region_spec(region_spec), _region(region), _border(border),
     _border_region(
       std::any_of(border.begin(), border.end(),
-                  [](bool border_dim) { return border_dim == true; })),
+                  [](BorderMeta_t border_dim) {
+                    return border_dim.first == true ||
+                           border_dim.second == true; })),
     _custom_region(custom_region),
     _beg(&globmem, &pattern, _region, 0, _region.size()),
     _end(&globmem, &pattern, _region, _region.size(), _region.size()) {}
@@ -1164,15 +1431,30 @@ public:
 
   const ViewSpec_t& view() const { return _region; }
 
-  constexpr pattern_size_t size() const { return _region.size(); }
+  pattern_size_t size() const { return _region.size(); }
 
-  constexpr Border_t border() const { return _border; }
+  const Border_t& border() const { return _border; }
 
   bool is_border_region() const { return _border_region; };
 
   bool is_custom_region() const { return _custom_region; };
 
-  constexpr bool border_dim(dim_t dim) const { return _border[dim]; }
+
+  /**
+   * Returns a pair of two booleans for a given dimension.
+   * In case the region is the global border in this dimension
+   * the value is true, otherwise false
+   * first -> Pre center position; second -> Post center position
+   */
+  BorderMeta_t border_dim(dim_t dim) const { return _border[dim]; }
+
+  bool border_dim(dim_t dim, RegionPos pos) const {
+    if(pos == RegionPos::PRE) {
+      return _border[dim].first;
+    }
+
+    return _border[dim].second;
+  }
 
   iterator begin() const { return _beg; }
 
@@ -1224,7 +1506,10 @@ private:
   using RegionSpec_t    = RegionSpec<NumDimensions>;
   using Region_t        = Region<ElementT, PatternT, GlobMemT>;
   using RegionCoords_t  = RegionCoords<NumDimensions>;
+  using Coords_t        = typename RegionCoords_t::Coords_t;
   using region_extent_t = typename RegionSpec_t::region_extent_t;
+  using BorderMeta_t    = typename Region_t::BorderMeta_t;
+  using Border_t        = typename Region_t::Border_t;
 
 public:
   using Element_t = ElementT;
@@ -1241,6 +1526,7 @@ public:
 
   using HaloExtsMaxPair_t = std::pair<region_extent_t, region_extent_t>;
   using HaloExtsMax_t     = std::array<HaloExtsMaxPair_t, NumDimensions>;
+  using RegIndDepVec_t    = typename RegionCoords_t::RegIndDepVec_t;
 
 public:
   /**
@@ -1248,9 +1534,10 @@ public:
    */
   HaloBlock(GlobMem_t& globmem, const PatternT& pattern, const ViewSpec_t& view,
             const HaloSpec_t&      halo_reg_spec,
-            const GlobBoundSpec_t& bound_spec = GlobBoundSpec_t{})
+            const GlobBoundSpec_t& bound_spec)
   : _globmem(globmem), _pattern(pattern), _view(view),
-    _halo_reg_spec(halo_reg_spec), _view_local(_view.extents()) {
+    _halo_reg_spec(halo_reg_spec), _view_local(_view.extents()),
+    _glob_bound_spec(bound_spec) {
     // setup local views
     _view_inner                 = _view_local;
     _view_inner_with_boundaries = _view_local;
@@ -1258,6 +1545,8 @@ public:
     // TODO put functionallity to HaloSpec
     _halo_regions.reserve(_halo_reg_spec.num_regions());
     _boundary_regions.reserve(_halo_reg_spec.num_regions());
+
+    Border_t border{};
     /*
      * Setup for all halo and boundary regions and properties like:
      * is the region a global boundary region and is the region custom or not
@@ -1267,8 +1556,8 @@ public:
       if(!halo_extent)
         continue;
 
-      std::array<bool, NumDimensions> border{};
-      bool                            custom_region = false;
+      Border_t border_region{};
+      bool     custom_region = false;
 
       auto halo_region_offsets = view.offsets();
       auto halo_region_extents = view.extents();
@@ -1286,7 +1575,8 @@ public:
           _halo_extents_max[d].first =
             std::max(_halo_extents_max[d].first, halo_extent);
           if(view_offset < _halo_extents_max[d].first) {
-            border[d] = true;
+            border_region[d].first = true;
+            border[d].first = true;
 
             if(bound_spec[d] == BoundaryProp::NONE) {
               halo_region_offsets[d] = 0;
@@ -1312,7 +1602,8 @@ public:
           auto check_extent =
             view_offset + view_extent + _halo_extents_max[d].second;
           if(check_extent > _pattern.extent(d)) {
-            border[d] = true;
+            border_region[d].second = true;
+            border[d].second = true;
 
             if(bound_spec[d] == BoundaryProp::NONE) {
               halo_region_offsets[d] = 0;
@@ -1338,13 +1629,13 @@ public:
       auto index = spec.index();
       _halo_regions.push_back(
         Region_t(spec, ViewSpec_t(halo_region_offsets, halo_region_extents),
-                 _globmem, _pattern, border, custom_region));
+                 _globmem, _pattern, border_region, custom_region));
       auto& region_tmp = _halo_regions.back();
       _size_halo_elems += region_tmp.size();
       _halo_reg_mapping[index] = &region_tmp;
       _boundary_regions.push_back(
         Region_t(spec, ViewSpec_t(bnd_region_offsets, bnd_region_extents),
-                 _globmem, _pattern, border, custom_region));
+                 _globmem, _pattern, border_region, custom_region));
       _boundary_reg_mapping[index] = &_boundary_regions.back();
     }
 
@@ -1369,38 +1660,28 @@ public:
       _view_inner.resize_dim(
         d, _halo_extents_max[d].first,
         view_extent - _halo_extents_max[d].first - _halo_extents_max[d].second);
-      if(bound_spec[d] == BoundaryProp::NONE) {
-        auto safe_offset = global_offset;
+
+      auto safe_offset = global_offset;
         auto safe_extent = view_extent;
-        if(global_offset < _halo_extents_max[d].first) {
-          safe_offset = _halo_extents_max[d].first;
-          safe_extent -= _halo_extents_max[d].first - global_offset;
-        } else {
-          bnd_elem_offsets[d] -= global_offset;
-          push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents,
-                         _halo_extents_max, bound_spec);
-        }
-        auto check_extent =
-          global_offset + view_extent + _halo_extents_max[d].second;
-        if(check_extent > _pattern.extent(d)) {
-          safe_extent -= check_extent - _pattern.extent(d);
-        } else {
-          bnd_elem_offsets[d] += view_extent - _halo_extents_max[d].first;
-          bnd_elem_extents[d] = _halo_extents_max[d].second;
-          push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents,
-                         _halo_extents_max, bound_spec);
-        }
-        _view_inner_with_boundaries.resize_dim(d, safe_offset - global_offset,
-                                               safe_extent);
+      if(border[d].first && bound_spec[d] == BoundaryProp::NONE) {
+        safe_offset = _halo_extents_max[d].first;
+        safe_extent -= _halo_extents_max[d].first;
       } else {
         bnd_elem_offsets[d] -= global_offset;
-        push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents, _halo_extents_max,
-                       bound_spec);
+        push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents,
+                        _halo_extents_max, bound_spec);
+      }
+
+      if(border[d].second && bound_spec[d] == BoundaryProp::NONE) {
+        safe_extent -= _halo_extents_max[d].second;
+      } else {
         bnd_elem_offsets[d] += view_extent - _halo_extents_max[d].first;
         bnd_elem_extents[d] = _halo_extents_max[d].second;
-        push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents, _halo_extents_max,
-                       bound_spec);
+        push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents,
+                       _halo_extents_max, bound_spec);
       }
+      _view_inner_with_boundaries.resize_dim(d, safe_offset - global_offset,
+                                               safe_extent);
     }
   }
 
@@ -1427,6 +1708,13 @@ public:
    * The global memory instance that created the encapsulated block.
    */
   const GlobMem_t& globmem() const { return _globmem; }
+
+  /**
+   * Returns the \ref GlobalBoundarySpec used by the HaloBlock instance.
+   */
+  const GlobBoundSpec_t& global_boundary_spec() const {
+    return _glob_bound_spec;
+  }
 
   /**
    * Returns used \ref HaloSpec
@@ -1468,6 +1756,18 @@ public:
    * possible.
    */
   const RegionVector_t& boundary_regions() const { return _boundary_regions; }
+
+  RegIndDepVec_t boundary_dependencies(region_index_t index) const {
+    RegIndDepVec_t index_dep{};
+    for(auto reg_index : RegionCoords_t::boundary_dependencies(index)) {
+      auto region = halo_region(reg_index);
+      if(region != nullptr) {
+        index_dep.push_back(reg_index);
+      }
+    }
+
+    return index_dep;
+  }
 
   /**
    * Returns the initial global \ref ViewSpec
@@ -1573,6 +1873,8 @@ private:
   const HaloSpec_t& _halo_reg_spec;
 
   const ViewSpec_t _view_local;
+
+  const GlobBoundSpec_t& _glob_bound_spec;
 
   ViewSpec_t _view_inner_with_boundaries;
 
