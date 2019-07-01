@@ -262,6 +262,15 @@ public:
     }
   }
 
+  ElementT& at(const ElementCoords_t& coords) {
+    auto   offsets = _stencil_op->set_dimension_offsets();
+    size_t offset  = 0;
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      offset += offsets[d] * coords[d];
+    }
+    return _stencil_op->_local_memory[offset];
+  }
+
   /**
    * Updates all inner elements within a user defined range using a user-defined
    * stencil operation.
