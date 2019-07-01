@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
     std::swap(current_op, new_op);
 
     // phase increment
-    dash::tasks::async_barrier();
+    dash::tasks::async_fence();
   }
 
   // wait for all tasks to complete

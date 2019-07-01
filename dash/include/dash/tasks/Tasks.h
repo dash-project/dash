@@ -1088,12 +1088,12 @@ namespace internal{
    *
    * This operation does not block but should be called on all units
    * synchronously, i.e., all units should perform the same number of
-   * \c async_barrier calls to phases synchronized.
+   * \c async_fence calls to phases synchronized.
    * This function should only be called on the main task and will have no
    * effect in any other task.
    */
   template<typename T=int>
-  void async_barrier() {
+  void async_fence() {
     dart_task_phase_advance();
   }
 

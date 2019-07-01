@@ -247,7 +247,7 @@ void smooth(Array_t & data_old, Array_t & data_new, Halo_t & halo_new){
       );
     }
 
-    dash::tasks::async_barrier();
+    dash::tasks::async_fence();
 
     if(!is_top){
       // top row
@@ -414,7 +414,7 @@ int main(int argc, char* argv[])
 
     smooth(data_prev, data_next, halo_next);
 
-    dash::tasks::async_barrier();
+    dash::tasks::async_fence();
   }
   if (dash::myid() == 0) std::cout << "Done creating tasks" << std::endl;
   dash::tasks::complete();
