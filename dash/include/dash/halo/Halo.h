@@ -2102,6 +2102,241 @@ private:
   std::array<iterator, NumRegionsMax> _halo_offsets{};
 };  // class HaloMemory
 
+template <typename HaloBlockT>
+class HaloPackBuffer {
+private:
+  static constexpr auto NumDimensions = HaloBlockT::ndim();
+
+  using RegionCoords_t = RegionCoords<NumDimensions>;
+  using Team_t         = dash::Team;
+  using Pattern_t      = typename HaloBlockT::Pattern_t;
+  using signed_pattern_size_t =
+    typename std::make_signed<typename Pattern_t::size_type>::type;
+
+
+  static constexpr auto NumRegionsMax = RegionCoords_t::NumRegionsMax;
+  static constexpr auto MemoryArrange = Pattern_t::memory_order();
+  static constexpr auto FastestDim    =
+    (MemoryArrange == ROW_MAJOR) ? 1 : NumDimensions;
+
+public:
+  using Element_t = typename HaloBlockT::Element_t;
+  using ElementCoords_t =
+    std::array<typename Pattern_t::index_type, NumDimensions>;
+  using HaloBuffer_t   = dash::Array<Element_t>;
+  using HaloSignalBuffer_t   = dash::Array<bool>;
+  using region_index_t = typename RegionCoords_t::region_index_t;
+  using pattern_size_t = typename Pattern_t::size_type;
+
+  //using iterator       = typename HaloBuffer_t::iterator;
+  //using const_iterator = const iterator;
+
+  //using MemRange_t = std::pair<iterator, iterator>;
+
+public:
+  /**
+   * Constructor
+   */
+  HaloPackBuffer(const HaloBlockT& halo_block, Element_t* local_memory, Team_t& team)
+  : _halo_block(halo_block),
+    _local_memory(local_memory),
+    _num_halo_elems(num_halo_elems()),
+    _halo_buffer(_num_halo_elems * team.size(), team),
+    _signal_buffer(NumRegionsMax * team.size()) {
+
+    init_block_data();
+  }
+
+  void pack() {
+    for(auto r = 0; r < NumRegionsMax; ++r) {
+      if(!_halo_data[r].needs_packed) {
+        continue;
+      }
+
+      auto buffer_offset = _halo_buffer.lbegin() + _halo_data[r].halo_offset;
+      for(auto& block : _halo_data[r].block_data) {
+        auto block_begin = _local_memory + block.offset;
+        std::copy(block_begin, block_begin + block.blength, buffer_offset);
+        buffer_offset += block.blength;
+      }
+      bool signal = true;
+      dash::internal::put_handle(_halo_data[r].neighbor_signal, &signal, 1, &_halo_data[r].signal_handle);
+    }
+  }
+
+  dart_gptr_t buffer_region(region_index_t region_index) {
+    return _halo_data[region_index].neighbor_halo;
+  }
+
+  void update_ready(region_index_t region_index) {
+    if(!_halo_data[region_index].needs_packed) {
+      return;
+    }
+
+    volatile auto region_signal = _signal_buffer.lbegin() + region_index;
+    while(!(*region_signal)) {
+    }
+  }
+
+  void signal_finish(region_index_t region_index) {
+    if(!_halo_data[region_index].needs_packed) {
+      return;
+    }
+
+    auto handle = _halo_data[region_index].signal_handle;
+    if(handle != nullptr) {
+      dart_wait_local(&handle);
+    }
+  }
+
+  void signal_reset(region_index_t region_index) {
+    if(!_halo_data[region_index].needs_packed) {
+      return;
+    }
+    auto region_signal = _signal_buffer.lbegin() + region_index;
+    *region_signal = false;
+  }
+
+  void print_block_data() {
+    std::cout << "BlockData:\n";
+    for(auto r = 0; r < NumRegionsMax; ++r) {
+      std::cout << "region [" << r << "] {";
+      for(auto& block : _halo_data[r].block_data) {
+        std::cout << " (" << block.offset << "," << block.blength << ")";
+      }
+      std::cout << " }\n";
+    }
+    std::cout << std::endl;
+  }
+
+  void print_buffer_data() {
+    std::cout << "bufferData: { ";
+    for(auto& elem : _halo_buffer.local) {
+      std::cout << elem << ",";
+    }
+    std::cout << " }" << std::endl;
+  }
+
+  void print_signal_data() {
+    std::cout << "bufferData: { ";
+    for(auto& elem : _signal_buffer.local) {
+      std::cout << elem << ",";
+    }
+    std::cout << " }" << std::endl;
+  }
+
+  void print_gptr(dart_gptr_t gptr, region_index_t reg, const char* location) {
+    std::cout << "[" << dash::myid() << "] loc: " << location << " reg: " << reg << " uid: " << gptr.unitid << " off: " << gptr.addr_or_offs.offset << std::endl;
+  }
+private:
+
+  struct BlockData {
+    pattern_size_t offset = 0;
+    pattern_size_t blength = 0;
+  };
+
+  struct PackData {
+    bool                   needs_packed{false};
+    dart_gptr_t            neighbor_signal{DART_GPTR_NULL};
+    dart_gptr_t            neighbor_halo{DART_GPTR_NULL};
+    std::vector<BlockData> block_data{};
+    signed_pattern_size_t  halo_offset{-1};
+    dart_handle_t          signal_handle{nullptr};
+  };
+
+  pattern_size_t num_halo_elems() {
+    const auto& halo_spec = _halo_block.halo_spec();
+    const auto& view_local = _halo_block.view_local();
+
+    pattern_size_t num_halo_elems = 0;
+    for(auto r = 0; r < NumRegionsMax; ++r) {
+      auto region_spec = halo_spec.spec(r);
+
+      if(region_spec.extent() == 0 ||
+         region_spec.relevant_dim() == FastestDim) {
+        _halo_data[r].halo_offset = -1;
+        continue;
+      }
+
+      pattern_size_t reg_size = 1;
+      for(auto d = 0; d < NumDimensions; ++d) {
+        if(region_spec[d] != 1) {
+          reg_size *= region_spec.extent();
+        } else {
+          reg_size *= view_local.extent(d);
+        }
+      }
+      _halo_data[r].halo_offset = num_halo_elems;
+      num_halo_elems += reg_size;
+    }
+    return num_halo_elems;
+  }
+
+  void init_block_data() {
+    for(auto r = 0; r < NumRegionsMax; ++r) {
+      auto region = _halo_block.halo_region(r);
+      if(region == nullptr || region->size() == 0) {
+        continue;
+      }
+
+      if(region->spec().relevant_dim() == FastestDim) {
+        _halo_data[r].neighbor_signal = DART_GPTR_NULL;
+        _halo_data[r].neighbor_halo = region->begin().dart_gptr();
+
+        continue;
+      }
+
+      _halo_data[r].needs_packed = true;
+
+      auto remote_region_index = NumRegionsMax - 1 - r;
+      auto neighbor_id = region->begin().dart_gptr().unitid;
+      auto neighbor_signal = _signal_buffer.begin() + (NumRegionsMax * neighbor_id + remote_region_index);
+      _halo_data[r].neighbor_signal = neighbor_signal.dart_gptr();
+
+      auto neighbor_buffer = _halo_buffer.begin() + (_num_halo_elems * neighbor_id + _halo_data[remote_region_index].halo_offset);
+      _halo_data[r].neighbor_halo = neighbor_buffer.dart_gptr();
+
+      // number of contiguous elements
+      auto region_bnd = _halo_block.boundary_region(r);
+      if(region_bnd == nullptr) {
+        DASH_LOG_ERROR("halo and boundary regions differ");
+        continue;
+      }
+      pattern_size_t num_blocks      = 1;
+      pattern_size_t num_elems_block = 1;
+      auto*          off =  _halo_buffer.lbegin() + _halo_data[r].halo_offset;
+      auto           it  = region_bnd->begin();
+
+      if(MemoryArrange == ROW_MAJOR) {
+        num_elems_block = region_bnd->view().extent(NumDimensions - 1);
+      } else {
+        num_elems_block = region_bnd->view().extent(0);
+      }
+
+      size_t region_size         = region_bnd->size();
+      num_blocks                 = region_size / num_elems_block;
+
+      auto it_current = region_bnd->begin();
+      _halo_data[r].block_data.resize(num_blocks);
+      for(auto& block : _halo_data[r].block_data) {
+        block.offset  = it_current.lpos().index;
+        block.blength = num_elems_block;
+        it_current += num_elems_block;
+      }
+
+    }
+  }
+
+private:
+  const HaloBlockT&              _halo_block;
+  Element_t*                     _local_memory;
+  std::array<PackData,NumRegionsMax> _halo_data;
+  pattern_size_t                 _num_halo_elems;
+  HaloBuffer_t                   _halo_buffer;
+  HaloSignalBuffer_t             _signal_buffer;
+
+};  // class HaloPackBuffer
+
 }  // namespace halo
 
 }  // namespace dash
