@@ -391,14 +391,14 @@ public:
    * Returns the value for a given stencil point index (index postion in
    * \ref StencilSpec)
    */
-  ElementT value_at(const region_index_t index_stencil) {
+  ElementT& value_at(const region_index_t index_stencil) {
     return *(_stencil_mem_ptr[index_stencil]);
   }
 
   /* returns the value of a given stencil point (not as efficient as
    * stencil point index )
    */
-  ElementT value_at(const StencilP_t& stencil) {
+  ElementT& value_at(const StencilP_t& stencil) {
     auto index_stencil = _stencil_spec->index(stencil);
 
     DASH_ASSERT_MSG(index_stencil.second,
