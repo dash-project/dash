@@ -1153,7 +1153,7 @@ public:
    *
    * \return  A global reference to the element at the iterator's position.
    */
-  reference operator*() const { return operator[](_idx); }
+  reference operator*() const { return operator[](0); }
 
   /**
    * Subscript operator, returns global reference to element at given
@@ -1172,7 +1172,7 @@ public:
 
   }
 
-  dart_gptr_t dart_gptr() const { return operator[](_idx).dart_gptr(); }
+  dart_gptr_t dart_gptr() const { return operator[](0).dart_gptr(); }
 
   /**
    * Checks whether the element referenced by this global iterator is in
