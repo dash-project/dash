@@ -1262,8 +1262,8 @@ dart_tasking_datadeps_match_local_dependency(
                       "of task %p in phase %d",
                      dummy, new_elem, task, out_dep.phase);
       printf("Inserting dummy dependency %llu for input dependency %llu "
-                      "of task %llu in phase %d\n",
-                     (uint64_t) dummy, (uint64_t) new_elem, (uint64_t) task, out_dep.phase);
+                      "of task %llu in phase %d with type %d\n",
+                     (uint64_t) dummy, (uint64_t) new_elem, (uint64_t) task, out_dep.phase, out_dep.type);
     } else {
       //LOCK_TASK(elem);
       if (elem->task.local != NULL) {
@@ -1281,6 +1281,7 @@ dart_tasking_datadeps_match_local_dependency(
 //         printf("\n");
 //         printf("\n");
 //         printf("--------------------------------------------------------\n");
+        printf("register_at_out_dep_nolock\n");
         register_at_out_dep_nolock(elem, new_elem);
       } else {
         //DART_INC_AND_FETCH32(&elem->num_consumers);
