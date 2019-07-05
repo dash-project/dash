@@ -26,8 +26,8 @@ struct dart_tool_task_yield_resume_cb {
     void *userdata;
 };
 
-struct dart_tool_task_all_end_cb {
-    dart_tool_task_all_end_cb_t cb;
+struct dart_tool_task_finalize_cb {
+    dart_tool_task_finalize_cb_t cb;
     void *userdata;
 };
 typedef struct dart_tool_task_create_cb dart_tool_task_create_cb;
@@ -40,7 +40,7 @@ typedef struct dart_tool_task_all_end_cb dart_tool_task_all_end_cb;
 struct dart_tool_task_create_cb dart_tool_task_create_cb_data;
 struct dart_tool_task_begin_cb dart_tool_task_begin_cb_data;
 struct dart_tool_task_end_cb dart_tool_task_end_cb_data;
-struct dart_tool_task_all_end_cb dart_tool_task_all_end_cb_data;
+struct dart_tool_task_finalize_cb dart_tool_task_finalize_cb_data;
 
 
 
@@ -66,10 +66,10 @@ int dart_tool_register_task_end (dart_tool_task_end_cb_t cb, void *userdata_task
     return 0;
 }
 
-int dart_tool_register_task_all_end(dart_tool_task_all_end_cb_t cb, void *userdata_task_all_end) {
-    dart_tool_task_all_end_cb_data.cb = cb;
-    dart_tool_task_all_end_cb_data.userdata = userdata_task_all_end;
-    printf("dart_tool_register_task_all_end was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_task_all_end);
+int dart_tool_register_task_finalize(dart_tool_task_finalize_cb_t cb, void *userdata_task_all_end) {
+    dart_tool_task_finalize_cb_data.cb = cb;
+    dart_tool_task_finalize_cb_data.userdata = userdata_task_all_end;
+    printf("dart_tool_register_task_finalize was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_task_all_end);
     return 0;
 }
 
@@ -131,9 +131,9 @@ void dart__tasking__instrument_task_yield_resume(
   // TODO
 }
 
-void dart__tasking__instrument_task_all_end ()
+void dart__tasking__instrument_task_finalize ()
 {
-    if (dart_tool_task_all_end_cb_data.cb) {
-        dart_tool_task_all_end_cb_data.cb(dart_tool_task_end_cb_data.userdata);
+    if (dart_tool_task_finalize_cb_data.cb) {
+        dart_tool_task_finalize_cb_data.cb(dart_tool_task_finalize_cb_data.userdata);
     }
 }

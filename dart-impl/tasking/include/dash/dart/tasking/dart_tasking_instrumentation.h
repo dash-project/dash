@@ -56,7 +56,7 @@ void dart__tasking__instrument_task_yield_resume(
 /** Instrumentation point of an all task ended event.
  * 
 */
-void dart__tasking__instrument_task_all_end(
+void dart__tasking__instrument_task_finalize(
   ) DART_INTERNAL;
 
 #endif /* DART_TASKING_INSTRUMENTATION_H_ */
