@@ -1153,7 +1153,7 @@ public:
    *
    * \return  A global reference to the element at the iterator's position.
    */
-  reference operator*() const { return operator[](_idx); }
+  reference operator*() const { return get_reference(_idx); }
 
   /**
    * Subscript operator, returns global reference to element at given
@@ -1162,17 +1162,12 @@ public:
    * \see DashGlobalIteratorConcept
    */
   reference operator[](pattern_index_t n) const {
-    auto coords    = glob_coords(_idx + n);
-    auto local_pos = _pattern->local_index(coords);
-
-    auto p = static_cast<pointer>(_globmem->begin());
-    p.set_unit(local_pos.unit);
-    p += local_pos.index;
-    return *p;
-
+    return get_reference(_idx + n);
   }
 
-  dart_gptr_t dart_gptr() const { return operator[](_idx).dart_gptr(); }
+  dart_gptr_t dart_gptr() const {
+    return get_reference(_idx).dart_gptr();
+  }
 
   /**
    * Checks whether the element referenced by this global iterator is in
@@ -1349,6 +1344,17 @@ private:
   std::array<pattern_index_t, NumDimensions> glob_coords(
     pattern_index_t idx) const {
     return _pattern->coords(idx, _region_view);
+  }
+
+  reference get_reference(pattern_index_t idx) const {
+    auto coords    = glob_coords(idx);
+    auto local_pos = _pattern->local_index(coords);
+
+    auto p = static_cast<pointer>(_globmem->begin());
+    p.set_unit(local_pos.unit);
+    p += local_pos.index;
+
+    return *p;
   }
 
 private:
@@ -2142,9 +2148,12 @@ public:
     _local_memory(local_memory),
     _num_halo_elems(num_halo_elems()),
     _halo_buffer(_num_halo_elems * team.size(), team),
-    _signal_buffer(NumRegionsMax * team.size()) {
+    _signal_buffer(NumRegionsMax * team.size(), team) {
 
     init_block_data();
+    for(auto& signal : _signal_buffer.local) {
+      signal = 0;
+    }
   }
 
   void pack() {
@@ -2159,8 +2168,9 @@ public:
         std::copy(block_begin, block_begin + block.blength, buffer_offset);
         buffer_offset += block.blength;
       }
-      bool signal = true;
-      dash::internal::put_handle(_halo_data[r].neighbor_signal, &signal, 1, &_halo_data[r].signal_handle);
+      bool signal = 1;
+      //dash::internal::put_handle(_halo_data[r].neighbor_signal, &signal, 1, &_halo_data[r].signal_handle);
+      dash::internal::put_blocking(_halo_data[r].neighbor_signal, &signal, 1);
     }
   }
 
@@ -2173,9 +2183,10 @@ public:
       return;
     }
 
-    volatile auto region_signal = _signal_buffer.lbegin() + region_index;
-    while(!(*region_signal)) {
+    volatile bool& region_signal = _signal_buffer.lbegin()[region_index];
+    while(!region_signal) {
     }
+    region_signal = 0;
   }
 
   void signal_finish(region_index_t region_index) {
@@ -2194,7 +2205,7 @@ public:
       return;
     }
     auto region_signal = _signal_buffer.lbegin() + region_index;
-    *region_signal = false;
+    *region_signal = 0;
   }
 
   void print_block_data() {
@@ -2218,7 +2229,7 @@ public:
   }
 
   void print_signal_data() {
-    std::cout << "bufferData: { ";
+    std::cout << "signalData: { ";
     for(auto& elem : _signal_buffer.local) {
       std::cout << elem << ",";
     }

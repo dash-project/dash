@@ -745,7 +745,7 @@ public:
           &_stencil_spec,
           &_stencil_offsets,
           *_view_local,
-          _spec_views.boundary_views(),
+          _spec_views.boundary_views_dim(),
           0)
     , _bend(
           _local_memory,
@@ -753,7 +753,7 @@ public:
           &_stencil_spec,
           &_stencil_offsets,
           *_view_local,
-          _spec_views.boundary_views(),
+          _spec_views.boundary_views_dim(),
           _spec_views.boundary_size())
   {
   }
