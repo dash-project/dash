@@ -302,6 +302,15 @@ public:
     }
   }
 
+  dart_handle_t handle_at(region_index_t index) {
+    auto it_find = _region_data.find(index);
+
+    if(it_find != _region_data.end())
+      return it_find->second.handle;
+
+    return DART_HANDLE_NULL;
+  }
+
   /**
    * Waits until all halo updates are finished. Only useful for asynchronous
    * halo updates.

@@ -305,7 +305,9 @@ int main(int argc, char *argv[])
             src_halo_ptr->update_async_at(idx);
             //src_halo_ptr->update_at(idx);
             // TODO: dispatch this task on the internal dart_handle
-            while (!src_halo_ptr->test(idx)) dash::tasks::yield();
+            //while (!src_halo_ptr->test(idx)) dash::tasks::yield();
+            dart_handle_t handle = src_halo_ptr->handle_at(idx);
+            dart_task_wait_handle(&handle, 1);
             DEBUGOUT << "{" << iter << "} Finished update of halo region "
                       << idx << std::endl;
             auto range = src_op_ptr->halo_memory().range_at(idx);
