@@ -1372,6 +1372,26 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       continue;
     }
 
+    // check for duplicate dependencies
+    if (dep.type == DART_DEP_IN) {
+      bool needs_skipping = false;
+      for (int j = 0; j < ndeps; ++j) {
+        if (deps[j].type == DART_DEP_OUT && DEP_ADDR_EQ(deps[j], dep)){
+          // skip this dependency because there is an OUT dependency handling it
+          // we need to do this to avoid inserting a dummy for an input dependency
+          // first and then inserting the output dependency
+          // TODO: see if we can detect that efficiently while inserting the OUT
+          //       dependency into the tree.
+          DART_LOG_TRACE("Skipping dependency %d due to conflicting "
+                         "input-output dependency on same task %p", i, task);
+          needs_skipping = true;
+          break;
+        }
+      }
+      // skip processing of this dependency
+      if (needs_skipping) continue;
+    }
+
     // adjust the phase of the dependency if required
     if (dep.phase == DART_PHASE_TASK) {
       dep.phase = task->phase;
