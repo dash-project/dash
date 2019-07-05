@@ -82,8 +82,9 @@ public:
 
     for(auto r = 0; r < bound_regions.size(); ++r ) {
       _boundary_views.push_back(bound_regions[r]);
-
     }
+
+    _boundary_views_dim = halo_block.boundary_views();
   }
 
   /**
@@ -107,6 +108,11 @@ public:
    * Returns all boundary views including all boundary elements (no dublicates)
    */
   const BoundaryViews_t& boundary_views() const { return _boundary_views; }
+
+  /**
+   * Returns all boundary views including all boundary elements (no dublicates)
+   */
+  const BoundaryViews_t& boundary_views_dim() const { return _boundary_views_dim; }
 
   /**
    * Returns the number of all boundary elements (no dublicates)
@@ -135,6 +141,7 @@ private:
   ViewSpec_t        _view_inner;
   ViewSpec_t        _view_inner_with_boundaries;
   BoundaryViews_t   _boundary_views;
+  BoundaryViews_t   _boundary_views_dim;
   pattern_size_t    _size_bnd_elems = 0;
 };
 

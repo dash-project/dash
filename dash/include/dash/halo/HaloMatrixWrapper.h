@@ -151,7 +151,6 @@ public:
       update_halo_intern(it_find->second);
       dart_wait_local(&it_find->second.handle);
       _halo_buffer.signal_finish(it_find->first);
-      _halo_buffer.signal_reset(it_find->first);
     }
   }
 
@@ -184,7 +183,6 @@ public:
     for(auto& region : _region_data) {
       dart_wait_local(&region.second.handle);
       _halo_buffer.signal_finish(region.first);
-      _halo_buffer.signal_reset(region.first);
     }
   }
 
@@ -200,7 +198,6 @@ public:
 
     dart_wait_local(&it_find->second.handle);
     _halo_buffer.signal_finish(it_find->first);
-    _halo_buffer.signal_reset(it_find->first);
   }
 
   /**
