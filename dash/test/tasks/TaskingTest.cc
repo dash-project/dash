@@ -118,7 +118,7 @@ TEST_F(TaskingTest, RemoteDepsCentral)
         dash::tasks::out(array[dash::myid()])
       );
     }
-    dash::tasks::async_barrier();
+    dash::tasks::async_fence();
   }
 
   dash::tasks::complete();
@@ -175,7 +175,7 @@ TEST_F(TaskingTest, RemoteDepsSweep)
       }
       // traditionally, this would be a dash::barrier() to wait for
       // neighboring unit to complete
-      dash::tasks::async_barrier();
+      dash::tasks::async_fence();
     }
   }
 
@@ -243,7 +243,7 @@ TEST_F(TaskingTest, RemoteDepsDoubleBufferStencil)
         dash::tasks::out(newmat(myid, j))
       );
     }
-    dash::tasks::async_barrier();
+    dash::tasks::async_fence();
   }
   dash::tasks::complete();
 

@@ -98,7 +98,7 @@ benchmark_task_remotedep_creation(size_t num_tasks, int num_deps)
 
   Timer t;
 
-  dash::tasks::async_barrier();
+  dash::tasks::async_fence();
 
   if (!RootOnly || dash::myid() == 0) {
     dash::tasks::taskloop(0UL, num_tasks, dash::tasks::chunk_size(1),
@@ -139,7 +139,7 @@ benchmark_task_spreadremotedep_creation(size_t num_tasks, int num_deps)
 
   Timer t;
 
-  dash::tasks::async_barrier();
+  dash::tasks::async_fence();
 
   if (!RootOnly || dash::myid() == 0) {
     dash::tasks::taskloop(0UL, num_tasks, dash::tasks::chunk_size(1),

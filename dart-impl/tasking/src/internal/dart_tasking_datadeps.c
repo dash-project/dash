@@ -777,6 +777,15 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
            local != NULL;
            local = local->next) {
         if (DEP_ADDR_EQ(local->dep, rdep->dep)) {
+          if (local->dep.phase == rdep->dep.phase) {
+            DART_LOG_ERROR(
+              "Found conflicting dependencies on local memory address %p in "
+              "phase %d: local OUT task %p ('%s'), remote IN from unit %d",
+              rdep->dep.gptr.addr_or_offs.addr, rdep->dep.phase, local->task.local,
+              (local->task.local != NULL) ? local->task.local->descr : "(UNKNOWN)",
+              rdep->origin.id);
+            dart_abort(DART_EXIT_ABORT);
+          }
           if (local->dep.phase < rdep->dep.phase) {
             // 'tis the one
             break;
@@ -789,6 +798,17 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
             break;
           }
           prev = local;
+        }
+      }
+
+      {
+        dart_dephash_elem_t *check_elem = local;
+        if (local == NULL) {
+          check_elem = prev;
+        }
+        if (check_elem != NULL) {
+          DART_ASSERT_MSG(check_elem->dep.phase != rdep->dep.phase,
+                          "Found conflicting dependencies on local memory address %p in phase %d: local task %p ('%s'), remote ");
         }
       }
 
@@ -1403,6 +1423,26 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     if (dep.type == DART_DEP_IGNORE) {
       // ignored
       continue;
+    }
+
+    // check for duplicate dependencies
+    if (dep.type == DART_DEP_IN) {
+      bool needs_skipping = false;
+      for (int j = 0; j < ndeps; ++j) {
+        if (deps[j].type == DART_DEP_OUT && DEP_ADDR_EQ(deps[j], dep)){
+          // skip this dependency because there is an OUT dependency handling it
+          // we need to do this to avoid inserting a dummy for an input dependency
+          // first and then inserting the output dependency
+          // TODO: see if we can detect that efficiently while inserting the OUT
+          //       dependency into the tree.
+          DART_LOG_TRACE("Skipping dependency %d due to conflicting "
+                         "input-output dependency on same task %p", i, task);
+          needs_skipping = true;
+          break;
+        }
+      }
+      // skip processing of this dependency
+      if (needs_skipping) continue;
     }
 
     // adjust the phase of the dependency if required

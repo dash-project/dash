@@ -361,7 +361,7 @@ int main(int argc, char* argv[])
 
     smooth(data_prev, data_next);
 
-    dash::tasks::async_barrier();
+    dash::tasks::async_fence();
   }
   if (dash::myid() == 0) std::cout << "Done creating tasks" << std::endl;
   dash::tasks::complete();

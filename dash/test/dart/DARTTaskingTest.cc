@@ -716,14 +716,14 @@ TEST_F(DARTTaskingTest, SimpleRemoteOutDep)
       dash::tasks::async([&array](){ array[0] = dash::myid(); },
                          dash::tasks::out(array[0]));
     }
-    dash::tasks::async_barrier();
+    dash::tasks::async_fence();
     // everyone reads
     dash::tasks::async(
       [&array, i](){
         ASSERT_EQ_U(i, (int)array[0]);
       },
       dash::tasks::in(array[0]));
-    dash::tasks::async_barrier();
+    dash::tasks::async_fence();
   }
 
   dash::tasks::complete();
@@ -755,7 +755,7 @@ TEST_F(DARTTaskingTest, NeighborRemoteOutDep)
       dash::tasks::out(matrix(rneighbor, 0))
     );
 
-    dash::tasks::async_barrier();
+    dash::tasks::async_fence();
 
     // check our values
     dash::tasks::async(
@@ -766,7 +766,7 @@ TEST_F(DARTTaskingTest, NeighborRemoteOutDep)
       dash::tasks::in(matrix.local(0, 0)),
       dash::tasks::in(matrix.local(0, 1))
     );
-    dash::tasks::async_barrier();
+    dash::tasks::async_fence();
   }
 
   dash::tasks::complete();
