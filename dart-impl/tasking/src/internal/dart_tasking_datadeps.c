@@ -1376,7 +1376,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     if (dep.type == DART_DEP_IN) {
       bool needs_skipping = false;
       for (int j = 0; j < ndeps; ++j) {
-        if (deps[j].type == DART_DEP_OUT && DEP_ADDR_EQ(deps[j], dep)){
+        if (deps[j].type == DART_DEP_OUT && DART_GPTR_EQUAL(deps[j].gptr, dep.gptr)){
           // skip this dependency because there is an OUT dependency handling it
           // we need to do this to avoid inserting a dummy for an input dependency
           // first and then inserting the output dependency
