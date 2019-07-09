@@ -227,7 +227,6 @@ static inline void instrument_task_dependency(
   //       gptr.addr_or_offs.addr contains the memory address of the dependency
   //       if this addr is NULL, it is a direct task dependency, please use
   //       AYU_UNKNOWN_MEMADDR in that case
-    printf("INSTRUMENT: %(s->%s)", first->descr, last->descr);
 }
 
 /**
@@ -473,10 +472,12 @@ dephash_add_local_nolock(
   DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
 
   dart_task_t *parent = task->parent;
+  //printf("dephash_add_local_nolock\n");
   dephash_require_alloc(parent);
   DART_LOG_TRACE("Adding elem %p of task %p to slot %d with head %p",
                  new_elem, task, slot, parent->local_deps[slot].head);
   // put the new entry at the beginning of the list
+  dart_dephash_elem_t *out_dep = new_elem->dep_list;
   dephash_list_insert_elem_after_nolock(&parent->local_deps[slot], new_elem, NULL);
 }
 
@@ -602,6 +603,8 @@ static void dephash_release_out_dependency(
       dart_dephash_elem_t *in_dep;
 
       DART_STACK_POP(dep_list, in_dep);
+      //printf("in_dep: %llu\n",(uint64_t) in_dep);
+      //printf("in_dep elem: %llu\n", (uint64_t) elem->task.local);
       if (NULL == in_dep) break;
       DART_LOG_TRACE("  -> Releasing input dependency %p from out %p",
                     in_dep, elem);
@@ -636,8 +639,11 @@ static void dephash_release_in_dependency(
 {
   // decrement the counter of the associated output dependency and release the
   // next output dependency if all input dependencies have completed
+  //printf("release input depedendency\n");
   dart_dephash_elem_t *out_dep = elem->dep_list;
+  
   if (out_dep != NULL) {
+    //printf("releasing out_dep: %p, task: %p\n", out_dep, out_dep->next);
     DART_ASSERT_MSG(out_dep->task.local == NULL,
                     "Output dependency %p is still active!", out_dep);
     int slot = hash_gptr(out_dep->dep.gptr);
@@ -645,10 +651,13 @@ static void dephash_release_in_dependency(
      * Be safe here: lock the bucket to avoid race conditions.
      */
     LOCK_TASK(&local_deps[slot]);
+    //printf("locking task %llu\n", (uint64_t) &local_deps[slot].head);
     //int32_t num_consumers = DART_DEC_AND_FETCH32(&out_dep->num_consumers);
     int32_t num_consumers = --out_dep->num_consumers;
     DART_LOG_TRACE("Releasing input dependency %p (output dependency %p with nc %d)",
                   elem, out_dep, num_consumers);
+    //printf("Releasing input dependency %llu (output dependency %llu with nc %d)\n",
+    //              (uint64_t) elem->task.local, (uint64_t) out_dep->task.local, num_consumers);
     DART_ASSERT_MSG(num_consumers >= 0, "Found negative number of consumers for "
                     "dependency %p: %d", elem, num_consumers);
     dephash_recycle_elem(elem);
@@ -1070,6 +1079,7 @@ dart_tasking_datadeps_handle_local_direct(
   const dart_task_dep_t * dep,
         dart_task_t     * task)
 {
+  printf("handle local direct\n");
   dart_task_t *deptask = dep->task;
   if (deptask != DART_TASK_NULL) {
     LOCK_TASK(deptask);
@@ -1122,7 +1132,7 @@ dart_tasking_datadeps_handle_copyin(
           }
           // So far we can only re-use prefetching in the same phase
           // TODO: can we figure out whether we can go back further?
-          //       Might need help from the remote side.
+          //       Might need help from the remote side.elem_in = parent->local_deps[slot].head; elem_in != NULL; prev_in = elem_in, elem_in = elem_in->next
           if (IS_OUT_DEP(elem->dep) && dep->phase == elem->dep.phase) {
             UNLOCK_TASK(&parent->local_deps[slot]);
             // we're not the first --> add a dependency to the task that does the copy
@@ -1194,11 +1204,14 @@ dart_tasking_datadeps_match_local_dependency(
 
   DART_LOG_TRACE("Matching local dependency for task %p (off: %p, type:%d)",
                  task, dep->gptr.addr_or_offs.addr, dep->type);
+  //dart_dephash_elem_t      *dep_list;       // For OUT: start of list of assigned IN dependencies
+  
+  
   printf("--------------------------------------------------------\n");
   printf("\n");
   printf("\n");
-  printf("Matching local dependency for task %llu (off: %p, type:%d)\n",
-                 (uint64_t) task, dep->gptr.addr_or_offs.addr, dep->type);
+  printf("Matching local dependency %llu for task %llu (off: %p, type:%d, addr: %p)\n",
+                 dep ,(uint64_t) task ,dep->gptr.addr_or_offs.addr, dep->type, &dep);
 
   /*
   * iterate over all dependent tasks until we find the first task with
@@ -1209,23 +1222,25 @@ dart_tasking_datadeps_match_local_dependency(
   for (elem = parent->local_deps[slot].head; //init
       elem != NULL; prev = elem, elem = elem->next)
   {
+    dart_dephash_elem_t *out_dep = elem->dep_list;
+    while (out_dep != NULL) {
+      printf("out_dep: %llu, out_dep->next: %llu, dep: %llu, dep->type: %d, elem->task.local: %llu\n", (uint64_t) out_dep->task.local, (uint64_t) out_dep->next, (uint64_t) dep, dep->type, (uint64_t) elem->task.local);
+      out_dep = out_dep->next_in_task;
+    }
+    //printf("outdep: %llu\n", (uint64_t) out_dep);
     DART_ASSERT_MSG(elem->prev == prev,
                     "Corrupt double linked list: elem %p, elem->prev %p, prev %p",
                     elem, elem->prev, prev);
-
     if (DEP_ADDR_EQ(elem->dep, *dep)) {
         number_of_local_matches++;
         printf("Match found.: elem->task: %llu, prev->task: %llu, dep->type:%d, elem->dep.type: %d, counter: %d\n", (uint64_t) elem->task.local, (uint64_t) task, dep->type, elem->dep.type, counter_test);
         if ((elem->dep.type == DART_DEP_OUT) && (dep->type == DART_DEP_IN)) {
-          printf("RAW depedendency from task %llu to task %llu", (uint64_t) elem->task.local, task);
+          printf("RAW depedendency from task %llu to task %llu\n", (uint64_t) elem->task.local, task);
         } else if ((elem->dep.type == DART_DEP_OUT) && (dep->type == DART_DEP_OUT)) {
-          printf("WAW depedendency from task %llu to task %llu", (uint64_t) elem->task.local, task);
-        } else if ((elem->dep.type == DART_DEP_IN) && (dep->type == DART_DEP_OUT)) {
-          printf("WAR depedendency from task %llu to task %llu", (uint64_t) elem->task.local, task);
+          printf("WAW depedendency from task %llu to task %llu\n", (uint64_t) elem->task.local, task);
         }
-        
-        printf("\n");
-        printf("\n");
+        //printf("\n");
+        //printf("\n");
         printf("--------------------------------------------------------\n");
       break;
     }
@@ -1272,22 +1287,31 @@ dart_tasking_datadeps_match_local_dependency(
         DART_LOG_TRACE("Making task %p a local successor of task %p "
                       "(num_deps: %i, outdep: %p)",
                       task, elem->task.local, unresolved_deps, elem);
+        printf("Making task %p a local successor of task %p "
+                      "(num_deps: %i, outdep: %p)\n",
+                      task, elem->task.local, unresolved_deps, elem);
         //kante
 //        number_of_local_matches--;
-//         printf("output_dep (RAW) zwischen elem: %llu und new_elem: %llu", (uint64_t) elem->task.local, (uint64_t) new_elem->task.local);
-//         printf("(%s->%s) counter: %d\n", elem->task.local->descr, new_elem->task.local->descr, counter_test);
-//         printf("parent: %s\n", elem->task.local->parent->descr);
-//         printf("phase: %d\n", elem->task.local->phase);
-//         printf("\n");
-//         printf("\n");
-//         printf("--------------------------------------------------------\n");
+         printf("output_dep (RAW) zwischen elem: %llu und new_elem: %llu", (uint64_t) elem->task.local, (uint64_t) new_elem->task.local);
+         printf("(%s->%s) counter: %d\n", elem->task.local->descr, new_elem->task.local->descr, counter_test);
+         printf("parent: %s\n", elem->task.local->parent->descr);
+         printf("phase: %d\n", elem->task.local->phase);
+         printf("\n");
+         printf("\n");
+         printf("--------------------------------------------------------\n");
         printf("register_at_out_dep_nolock\n");
+/*
+        for (elem_in = out_dep; elem_in != NULL; prev_in = elem_in, elem_in = elem_in->next) {
+          printf("elem_in->task.local: %llu, elem_in->dep.type: %d\n", (uint64_t)elem_in->task.local, elem_in->dep.type);
+        }
+*/
         register_at_out_dep_nolock(elem, new_elem);
       } else {
         //DART_INC_AND_FETCH32(&elem->num_consumers);
         elem->num_consumers++;
         // register the output dependency with the input dependency for later release
         new_elem->dep_list = elem;
+        //printf("NEW: (%llu, %llu)\n", (uint64_t) new_elem->task.local, (uint64_t) elem->task.local);
         DART_LOG_TRACE("Task of out dep %p already running, not waiting to finish",
                        elem);
       }
@@ -1297,12 +1321,27 @@ dart_tasking_datadeps_match_local_dependency(
     if (elem != NULL) {
       int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                     &task->unresolved_deps);
+      //printf("elem !=NULL\n");
+      for (elem = elem->dep_list; elem != NULL; prev = elem, elem = elem->next) {
+        //printf("elem->task.local: %llu, elem->type %llu, current task %llu\n", (uint64_t) elem->task.local, (uint64_t) elem->dep.type, (uint64_t) task);
+        if (elem->dep.type == DART_DEP_IN) {
+          printf("WAR depedendency from task %s to task %s\n", elem->task.local->descr, task->descr);
+        }
+      }
+      
       DART_LOG_TRACE("Making task %p a local successor of task %p in out dep %p"
                     "(num_deps: %i)",
                     task, elem->task.local, elem, unresolved_deps);
     } else {
       DART_LOG_TRACE("No previous out dependency for task %p", task);
+      
     }
+      //printf("no prev out dep\n");
+      //dart_dephash_elem_t *out_dep = elem->dep_list;
+      //while (out_dep != NULL) {
+          //printf("no prev out_dep: %llu, out_dep->next: %llu, dep: %llu, dep->type: %d, elem->task.local: %llu\n", (uint64_t) out_dep->task.local, (uint64_t) out_dep->next, (uint64_t) dep, dep->type, //(uint64_t) elem->task.local);
+          //out_dep = out_dep->next;
+    //}
     // insert output dependency into the hash table
     //kante
     //printf("(%llu->%llu)\n", (uint64_t) elem->task.local, (uint64_t) task);
@@ -1445,7 +1484,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       // skip processing of this dependency
       if (needs_skipping) continue;
     }
-
+    
     // adjust the phase of the dependency if required
     if (dep.phase == DART_PHASE_TASK) {
       dep.phase = task->phase;
@@ -1479,10 +1518,10 @@ dart_ret_t dart_tasking_datadeps_handle_task(
 //       }
       //instrument_task_dependency(task, dep.task,dep.gptr);
       
-      //printf("Datadeps: task %s dependency %zu: type:%i unit:%i "
-      //              "task:%i addr:%p phase:%i\n",
-      //               task->descr, i, dep.type, guid.id, dep.task,
-      //               DEP_ADDR(dep), dep.phase);
+      printf("Datadeps: task %s dependency %zu: type:%i unit:%i "
+                    "task:%i addr:%p phase:%i\n",
+                     task->descr, i, dep.type, guid.id, dep.task,
+                     DEP_ADDR(dep), dep.phase);
       DART_LOG_TRACE("Datadeps: task %p dependency %zu: type:%i unit:%i "
                      "seg:%i addr:%p phase:%i",
                      task, i, dep.type, guid.id, dep.gptr.segid,
@@ -1499,7 +1538,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     } else if (guid.id != myguid.id) {
         if (task->parent->state == DART_TASK_ROOT) {
           dart_tasking_remote_datadep(&dep, task);
-          printf("dart_tasking_remote_datadep is called\n");
+          //printf("dart_tasking_remote_datadep is called\n");
           int32_t unresolved_deps = DART_INC_AND_FETCH32(&task->unresolved_remote_deps);
           DART_LOG_TRACE(
             "Sent remote dependency request for task %p "
@@ -1577,7 +1616,6 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
     dart_thread_t *thread)
 {
   DART_LOG_TRACE("Releasing local dependencies of task %p", task);
-
   // start with removing this task from the hash maps
   dephash_release_local_task(task);
   // release the remote dependencies
