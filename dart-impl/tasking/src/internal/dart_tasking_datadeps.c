@@ -11,6 +11,7 @@
 #include <dash/dart/tasking/dart_tasking_remote.h>
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_copyin.h>
+#include <dash/dart/tasking/dart_tasking_instrumentation.h>
 
 #include <stdint.h>
 
@@ -1235,9 +1236,11 @@ dart_tasking_datadeps_match_local_dependency(
         number_of_local_matches++;
         printf("Match found.: elem->task: %llu, prev->task: %llu, dep->type:%d, elem->dep.type: %d, counter: %d\n", (uint64_t) elem->task.local, (uint64_t) task, dep->type, elem->dep.type, counter_test);
         if ((elem->dep.type == DART_DEP_OUT) && (dep->type == DART_DEP_IN)) {
-          printf("RAW depedendency from task %llu to task %llu\n", (uint64_t) elem->task.local, task);
+          //printf("RAW depedendency from task %llu to task %llu\n", (uint64_t) elem->task.local, task);
+          dart__tasking__instrument_local_dep_raw(elem->task.local, task);
         } else if ((elem->dep.type == DART_DEP_OUT) && (dep->type == DART_DEP_OUT)) {
-          printf("WAW depedendency from task %llu to task %llu\n", (uint64_t) elem->task.local, task);
+          //printf("WAW depedendency from task %llu to task %llu\n", (uint64_t) elem->task.local, task);
+          dart__tasking__instrument_local_dep_waw(elem->task.local, task);
         }
         //printf("\n");
         //printf("\n");
@@ -1325,7 +1328,8 @@ dart_tasking_datadeps_match_local_dependency(
       for (elem = elem->dep_list; elem != NULL; prev = elem, elem = elem->next) {
         //printf("elem->task.local: %llu, elem->type %llu, current task %llu\n", (uint64_t) elem->task.local, (uint64_t) elem->dep.type, (uint64_t) task);
         if (elem->dep.type == DART_DEP_IN) {
-          printf("WAR depedendency from task %s to task %s\n", elem->task.local->descr, task->descr);
+          //printf("WAR depedendency from task %s to task %s\n", elem->task.local->descr, task->descr);
+          dart__tasking__instrument_local_dep_war(elem->task.local, task);
         }
       }
       

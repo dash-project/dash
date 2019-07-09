@@ -58,5 +58,27 @@ void dart__tasking__instrument_task_yield_resume(
 */
 void dart__tasking__instrument_task_finalize(
   ) DART_INTERNAL;
-
+  
+/**
+ * Instrumentation point of two tasks in the same local task graph share a
+ * read-after-write dependency.
+*/
+void dart__tasking__instrument_local_dep_raw(
+    dart_task_t *task1,
+    dart_task_t *task2) DART_INTERNAL;
+/**
+ * Instrumentation point of two tasks in the same local task graph share a
+ * write-after-write dependency.
+*/
+void dart__tasking__instrument_local_dep_waw(
+    dart_task_t *task1,
+    dart_task_t *task2) DART_INTERNAL;
+/**
+ * Instrumentation point of two tasks in the same local task graph share a
+ * write-after-read (anti-)dependency.
+*/    
+void dart__tasking__instrument_local_dep_war(
+    dart_task_t *task1,
+    dart_task_t *task2) DART_INTERNAL;
+    
 #endif /* DART_TASKING_INSTRUMENTATION_H_ */

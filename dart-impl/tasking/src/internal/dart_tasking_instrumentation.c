@@ -30,18 +30,41 @@ struct dart_tool_task_finalize_cb {
     dart_tool_task_finalize_cb_t cb;
     void *userdata;
 };
+
+
+struct dart_tool_local_dep_raw_cb {
+    dart_tool_local_dep_raw_cb_t cb;
+    void *userdata;
+};
+
+struct dart_tool_local_dep_waw_cb {
+    dart_tool_local_dep_waw_cb_t cb;
+    void *userdata;
+};
+
+struct dart_tool_local_dep_war_cb {
+    dart_tool_local_dep_war_cb_t cb;
+    void *userdata;
+};
 typedef struct dart_tool_task_create_cb dart_tool_task_create_cb;
 typedef struct dart_tool_task_begin_cb dart_tool_task_begin_cb;
 typedef struct dart_tool_task_cancel_cb dart_tool_task_cancel_cb;
 typedef struct dart_tool_task_yield_leave_cb dart_task_yield_leave_cb;
 typedef struct dart_tool_task_yield_resume_cb dart_task_yield_resume_cb;
 typedef struct dart_tool_task_all_end_cb dart_tool_task_all_end_cb;
+
+typedef struct dart_tool_local_dep_raw_cb dart_tool_local_dep_raw_cb;
+typedef struct dart_tool_local_dep_waw_cb dart_tool_local_dep_waw_cb;
+typedef struct dart_tool_local_dep_war_cb dart_tool_local_dep_war_cb;
 /* data structures to save the function pointer and user data from the callback */
 struct dart_tool_task_create_cb dart_tool_task_create_cb_data;
 struct dart_tool_task_begin_cb dart_tool_task_begin_cb_data;
 struct dart_tool_task_end_cb dart_tool_task_end_cb_data;
 struct dart_tool_task_finalize_cb dart_tool_task_finalize_cb_data;
 
+struct dart_tool_local_dep_raw_cb dart_tool_local_dep_raw_cb_data;
+struct dart_tool_local_dep_waw_cb dart_tool_local_dep_waw_cb_data;
+struct dart_tool_local_dep_war_cb dart_tool_local_dep_war_cb_data;
 
 
 /* implementation of the register function of the callback */
@@ -70,6 +93,29 @@ int dart_tool_register_task_finalize(dart_tool_task_finalize_cb_t cb, void *user
     dart_tool_task_finalize_cb_data.cb = cb;
     dart_tool_task_finalize_cb_data.userdata = userdata_task_all_end;
     printf("dart_tool_register_task_finalize was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_task_all_end);
+    return 0;
+}
+
+/* missing task_yield register functions yet*/
+
+int dart_tool_register_local_dep_raw (dart_tool_local_dep_raw_cb_t cb, void *userdata_local_dep_raw) {
+    dart_tool_local_dep_raw_cb_data.cb = cb;
+    dart_tool_local_dep_raw_cb_data.userdata = userdata_local_dep_raw;
+    printf("dart_tool_register_local_dep_raw was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_local_dep_raw);
+    return 0;
+}
+
+int dart_tool_register_local_dep_waw (dart_tool_local_dep_waw_cb_t cb, void *userdata_local_dep_waw) {
+    dart_tool_local_dep_waw_cb_data.cb = cb;
+    dart_tool_local_dep_waw_cb_data.userdata = userdata_local_dep_waw;
+    printf("dart_tool_register_local_dep_waw was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_local_dep_waw);
+    return 0;
+}
+
+int dart_tool_register_local_dep_war (dart_tool_local_dep_war_cb_t cb, void *userdata_local_dep_war) {
+    dart_tool_local_dep_war_cb_data.cb = cb;
+    dart_tool_local_dep_war_cb_data.userdata = userdata_local_dep_war;
+    printf("dart_tool_register_local_dep_war was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_local_dep_war);
     return 0;
 }
 
@@ -131,9 +177,47 @@ void dart__tasking__instrument_task_yield_resume(
   // TODO
 }
 
-void dart__tasking__instrument_task_finalize ()
+void dart__tasking__instrument_task_finalize()
 {
     if (dart_tool_task_finalize_cb_data.cb) {
         dart_tool_task_finalize_cb_data.cb(dart_tool_task_finalize_cb_data.userdata);
     }
 }
+
+void dart__tasking__instrument_local_dep_raw(
+    dart_task_t *task1,
+    dart_task_t *task2) 
+{
+    uint64_t memaddr_raw = 0;
+    uint64_t orig_memaddr_raw = 1;
+    if (dart_tool_local_dep_raw_cb_data.cb) {
+        dart_tool_local_dep_raw_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_raw, orig_memaddr_raw, dart_tool_local_dep_raw_cb_data.userdata);
+    }
+    
+}
+
+void dart__tasking__instrument_local_dep_waw(
+    dart_task_t *task1,
+    dart_task_t *task2) 
+{
+    uint64_t memaddr_waw = 0;
+    uint64_t orig_memaddr_waw = 1;
+    if (dart_tool_local_dep_waw_cb_data.cb) {
+        dart_tool_local_dep_waw_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_waw, orig_memaddr_waw, dart_tool_local_dep_waw_cb_data.userdata);
+    }
+    
+}
+
+void dart__tasking__instrument_local_dep_war(
+    dart_task_t *task1,
+    dart_task_t *task2) 
+{
+    uint64_t memaddr_war = 0;
+    uint64_t orig_memaddr_war = 1;
+    if (dart_tool_local_dep_war_cb_data.cb) {
+        dart_tool_local_dep_war_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_war, orig_memaddr_war, dart_tool_local_dep_war_cb_data.userdata);
+    }
+    
+}
+
+
