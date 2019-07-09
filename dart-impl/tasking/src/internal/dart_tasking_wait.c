@@ -100,8 +100,19 @@ test_yield(dart_handle_t *handles, size_t num_handle)
 }
 
 dart_ret_t
-dart__task__wait_handle(dart_handle_t *handles, size_t num_handle)
+dart__task__wait_handle(
+  dart_handle_t *handles,
+  size_t         num_handle)
 {
+  size_t num_units;
+  dart_size(&num_units);
+
+  // wait for completion if this is a singleton run
+  if (num_units == 1) {
+    dart_waitall(handles, num_handle);
+    return DART_OK;
+  }
+
   // check whether the handles are all NULL
   bool all_null = true;
   for (size_t i = 0; i < num_handle; ++i) {
@@ -255,6 +266,15 @@ dart__task__detach_handle(
   dart_handle_t *handles,
   size_t         num_handle)
 {
+  size_t num_units;
+  dart_size(&num_units);
+
+  // wait for completion if this is a singleton run
+  if (num_units == 1) {
+    dart_waitall(handles, num_handle);
+    return DART_OK;
+  }
+
   dart_task_t *task = dart__tasking__current_task();
 
   // mark the task as detached
@@ -262,7 +282,7 @@ dart__task__detach_handle(
 
   int num_nn_handles = 0;
   for (int i = 0; i < num_handle; ++i) {
-    if (handles[i]) ++num_nn_handles;
+    if (handles[i] != DART_HANDLE_NULL) ++num_nn_handles;
   }
 
   if (num_nn_handles) {
