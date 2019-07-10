@@ -1485,9 +1485,9 @@ std::ostream& operator<<(std::ostream&                     os,
   const auto& border = region.border();
   for(auto d = 0; d < border.size(); ++d) {
     if(d == 0)
-      os << border[d];
+      os << "(" << border[d].first << border[d].first  << ")";
     else
-      os << "," << border[d];
+      os << ",(" << border[d].first << border[d].first  << ")";
   }
   os << "}"
      << "; is border: " << region.is_border_region()
@@ -2154,9 +2154,12 @@ public:
     for(auto& signal : _signal_buffer.local) {
       signal = 0;
     }
+
+    _signal = 1;
   }
 
   void pack() {
+    region_index_t handle_pos = 0;
     for(auto r = 0; r < NumRegionsMax; ++r) {
       if(!_halo_data[r].needs_packed) {
         continue;
@@ -2168,10 +2171,16 @@ public:
         std::copy(block_begin, block_begin + block.blength, buffer_offset);
         buffer_offset += block.blength;
       }
-      bool signal = 1;
-      //dash::internal::put_handle(_halo_data[r].neighbor_signal, &signal, 1, &_halo_data[r].signal_handle);
-      dash::internal::put_blocking(_halo_data[r].neighbor_signal, &signal, 1);
+
+      dash::internal::put_handle(_halo_data[r].neighbor_signal, &_signal, 1, &_signal_handles[handle_pos]);
+      ++handle_pos;
+      //dash::internal::put_blocking(_halo_data[r].neighbor_signal, &signal, 1);
     }
+
+    for(auto& handle : _signal_handles) {
+      dart_wait_local(&handle);
+    }
+
   }
 
   dart_gptr_t buffer_region(region_index_t region_index) {
@@ -2187,17 +2196,6 @@ public:
     while(!region_signal) {
     }
     region_signal = 0;
-  }
-
-  void signal_finish(region_index_t region_index) {
-    if(!_halo_data[region_index].needs_packed) {
-      return;
-    }
-
-    auto handle = _halo_data[region_index].signal_handle;
-    if(handle != nullptr) {
-      dart_wait_local(&handle);
-    }
   }
 
   void signal_reset(region_index_t region_index) {
@@ -2248,11 +2246,11 @@ private:
 
   struct PackData {
     bool                   needs_packed{false};
+    bool                   needs_signal{false};
     dart_gptr_t            neighbor_signal{DART_GPTR_NULL};
     dart_gptr_t            neighbor_halo{DART_GPTR_NULL};
     std::vector<BlockData> block_data{};
     signed_pattern_size_t  halo_offset{-1};
-    dart_handle_t          signal_handle{nullptr};
   };
 
   pattern_size_t num_halo_elems() {
@@ -2290,20 +2288,21 @@ private:
         continue;
       }
 
-      if(region->spec().relevant_dim() == FastestDim) {
-        _halo_data[r].neighbor_signal = DART_GPTR_NULL;
-        _halo_data[r].neighbor_halo = region->begin().dart_gptr();
-
-        continue;
-      }
-
-      _halo_data[r].needs_packed = true;
+      _halo_data[r].needs_signal = true;
+      _signal_handles.push_back(nullptr);
 
       auto remote_region_index = NumRegionsMax - 1 - r;
       auto neighbor_id = region->begin().dart_gptr().unitid;
       auto neighbor_signal = _signal_buffer.begin() + (NumRegionsMax * neighbor_id + remote_region_index);
       _halo_data[r].neighbor_signal = neighbor_signal.dart_gptr();
 
+      if(region->spec().relevant_dim() == FastestDim) {
+        _halo_data[r].neighbor_halo = region->begin().dart_gptr();
+
+        continue;
+      }
+
+      _halo_data[r].needs_packed = true;
       auto neighbor_buffer = _halo_buffer.begin() + (_num_halo_elems * neighbor_id + _halo_data[remote_region_index].halo_offset);
       _halo_data[r].neighbor_halo = neighbor_buffer.dart_gptr();
 
@@ -2340,6 +2339,8 @@ private:
 
 private:
   const HaloBlockT&              _halo_block;
+  std::vector<dart_handle_t>     _signal_handles;
+  bool                           _signal;
   Element_t*                     _local_memory;
   std::array<PackData,NumRegionsMax> _halo_data;
   pattern_size_t                 _num_halo_elems;
