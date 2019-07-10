@@ -2161,15 +2161,17 @@ public:
   void pack() {
     region_index_t handle_pos = 0;
     for(auto r = 0; r < NumRegionsMax; ++r) {
-      if(!_halo_data[r].needs_packed) {
+      if(!_halo_data[r].needs_signal) {
         continue;
       }
 
-      auto buffer_offset = _halo_buffer.lbegin() + _halo_data[r].halo_offset;
-      for(auto& block : _halo_data[r].block_data) {
-        auto block_begin = _local_memory + block.offset;
-        std::copy(block_begin, block_begin + block.blength, buffer_offset);
-        buffer_offset += block.blength;
+      if(_halo_data[r].needs_packed) {
+        auto buffer_offset = _halo_buffer.lbegin() + _halo_data[r].halo_offset;
+        for(auto& block : _halo_data[r].block_data) {
+          auto block_begin = _local_memory + block.offset;
+          std::copy(block_begin, block_begin + block.blength, buffer_offset);
+          buffer_offset += block.blength;
+        }
       }
 
       dash::internal::put_handle(_halo_data[r].neighbor_signal, &_signal, 1, &_signal_handles[handle_pos]);
@@ -2177,10 +2179,7 @@ public:
       //dash::internal::put_blocking(_halo_data[r].neighbor_signal, &signal, 1);
     }
 
-    for(auto& handle : _signal_handles) {
-      dart_wait_local(&handle);
-    }
-
+    dart_waitall_local(_signal_handles.data(), _signal_handles.size());
   }
 
   dart_gptr_t buffer_region(region_index_t region_index) {
