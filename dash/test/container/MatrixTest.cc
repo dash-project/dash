@@ -1676,3 +1676,47 @@ TEST_F(MatrixTest, LocalDiagonal){
     ASSERT_EQ_U(value_sub, unit);
   }
 }
+
+template<typename PatternT>
+static void
+test_pattern_local_size(dash::Distribution dist)
+{
+  using TeamSpecT = dash::TeamSpec<2>;
+  using MatrixT = dash::NArray<double, 2, dash::default_index_t, PatternT>;
+  using SizeSpecT = dash::SizeSpec<2>;
+  using DistSpecT = dash::DistributionSpec<2>;
+
+  auto size_spec = SizeSpecT(4*dash::size(), 4*::dash::size());
+  auto dist_spec = DistSpecT(dist, dist);
+
+  auto& team_all = dash::Team::All();
+  TeamSpecT team_all_spec(team_all.size(), 1);
+  team_all_spec.balance_extents();
+  MatrixT matrix(size_spec, dist_spec, team_all, team_all_spec);
+
+  ASSERT_EQ_U(matrix.local.size(), matrix.pattern().local_size());
+
+  size_t size = 0;
+  for (dash::team_unit_t unit{0}; unit < dash::size(); ++unit) {
+    size += matrix.pattern().local_size(unit);
+  }
+  ASSERT_EQ_U(size, matrix.size());
+
+}
+
+TEST_F(MatrixTest, BlockPatternLocalSize){
+  test_pattern_local_size<typename dash::BlockPattern<2>>(dash::BLOCKED);
+}
+
+TEST_F(MatrixTest, TilePatternLocalSize){
+  test_pattern_local_size<typename dash::TilePattern<2>>(dash::BLOCKED);
+  test_pattern_local_size<typename dash::TilePattern<2>>(dash::TILE(4));
+}
+
+TEST_F(MatrixTest, ShiftTilePatternLocalSize){
+  test_pattern_local_size<typename dash::ShiftTilePattern<2>>(dash::TILE(4));
+}
+
+TEST_F(MatrixTest, SeqTilePatternLocalSize){
+  test_pattern_local_size<typename dash::SeqTilePattern<2>>(dash::TILE(4));
+}

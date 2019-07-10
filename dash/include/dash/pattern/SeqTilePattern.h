@@ -1329,7 +1329,7 @@ public:
    * \see  DashPatternConcept
    */
   SizeType local_size(team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
-    if (unit == DART_UNDEFINED_UNIT_ID) {
+    if (unit == DART_UNDEFINED_UNIT_ID || _team->myid() == unit) {
       return _local_memory_layout.size();
     }
     // Non-local query, requires to construct local memory layout of
