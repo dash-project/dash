@@ -17,6 +17,7 @@ typedef void (*dart_tool_task_yield_leave_cb_t) (uint64_t task, uint64_t thread,
 typedef void (*dart_tool_task_yield_resume_cb_t) (uint64_t task, uint64_t thread, void *userdata);
 typedef void (*dart_tool_task_finalize_cb_t) (void *userdata);
 
+typedef void (*dart_tool_task_add_to_queue_cb_t) (uint64_t task, uint64_t thread, void *userdata);
 
 typedef void (*dart_tool_local_dep_raw_cb_t) (uint64_t task1, uint64_t task2, uint64_t memaddr, uint64_t orig_memaddr, void *userdata);
 typedef void (*dart_tool_local_dep_waw_cb_t) (uint64_t task1, uint64_t task2, uint64_t memaddr, uint64_t orig_memaddr, void *userdata);
@@ -33,6 +34,8 @@ int dart_tool_register_task_cancel (dart_tool_task_cancel_cb_t cb, void *userdat
 int dart_tool_register_yield_leave (dart_tool_task_yield_leave_cb_t cb, void *userdata);
 int dart_tool_register_yield_resume (dart_tool_task_yield_resume_cb_t cb, void *userdata);
 int dart_tool_register_task_finalize (dart_tool_task_finalize_cb_t cb, void *userdata);
+
+int dart_tool_register_task_add_to_queue (dart_tool_task_add_to_queue_cb_t cb, void *userdata);
 
 int dart_tool_register_local_dep_raw (dart_tool_local_dep_raw_cb_t cb, void *userdata);
 int dart_tool_register_local_dep_waw (dart_tool_local_dep_waw_cb_t cb, void *userdata);

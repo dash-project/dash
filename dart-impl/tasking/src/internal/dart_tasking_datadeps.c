@@ -1189,7 +1189,7 @@ dart_tasking_datadeps_match_local_dependency(
 {
   dart_task_t *parent = task->parent;
   counter_test++;
-  printf("Value of counter: %d\n", counter_test);
+  //printf("Value of counter: %d\n", counter_test);
 
   // TODO: we cannot short-cut here because we need to store all local input
   //       dependencies to match against remote input dependencies
@@ -1208,11 +1208,11 @@ dart_tasking_datadeps_match_local_dependency(
   //dart_dephash_elem_t      *dep_list;       // For OUT: start of list of assigned IN dependencies
   
   
-  printf("--------------------------------------------------------\n");
-  printf("\n");
-  printf("\n");
-  printf("Matching local dependency %llu for task %llu (off: %p, type:%d, addr: %p)\n",
-                 dep ,(uint64_t) task ,dep->gptr.addr_or_offs.addr, dep->type, &dep);
+  //printf("--------------------------------------------------------\n");
+  //printf("\n");
+  //printf("\n");
+  //printf("Matching local dependency %llu for task %llu (off: %p, type:%d, addr: %p)\n",
+  //               dep ,(uint64_t) task ,dep->gptr.addr_or_offs.addr, dep->type, &dep);
 
   /*
   * iterate over all dependent tasks until we find the first task with
@@ -1223,28 +1223,30 @@ dart_tasking_datadeps_match_local_dependency(
   for (elem = parent->local_deps[slot].head; //init
       elem != NULL; prev = elem, elem = elem->next)
   {
+/*
     dart_dephash_elem_t *out_dep = elem->dep_list;
     while (out_dep != NULL) {
       printf("out_dep: %llu, out_dep->next: %llu, dep: %llu, dep->type: %d, elem->task.local: %llu\n", (uint64_t) out_dep->task.local, (uint64_t) out_dep->next, (uint64_t) dep, dep->type, (uint64_t) elem->task.local);
       out_dep = out_dep->next_in_task;
     }
+*/
     //printf("outdep: %llu\n", (uint64_t) out_dep);
     DART_ASSERT_MSG(elem->prev == prev,
                     "Corrupt double linked list: elem %p, elem->prev %p, prev %p",
                     elem, elem->prev, prev);
     if (DEP_ADDR_EQ(elem->dep, *dep)) {
         number_of_local_matches++;
-        printf("Match found.: elem->task: %llu, prev->task: %llu, dep->type:%d, elem->dep.type: %d, counter: %d\n", (uint64_t) elem->task.local, (uint64_t) task, dep->type, elem->dep.type, counter_test);
+        //printf("Match found.: elem->task: %llu, prev->task: %llu, dep->type:%d, elem->dep.type: %d, counter: %d\n", (uint64_t) elem->task.local, (uint64_t) task, dep->type, elem->dep.type, counter_test);
         if ((elem->dep.type == DART_DEP_OUT) && (dep->type == DART_DEP_IN)) {
           //printf("RAW depedendency from task %llu to task %llu\n", (uint64_t) elem->task.local, task);
-          dart__tasking__instrument_local_dep_raw(elem->task.local, task);
+          dart__tasking__instrument_local_dep_raw(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset);
         } else if ((elem->dep.type == DART_DEP_OUT) && (dep->type == DART_DEP_OUT)) {
           //printf("WAW depedendency from task %llu to task %llu\n", (uint64_t) elem->task.local, task);
-          dart__tasking__instrument_local_dep_waw(elem->task.local, task);
+          dart__tasking__instrument_local_dep_waw(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset);
         }
         //printf("\n");
         //printf("\n");
-        printf("--------------------------------------------------------\n");
+        //printf("--------------------------------------------------------\n");
       break;
     }
   }
@@ -1290,11 +1292,12 @@ dart_tasking_datadeps_match_local_dependency(
         DART_LOG_TRACE("Making task %p a local successor of task %p "
                       "(num_deps: %i, outdep: %p)",
                       task, elem->task.local, unresolved_deps, elem);
-        printf("Making task %p a local successor of task %p "
-                      "(num_deps: %i, outdep: %p)\n",
-                      task, elem->task.local, unresolved_deps, elem);
+        //printf("Making task %p a local successor of task %p "
+        //              "(num_deps: %i, outdep: %p)\n",
+        //              task, elem->task.local, unresolved_deps, elem);
         //kante
 //        number_of_local_matches--;
+/*
          printf("output_dep (RAW) zwischen elem: %llu und new_elem: %llu", (uint64_t) elem->task.local, (uint64_t) new_elem->task.local);
          printf("(%s->%s) counter: %d\n", elem->task.local->descr, new_elem->task.local->descr, counter_test);
          printf("parent: %s\n", elem->task.local->parent->descr);
@@ -1303,6 +1306,7 @@ dart_tasking_datadeps_match_local_dependency(
          printf("\n");
          printf("--------------------------------------------------------\n");
         printf("register_at_out_dep_nolock\n");
+*/
 /*
         for (elem_in = out_dep; elem_in != NULL; prev_in = elem_in, elem_in = elem_in->next) {
           printf("elem_in->task.local: %llu, elem_in->dep.type: %d\n", (uint64_t)elem_in->task.local, elem_in->dep.type);
@@ -1329,7 +1333,7 @@ dart_tasking_datadeps_match_local_dependency(
         //printf("elem->task.local: %llu, elem->type %llu, current task %llu\n", (uint64_t) elem->task.local, (uint64_t) elem->dep.type, (uint64_t) task);
         if (elem->dep.type == DART_DEP_IN) {
           //printf("WAR depedendency from task %s to task %s\n", elem->task.local->descr, task->descr);
-          dart__tasking__instrument_local_dep_war(elem->task.local, task);
+          dart__tasking__instrument_local_dep_war(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset);
         }
       }
       
@@ -1355,8 +1359,8 @@ dart_tasking_datadeps_match_local_dependency(
   }
 
   UNLOCK_TASK(&parent->local_deps[slot]);
-  printf("Value of counter: %d\n", counter_test);
-  printf("number of matches: %d\n", number_of_local_matches);
+  //printf("Value of counter: %d\n", counter_test);
+  //printf("number of matches: %d\n", number_of_local_matches);
 
   return DART_OK;
 }
@@ -1411,10 +1415,12 @@ dart_tasking_datadeps_match_delayed_local_indep(
                       elem_task->state, unresolved_deps);
       }
       //vll kante remote
+/*
       printf("output_dep zwischen elem: %llu und new_elem: %llu", (uint64_t) elem->task.local, (uint64_t) new_elem->task.local);
       printf("(%s->%s)\n", elem->task.local->descr, new_elem->task.local->descr);
       printf("parent: %s\n", elem->task.local->parent->descr);
       printf("phase: %d\n", elem->task.local->phase);
+*/
       register_at_out_dep_nolock(elem, new_elem);
       //UNLOCK_TASK(elem);
       // we're done here
@@ -1521,11 +1527,12 @@ dart_ret_t dart_tasking_datadeps_handle_task(
 //                      DEP_ADDR(dep), dep.phase);
 //       }
       //instrument_task_dependency(task, dep.task,dep.gptr);
-      
+      /*
       printf("Datadeps: task %s dependency %zu: type:%i unit:%i "
                     "task:%i addr:%p phase:%i\n",
                      task->descr, i, dep.type, guid.id, dep.task,
                      DEP_ADDR(dep), dep.phase);
+      */
       DART_LOG_TRACE("Datadeps: task %p dependency %zu: type:%i unit:%i "
                      "seg:%i addr:%p phase:%i",
                      task, i, dep.type, guid.id, dep.gptr.segid,

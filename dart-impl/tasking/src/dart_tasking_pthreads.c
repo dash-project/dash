@@ -1214,7 +1214,7 @@ dart__tasking__init()
   dart__tasking__install_signalhandler();
   /* Before finishing initialization, a tool library is loaded if needed */
   void *handle;
-  int (*toolinit)(const char *);
+  int (*toolinit)(int);
   int toolhandle;
   /**
    * The name of the environment variable containing the path to the tool is stored in 
@@ -1245,8 +1245,9 @@ dart__tasking__init()
           fprintf(stderr, "Error: %s\n", dlerror());
           dlclose(handle);
       }
+      /* Send the toolinit function the number of threads we're using */
+      toolhandle = toolinit(dart__tasking__num_threads());
       /* Output only for testing purposes */
-      toolhandle = toolinit("<Some String hehe>");
       printf("toolhandle: %d (should be 0)\n", toolhandle);
   }
   
@@ -1344,6 +1345,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     if (respect_numa && task->numaptr != NULL) {
       numa_node = dart__tasking__affinity_ptr_numa_node(task->numaptr);
     }
+    /* instrumentation for the task queue*/
+    dart__tasking__instrument_task_add_to_queue(task, thread);
     if (!thread->is_utility_thread) {
 
       if (numa_node == thread->numa_id) {

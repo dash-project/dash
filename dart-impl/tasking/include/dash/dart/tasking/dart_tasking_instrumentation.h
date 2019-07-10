@@ -53,8 +53,8 @@ void dart__tasking__instrument_task_yield_resume(
   dart_task_t   *task,
   dart_thread_t *thread) DART_INTERNAL;
   
-/** Instrumentation point of an all task ended event.
- * 
+/** 
+ * Instrumentation point of an all task ended (finalized) event.
 */
 void dart__tasking__instrument_task_finalize(
   ) DART_INTERNAL;
@@ -65,20 +65,33 @@ void dart__tasking__instrument_task_finalize(
 */
 void dart__tasking__instrument_local_dep_raw(
     dart_task_t *task1,
-    dart_task_t *task2) DART_INTERNAL;
+    dart_task_t *task2,
+    uint64_t memaddr_raw,
+    uint64_t orig_memaddr_raw) DART_INTERNAL;
 /**
  * Instrumentation point of two tasks in the same local task graph share a
  * write-after-write dependency.
 */
 void dart__tasking__instrument_local_dep_waw(
     dart_task_t *task1,
-    dart_task_t *task2) DART_INTERNAL;
+    dart_task_t *task2,
+    uint64_t memaddr_waw,
+    uint64_t orig_memaddr_waw) DART_INTERNAL;
 /**
  * Instrumentation point of two tasks in the same local task graph share a
  * write-after-read (anti-)dependency.
 */    
 void dart__tasking__instrument_local_dep_war(
     dart_task_t *task1,
-    dart_task_t *task2) DART_INTERNAL;
+    dart_task_t *task2,
+    uint64_t memaddr_war,
+    uint64_t orig_memaddr_war) DART_INTERNAL;
+/**
+ * Instrumentation point of a task beeing added into the task queue.
+ * Called right before inserting the task into the queue.
+*/
+void dart__tasking__instrument_task_add_to_queue(
+    dart_task_t *task,
+    dart_thread_t *thread) DART_INTERNAL;
     
 #endif /* DART_TASKING_INSTRUMENTATION_H_ */
