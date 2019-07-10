@@ -150,7 +150,6 @@ public:
     if(it_find != _region_data.end()) {
       update_halo_intern(it_find->second);
       dart_wait_local(&it_find->second.handle);
-      _halo_buffer.signal_finish(it_find->first);
     }
   }
 
@@ -182,7 +181,6 @@ public:
   void wait() {
     for(auto& region : _region_data) {
       dart_wait_local(&region.second.handle);
-      _halo_buffer.signal_finish(region.first);
     }
   }
 
@@ -197,7 +195,6 @@ public:
     }
 
     dart_wait_local(&it_find->second.handle);
-    _halo_buffer.signal_finish(it_find->first);
   }
 
   /**
