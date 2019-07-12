@@ -2161,25 +2161,43 @@ public:
   void pack() {
     region_index_t handle_pos = 0;
     for(auto r = 0; r < NumRegionsMax; ++r) {
-      if(!_halo_data[r].needs_signal) {
+      const auto& halo_data = _halo_data[r];
+      if(!halo_data.needs_signal) {
         continue;
       }
 
-      if(_halo_data[r].needs_packed) {
-        auto buffer_offset = _halo_buffer.lbegin() + _halo_data[r].halo_offset;
-        for(auto& block : _halo_data[r].block_data) {
+      if(halo_data.needs_packed) {
+        auto buffer_offset = _halo_buffer.lbegin() + halo_data.halo_offset;
+        for(auto& block : halo_data.block_data) {
           auto block_begin = _local_memory + block.offset;
           std::copy(block_begin, block_begin + block.blength, buffer_offset);
           buffer_offset += block.blength;
         }
       }
 
-      dash::internal::put_handle(_halo_data[r].neighbor_signal, &_signal, 1, &_signal_handles[handle_pos]);
+      dash::internal::put_handle(halo_data.neighbor_signal, &_signal, 1, &_signal_handles[handle_pos]);
       ++handle_pos;
-      //dash::internal::put_blocking(_halo_data[r].neighbor_signal, &signal, 1);
     }
 
     dart_waitall_local(_signal_handles.data(), _signal_handles.size());
+  }
+
+  void pack(region_index_t region_index) {
+    const auto& halo_data = _halo_data[region_index];
+    if(!halo_data.needs_signal) {
+      return;
+    }
+
+    if(halo_data.needs_packed) {
+      auto buffer_offset = _halo_buffer.lbegin() + halo_data.halo_offset;
+      for(auto& block : halo_data.block_data) {
+        auto block_begin = _local_memory + block.offset;
+        std::copy(block_begin, block_begin + block.blength, buffer_offset);
+        buffer_offset += block.blength;
+      }
+    }
+
+    dash::internal::put_blocking(halo_data.neighbor_signal, &_signal, 1);
   }
 
   dart_gptr_t buffer_region(region_index_t region_index) {
@@ -2187,20 +2205,23 @@ public:
   }
 
   void update_ready(region_index_t region_index) {
-    if(!_halo_data[region_index].needs_packed) {
+    if(!_halo_data[region_index].needs_signal) {
       return;
     }
 
-    volatile bool& region_signal = _signal_buffer.lbegin()[region_index];
-    while(!region_signal) {
+
+    bool signal = false;
+    while(!signal) {
+      dash::internal::get_blocking(_halo_data[region_index].local_signal, &signal, 1);
     }
-    region_signal = 0;
+    _signal_buffer.lbegin()[region_index] = 0;
   }
 
   void signal_reset(region_index_t region_index) {
-    if(!_halo_data[region_index].needs_packed) {
+    if(!_halo_data[region_index].needs_signal) {
       return;
     }
+
     auto region_signal = _signal_buffer.lbegin() + region_index;
     *region_signal = 0;
   }
@@ -2247,6 +2268,7 @@ private:
     bool                   needs_packed{false};
     bool                   needs_signal{false};
     dart_gptr_t            neighbor_signal{DART_GPTR_NULL};
+    dart_gptr_t            local_signal{DART_GPTR_NULL};
     dart_gptr_t            neighbor_halo{DART_GPTR_NULL};
     std::vector<BlockData> block_data{};
     signed_pattern_size_t  halo_offset{-1};
@@ -2286,24 +2308,34 @@ private:
       if(region == nullptr || region->size() == 0) {
         continue;
       }
-
-      _halo_data[r].needs_signal = true;
+      auto& halo_data = _halo_data[r];
+      halo_data.needs_signal = true;
       _signal_handles.push_back(nullptr);
 
+      auto signal_gptr = _signal_buffer.begin().dart_gptr();
+      // sets local signal gptr -> necessary for dart_get
+      halo_data.local_signal = signal_gptr;
+      halo_data.local_signal.unitid = _halo_block.pattern().team().myid();
+      halo_data.local_signal.addr_or_offs.offset = r * sizeof(bool);
+
+      // sets remote neighbor signal gptr -> necessary for dart_put
       auto remote_region_index = NumRegionsMax - 1 - r;
       auto neighbor_id = region->begin().dart_gptr().unitid;
-      auto neighbor_signal = _signal_buffer.begin() + (NumRegionsMax * neighbor_id + remote_region_index);
-      _halo_data[r].neighbor_signal = neighbor_signal.dart_gptr();
+      halo_data.neighbor_signal = signal_gptr;
+      halo_data.neighbor_signal.unitid = neighbor_id;
+      halo_data.neighbor_signal.addr_or_offs.offset = remote_region_index * sizeof(bool);
 
+      // no packing needed -> all elements are contiguous
       if(region->spec().relevant_dim() == FastestDim) {
-        _halo_data[r].neighbor_halo = region->begin().dart_gptr();
+        halo_data.neighbor_halo = region->begin().dart_gptr();
 
         continue;
       }
 
-      _halo_data[r].needs_packed = true;
+      // sets the remote neighbor gptr for the packed halo buffer
+      halo_data.needs_packed = true;
       auto neighbor_buffer = _halo_buffer.begin() + (_num_halo_elems * neighbor_id + _halo_data[remote_region_index].halo_offset);
-      _halo_data[r].neighbor_halo = neighbor_buffer.dart_gptr();
+      halo_data.neighbor_halo = neighbor_buffer.dart_gptr();
 
       // number of contiguous elements
       auto region_bnd = _halo_block.boundary_region(r);
@@ -2311,9 +2343,10 @@ private:
         DASH_LOG_ERROR("halo and boundary regions differ");
         continue;
       }
+
       pattern_size_t num_blocks      = 1;
       pattern_size_t num_elems_block = 1;
-      auto*          off =  _halo_buffer.lbegin() + _halo_data[r].halo_offset;
+      auto*          off =  _halo_buffer.lbegin() + halo_data.halo_offset;
       auto           it  = region_bnd->begin();
 
       if(MemoryArrange == ROW_MAJOR) {
@@ -2326,8 +2359,8 @@ private:
       num_blocks                 = region_size / num_elems_block;
 
       auto it_current = region_bnd->begin();
-      _halo_data[r].block_data.resize(num_blocks);
-      for(auto& block : _halo_data[r].block_data) {
+      halo_data.block_data.resize(num_blocks);
+      for(auto& block : halo_data.block_data) {
         block.offset  = it_current.lpos().index;
         block.blength = num_elems_block;
         it_current += num_elems_block;
