@@ -893,8 +893,6 @@ TEST_F(CopyTest, AsyncGlobalToLocalTest)
   }
 }
 
-#if 0
-// TODO
 TEST_F(CopyTest, AsyncAllToLocalVector)
 {
   // Copy all elements of global array into local vector:
@@ -910,18 +908,53 @@ TEST_F(CopyTest, AsyncAllToLocalVector)
   array.barrier();
 
   // Local vector to store copy of global array;
-  std::vector<int> local_vector;
+  int *local_copy = new int[num_elem_per_unit*dash::size()];
 
   // Copy values from global range to local memory.
   // All units copy first block, so unit 0 tests local-to-local copying.
   auto future = dash::copy_async(array.begin(),
-                                   array.end(),
-                                   local_vector.begin());
+                                 array.end(),
+                                 local_copy);
   auto local_dest_end = future.get();
 
-  EXPECT_EQ_U(num_elem_total, local_dest_end - local_vector.begin());
+  EXPECT_EQ_U(num_elem_total, local_dest_end - local_copy);
   for (size_t i = 0; i < array.size(); ++i) {
-    EXPECT_EQ_U(static_cast<int>(array[i]), local_vector[i]);
+    EXPECT_EQ_U(static_cast<int>(array[i]), local_copy[i]);
+  }
+  delete[] local_copy;
+}
+
+TEST_F(CopyTest, AsyncLocalVectorToAll)
+{
+  // Copy all elements of global array into local vector:
+  const int num_elem_per_unit = 20;
+  size_t num_elem_total       = _dash_size * num_elem_per_unit;
+
+  dash::Array<int> array(num_elem_total, dash::BLOCKED);
+
+  // Unit 0 copies values into the whole global array
+  if (dash::myid() == 0) {
+    int *local_copy = new int[num_elem_total];
+
+    // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
+    for (int unit = 0; unit < dash::size(); ++unit) {
+      for (auto l = 0; l < num_elem_per_unit; ++l) {
+        local_copy[unit*num_elem_per_unit + l] = ((unit + 1) * 1000) + l;
+      }
+    }
+
+    auto future = dash::copy_async(local_copy,
+                                  local_copy + num_elem_total,
+                                  array.begin());
+
+    auto global_dest_end = future.get();
+    EXPECT_EQ_U(num_elem_total, dash::distance(array.begin(), global_dest_end));
+    delete[] local_copy;
+  }
+  array.barrier();
+
+  // All units check for proper values on their side
+  for (auto l = 0; l < num_elem_per_unit; ++l) {
+    EXPECT_EQ_U(array.local[l], ((dash::myid() + 1) * 1000) + l);
   }
 }
-#endif
