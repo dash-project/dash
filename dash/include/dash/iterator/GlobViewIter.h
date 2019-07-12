@@ -92,6 +92,7 @@ public:
 
   typedef          PatternType                       pattern_type;
   typedef typename PatternType::index_type             index_type;
+  typedef typename PatternType::size_type               size_type;
 
 private:
   typedef GlobViewIter<
