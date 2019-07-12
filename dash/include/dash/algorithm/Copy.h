@@ -168,8 +168,10 @@ ValueType * copy_impl(
 
     // handle local data locally
     if (cur_in.is_local()) {
-      // if the chunk is less than a cache line don't bother post-poning it
-      if (l2_line_size > num_copy_elem*sizeof(ValueType)) {
+      // if the chunk is less than a cache line or if it is the only transfer
+      // don't bother post-poning it
+      if (num_copy_elem == num_elem_total ||
+          l2_line_size > num_copy_elem*sizeof(ValueType)) {
         std::memcpy(dest_ptr, cur_in.local(), num_copy_elem*sizeof(ValueType));
       } else {
         // larger chunks are handled later to allow overlap
@@ -264,10 +266,12 @@ GlobOutputIt copy_impl(
 
     // handle local data locally
     if (cur_out_first.is_local()) {
-      // if the chunk is less than a cache line don't bother post-poning it
       nonconst_value_type* dest_ptr =
                         const_cast<nonconst_value_type*>(cur_out_first.local());
-      if (l2_line_size > num_copy_elem*sizeof(ValueType)) {
+      // if the chunk is less than a cache line or if it is the only transfer
+      // don't bother post-poning it
+      if (num_elem_total == num_copy_elem ||
+          l2_line_size > num_copy_elem*sizeof(ValueType)) {
         std::memcpy(dest_ptr, src_ptr, num_copy_elem*sizeof(ValueType));
       } else {
         // larger chunks are handled later to allow overlap
