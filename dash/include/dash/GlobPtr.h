@@ -68,6 +68,8 @@ public:
 
   typedef GlobMemT memory_type;
 
+  typedef std::integral_constant<bool, false> has_view;
+
   /**
    * Rebind to a different type of pointer
    */
