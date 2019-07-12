@@ -94,6 +94,22 @@ dash::Future<ValueType *> copy_async(
 
 namespace internal {
 
+template<typename ValueType>
+struct local_copy_chunk {
+  ValueType *src;
+  ValueType *dest;
+  size_t     size;
+};
+
+template<typename ValueType>
+void
+do_local_copies(std::vector<local_copy_chunk<ValueType>>& chunks)
+{
+  for (auto& chunk : chunks) {
+    std::memcpy(chunk.dest, chunk.src, chunk.size*sizeof(ValueType));
+  }
+}
+
 // =========================================================================
 // Global to Local
 // =========================================================================
@@ -116,6 +132,8 @@ ValueType * copy_impl(
                  "in_last:",   end.pos(),
                  "out_first:", out_first);
   typedef typename GlobInputIt::pattern_type::size_type  size_type;
+  typedef typename GlobInputIt::value_type  value_type;
+  typedef typename std::remove_const<value_type>::type  nonconst_value_type;
   size_type num_elem_total = dash::distance(begin, end);
   if (num_elem_total <= 0) {
     DASH_LOG_TRACE("dash::copy_impl", "input range empty");
@@ -129,26 +147,50 @@ ValueType * copy_impl(
 
   ContiguousRangeSet<GlobInputIt> range_set{begin, end};
 
+  std::vector<local_copy_chunk<nonconst_value_type>> local_chunks;
+
+  dash::util::UnitLocality uloc;
+  // Size of L2 data cache line:
+  const int l2_line_size = uloc.hwinfo().cache_line_sizes[1];
+
   //
   // Copy elements from every unit:
   //
 
   for (auto range : range_set) {
 
-    auto cur_in_first  = range.first;
+    auto cur_in        = range.first;
     auto num_copy_elem = range.second;
 
     DASH_ASSERT_GT(num_copy_elem, 0,
                     "Number of element to copy is 0");
     auto dest_ptr = out_first + num_elem_copied;
-    auto src_gptr = cur_in_first.dart_gptr();
-    dart_handle_t handle;
-    dash::internal::get_handle(src_gptr, dest_ptr, num_copy_elem, &handle);
-    num_elem_copied += num_copy_elem;
-    if (handle != DART_HANDLE_NULL) {
-      handles.push_back(handle);
+
+    // handle local data locally
+    if (cur_in.is_local()) {
+      // if the chunk is less than a cache line don't bother post-poning it
+      if (l2_line_size > num_copy_elem*sizeof(ValueType)) {
+        std::memcpy(dest_ptr, cur_in.local(), num_copy_elem*sizeof(ValueType));
+      } else {
+        // larger chunks are handled later to allow overlap
+        local_chunks.push_back({cur_in.local(), dest_ptr, num_copy_elem});
+      }
+    } else {
+      auto src_gptr = cur_in.dart_gptr();
+
+      DASH_LOG_TRACE("dash::copy_impl", "dest_ptr", dest_ptr,
+                    "src_gptr", src_gptr, "num_copy_elem", num_copy_elem);
+
+      dart_handle_t handle;
+      dash::internal::get_handle(src_gptr, dest_ptr, num_copy_elem, &handle);
+      if (handle != DART_HANDLE_NULL) {
+        handles.push_back(handle);
+      }
     }
+    num_elem_copied += num_copy_elem;
   }
+
+  do_local_copies(local_chunks);
 
   DASH_ASSERT_EQ(num_elem_copied, num_elem_total,
                  "Failed to find all contiguous subranges in range");
@@ -181,6 +223,8 @@ GlobOutputIt copy_impl(
                  "in_last:",   end,
                  "out_first:", out_first);
   typedef typename GlobOutputIt::size_type  size_type;
+  typedef typename GlobOutputIt::value_type  value_type;
+  typedef typename std::remove_const<value_type>::type  nonconst_value_type;
   size_type num_elem_total = dash::distance(begin, end);
   if (num_elem_total <= 0) {
     DASH_LOG_TRACE("dash::copy_impl", "input range empty");
@@ -197,26 +241,52 @@ GlobOutputIt copy_impl(
 
   ContiguousRangeSet<GlobOutputIt> range_set{out_first, out_last};
 
+  std::vector<local_copy_chunk<nonconst_value_type>> local_chunks;
+
+  dash::util::UnitLocality uloc;
+  // Size of L2 data cache line:
+  const int l2_line_size = uloc.hwinfo().cache_line_sizes[1];
+
+  nonconst_value_type* in_first = const_cast<nonconst_value_type*>(begin);
+
   //
-  // Copy elements from every unit:
+  // Copy elements to every unit:
   //
 
   for (auto range : range_set) {
 
-    auto cur_in_first  = range.first;
+    auto cur_out_first  = range.first;
     auto num_copy_elem = range.second;
 
     DASH_ASSERT_GT(num_copy_elem, 0,
-                    "Number of element to copy is 0");
-    auto src_ptr  = begin + num_elem_copied;
-    auto dst_gptr = out_first.dart_gptr();
-    dart_handle_t handle;
-    dash::internal::put_handle(dst_gptr, src_ptr, num_copy_elem, &handle);
-    num_elem_copied += num_copy_elem;
-    if (handle != DART_HANDLE_NULL) {
-      handles.push_back(handle);
+                    "Number of elements to copy is 0");
+    auto src_ptr  = in_first + num_elem_copied;
+
+    // handle local data locally
+    if (cur_out_first.is_local()) {
+      // if the chunk is less than a cache line don't bother post-poning it
+      nonconst_value_type* dest_ptr =
+                        const_cast<nonconst_value_type*>(cur_out_first.local());
+      if (l2_line_size > num_copy_elem*sizeof(ValueType)) {
+        std::memcpy(dest_ptr, src_ptr, num_copy_elem*sizeof(ValueType));
+      } else {
+        // larger chunks are handled later to allow overlap
+        local_chunks.push_back({src_ptr, dest_ptr, num_copy_elem});
+      }
+    } else {
+      auto dst_gptr = cur_out_first.dart_gptr();
+      DASH_LOG_TRACE("dash::copy_impl", "src_ptr", src_ptr,
+                    "dst_gptr", dst_gptr, "num_copy_elem", num_copy_elem);
+      dart_handle_t handle;
+      dash::internal::put_handle(dst_gptr, src_ptr, num_copy_elem, &handle);
+      if (handle != DART_HANDLE_NULL) {
+        handles.push_back(handle);
+      }
     }
+    num_elem_copied += num_copy_elem;
   }
+
+  do_local_copies(local_chunks);
 
   DASH_ASSERT_EQ(num_elem_copied, num_elem_total,
                  "Failed to find all contiguous subranges in range");
@@ -259,7 +329,7 @@ dash::Future<ValueType *> copy_async(
 
   if (handles->empty()) {
     DASH_LOG_TRACE("dash::copy_async", "all transfers completed");
-    return dash::Future<ValueType *>(out_first);
+    return dash::Future<ValueType *>(out_last);
   }
 
   dash::Future<ValueType *> fut_result(
@@ -342,7 +412,6 @@ ValueType * copy(
 
   std::vector<dart_handle_t> handles;
 
-  DASH_LOG_TRACE("dash::copy", "no local subrange");
   // All elements in input range are remote
   auto out_last = dash::internal::copy_impl(in_first,
                                             in_last,
