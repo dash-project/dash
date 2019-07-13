@@ -11,7 +11,7 @@ namespace internal {
 /**
  * Iterator used to find consecutive memory ranges across a global memory range.
  */
-template<typename IteratorT, bool HasView = IteratorT::has_view::value>
+template<typename IteratorT>
 struct ContiguousRangeIterator {
 
 public:
@@ -22,133 +22,7 @@ public:
   using size_type    = typename pattern_type::size_type;
   using value_type   = std::pair<IteratorT, size_type>;
 
-  using Self_t = ContiguousRangeIterator<IteratorT, HasView>;
-
-  DASH_CONSTEXPR ContiguousRangeIterator() = default;
-
-  ContiguousRangeIterator(IteratorT begin, IteratorT end)
-  : m_pos(begin),
-    m_end(end)
-  {
-    m_num_copy_elems = next_range().second;
-  }
-
-  Self_t&
-  operator++() {
-    auto range = next_range();
-    m_pos            = range.first;
-    m_num_copy_elems = range.second;
-    return *this;
-  }
-
-  std::pair<IteratorT, size_type>
-  operator*() {
-    return std::make_pair(m_pos, m_num_copy_elems);
-  }
-
-  DASH_CONSTEXPR bool operator<(const Self_t& other) const DASH_NOEXCEPT
-  {
-    return (m_pos < other.m_pos);
-  }
-
-  DASH_CONSTEXPR bool operator<=(const Self_t& other) const DASH_NOEXCEPT
-  {
-    return (m_pos <= other.m_pos);
-  }
-
-  DASH_CONSTEXPR bool operator>(const Self_t& other) const DASH_NOEXCEPT
-  {
-    return (m_pos > other.m_pos);
-  }
-
-  DASH_CONSTEXPR bool operator>=(const Self_t& other) const DASH_NOEXCEPT
-  {
-    return (m_pos >= other.m_pos);
-  }
-
-  DASH_CONSTEXPR bool operator==(const Self_t& other) const DASH_NOEXCEPT
-  {
-    return m_pos == other.m_pos;
-  }
-
-  DASH_CONSTEXPR bool operator!=(const Self_t& other) const DASH_NOEXCEPT
-  {
-    return m_pos != other.m_pos;
-  }
-
-
-private:
-
-  std::pair<IteratorT, size_type>
-  next_range() const {
-    auto cur_first = m_pos + m_num_copy_elems;
-
-    if (cur_first == m_end) {
-      return std::make_pair(m_end, 0);
-    }
-
-    auto cur_last  = cur_first;
-    size_type num_copy_elem = 0;
-
-    DASH_LOG_TRACE_VAR("next_range", m_num_copy_elems);
-    DASH_LOG_TRACE_VAR("next_range", m_pos);
-    DASH_LOG_TRACE_VAR("next_range", m_end);
-    DASH_LOG_TRACE_VAR("next_range", cur_first);
-
-    const auto& pattern = cur_last.pattern();
-
-    // unit and local index of first element in current range segment:
-    auto local_pos      = pattern.local(static_cast<index_type>(
-                                            cur_first.pos()));
-    auto last_local_pos = local_pos;
-    do {
-      ++cur_last;
-      ++num_copy_elem;
-      if (m_end == cur_last) {
-        break;
-      }
-      auto pos = pattern.local(static_cast<index_type>(
-                                            cur_last.pos()));
-      DASH_LOG_TRACE_VAR("next_range", pos.unit);
-      DASH_LOG_TRACE_VAR("next_range", pos.index);
-      DASH_LOG_TRACE_VAR("next_range", cur_last);
-      if (pos.unit  != local_pos.unit ||
-          pos.index != (last_local_pos.index + 1)) {
-        break;
-      }
-      last_local_pos = pos;
-    } while (1);
-    DASH_LOG_TRACE("next_range: num_copy_elem ", num_copy_elem);
-    return std::make_pair(cur_first, num_copy_elem);
-  }
-
-
-private:
-
-  /// Start of the current contiguous range
-  IteratorT m_pos;
-  /// End position of the total range
-  const IteratorT m_end;
-  /// Number of elements in current contiguous range
-  size_type m_num_copy_elems = 0;
-};
-
-
-/**
- * Specialization for non-view iterators.
- */
-template<typename IteratorT>
-struct ContiguousRangeIterator<IteratorT, false> {
-
-public:
-  /// Iterator Traits
-  using iterator_category = std::forward_iterator_tag;
-  using pattern_type = typename IteratorT::pattern_type;
-  using index_type   = typename pattern_type::index_type;
-  using size_type    = typename pattern_type::size_type;
-  using value_type   = std::pair<IteratorT, size_type>;
-
-  using Self_t = ContiguousRangeIterator<IteratorT, false>;
+  using Self_t = ContiguousRangeIterator<IteratorT>;
 
   DASH_CONSTEXPR ContiguousRangeIterator() = default;
 
@@ -217,7 +91,6 @@ private:
     constexpr const int ndim = pattern_type::ndim();
     const auto& pattern = m_pos.pattern();
     const int fast_dim = (pattern.memory_order() == dash::ROW_MAJOR) ? ndim - 1 : 0;
-    const size_type blocksize_d = pattern.blocksize(fast_dim);
 
 
     auto lpos = m_pos.lpos();
@@ -225,22 +98,19 @@ private:
 
     do {
 
-      size_type blocksize = blocksize_d;
-
       /* Determine coords and offset in first block */
       auto global_coords = pattern.coords(cur_last.gpos());
 
-      // check in which block we currently are
-      auto block_coord_d   = global_coords[fast_dim] / blocksize;
-      auto phase_d         = global_coords[fast_dim] % blocksize;
+      auto block_idx = pattern.block_at(global_coords);
 
-      // check for underful blocks at the end of the dimension
-      if (block_coord_d == (pattern.blockspec().extent(fast_dim) - 1)) {
-        blocksize = pattern.extent(fast_dim) - (block_coord_d * blocksize_d);
-      }
+      auto block_viewspec = pattern.block(block_idx);
+
+      auto phase_d = global_coords[fast_dim] - block_viewspec.offset(fast_dim);
+
+      auto blocksize_d = block_viewspec.extent(fast_dim);
 
       // the number of elements to copy is the blocksize minus the offset in the block
-      size_type num_copy_block_elem = blocksize - phase_d;
+      size_type num_copy_block_elem = blocksize_d - phase_d;
 
       // don't try to copy too many elements
       size_type elems_left = dash::distance(cur_last, m_end);
@@ -286,7 +156,7 @@ private:
  * Specialization for GlobPtr.
  */
 template<typename ValueType, typename GlobMemT>
-struct ContiguousRangeIterator<dash::GlobPtr<ValueType, GlobMemT>, false> {
+struct ContiguousRangeIterator<dash::GlobPtr<ValueType, GlobMemT>> {
 
 public:
   /// Iterator Traits
@@ -296,7 +166,7 @@ public:
   using size_type    = typename pointer_type::size_type;
   using value_type   = std::pair<pointer_type, size_type>;
 
-  using Self_t = ContiguousRangeIterator<pointer_type, false>;
+  using Self_t = ContiguousRangeIterator<pointer_type>;
 
   DASH_CONSTEXPR ContiguousRangeIterator() = default;
 
