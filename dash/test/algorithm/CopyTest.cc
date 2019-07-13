@@ -3,6 +3,7 @@
 
 #include <dash/Array.h>
 #include <dash/Matrix.h>
+#include <dash/algorithm/Fill.h>
 
 #include <dash/algorithm/Copy.h>
 #include <dash/pattern/BlockPattern1D.h>
@@ -956,5 +957,65 @@ TEST_F(CopyTest, AsyncLocalVectorToAll)
   // All units check for proper values on their side
   for (auto l = 0; l < num_elem_per_unit; ++l) {
     EXPECT_EQ_U(array.local[l], ((dash::myid() + 1) * 1000) + l);
+  }
+}
+
+TEST_F(CopyTest, MatrixToSmallerTeam)
+{
+  if (_dash_size < 2) {
+    SKIP_TEST_MSG("At least 2 units required for this test.");
+  }
+
+  using TeamSpecT = dash::TeamSpec<2>;
+  using MatrixT = dash::NArray<double, 2>;
+  using PatternT = typename MatrixT::pattern_type;
+  using SizeSpecT = dash::SizeSpec<2>;
+  using DistSpecT = dash::DistributionSpec<2>;
+
+  auto& team_all = dash::Team::All();
+  TeamSpecT team_all_spec(team_all.size(), 1);
+  team_all_spec.balance_extents();
+
+  auto size_spec = SizeSpecT(4*team_all_spec.extent(1),
+                             4*team_all_spec.extent(1));
+  auto dist_spec = DistSpecT(dash::BLOCKED, dash::BLOCKED);
+
+  MatrixT grid_more(size_spec, dist_spec, team_all, team_all_spec);
+  dash::fill(grid_more.begin(), grid_more.end(), (double)team_all.myid());
+  team_all.barrier();
+
+  // create a smaller team
+  dash::Team& team_fewer= team_all.split(2);
+  team_all.barrier();
+  if (!team_fewer.is_null() && 0 == team_fewer.position()) {
+    TeamSpecT team_fewer_spec(team_fewer.size(), 1);
+    team_fewer_spec.balance_extents();
+
+    MatrixT grid_fewer(size_spec, dist_spec, team_fewer, team_fewer_spec);
+    dash::fill(grid_fewer.begin(), grid_fewer.end(), -1.0);
+
+    auto lextents= grid_fewer.pattern().local_extents();
+
+    for (uint32_t y = 0; y < lextents[0]; ++y) {
+      auto gcorner_fewer = grid_fewer.pattern().global({y, 0});
+      auto gbegin = grid_more.begin() + grid_more.pattern().global_at(gcorner_fewer);
+
+      auto loffset = grid_fewer.pattern().local_at({y, 0});
+      dash::copy(gbegin, gbegin + lextents[1],
+                 grid_fewer.lbegin() + loffset);
+    }
+    team_fewer.barrier();
+
+    if (team_fewer.myid() == 0) {
+      auto gextents = grid_fewer.extents();
+      for (uint32_t y = 0; y < gextents[0]; ++y) {
+        for (uint32_t x = 0; x < gextents[1]; ++x) {
+          ASSERT_EQ_U(grid_more(y, x), grid_fewer(y, x));
+        }
+      }
+    }
+
+    team_fewer.barrier();
+
   }
 }
