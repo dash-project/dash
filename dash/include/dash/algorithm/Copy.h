@@ -95,14 +95,19 @@ namespace internal {
 
 template<typename InputValueType, typename OutputValueType>
 struct local_copy_chunk {
-  const InputValueType  *src;
-        OutputValueType *dest;
-  const size_t           size;
+  using nonconst_input_value_type  = typename std::remove_const<InputValueType>::type;
+  using nonconst_output_value_type = typename std::remove_const<OutputValueType>::type;
+
+  const nonconst_input_value_type  *src;
+        nonconst_output_value_type *dest;
+  const size_t                      size;
 };
 
 template<typename InputValueType, typename OutputValueType>
-void do_local_copies(
-  std::vector<local_copy_chunk<InputValueType, OutputValueType>>& chunks)
+using local_copy_chunks = std::vector<local_copy_chunk<InputValueType, OutputValueType>>;
+
+template<typename InputValueType, typename OutputValueType>
+void do_local_copies(local_copy_chunks<InputValueType, OutputValueType>& chunks)
 {
   for (auto& chunk : chunks) {
     std::copy(chunk.src, chunk.src + chunk.size, chunk.dest);
@@ -166,7 +171,7 @@ ValueType * copy_impl(
 
   ContiguousRangeSet<GlobInputIt> range_set{begin, end};
 
-  std::vector<local_copy_chunk<input_value_type, output_value_type>> local_chunks;
+  local_copy_chunks<input_value_type, output_value_type> local_chunks;
 
   //
   // Copy elements from every unit:
@@ -266,7 +271,7 @@ GlobOutputIt copy_impl(
 
   ContiguousRangeSet<GlobOutputIt> range_set{out_first, out_last};
 
-  std::vector<local_copy_chunk<input_value_type, output_value_type>> local_chunks;
+  local_copy_chunks<input_value_type, output_value_type> local_chunks;
 
   auto in_first = begin;
 
