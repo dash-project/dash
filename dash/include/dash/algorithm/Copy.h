@@ -236,7 +236,6 @@ GlobOutputIt copy_impl(
                  "out_first:", out_first);
   typedef typename GlobOutputIt::size_type  size_type;
   typedef typename GlobOutputIt::value_type  value_type;
-  typedef typename std::remove_const<value_type>::type  nonconst_value_type;
   const size_type num_elem_total = dash::distance(begin, end);
   if (num_elem_total <= 0) {
     DASH_LOG_TRACE("dash::internal::copy_impl", "input range empty");
@@ -253,9 +252,9 @@ GlobOutputIt copy_impl(
 
   ContiguousRangeSet<GlobOutputIt> range_set{out_first, out_last};
 
-  std::vector<local_copy_chunk<nonconst_value_type>> local_chunks;
+  std::vector<local_copy_chunk<value_type>> local_chunks;
 
-  nonconst_value_type* in_first = const_cast<nonconst_value_type*>(begin);
+  auto in_first = begin;
 
   //
   // Copy elements to every unit:
@@ -272,8 +271,7 @@ GlobOutputIt copy_impl(
 
     // handle local data locally
     if (cur_out_first.is_local()) {
-      nonconst_value_type* dest_ptr =
-                        const_cast<nonconst_value_type*>(cur_out_first.local());
+      value_type* dest_ptr = cur_out_first.local();
       // if the chunk is less than a page or if it is the only transfer
       // don't bother post-poning it
       if (num_elem_total == num_copy_elem ||
@@ -281,8 +279,7 @@ GlobOutputIt copy_impl(
         std::copy(src_ptr, src_ptr + num_copy_elem, dest_ptr);
       } else {
         // larger chunks are handled later to allow overlap
-        local_copy_chunk<nonconst_value_type> chunk{src_ptr, dest_ptr, num_copy_elem};
-        local_chunks.push_back(chunk);
+        local_chunks.push_back({src_ptr, dest_ptr, num_copy_elem});
       }
     } else {
       auto dst_gptr = cur_out_first.dart_gptr();
