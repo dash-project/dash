@@ -13,6 +13,16 @@
 #include <memory>
 #include <vector>
 
+
+/*
+ * Control whether dash::copy uses handles to wait for outstanding transfers
+ * to complete. If set to 0, dash::copy will use flush instead to ensure
+ * completion.
+ */
+#if !defined(DASH_COPY_USE_HANDLES)
+#define DASH_COPY_USE_HANDLES 1
+#endif // !defined(DASH_COPY_USE_HANDLES)
+
 namespace dash {
 
 #ifdef DOXYGEN
@@ -123,7 +133,7 @@ ValueType * copy_impl(
   GlobInputIt                  begin,
   GlobInputIt                  end,
   ValueType                  * out_first,
-  std::vector<dart_handle_t> & handles)
+  std::vector<dart_handle_t> * handles)
 {
   DASH_LOG_TRACE("dash::internal::copy_impl() global -> local",
                  "in_first:",  begin.pos(),
@@ -179,10 +189,14 @@ ValueType * copy_impl(
       DASH_LOG_TRACE("dash::copy_impl", "dest_ptr", dest_ptr,
                     "src_gptr", src_gptr, "num_copy_elem", num_copy_elem);
 
-      dart_handle_t handle;
-      dash::internal::get_handle(src_gptr, dest_ptr, num_copy_elem, &handle);
-      if (handle != DART_HANDLE_NULL) {
-        handles.push_back(handle);
+      if (handles != nullptr) {
+        dart_handle_t handle;
+        dash::internal::get_handle(src_gptr, dest_ptr, num_copy_elem, &handle);
+        if (handle != DART_HANDLE_NULL) {
+          handles->push_back(handle);
+        }
+      } else {
+        dash::internal::get(src_gptr, dest_ptr, num_copy_elem);
       }
     }
     num_elem_copied += num_copy_elem;
@@ -213,7 +227,7 @@ GlobOutputIt copy_impl(
   ValueType                  * begin,
   ValueType                  * end,
   GlobOutputIt                 out_first,
-  std::vector<dart_handle_t> & handles)
+  std::vector<dart_handle_t> * handles)
 {
 
   DASH_LOG_TRACE("dash::copy_impl() local -> global",
@@ -274,10 +288,14 @@ GlobOutputIt copy_impl(
       auto dst_gptr = cur_out_first.dart_gptr();
       DASH_LOG_TRACE("dash::copy_impl", "src_ptr", src_ptr,
                     "dst_gptr", dst_gptr, "num_copy_elem", num_copy_elem);
-      dart_handle_t handle;
-      dash::internal::put_handle(dst_gptr, src_ptr, num_copy_elem, &handle);
-      if (handle != DART_HANDLE_NULL) {
-        handles.push_back(handle);
+      if (handles != nullptr) {
+        dart_handle_t handle;
+        dash::internal::put_handle(dst_gptr, src_ptr, num_copy_elem, &handle);
+        if (handle != DART_HANDLE_NULL) {
+          handles->push_back(handle);
+        }
+      } else {
+        dash::internal::put(dst_gptr, src_ptr, num_copy_elem);
       }
     }
     num_elem_copied += num_copy_elem;
@@ -323,7 +341,7 @@ dash::Future<ValueType *> copy_async(
   auto handles = std::make_shared<std::vector<dart_handle_t>>();
 
   auto out_last = dash::internal::copy_impl(in_first, in_last,
-                                            out_first, *handles);
+                                            out_first, handles.get());
 
   if (handles->empty()) {
     DASH_LOG_TRACE("dash::copy_async", "all transfers completed");
@@ -405,18 +423,25 @@ ValueType * copy(
     return out_first;
   }
 
+#if DASH_COPY_USE_HANDLES
   std::vector<dart_handle_t> handles;
-
   auto out_last = dash::internal::copy_impl(in_first,
                                             in_last,
                                             out_first,
-                                            handles);
-
+                                            &handles);
   if (!handles.empty()) {
     DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
                   "num_handles: ", handles.size());
     dart_waitall_local(handles.data(), handles.size());
   }
+
+#else // DASH_COPY_USE_HANDLES
+  auto out_last = dash::internal::copy_impl(in_first,
+                                            in_last,
+                                            out_first,
+                                            nullptr);
+  dart_flush_local(in_first.dart_gptr());
+#endif // DASH_COPY_USE_HANDLES
 
   DASH_LOG_TRACE("dash::copy >", "finished,",
                  "out_last:", out_last);
@@ -450,7 +475,7 @@ dash::Future<GlobOutputIt> copy_async(
   auto out_last = dash::internal::copy_impl(in_first,
                                             in_last,
                                             out_first,
-                                            *handles);
+                                            handles.get());
 
   if (handles->empty()) {
     return dash::Future<GlobOutputIt>(out_last);
@@ -519,11 +544,13 @@ GlobOutputIt copy(
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, local to global");
   // handles to wait on at the end
+
+#if DASH_COPY_USE_HANDLES
   std::vector<dart_handle_t> handles;
   auto out_last = dash::internal::copy_impl(in_first,
                                             in_last,
                                             out_first,
-                                            handles);
+                                            &handles);
 
   if (!handles.empty()) {
     DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
@@ -531,6 +558,13 @@ GlobOutputIt copy(
     dart_waitall(handles.data(), handles.size());
   }
 
+#else
+  auto out_last = dash::internal::copy_impl(in_first,
+                                            in_last,
+                                            out_first,
+                                            nullptr);
+  dart_flush(out_first.dart_gptr());
+#endif
   return out_last;
 }
 
