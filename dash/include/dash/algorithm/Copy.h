@@ -106,7 +106,7 @@ void
 do_local_copies(std::vector<local_copy_chunk<ValueType>>& chunks)
 {
   for (auto& chunk : chunks) {
-    std::memcpy(chunk.dest, chunk.src, chunk.size*sizeof(ValueType));
+    std::copy(chunk.src, chunk.src + chunk.size, chunk.dest);
   }
 }
 
@@ -170,9 +170,10 @@ ValueType * copy_impl(
     if (cur_in.is_local()) {
       // if the chunk is less than a cache line or if it is the only transfer
       // don't bother post-poning it
+      auto src_ptr = cur_in.local();
       if (num_copy_elem == num_elem_total ||
           l2_line_size > num_copy_elem*sizeof(ValueType)) {
-        std::memcpy(dest_ptr, cur_in.local(), num_copy_elem*sizeof(ValueType));
+        std::copy(src_ptr, src_ptr + num_copy_elem, dest_ptr);
       } else {
         // larger chunks are handled later to allow overlap
         local_chunks.push_back({cur_in.local(), dest_ptr, num_copy_elem});
@@ -272,7 +273,7 @@ GlobOutputIt copy_impl(
       // don't bother post-poning it
       if (num_elem_total == num_copy_elem ||
           l2_line_size > num_copy_elem*sizeof(ValueType)) {
-        std::memcpy(dest_ptr, src_ptr, num_copy_elem*sizeof(ValueType));
+        std::copy(src_ptr, src_ptr + num_copy_elem, dest_ptr);
       } else {
         // larger chunks are handled later to allow overlap
         local_chunks.push_back({src_ptr, dest_ptr, num_copy_elem});
