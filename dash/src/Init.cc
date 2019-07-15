@@ -29,8 +29,6 @@ void wait_breakpoint()
 
 void dash::init(int * argc, char ** *argv)
 {
-  //printf(">>>>>>> First line of DASH::INIT <<<<< \n");
-
   DASH_LOG_DEBUG("dash::init()");
 
   DASH_LOG_DEBUG("dash::init", "dash::util::Config::init()");
@@ -47,7 +45,6 @@ void dash::init(int * argc, char ** *argv)
                   "DART does not support multi-threaded access.");
   }
 #else
-  //printf(">>>>>>> Outside of dart_init <<<<< \n");
   DASH_LOG_DEBUG("dash::init", "dart_init()");
   dart_init(argc, argv);
 #endif
@@ -70,7 +67,9 @@ void dash::init(int * argc, char ** *argv)
   }
 
   DASH_LOG_DEBUG("dash::init", "dash::util::Locality::init()");
+#ifdef WITHLOCALITY
   dash::util::Locality::init();
+#endif
   DASH_LOG_DEBUG("dash::init >");
 }
 

@@ -4,7 +4,7 @@
 #include <dash/dart/gaspi/dart_translation.h>
 #include <dash/dart/gaspi/dart_communication_priv.h>
 
-#include <dash/dart/base/locality.h>
+#include <dash/dart/locality/locality.h>
 
 #include <limits.h>
 
@@ -103,6 +103,11 @@ dart_ret_t dart_init(int *argc, char ***argv)
     /*
      * non-collective memory initialization
      */
+
+    
+    _dart_initialized = 1;
+    DART_LOG_DEBUG("dart_init: put_completion_src_seg createt, put_completion_dst_seg bound to put_completion_dst_storage");
+
     dart_localpool = dart_buddy_new (DART_LOCAL_ALLOC_SIZE);
 
     DART_CHECK_ERROR(gaspi_segment_create(dart_mempool_seg_localalloc,
@@ -142,12 +147,15 @@ dart_ret_t dart_init(int *argc, char ***argv)
     dart_fallback_seg_is_allocated = false;
 
     DART_LOG_DEBUG("dart_init: communication backend initialization finished");
-    _dart_initialized = 1;
-
-    dart__base__locality__init();
-
-    DART_LOG_DEBUG("dart_init > initialization finished");
     _dart_initialized = 2;
+
+// switch on off
+#ifdef WITHLOCALITY
+    DART_LOG_DEBUG("ENABELING DART BASE LOCALITY");
+    dart__base__locality__init();
+#endif
+    DART_LOG_DEBUG("dart_init > initialization finished");
+    _dart_initialized = 3;
 
     return DART_OK;
 }
@@ -183,11 +191,14 @@ dart_ret_t dart_exit()
     DART_CHECK_ERROR(seg_stack_finish(&pool_dart_seg_ids));
 
     datatype_fini();
-    printf("dart_exit: finishes dart");
-   if(_init_by_dart)
-   {
+#ifdef WITHLOCALITY
+    dart__base__locality__finalize();
+#endif
+    printf("dart_exit: finishes dart\n");
+    if(_init_by_dart)
+    {
        DART_CHECK_ERROR(gaspi_proc_term(GASPI_BLOCK));
-   }
+    }
     return DART_OK;
 }
 
