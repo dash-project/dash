@@ -3,9 +3,8 @@
 
 #include <dash/Future.h>
 #include <dash/Iterator.h>
+#include <dash/internal/Config.h>
 #include <dash/iterator/internal/ContiguousRange.h>
-
-#include <dash/algorithm/LocalRange.h>
 
 #include <dash/dart/if/dart_communication.h>
 
@@ -149,10 +148,6 @@ ValueType * copy_impl(
 
   std::vector<local_copy_chunk<nonconst_value_type>> local_chunks;
 
-  dash::util::UnitLocality uloc;
-  // Size of L2 data cache line:
-  const int l2_line_size = uloc.hwinfo().cache_line_sizes[1];
-
   //
   // Copy elements from every unit:
   //
@@ -168,11 +163,11 @@ ValueType * copy_impl(
 
     // handle local data locally
     if (cur_in.is_local()) {
-      // if the chunk is less than a cache line or if it is the only transfer
+      // if the chunk is less than a page or if it is the only transfer
       // don't bother post-poning it
       auto src_ptr = cur_in.local();
-      if (num_copy_elem == num_elem_total ||
-          l2_line_size > num_copy_elem*sizeof(ValueType)) {
+      if (num_elem_total == num_copy_elem ||
+          DASH__ARCH__PAGE_SIZE > num_copy_elem*sizeof(ValueType)) {
         std::copy(src_ptr, src_ptr + num_copy_elem, dest_ptr);
       } else {
         // larger chunks are handled later to allow overlap
@@ -246,10 +241,6 @@ GlobOutputIt copy_impl(
 
   std::vector<local_copy_chunk<nonconst_value_type>> local_chunks;
 
-  dash::util::UnitLocality uloc;
-  // Size of L2 data cache line:
-  const int l2_line_size = uloc.hwinfo().cache_line_sizes[1];
-
   nonconst_value_type* in_first = const_cast<nonconst_value_type*>(begin);
 
   //
@@ -269,10 +260,10 @@ GlobOutputIt copy_impl(
     if (cur_out_first.is_local()) {
       nonconst_value_type* dest_ptr =
                         const_cast<nonconst_value_type*>(cur_out_first.local());
-      // if the chunk is less than a cache line or if it is the only transfer
+      // if the chunk is less than a page or if it is the only transfer
       // don't bother post-poning it
       if (num_elem_total == num_copy_elem ||
-          l2_line_size > num_copy_elem*sizeof(ValueType)) {
+          DASH__ARCH__PAGE_SIZE > num_copy_elem*sizeof(ValueType)) {
         std::copy(src_ptr, src_ptr + num_copy_elem, dest_ptr);
       } else {
         // larger chunks are handled later to allow overlap
@@ -401,13 +392,6 @@ ValueType * copy(
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
-  const auto & team = in_first.team();
-  dash::util::UnitLocality uloc(team, team.myid());
-  // Size of L2 data cache line:
-  int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
-  bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
-                      <= l2_line_size;
-
   DASH_LOG_TRACE("dash::copy()", "blocking, global to local");
 
   // Check if part of the input range is local:
