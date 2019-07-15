@@ -105,9 +105,9 @@ namespace internal {
 
 template<typename ValueType>
 struct local_copy_chunk {
-  ValueType *src;
-  ValueType *dest;
-  size_t     size;
+  const ValueType *src;
+        ValueType *dest;
+  const size_t     size;
 };
 
 template<typename ValueType>
