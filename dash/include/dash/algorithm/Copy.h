@@ -13,16 +13,6 @@
 #include <memory>
 #include <vector>
 
-
-/*
- * Control whether dash::copy uses handles to wait for outstanding transfers
- * to complete. If set to 0, dash::copy will use flush instead to ensure
- * completion.
- */
-#if !defined(DASH_COPY_USE_HANDLES)
-#define DASH_COPY_USE_HANDLES 1
-#endif // !defined(DASH_COPY_USE_HANDLES)
-
 namespace dash {
 
 #ifdef DOXYGEN
@@ -427,7 +417,8 @@ dash::Future<ValueType *> copy_async(
  */
 template <
   typename ValueType,
-  class    GlobInputIt >
+  class    GlobInputIt,
+  bool     UseHandles = true >
 ValueType * copy(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
@@ -444,25 +435,27 @@ ValueType * copy(
     return out_first;
   }
 
-#if DASH_COPY_USE_HANDLES
-  std::vector<dart_handle_t> handles;
-  auto out_last = dash::internal::copy_impl(in_first,
-                                            in_last,
-                                            out_first,
-                                            &handles);
-  if (!handles.empty()) {
-    DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
-                  "num_handles: ", handles.size());
-    dart_waitall_local(handles.data(), handles.size());
-  }
+  ValueType *out_last;
+  if (UseHandles) {
+    std::vector<dart_handle_t> handles;
+    out_last = dash::internal::copy_impl(in_first,
+                                         in_last,
+                                         out_first,
+                                         &handles);
+    if (!handles.empty()) {
+      DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
+                    "num_handles: ", handles.size());
+      dart_waitall_local(handles.data(), handles.size());
+    }
 
-#else // DASH_COPY_USE_HANDLES
-  auto out_last = dash::internal::copy_impl(in_first,
-                                            in_last,
-                                            out_first,
-                                            nullptr);
-  dart_flush_local(in_first.dart_gptr());
-#endif // DASH_COPY_USE_HANDLES
+  } else {
+    out_last = dash::internal::copy_impl(in_first,
+                                         in_last,
+                                         out_first,
+                                         nullptr);
+    DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete");
+    dart_flush_local(in_first.dart_gptr());
+  }
 
   DASH_LOG_TRACE("dash::copy >", "finished,",
                  "out_last:", out_last);
@@ -481,7 +474,7 @@ ValueType * copy(
  */
 template <
   typename ValueType,
-  class GlobOutputIt >
+  typename GlobOutputIt >
 dash::Future<GlobOutputIt> copy_async(
   ValueType    * in_first,
   ValueType    * in_last,
@@ -557,7 +550,8 @@ dash::Future<GlobOutputIt> copy_async(
  */
 template <
   typename ValueType,
-  class GlobOutputIt >
+  typename GlobOutputIt,
+  bool     UseHandles = true >
 GlobOutputIt copy(
   ValueType    * in_first,
   ValueType    * in_last,
@@ -565,27 +559,27 @@ GlobOutputIt copy(
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, local to global");
   // handles to wait on at the end
+  GlobOutputIt out_last;
+  if (UseHandles) {
+    std::vector<dart_handle_t> handles;
+    out_last = dash::internal::copy_impl(in_first,
+                                         in_last,
+                                         out_first,
+                                         &handles);
 
-#if DASH_COPY_USE_HANDLES
-  std::vector<dart_handle_t> handles;
-  auto out_last = dash::internal::copy_impl(in_first,
-                                            in_last,
-                                            out_first,
-                                            &handles);
-
-  if (!handles.empty()) {
-    DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
-                  "num_handles: ", handles.size());
-    dart_waitall(handles.data(), handles.size());
+    if (!handles.empty()) {
+      DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
+                    "num_handles: ", handles.size());
+      dart_waitall(handles.data(), handles.size());
+    }
+  } else {
+    out_last = dash::internal::copy_impl(in_first,
+                                         in_last,
+                                         out_first,
+                                         nullptr);
+    DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete");
+    dart_flush(out_first.dart_gptr());
   }
-
-#else
-  auto out_last = dash::internal::copy_impl(in_first,
-                                            in_last,
-                                            out_first,
-                                            nullptr);
-  dart_flush(out_first.dart_gptr());
-#endif
   return out_last;
 }
 
