@@ -454,7 +454,7 @@ ValueType * copy(
                                          out_first,
                                          nullptr);
     DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete");
-    dart_flush_local(in_first.dart_gptr());
+    dart_flush_local_all(in_first.dart_gptr());
   }
 
   DASH_LOG_TRACE("dash::copy >", "finished,",
@@ -578,7 +578,7 @@ GlobOutputIt copy(
                                          out_first,
                                          nullptr);
     DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete");
-    dart_flush(out_first.dart_gptr());
+    dart_flush_all(out_first.dart_gptr());
   }
   return out_last;
 }
