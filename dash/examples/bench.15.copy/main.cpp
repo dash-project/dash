@@ -62,8 +62,8 @@ void print_measurement_header();
 void print_measurement_record(
   const bench_cfg_params & cfg_params,
   std::string              name,
-  double                   time_in_us,
-  const benchmark_params & params);
+  double                   time_in_s,
+  double                   bandwidth);
 
 benchmark_params parse_args(int argc, char * argv[]);
 
@@ -109,13 +109,17 @@ int main(int argc, char** argv)
 
   ValueT *buffer = new ValueT[matrix.size()];
 
+  size_t matrix_size_b = matrix.size()*matrix.size() * sizeof(ValueT);
+
   while(round < params.rounds) {
     double res;
     res = evaluate<true>(params.reps, matrix, buffer, params);
-    print_measurement_record(bench_cfg, "copy_with_handle", res, params);
+    print_measurement_record(bench_cfg, "copy_with_handle",
+                             res, matrix_size_b / res / 1E6);
 
     res = evaluate<false>(params.reps, matrix, buffer, params);
-    print_measurement_record(bench_cfg, "copy_without_handle", res, params);
+    print_measurement_record(bench_cfg, "copy_without_handle",
+                             res, matrix_size_b / res / 1E6);
     round++;
   }
 
@@ -145,8 +149,11 @@ double evaluate(
   auto ts_tot_start = Timer::Now();
 
   for (int i = 0; i < reps; i++) {
-    dash::copy<ValueT, decltype(begin), UseHandles>(begin, end, buffer);
+    if (dash::myid() == 0) {
+      dash::copy<ValueT, decltype(begin), UseHandles>(begin, end, buffer);
+    }
   }
+  dash::barrier();
 
   return Timer::ElapsedSince(ts_tot_start) / (double)reps / 1E6;
 }
@@ -158,7 +165,8 @@ void print_measurement_header()
          << std::setw( 5) << "units"      << ","
          << std::setw( 9) << "mpi.impl"   << ","
          << std::setw(30) << "impl"       << ","
-         << std::setw( 8) << "total.s"
+         << std::setw(12) << "total [s]"    << ","
+         << std::setw(20) << "bandwidth [MB/s]"
          << endl;
   }
 }
@@ -166,16 +174,17 @@ void print_measurement_header()
 void print_measurement_record(
   const bench_cfg_params & cfg_params,
   std::string              name,
-  double                   time_in_us,
-  const benchmark_params & params)
+  double                   time_in_s,
+  double                   bandwidth)
 {
   if (dash::myid() == 0) {
-    std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
+    std::string mpi_impl = dash__toxstr(DASH_MPI_IMPL_ID);
     cout << std::right
          << std::setw(5) << dash::size() << ","
          << std::setw(9) << mpi_impl     << ","
          << std::fixed << setprecision(2) << setw(30) << name << ","
-         << std::fixed << setprecision(8) << setw(12) << time_in_us
+         << std::fixed << setprecision(8) << setw(12) << time_in_s << ","
+         << std::fixed << setprecision(8) << setw(20) << bandwidth
          << endl;
   }
 }
@@ -215,9 +224,9 @@ void print_params(
   bench_cfg.print_param("-n", "rounds",                params.rounds);
   bench_cfg.print_param("-s",
                         "matrix size (number of double elements per dimension)",
-                        params.reps);
+                        params.matrix_ext);
   bench_cfg.print_param("-t",
                         "tile size (number of double elements per dimension)",
-                        params.rounds);
+                        params.tile_ext);
   bench_cfg.print_section_end();
 }
