@@ -103,20 +103,36 @@ dash::Future<ValueType *> copy_async(
 
 namespace internal {
 
-template<typename ValueType>
+template<typename InputValueType, typename OutputValueType>
 struct local_copy_chunk {
-  const ValueType *src;
-        ValueType *dest;
-  const size_t     size;
+  const InputValueType  *src;
+        OutputValueType *dest;
+  const size_t           size;
 };
 
-template<typename ValueType>
-void do_local_copies(std::vector<local_copy_chunk<ValueType>>& chunks)
+template<typename InputValueType, typename OutputValueType>
+void do_local_copies(
+  std::vector<local_copy_chunk<InputValueType, OutputValueType>>& chunks)
 {
   for (auto& chunk : chunks) {
     std::copy(chunk.src, chunk.src + chunk.size, chunk.dest);
   }
 }
+
+template<typename FromType, typename ToType>
+struct is_dash_copyable
+: std::integral_constant<bool,
+      /* integral and floating point values are copyable if they have the same
+       * size; but they are not convertible */
+      (((std::is_integral<FromType>::value && std::is_integral<ToType>::value) ||
+        (std::is_floating_point<FromType>::value &&
+         std::is_floating_point<ToType>::value)) &&
+        sizeof(FromType) == sizeof(ToType)) ||
+      /* non-arithmetic types are not converted (except for cv-qualification) */
+      std::is_same<typename std::remove_cv<FromType>::type,
+                   typename std::remove_cv<ToType>::type>::value>
+{ };
+
 
 // =========================================================================
 // Global to Local
@@ -128,7 +144,7 @@ void do_local_copies(std::vector<local_copy_chunk<ValueType>>& chunks)
  */
 template <
   typename ValueType,
-  class GlobInputIt >
+  typename GlobInputIt >
 ValueType * copy_impl(
   GlobInputIt                  begin,
   GlobInputIt                  end,
@@ -140,8 +156,13 @@ ValueType * copy_impl(
                  "in_last:",   end.pos(),
                  "out_first:", out_first);
   typedef typename GlobInputIt::size_type   size_type;
-  typedef typename GlobInputIt::value_type  value_type;
-  typedef typename std::remove_const<value_type>::type  nonconst_value_type;
+  typedef typename GlobInputIt::value_type  input_value_type;
+  typedef          ValueType                output_value_type;
+
+  static_assert(is_dash_copyable<input_value_type, output_value_type>::value,
+                "dash::copy can only be used on same-size arithmetic types or "
+                "same non-arithmetic types");
+
   const size_type num_elem_total = dash::distance(begin, end);
   if (num_elem_total <= 0) {
     DASH_LOG_TRACE("dash::internal::copy_impl", "input range empty");
@@ -155,7 +176,7 @@ ValueType * copy_impl(
 
   ContiguousRangeSet<GlobInputIt> range_set{begin, end};
 
-  std::vector<local_copy_chunk<nonconst_value_type>> local_chunks;
+  std::vector<local_copy_chunk<input_value_type, output_value_type>> local_chunks;
 
   //
   // Copy elements from every unit:
@@ -173,15 +194,13 @@ ValueType * copy_impl(
     if (cur_in.is_local()) {
       // if the chunk is less than a page or if it is the only transfer
       // don't bother post-poning it
-      auto src_ptr = cur_in.local();
+      input_value_type* src_ptr = cur_in.local();
       if (num_elem_total == num_copy_elem ||
-          DASH__ARCH__PAGE_SIZE > num_copy_elem*sizeof(ValueType)) {
+          DASH__ARCH__PAGE_SIZE > num_copy_elem*sizeof(input_value_type)) {
         std::copy(src_ptr, src_ptr + num_copy_elem, dest_ptr);
       } else {
         // larger chunks are handled later to allow overlap
-        local_copy_chunk<nonconst_value_type> chunk{src_ptr, dest_ptr,
-                                                    num_copy_elem};
-        local_chunks.push_back(chunk);
+        local_chunks.push_back({src_ptr, dest_ptr, num_copy_elem});
       }
     } else {
       auto src_gptr = cur_in.dart_gptr();
@@ -207,7 +226,7 @@ ValueType * copy_impl(
   DASH_ASSERT_EQ(num_elem_copied, num_elem_total,
                  "Failed to find all contiguous subranges in range");
 
-  ValueType * out_last = out_first + num_elem_copied;
+  auto out_last = out_first + num_elem_copied;
   DASH_LOG_TRACE_VAR("dash::copy_impl >", out_last);
   return out_last;
 }
@@ -222,20 +241,25 @@ ValueType * copy_impl(
  */
 template <
   typename ValueType,
-  class GlobOutputIt >
+  typename GlobOutputIt >
 GlobOutputIt copy_impl(
   ValueType                  * begin,
   ValueType                  * end,
   GlobOutputIt                 out_first,
   std::vector<dart_handle_t> * handles)
 {
-
   DASH_LOG_TRACE("dash::copy_impl() local -> global",
                  "in_first:",  begin,
                  "in_last:",   end,
                  "out_first:", out_first);
   typedef typename GlobOutputIt::size_type  size_type;
-  typedef typename GlobOutputIt::value_type  value_type;
+  typedef typename GlobOutputIt::value_type output_value_type;
+  typedef          ValueType                input_value_type;
+
+  static_assert(is_dash_copyable<input_value_type, output_value_type>::value,
+                "dash::copy can only be used on same-size arithmetic types or "
+                "same non-arithmetic types");
+
   const size_type num_elem_total = dash::distance(begin, end);
   if (num_elem_total <= 0) {
     DASH_LOG_TRACE("dash::internal::copy_impl", "input range empty");
@@ -252,7 +276,7 @@ GlobOutputIt copy_impl(
 
   ContiguousRangeSet<GlobOutputIt> range_set{out_first, out_last};
 
-  std::vector<local_copy_chunk<value_type>> local_chunks;
+  std::vector<local_copy_chunk<input_value_type, output_value_type>> local_chunks;
 
   auto in_first = begin;
 
@@ -267,15 +291,15 @@ GlobOutputIt copy_impl(
 
     DASH_ASSERT_GT(num_copy_elem, 0,
                     "Number of elements to copy is 0");
-    auto src_ptr  = in_first + num_elem_copied;
+    input_value_type* src_ptr  = in_first + num_elem_copied;
 
     // handle local data locally
     if (cur_out_first.is_local()) {
-      value_type* dest_ptr = cur_out_first.local();
+      output_value_type* dest_ptr = cur_out_first.local();
       // if the chunk is less than a page or if it is the only transfer
       // don't bother post-poning it
       if (num_elem_total == num_copy_elem ||
-          DASH__ARCH__PAGE_SIZE > num_copy_elem*sizeof(ValueType)) {
+          DASH__ARCH__PAGE_SIZE > num_copy_elem*sizeof(input_value_type)) {
         std::copy(src_ptr, src_ptr + num_copy_elem, dest_ptr);
       } else {
         // larger chunks are handled later to allow overlap

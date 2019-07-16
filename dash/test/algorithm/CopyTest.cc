@@ -1019,3 +1019,24 @@ TEST_F(CopyTest, MatrixToSmallerTeam)
 
   }
 }
+
+TEST_F(CopyTest, InputOutputTypeTest)
+{
+  /* signed/unsigned and const conversion is permitted */
+  ASSERT_TRUE_U((dash::internal::is_dash_copyable<int, int>::value));
+  ASSERT_TRUE_U((dash::internal::is_dash_copyable<const int, int>::value));
+  ASSERT_TRUE_U((dash::internal::is_dash_copyable<const int, unsigned int>::value));
+  ASSERT_TRUE_U((dash::internal::is_dash_copyable<float, float>::value));
+  /* size conversion is not permitted */
+  ASSERT_FALSE_U((dash::internal::is_dash_copyable<uint64_t, uint32_t>::value));
+  ASSERT_FALSE_U((dash::internal::is_dash_copyable<float, double>::value));
+
+  struct point_t {
+    int a;
+    int b;
+  };
+  /* no conversion between arithmetic types and non-arithmetic types */
+  ASSERT_FALSE_U((dash::internal::is_dash_copyable<point_t, uint64_t>::value));
+  ASSERT_TRUE_U((dash::internal::is_dash_copyable<const point_t, point_t>::value));
+
+}
