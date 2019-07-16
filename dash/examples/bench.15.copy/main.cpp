@@ -35,7 +35,7 @@ typedef struct benchmark_params_t {
 
   benchmark_params_t()
   { }
-  int    reps        = 100;
+  int    reps        = 10;
   int    rounds      = 10;
   size_t matrix_ext  = 1024;
   size_t tile_ext    = 64;
@@ -76,6 +76,10 @@ double evaluate(
   int reps, MatrixT& matrix, ValueT *buffer,
   benchmark_params params);
 
+double evaluate_async(
+  int reps, MatrixT& matrix, ValueT *buffer,
+  benchmark_params params);
+
 int main(int argc, char** argv)
 {
   dash::init(&argc, &argv);
@@ -109,7 +113,7 @@ int main(int argc, char** argv)
 
   ValueT *buffer = new ValueT[matrix.size()];
 
-  size_t matrix_size_b = matrix.size()*matrix.size() * sizeof(ValueT);
+  size_t matrix_size_b = matrix.size() * sizeof(ValueT);
 
   while(round < params.rounds) {
     double res;
@@ -119,6 +123,10 @@ int main(int argc, char** argv)
 
     res = evaluate<false>(params.reps, matrix, buffer, params);
     print_measurement_record(bench_cfg, "copy_without_handle",
+                             res, matrix_size_b / res / 1E6);
+
+    res = evaluate_async(params.reps, matrix, buffer, params);
+    print_measurement_record(bench_cfg, "copy_async",
                              res, matrix_size_b / res / 1E6);
     round++;
   }
@@ -151,6 +159,34 @@ double evaluate(
   for (int i = 0; i < reps; i++) {
     if (dash::myid() == 0) {
       dash::copy<ValueT, decltype(begin), UseHandles>(begin, end, buffer);
+    }
+  }
+  dash::barrier();
+
+  return Timer::ElapsedSince(ts_tot_start) / (double)reps / 1E6;
+}
+
+
+double evaluate_async(
+  int reps, MatrixT& matrix, ValueT *buffer,
+  benchmark_params params)
+{
+  measurement mes;
+
+  auto r = dash::myid();
+
+  auto begin = matrix.begin();
+  auto end   = matrix.end();
+
+  float lmin = r;
+  float lmax = 1000 - r;
+
+  auto ts_tot_start = Timer::Now();
+
+  for (int i = 0; i < reps; i++) {
+    if (dash::myid() == 0) {
+      auto fut = dash::copy_async(begin, end, buffer);
+      fut.wait();
     }
   }
   dash::barrier();
