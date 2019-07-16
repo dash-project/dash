@@ -234,7 +234,7 @@ public:
   void balance_extents()
   {
     DASH_LOG_TRACE_VAR("TeamSpec.balance_extents()", this->_extents);
-    DASH_LOG_TRACE_VAR("TeamSpec.balance_extents()", size());
+    DASH_LOG_TRACE_VAR("TeamSpec.balance_extents()", this->size());
     if(MaxDimensions <= 1) {
       return;
     }
@@ -360,7 +360,7 @@ public:
   {
     if (_rank == 1) {
       // Shortcut for trivial case
-      return (index >= 0 && index < size());
+      return (index >= 0 && index < this->size());
     }
     return parent_t::includes_index(index, dimension, dim_offset);
   }
