@@ -1065,349 +1065,17 @@ private:
 };  // BoundaryRegionMapping
 
 /**
- * Iterator to iterate over all region elements defined by \ref Region
- */
-template <
-    typename ElementT,
-    typename PatternT,
-    typename GlobMemT,
-    typename PointerT =
-        typename GlobMemT::void_pointer::template rebind<ElementT>,
-    typename ReferenceT = GlobRef<ElementT>>
-class RegionIter {
-private:
-  using Self_t = RegionIter<ElementT, PatternT, GlobMemT, PointerT, ReferenceT>;
-
-  static const auto NumDimensions = PatternT::ndim();
-
-public:
-  // Iterator traits
-  using iterator_category = std::random_access_iterator_tag;
-  using value_type        = ElementT;
-  using difference_type   = typename PatternT::index_type;
-  using pointer           = PointerT;
-  using local_pointer     = typename pointer::local_type;
-  using reference         = ReferenceT;
-
-  using const_reference = const reference;
-  using const_pointer   = const pointer;
-
-  using GlobMem_t       = GlobMemT;
-
-  using ViewSpec_t      = typename PatternT::viewspec_type;
-  using pattern_index_t = typename PatternT::index_type;
-  using pattern_size_t  = typename PatternT::size_type;
-
-public:
-  /**
-   * Constructor, creates a region iterator.
-   */
-  RegionIter(
-      GlobMem_t*        globmem,
-      const PatternT*   pattern,
-      const ViewSpec_t& _region_view,
-      pattern_index_t   pos,
-      pattern_size_t    size)
-    : _globmem(globmem)
-    , _pattern(pattern)
-    , _region_view(_region_view)
-    , _idx(pos)
-    , _max_idx(size - 1)
-    , _myid(pattern->team().myid())
-    , _lbegin(dash::local_begin(
-          static_cast<pointer>(globmem->begin()), pattern->team().myid()))
-  {
-  }
-
-  /**
-   * Copy constructor.
-   */
-  RegionIter(const Self_t& other) = default;
-
-  /**
-   * Move constructor
-   */
-  RegionIter(Self_t&& other) = default;
-
-  /**
-   * Assignment operator.
-   *
-   * \see DashGlobalIteratorConcept
-   */
-  Self_t& operator=(const Self_t& other) = default;
-
-  /**
-   * Move assignment operator
-   */
-  Self_t& operator=(Self_t&& other) = default;
-
-  /**
-   * The number of dimensions of the iterator's underlying pattern.
-   *
-   * \see DashGlobalIteratorConcept
-   */
-  static constexpr dim_t ndim() { return NumDimensions; }
-
-  /**
-   * Dereference operator.
-   *
-   * \return  A global reference to the element at the iterator's position.
-   */
-  reference operator*() const { return get_reference(_idx); }
-
-  /**
-   * Subscript operator, returns global reference to element at given
-   * global index.
-   *
-   * \see DashGlobalIteratorConcept
-   */
-  reference operator[](pattern_index_t n) const {
-    return get_reference(_idx + n);
-  }
-
-  dart_gptr_t dart_gptr() const {
-    return get_reference(_idx).dart_gptr();
-  }
-
-  /**
-   * Checks whether the element referenced by this global iterator is in
-   * the calling unit's local memory.
-   */
-  bool is_local() const { return (_myid == lpos().unit); }
-
-  GlobIter<ElementT, PatternT, GlobMemT> global() const {
-    auto g_idx = gpos();
-    return GlobIter<ElementT, PatternT, GlobMemT>(_globmem, *_pattern, g_idx);
-  }
-
-  ElementT* local() const {
-    auto local_pos = lpos();
-
-    if(_myid != local_pos.unit)
-      return nullptr;
-
-    //
-    return _lbegin + local_pos.index;
-  }
-
-  /**
-   * Position of the iterator in global storage order.
-   *
-   * \see DashGlobalIteratorConcept
-   */
-  pattern_index_t pos() const { return gpos(); }
-
-  /**
-   * Position of the iterator in its view's iteration space, disregarding
-   * the view's offset in global index space.
-   *
-   * \see DashViewIteratorConcept
-   */
-  pattern_index_t rpos() const { return _idx; }
-
-  /**
-   * Position of the iterator in global index range.
-   * Projects iterator position from its view spec to global index domain.
-   *
-   * \see DashGlobalIteratorConcept
-   */
-  pattern_index_t gpos() const {
-    return _pattern->memory_layout().at(glob_coords(_idx));
-  }
-
-  std::array<pattern_index_t, NumDimensions> gcoords() const {
-    return glob_coords(_idx);
-  }
-
-  typename PatternT::local_index_t lpos() const {
-    return _pattern->local_index(glob_coords(_idx));
-  }
-
-  const ViewSpec_t view() const { return _region_view; }
-
-  inline bool is_relative() const noexcept { return true; }
-
-  /**
-   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
-   * in global memory.
-   *
-   * \see DashGlobalIteratorConcept
-   */
-  const GlobMem_t& globmem() const { return *_globmem; }
-
-  /**
-   * Prefix increment operator.
-   */
-  Self_t& operator++() {
-    ++_idx;
-    return *this;
-  }
-
-  /**
-   * Postfix increment operator.
-   */
-  Self_t operator++(int) {
-    Self_t result = *this;
-    ++_idx;
-    return result;
-  }
-
-  /**
-   * Prefix decrement operator.
-   */
-  Self_t& operator--() {
-    --_idx;
-    return *this;
-  }
-
-  /**
-   * Postfix decrement operator.
-   */
-  Self_t operator--(int) {
-    Self_t result = *this;
-    --_idx;
-    return result;
-  }
-
-  Self_t& operator+=(pattern_index_t n) {
-    _idx += n;
-    return *this;
-  }
-
-  Self_t& operator-=(pattern_index_t n) {
-    _idx -= n;
-    return *this;
-  }
-
-  Self_t operator+(pattern_index_t n) const {
-    Self_t res{ *this };
-    res += n;
-
-    return res;
-  }
-
-  Self_t operator-(pattern_index_t n) const {
-    Self_t res{ *this };
-    res -= n;
-
-    return res;
-  }
-
-  bool operator<(const Self_t& other) const {
-    return compare(other, std::less<pattern_index_t>());
-  }
-
-  bool operator<=(const Self_t& other) const {
-    return compare(other, std::less_equal<pattern_index_t>());
-  }
-
-  bool operator>(const Self_t& other) const {
-    return compare(other, std::greater<pattern_index_t>());
-  }
-
-  bool operator>=(const Self_t& other) const {
-    return compare(other, std::greater_equal<pattern_index_t>());
-  }
-
-  bool operator==(const Self_t& other) const {
-    return compare(other, std::equal_to<pattern_index_t>());
-  }
-
-  bool operator!=(const Self_t& other) const {
-    return compare(other, std::not_equal_to<pattern_index_t>());
-  }
-
-  const PatternT& pattern() const { return *_pattern; }
-
-private:
-  /**
-   * Compare position of this global iterator to the position of another
-   * global iterator with respect to viewspec projection.
-   */
-  template <typename GlobIndexCmpFunc>
-  bool compare(const Self_t& other, const GlobIndexCmpFunc& gidx_cmp) const {
-#if __REMARK__
-    // Usually this is a best practice check, but it's an infrequent case
-    // so we rather avoid this comparison:
-    if(this == &other) {
-      return true;
-    }
-#endif
-    if(&_region_view == &(other._region_view)
-       || _region_view == other._region_view) {
-      return gidx_cmp(_idx, other._idx);
-    }
-    // TODO not the best solution
-    return false;
-  }
-
-  std::array<pattern_index_t, NumDimensions> glob_coords(
-    pattern_index_t idx) const {
-    return _pattern->memory_layout().coords(idx, _region_view);
-  }
-
-  reference get_reference(pattern_index_t idx) const {
-    auto coords    = glob_coords(idx);
-    auto local_pos = _pattern->local_index(coords);
-
-    auto p = static_cast<pointer>(_globmem->begin());
-    p.set_unit(local_pos.unit);
-    p += local_pos.index;
-
-    return *p;
-  }
-
-private:
-  /// Global memory used to dereference iterated values.
-  GlobMem_t* _globmem;
-  /// Pattern that created the encapsulated block.
-  const PatternT* _pattern;
-
-  const ViewSpec_t _region_view;
-  /// Iterator's position relative to the block border's iteration space.
-  pattern_index_t _idx{ 0 };
-  /// Maximum iterator position in the block border's iteration space.
-  pattern_index_t _max_idx{ 0 };
-  /// Unit id of the active unit
-  team_unit_t _myid;
-
-  local_pointer _lbegin;
-
-};  // class HaloBlockIter
-
-template <typename ElementT, typename PatternT, typename PointerT,
-          typename ReferenceT>
-std::ostream& operator<<(
-  std::ostream&                                               os,
-  const RegionIter<ElementT, PatternT, PointerT, ReferenceT>& it) {
-  os << "dash::halo::RegionIter<" << typeid(ElementT).name() << ">("
-     << "; idx: " << it.rpos() << "; view: " << it.view() << ")";
-
-  return os;
-}
-
-template <typename ElementT, typename PatternT, typename PointerT,
-          typename ReferenceT>
-auto distance(
-  /// Global iterator to the initial position in the global sequence
-  const RegionIter<ElementT, PatternT, PointerT, ReferenceT>& first,
-  /// Global iterator to the final position in the global sequence
-  const RegionIter<ElementT, PatternT, PointerT, ReferenceT>& last) ->
-  typename PatternT::index_type {
-  return last - first;
-}
-
-/**
  * Provides \ref RegionIter and some region metadata like \ref RegionSpec,
  * size etc.
  */
 template <typename ElementT, typename PatternT, typename GlobMemT>
 class Region {
 private:
+  using Self_t = Region<ElementT, PatternT, GlobMemT>;
   static constexpr auto NumDimensions = PatternT::ndim();
 
 public:
-  using iterator       = RegionIter<ElementT, PatternT, GlobMemT>;
+  using iterator       = GlobViewIter<ElementT, PatternT, GlobMemT>;
   using const_iterator = const iterator;
   using RegionSpec_t   = RegionSpec<NumDimensions>;
   using GlobMem_t      = GlobMemT;
@@ -1418,26 +1086,80 @@ public:
   using pattern_size_t = typename PatternT::size_type;
 
 public:
-  Region(const RegionSpec_t& region_spec, const ViewSpec_t& region,
+  Region(const RegionSpec_t& region_spec, const ViewSpec_t& view,
          GlobMem_t& globmem, const PatternT& pattern, const Border_t& border,
          bool custom_region)
-  : _region_spec(region_spec), _region(region), _border(border),
+  : _region_spec(&region_spec), _view(view),
+    _globmem(&globmem), _pattern(&pattern), _border(border),
     _border_region(
       std::any_of(border.begin(), border.end(),
                   [](BorderMeta_t border_dim) {
                     return border_dim.first == true ||
                            border_dim.second == true; })),
     _custom_region(custom_region),
-    _beg(&globmem, &pattern, _region, 0, _region.size()),
-    _end(&globmem, &pattern, _region, _region.size(), _region.size()) {}
+    _beg(&globmem, *_pattern, _view, 0),
+    _end(&globmem, *_pattern, _view, _view.size()) {
+  }
 
-  const region_index_t index() const { return _region_spec.index(); }
+  Region(const Self_t& other)
+  : _region_spec(other._region_spec),
+    _view     (other._view),
+    _globmem(other._globmem),
+    _pattern(other._pattern),
+    _border(other._border),
+    _border_region(other._border_region),
+    _custom_region(other._custom_region),
+    _beg(_globmem, *_pattern, _view, 0),
+    _end(_globmem, *_pattern, _view, _view.size()) {
+  }
 
-  const RegionSpec_t& spec() const { return _region_spec; }
+  Region(const Self_t&& other)
+  : _region_spec(std::move(other._region_spec)),
+    _view     (std::move(other._view)),
+    _globmem(std::move(other._globmem)),
+    _pattern(std::move(other._pattern)),
+    _border(std::move(other._border)),
+    _border_region(std::move(other._border_region)),
+    _custom_region(std::move(other._custom_region)),
+    _beg(_globmem, *_pattern, _view, 0),
+    _end(_globmem, *_pattern, _view, _view.size()) {
+  }
 
-  const ViewSpec_t& view() const { return _region; }
+  Self_t& operator=(const Self_t& other) {
+    _region_spec = other._region_spec;
+    _view      = other._view;
+    _globmem = other._globmem;
+    _pattern = other._pattern;
+    _border = other._border;
+    _border_region = other._border_region;
+    _custom_region = other._custom_region;
+    _beg = iterator(_globmem, *_pattern, _view, 0);
+    _end = iterator(_globmem, *_pattern, _view, _view.size());
 
-  pattern_size_t size() const { return _region.size(); }
+    return *this;
+  }
+
+  Self_t& operator=(const Self_t&& other) {
+    _region_spec = std::move(other._region_spec);
+    _view      = std::move(other._view);
+    _globmem = std::move(other._globmem);
+    _pattern = std::move(other._pattern);
+    _border = std::move(other._border);
+    _border_region = std::move(other._border_region);
+    _custom_region = std::move(other._custom_region);
+    _beg = iterator(_globmem, *_pattern, _view, 0);
+    _end = iterator(_globmem, *_pattern, _view, _view.size());
+
+    return *this;
+  }
+
+  const region_index_t index() const { return _region_spec->index(); }
+
+  const RegionSpec_t& spec() const { return *_region_spec; }
+
+  const ViewSpec_t& view() const { return _view; }
+
+  pattern_size_t size() const { return _view.size(); }
 
   const Border_t& border() const { return _border; }
 
@@ -1467,13 +1189,15 @@ public:
   iterator end() const { return _end; }
 
 private:
-  const RegionSpec_t _region_spec;
-  const ViewSpec_t   _region;
-  Border_t           _border;
-  bool               _border_region;
-  bool               _custom_region;
-  iterator           _beg;
-  iterator           _end;
+  const RegionSpec_t* _region_spec;
+  ViewSpec_t          _view;
+  GlobMemT*     _globmem;
+  const PatternT*     _pattern;
+  Border_t            _border;
+  bool                _border_region;
+  bool                _custom_region;
+  iterator            _beg;
+  iterator            _end;
 };  // Region
 
 template <typename ElementT, typename PatternT, typename GlobMemT>
