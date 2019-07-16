@@ -646,25 +646,166 @@ copy_async(
 }
 #endif
 
+struct ActiveDestination{};
+struct ActiveSource{};
+
 /**
  * Specialization of \c dash::copy as global-to-global blocking copy
  * operation.
  *
  * \ingroup  DashAlgorithms
  */
-template <typename ValueType, class GlobInputIt, class GlobOutputIt>
+template <
+    class GlobInputIt,
+    class GlobOutputIt,
+    bool  UseHandles = false>
 GlobOutputIt copy(
-    GlobInputIt /*in_first*/,
-    GlobInputIt /*in_last*/,
-    GlobOutputIt /*out_first*/)
+    GlobInputIt       in_first,
+    GlobInputIt       in_last,
+    GlobOutputIt      out_first,
+    ActiveDestination /*unused*/)
+{
+  DASH_LOG_TRACE("dash::copy()", "blocking, global to global, active destination");
+
+  using size_type         = typename GlobInputIt::size_type;
+  using input_value_type  = typename GlobInputIt::value_type;
+  using output_value_type = typename GlobOutputIt::value_type;
+
+  size_type num_elem_total = dash::distance(in_first, in_last);
+  if (num_elem_total <= 0) {
+    DASH_LOG_TRACE("dash::copy", "input range empty");
+    return out_first;
+  }
+
+  auto g_out_first = out_first;
+  auto g_out_last  = g_out_first + num_elem_total;
+
+  internal::ContiguousRangeSet<GlobOutputIt> range_set{g_out_first, g_out_last};
+
+  const auto & out_team = out_first.team();
+  out_team.barrier();
+
+  std::vector<dart_handle_t>  handles;
+  std::vector<dart_handle_t>* handles_arg = UseHandles ? &handles : nullptr;
+
+  dash::internal::local_copy_chunks<input_value_type, output_value_type> local_chunks;
+
+  size_type num_elem_processed = 0;
+
+  for (auto range : range_set) {
+
+    auto cur_out_first  = range.first;
+    auto num_copy_elem = range.second;
+
+    DASH_ASSERT_GT(num_copy_elem, 0,
+                   "Number of elements to copy is 0");
+
+    // handle local data only
+    if (cur_out_first.is_local()) {
+      auto dest_ptr = cur_out_first.local();
+      auto src_ptr  = in_first + num_elem_processed;
+      internal::copy_impl(src_ptr,
+                          src_ptr + num_copy_elem,
+                          dest_ptr,
+                          handles_arg,
+                          local_chunks);
+    }
+    num_elem_processed += num_copy_elem;
+  }
+
+  dash::internal::do_local_copies(local_chunks);
+
+  if (!handles.empty()) {
+    DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
+                  "num_handles: ", handles.size());
+    dart_waitall_local(handles.data(), handles.size());
+  } else if (!UseHandles) {
+    dart_flush_local_all(in_first.dart_gptr());
+  }
+  out_team.barrier();
+
+  DASH_ASSERT_EQ(num_elem_processed, num_elem_total,
+                 "Failed to find all contiguous subranges in range");
+
+  return g_out_last;
+}
+
+/**
+ * Specialization of \c dash::copy as global-to-global blocking copy
+ * operation.
+ *
+ * \ingroup  DashAlgorithms
+ */
+template <
+    class GlobInputIt,
+    class GlobOutputIt,
+    bool  UseHandles = false>
+GlobOutputIt copy(
+    GlobInputIt  in_first,
+    GlobInputIt  in_last,
+    GlobOutputIt out_first,
+    ActiveSource /*unused*/)
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, global to global");
 
-  // TODO:
-  // - Implement adapter for local-to-global dash::copy here
-  // - Return if global input range has no local sub-range
+  using size_type         = typename GlobInputIt::size_type;
+  using input_value_type  = typename GlobInputIt::value_type;
+  using output_value_type = typename GlobOutputIt::value_type;
 
-  return GlobOutputIt();
+  size_type num_elem_total = dash::distance(in_first, in_last);
+  if (num_elem_total <= 0) {
+    DASH_LOG_TRACE("dash::copy", "input range empty");
+    return out_first;
+  }
+
+  internal::ContiguousRangeSet<GlobOutputIt> range_set{in_first, in_last};
+
+  const auto & in_team = in_first.team();
+  in_team.barrier();
+
+  std::vector<dart_handle_t>             handles;
+  std::vector<dart_handle_t>* handles_arg = UseHandles ? &handles : nullptr;
+
+  dash::internal::local_copy_chunks<input_value_type, output_value_type> local_chunks;
+
+  size_type num_elem_processed = 0;
+
+  for (auto range : range_set) {
+
+    auto cur_in_first  = range.first;
+    auto num_copy_elem = range.second;
+
+    DASH_ASSERT_GT(num_copy_elem, 0,
+                   "Number of elements to copy is 0");
+
+    // handle local data only
+    if (cur_in_first.is_local()) {
+      auto src_ptr = cur_in_first.local();
+      auto dest_ptr  = out_first + num_elem_processed;
+      internal::copy_impl(src_ptr,
+                          src_ptr + num_copy_elem,
+                          dest_ptr,
+                          handles_arg,
+                          local_chunks);
+    }
+    num_elem_processed += num_copy_elem;
+  }
+
+  internal::do_local_copies(local_chunks);
+
+  if (!handles.empty()) {
+    DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
+                  "num_handles: ", handles.size());
+    dart_waitall(handles.data(), handles.size());
+  } else if (!UseHandles) {
+    dart_flush_all(out_first.dart_gptr());
+  }
+  in_team.barrier();
+
+  DASH_ASSERT_EQ(num_elem_processed, num_elem_total,
+                 "Failed to find all contiguous subranges in range");
+
+  return out_first + num_elem_total;
 }
 
 #endif // DOXYGEN
