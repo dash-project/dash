@@ -418,7 +418,7 @@ dash::Future<ValueType *> copy_async(
 template <
   typename ValueType,
   class    GlobInputIt,
-  bool     UseHandles = true >
+  bool     UseHandles = false >
 ValueType * copy(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
@@ -551,7 +551,7 @@ dash::Future<GlobOutputIt> copy_async(
 template <
   typename ValueType,
   typename GlobOutputIt,
-  bool     UseHandles = true >
+  bool     UseHandles = false >
 GlobOutputIt copy(
   ValueType    * in_first,
   ValueType    * in_last,
