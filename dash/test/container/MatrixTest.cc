@@ -745,9 +745,10 @@ TEST_F(MatrixTest, BlockCopy)
   LOG_MESSAGE("Team barrier passed");
 
   // Copy block 1 of matrix_a to block 0 of matrix_b:
-  dash::copy<element_t>(matrix_a.block(1).begin(),
-                        matrix_a.block(1).end(),
-                        matrix_b.block(0).begin());
+  dash::copy(matrix_a.block(1).begin(),
+             matrix_a.block(1).end(),
+             matrix_b.block(0).begin(),
+             dash::ActiveSource());
 
   LOG_MESSAGE("Wait for team barrier ...");
   dash::barrier();

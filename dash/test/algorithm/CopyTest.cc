@@ -1082,3 +1082,71 @@ TEST_F(CopyTest, InputOutputTypeTest)
   ASSERT_TRUE_U((dash::internal::is_dash_copyable<const point_t, point_t>::value));
 
 }
+
+TEST_F(CopyTest, MatrixTransfersGlobalToGlobal)
+{
+  if (_dash_size < 2) {
+    SKIP_TEST_MSG("At least 2 units required for this test.");
+  }
+
+  using TeamSpecT = dash::TeamSpec<2>;
+  using MatrixT = dash::NArray<double, 2>;
+  using PatternT = typename MatrixT::pattern_type;
+  using SizeSpecT = dash::SizeSpec<2>;
+  using DistSpecT = dash::DistributionSpec<2>;
+
+  auto& team_all = dash::Team::All();
+  TeamSpecT team_all_spec(team_all.size(), 1);
+  team_all_spec.balance_extents();
+
+  auto size_spec = SizeSpecT(4*team_all_spec.extent(1),
+                             4*team_all_spec.extent(1));
+  auto dist_spec = DistSpecT(dash::BLOCKED, dash::BLOCKED);
+
+  MatrixT grid_more(size_spec, dist_spec, team_all, team_all_spec);
+  dash::fill(grid_more.begin(), grid_more.end(), (double)team_all.myid());
+  team_all.barrier();
+
+  // create a smaller team
+  dash::Team& team_fewer= team_all.split(2);
+  team_all.barrier();
+  if (!team_fewer.is_null() && 0 == team_fewer.position()) {
+    TeamSpecT team_fewer_spec(team_fewer.size(), 1);
+    team_fewer_spec.balance_extents();
+
+    MatrixT grid_fewer(size_spec, dist_spec, team_fewer, team_fewer_spec);
+    dash::fill(grid_fewer.begin(), grid_fewer.end(), -1.0);
+
+    auto lextents= grid_fewer.pattern().local_extents();
+
+    dash::copy(grid_more.begin(), grid_more.end(),
+               grid_fewer.begin(), dash::ActiveDestination());
+
+    if (team_fewer.myid() == 0) {
+      auto gextents = grid_fewer.extents();
+      for (uint32_t y = 0; y < gextents[0]; ++y) {
+        for (uint32_t x = 0; x < gextents[1]; ++x) {
+          ASSERT_EQ_U(grid_more(y, x), grid_fewer(y, x));
+        }
+      }
+    }
+
+    team_fewer.barrier();
+
+    dash::fill(grid_fewer.begin(), grid_fewer.end(), (double)team_fewer.myid());
+
+    dash::copy(grid_fewer.begin(), grid_fewer.end(),
+               grid_more.begin(), dash::ActiveSource());
+
+    if (team_fewer.myid() == 0) {
+      auto gextents = grid_fewer.extents();
+      for (uint32_t y = 0; y < gextents[0]; ++y) {
+        for (uint32_t x = 0; x < gextents[1]; ++x) {
+          ASSERT_EQ_U(grid_more(y, x), grid_fewer(y, x));
+        }
+      }
+    }
+
+    team_fewer.barrier();
+  }
+}
