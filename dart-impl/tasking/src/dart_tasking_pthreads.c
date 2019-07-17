@@ -1418,11 +1418,9 @@ dart__tasking__task_complete()
 
   if (is_root_task) {
     entry_phase = dart__tasking__phase_current();
-    if (entry_phase > DART_PHASE_FIRST) {
-      dart__tasking__perform_matching(entry_phase);
-      // enable worker threads to poll for remote messages
-      worker_poll_remote = true;
-    }
+    dart__tasking__perform_matching(entry_phase);
+    // enable worker threads to poll for remote messages
+    worker_poll_remote = true;
   } else {
     EXTRAE_EXIT(EVENT_TASK);
   }
