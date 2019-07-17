@@ -874,7 +874,7 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
     if (DART_FETCH32(&task->num_children) &&
           !dart__tasking__cancellation_requested()) {
       // Implicit wait for child tasks
-      dart__tasking__task_complete();
+      dart__tasking__task_complete(true);
     }
 
     if (task->state == DART_TASK_DETACHED) {
@@ -1396,11 +1396,15 @@ dart__tasking__perform_matching(dart_taskphase_t phase)
 
 
 dart_ret_t
-dart__tasking__task_complete()
+dart__tasking__task_complete(bool local_only)
 {
   if (dart__unlikely(!threads_running)) {
-    // threads are not running --> nothing to be done here
-    return DART_OK;
+    if (local_only) {
+      // threads are not running --> nothing to be done here
+      return DART_OK;
+    }
+    // otherwise start up threads and participate in the task matching
+    start_threads(num_threads);
   }
 
   dart_thread_t *thread = get_current_thread();
@@ -1412,15 +1416,16 @@ dart__tasking__task_complete()
 
   DART_LOG_TRACE("Waiting for child tasks of %p to complete", thread->current_task);
 
-  dart_taskphase_t entry_phase;
-
   bool is_root_task = thread->current_task == &(root_task);
 
   if (is_root_task) {
-    entry_phase = dart__tasking__phase_current();
-    dart__tasking__perform_matching(entry_phase);
-    // enable worker threads to poll for remote messages
-    worker_poll_remote = true;
+    if (!local_only) {
+      dart_taskphase_t entry_phase;
+      entry_phase = dart__tasking__phase_current();
+      dart__tasking__perform_matching(entry_phase);
+      // enable worker threads to poll for remote messages
+      worker_poll_remote = true;
+    }
   } else {
     EXTRAE_EXIT(EVENT_TASK);
   }
@@ -1475,7 +1480,7 @@ dart__tasking__task_complete()
     // reset the phase counter
     dart__tasking__phase_reset();
 
-    if (entry_phase > DART_PHASE_FIRST) {
+    if (!local_only) {
       // wait for all units to finish their tasks
       dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
     }

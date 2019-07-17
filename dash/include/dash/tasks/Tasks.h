@@ -1117,13 +1117,18 @@ namespace internal{
   /**
    * Wait for the execution of all previously created tasks to complete.
    *
+   * If the optional parameter \c local_only is set to \c true then the unit
+   * does attempt to handle remote dependencies and the call is not collective.
+   * Otherwise, if the call is made from the \c root_task the call is collective
+   * across all units.
+   *
    * \note This function is a cancellation point.
    */
   template<typename T=int>
   void
-  complete() {
+  complete(bool local_only = false) {
     if (dart_task_should_abort()) abort_task();
-    dart_task_complete();
+    dart_task_complete(local_only);
   }
 
   template<typename T=int>

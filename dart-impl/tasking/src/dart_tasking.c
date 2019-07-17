@@ -131,12 +131,16 @@ dart_task_test(dart_taskref_t *taskref, int *flag)
 }
 
 /**
- * Wait for all defined tasks to complete.
+ * Wait for all discovered tasks to complete.
+ * If \c local_only is true, then no matching is performed and the call is not
+ * collective among all units.
+ * Otherwise, the call is collective across all units and matching will be
+ * performed.
  */
 dart_ret_t
-dart_task_complete()
+dart_task_complete(bool local_only)
 {
-  return dart__tasking__task_complete();
+  return dart__tasking__task_complete(local_only);
 }
 
 
