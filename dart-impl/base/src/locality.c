@@ -121,7 +121,6 @@ dart_ret_t dart__base__locality__finalize()
   free(dart__base__locality__unit_mapping_);
   dart__base__locality__unit_mapping_  = NULL;
 
-  dart_barrier(DART_TEAM_ALL);
   return DART_OK;
 }
 
