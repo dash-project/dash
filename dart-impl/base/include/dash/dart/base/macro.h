@@ -41,4 +41,14 @@
 #define DART_INTERNAL
 #endif
 
+/* Static Assertion Macro */
+#if __STDC_VERSION__ >= 201112L
+#define _STATIC_ASSERT(COND,MSG) _Static_assert(COND, MSG)
+#else
+#define _STATIC_ASSERT(COND,MSG) typedef char static_assertion[(!!(COND))*2-1]
+#endif
+#define DART_STATIC_ASSERT(x)           _STATIC_ASSERT(x,dart__toxstr(x))
+#define DART_STATIC_ASSERT_MSG(x, msg)  _STATIC_ASSERT(x, msg)
+
+
 #endif /* DART__BASE__MACRO_H_ */
