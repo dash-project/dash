@@ -387,8 +387,7 @@ dash::Future<ValueType *> copy_async(
     [=](ValueType ** out) mutable {
       int32_t flag;
       DASH_ASSERT_RETURNS(
-        DART_OK,
-        dart_testall_local(handles->data(), handles->size(), &flag));
+        dart_testall_local(handles->data(), handles->size(), &flag), DART_OK);
       if (flag) {
         handles->clear();
         *out = out_last;
@@ -399,8 +398,7 @@ dash::Future<ValueType *> copy_async(
     [=]() mutable {
       for (auto& handle : *handles) {
         DASH_ASSERT_RETURNS(
-          DART_OK,
-          dart_handle_free(&handle));
+          dart_handle_free(&handle), DART_OK);
       }
     }
   );
@@ -523,8 +521,7 @@ dash::Future<GlobOutputIt> copy_async(
     [=](GlobOutputIt *out) mutable {
       int32_t flag;
       DASH_ASSERT_RETURNS(
-        DART_OK,
-        dart_testall(handles->data(), handles->size(), &flag));
+        dart_testall(handles->data(), handles->size(), &flag), DART_OK);
       if (flag) {
         handles->clear();
         *out = out_last;
@@ -535,8 +532,7 @@ dash::Future<GlobOutputIt> copy_async(
     [=]() mutable {
       for (auto& handle : *handles) {
         DASH_ASSERT_RETURNS(
-          DART_OK,
-          dart_handle_free(&handle));
+          dart_handle_free(&handle), DART_OK);
       }
     }
   );
