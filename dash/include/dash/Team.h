@@ -17,6 +17,9 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
+#include <vector>
+#include <algorithm>
+#include <mutex>
 
 
 namespace dash {
@@ -135,7 +138,6 @@ public:
     _myid(t._myid),
     _size(t._size),
     _parent(t._parent),
-    _child(t._child),
     _position(t._position),
     _num_siblings(t._num_siblings),
     _group(t._group),
@@ -144,6 +146,16 @@ public:
     t._parent = nullptr;
     t._group  = nullptr;
     t._dartid = DART_TEAM_NULL;
+
+    {
+      std::lock_guard<std::mutex> g(_parent->_mutex);
+
+      _children = std::move(t._children);
+      // TODO: this is shaky, there may still be dangling pointers to t._parent
+      for (Team *team : _children) {
+        team->_parent = this;
+      }
+    }
   }
 
   /**
@@ -187,13 +199,23 @@ public:
       }
     }
 
-    if (_child) {
-      delete(_child);
-      _child = nullptr;
-    }
+    if (!is_null())
+    {
+      // Child teams will deregister themselves, no need for locking here
+      for (Team* team : _children) {
+        delete(team);
+      }
+      _children.clear();
 
-    if (_parent) {
-      _parent->_child = nullptr;
+      // remove the team from its parent
+      if (!is_all())
+      {
+        std::lock_guard<std::mutex> g(_parent->_mutex);
+        if (nullptr != _parent) {
+          _parent->_children.erase(
+            std::find(_parent->_children.begin(), _parent->_children.end(), this));
+        }
+      }
     }
 
     free();
@@ -413,7 +435,7 @@ public:
    */
   inline bool is_leaf() const
   {
-    return _child == nullptr;
+    return _children.empty();
   }
 
   /**
@@ -455,6 +477,16 @@ public:
     else { return Null(); }
   }
 
+#if 0
+
+  /**
+   * TODO: These functions have been disabled to allow for tree of teams
+   *       Possible new implementation: gather all teams from all children
+   *       or provide a special iterator to iterate over a specific level /
+   *       the bottom.
+   */
+
+
   Team & sub(size_t level = 1)
   {
     Team * t = this;
@@ -475,6 +507,7 @@ public:
     }
     return *t;
   }
+#endif // 0
 
   inline void barrier() const
   {
@@ -563,6 +596,7 @@ public:
 
 private:
 
+  static
   void register_team(Team * team)
   {
     DASH_LOG_DEBUG("Team.register_team",
@@ -574,6 +608,7 @@ private:
       std::make_pair(team->_dartid, team));
   }
 
+  static
   void unregister_team(Team * team)
   {
     DASH_LOG_DEBUG("Team.unregister_team",
@@ -611,7 +646,8 @@ private:
   mutable team_unit_t     _myid         = UNDEFINED_TEAM_UNIT_ID;
   mutable size_t          _size         = 0;
   Team                  * _parent       = nullptr;
-  Team                  * _child        = nullptr;
+  std::vector<Team*>      _children;
+  std::mutex              _mutex;
   size_t                  _position     = 0;
   size_t                  _num_siblings = 0;
   mutable dart_group_t    _group        = DART_GROUP_NULL;
