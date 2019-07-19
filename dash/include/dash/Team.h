@@ -390,6 +390,32 @@ public:
   }
 
   /**
+   * Create a clone of this team.
+   *
+   * \return A new team instance containing the same set of units as the
+   *         original.
+   */
+  inline Team & clone()
+  {
+    dart_team_t new_dartid;
+    if (is_null()) {
+      return *this;
+    }
+    dart_team_clone(_dartid, &new_dartid);
+    size_t num_siblings;
+    // tell the other teams that they now have a new sibling
+    {
+      std::lock_guard<std::mutex> g(_parent->_mutex);
+      num_siblings = _parent->_children.size();
+      for (Team *team : _parent->_children) {
+        team->_num_siblings++;
+      }
+    }
+    Team  *new_team = new Team(new_dartid, _parent, num_siblings, num_siblings);
+    return *new_team;
+  }
+
+  /**
    * Equality comparison operator.
    *
    * \param    rhs   The Team instance to compare
