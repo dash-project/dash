@@ -106,3 +106,30 @@ TEST_F(TeamTest, SplitTeamSync)
   }
 }
 
+TEST_F(TeamTest, Clone)
+{
+  if (dash::size() < 2) {
+    SKIP_TEST_MSG("Test requires at least 2 units");
+  }
+
+  auto & team_all = dash::Team::All();
+
+  auto & team_core = team_all.split(2);
+
+  ASSERT_EQ_U(team_all, team_core.parent());
+
+  auto *team_to_clone = &team_core;
+  for (int i = 0; i < 10; ++i) {
+    auto & team_clone = team_to_clone->clone();
+
+    ASSERT_EQ_U(team_all, team_clone.parent());
+    ASSERT_EQ_U(i+1, team_clone.num_siblings());
+    ASSERT_EQ_U(i+1, team_clone.position());
+    ASSERT_EQ_U(team_core.size(), team_clone.size());
+    ASSERT_NE_U(team_core.dart_id(), team_clone.dart_id());
+    ASSERT_NE_U(team_core.dart_id(), team_clone.dart_id());
+
+    team_to_clone = &team_clone;
+  }
+}
+
