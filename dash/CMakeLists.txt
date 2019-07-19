@@ -43,9 +43,14 @@ set(ENABLE_MEMKIND ${ENABLE_MEMKIND}
     PARENT_SCOPE)
 
 
+if(ENABLE_CUDA)
+  set(DASH_CUDA_LIBRARY_GLOB "src/*.cu")
+  set(DASH_CUDA_TEST_GLOB "test/*.cu")
+endif()
+
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
-     "src/*.c" "src/*.h" "src/*.cc" "src/*.cpp" )
+        "src/*.c" "src/*.h" "src/*.cc" "src/*.cpp" ${DASH_CUDA_LIBRARY_GLOB})
 file(GLOB_RECURSE DASH_LIBRARY_HEADERS
      "include/*.h")
 
@@ -54,7 +59,7 @@ file(GLOB_RECURSE DASH_TEST_SOURCES
 
 foreach(TESTCASE ${TESTCASES_LIST})
 file(GLOB_RECURSE DASH_TEST_SOURCES
-  ${DASH_TEST_SOURCES} "test/${TESTCASE}.h" "test/${TESTCASE}.cc")
+        ${DASH_TEST_SOURCES} "test/${TESTCASE}.h" "test/${TESTCASE}.cc" ${DASH_CUDA_TEST_GLOB})
 endforeach()
 
 # Directories containing the implementation of the library (-I):
@@ -485,7 +490,7 @@ if (BUILD_TESTS)
       set_target_properties(
         ${DASH_TEST} PROPERTIES
         COMPILE_FLAGS
-        "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused -Wno-sign-compare"
+        "${VARIANT_ADDITIONAL_COMPILE_FLAGS}"
       )
       set_target_properties(
         ${DASH_TEST} PROPERTIES

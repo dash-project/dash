@@ -83,6 +83,8 @@ option(ENABLE_HDF5
        "Specify whether HDF5 features are enabled" on)
 option(ENABLE_MEMKIND
        "Specify whether Memkind features are enabled" on)
+option(ENABLE_CUDA
+       "Specify whether CUDA library parts should be enabled" off)
 option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
 
@@ -124,6 +126,9 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Memkind.cmake)
+if (ENABLE_CUDA)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/Cuda.cmake)
+endif()
 
 if (ENABLE_MKL)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
