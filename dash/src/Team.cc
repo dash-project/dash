@@ -55,14 +55,18 @@ Team::Team(
   _num_siblings(nsiblings)
 {
   if (nullptr != parent) {
-    if (parent->_child) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "child of team "  << parent->dart_id() << " " <<
-        "already set to " << parent->_child->dart_id() << ", " <<
-        "cannot set to "  << id);
-    } else {
-      parent->_child = this;
+    {
+      std::lock_guard<std::mutex> g(parent->_mutex);
+#ifdef DASH_DEBUG
+      auto iter = std::find(parent->_children.begin(),
+                            parent->_children.end(), this);
+      if (iter != parent->_children.end()) {
+        DASH_THROW(
+          dash::exception::InvalidArgument,
+          "Team " << id << " already registered with parent " << parent->dart_id());
+      }
+#endif
+      parent->_children.push_back(this);
     }
   }
   // Do not register static Team instances as static variable _team might
