@@ -223,7 +223,7 @@ dart_ret_t
 dart__tasking__task_test(dart_taskref_t *tr, int *flag) DART_INTERNAL;
 
 dart_ret_t
-dart__tasking__task_complete() DART_INTERNAL;
+dart__tasking__task_complete(bool local_only) DART_INTERNAL;
 
 dart_taskref_t
 dart__tasking__current_task() DART_INTERNAL;

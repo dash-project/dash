@@ -166,7 +166,7 @@ dart_task_current_task();
  * task have finished.
  */
 dart_ret_t
-dart_task_complete();
+dart_task_complete(bool local_only);
 
 /**
  * Cancel the current task and start the cancellation on a global scale, i.e.,

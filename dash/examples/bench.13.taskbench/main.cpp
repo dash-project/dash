@@ -215,7 +215,7 @@ benchmark_task_yield(size_t num_yields)
   dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW, NULL);
   dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW, NULL);
   Timer t;
-  dart_task_complete();
+  dart_task_complete(true);
   dash::barrier();
   if (dash::myid() == 0) {
     std::cout << "avg task yield: " << t.Elapsed() / num_yields
