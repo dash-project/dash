@@ -40,17 +40,17 @@
 //
 // Always log error and warning messages:
 //
-#define DASH_LOG_ERROR(context, ...) \
+#define DASH_LOG_ERROR(...) \
   dash::internal::logging::LogWrapper(\
-    "ERROR", __FILE__, __LINE__, context, __VA_ARGS__)
+    "ERROR", __FILE__, __LINE__, __VA_ARGS__)
 
 #define DASH_LOG_ERROR_VAR(context, var) \
   dash::internal::logging::LogVarWrapper(\
     "ERROR", __FILE__, __LINE__, context, #var, (var))
 
-#define DASH_LOG_WARN(context, ...) \
+#define DASH_LOG_WARN(...) \
   dash::internal::logging::LogWrapper(\
-    "WARN ", __FILE__, __LINE__, context, __VA_ARGS__)
+    "WARN ", __FILE__, __LINE__, __VA_ARGS__)
 
 #define DASH_LOG_WARN_VAR(context, var) \
   dash::internal::logging::LogVarWrapper(\
@@ -60,9 +60,9 @@
 // Debug and trace log messages:
 //
 #if defined(DASH_ENABLE_LOGGING)
-#  define DASH_LOG_DEBUG(context, ...) \
+#  define DASH_LOG_DEBUG(...) \
      dash::internal::logging::LogWrapper(\
-       "DEBUG", __FILE__, __LINE__, context, __VA_ARGS__)
+       "DEBUG", __FILE__, __LINE__, __VA_ARGS__)
 
 #  define DASH_LOG_DEBUG_VAR(context, var) \
      dash::internal::logging::LogVarWrapper(\
@@ -70,9 +70,9 @@
 
 #  if defined(DASH_ENABLE_TRACE_LOGGING)
 
-#    define DASH_LOG_TRACE(context, ...) \
+#    define DASH_LOG_TRACE(...) \
        dash::internal::logging::LogWrapper(\
-         "TRACE", __FILE__, __LINE__, context, __VA_ARGS__)
+         "TRACE", __FILE__, __LINE__, __VA_ARGS__)
 
 #    define DASH_LOG_TRACE_VAR(context, var) \
        dash::internal::logging::LogVarWrapper(\
