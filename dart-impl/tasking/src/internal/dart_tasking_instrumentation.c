@@ -50,6 +50,7 @@ struct dart_tool_local_dep_war_cb {
     dart_tool_local_dep_war_cb_t cb;
     void *userdata;
 };
+
 typedef struct dart_tool_task_create_cb dart_tool_task_create_cb;
 typedef struct dart_tool_task_begin_cb dart_tool_task_begin_cb;
 typedef struct dart_tool_task_cancel_cb dart_tool_task_cancel_cb;
@@ -139,6 +140,7 @@ void dart__tasking__instrument_task_create(
   dart_task_prio_t  prio,
   const char       *name)
 {
+    const char *name1 = "";
     if (dart_tool_task_create_cb_data.cb) {
           dart_tool_task_create_cb_data.cb((uint64_t) task, prio, name, dart_tool_task_create_cb_data.userdata);
 

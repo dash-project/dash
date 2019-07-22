@@ -1776,8 +1776,8 @@ dart__tasking__fini()
   dart_tasking_tasklist_fini();
 
   dart__tasking__cancellation_fini();
-  
-  dart__tasking__instrument_task_finalize();
+  //test todo
+  //dart__tasking__instrument_task_finalize();
 
   initialized = false;
   DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");
