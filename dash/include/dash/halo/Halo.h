@@ -108,7 +108,7 @@ public:
     bool halo = false;
     for(dim_t d = 0; d < NumDimensions; ++d) {
       coords[d] += this->_values[d];
-      if(coords[d] < 0 || coords[d] >= view.extent(d))
+      if(coords[d] < view.offset(d) || coords[d] >= view.offset(d) + view.extent(d))
         halo = true;
     }
 
@@ -118,7 +118,7 @@ public:
   /**
    * Returns coordinates adjusted by a stencil point and a boolean to indicate
    * a if the adjusted coordinate points to elements out of the given
-   * \ref ViewSpecpossible (inside: true, else: false).
+   * \ref ViewSpec:  possible (inside: true, else: false).
    * If one dimension points to an element outside the \ref ViewSpec this method
    * returns immediately the unfinished adjusted coordinate and true. Otherwise
    * the adjusted coordinate and false is returned,
@@ -128,7 +128,7 @@ public:
     ElementCoordsT coords, const ViewSpecT& view) const {
     for(dim_t d = 0; d < NumDimensions; ++d) {
       coords[d] += this->_values[d];
-      if(coords[d] < 0 || coords[d] >= view.extent(d))
+      if(coords[d] < view.offset(d) || coords[d] >= view.offset(d) + view.extent(d))
         return std::make_pair(coords, true);
     }
 
@@ -460,7 +460,7 @@ public:
     this->_values = Self_t::coords(index);
   }
 
-  static region_index_t center_index() {
+  static constexpr region_index_t center_index() {
     return NumRegionsMax / 2;
   }
 
