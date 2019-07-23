@@ -471,6 +471,8 @@ int main(int argc, char *argv[])
 
     // BOUNDARY
     for (int idx = 0; idx < max_idx; ++idx) {
+      // Region index 4 is the inner area
+      if (idx == 4) continue;
       DEBUGOUT << "Creating boundary update task for region " << idx << " in " << iter << std::endl;
       dash::tasks::async("UPDATE_BOUNDARY",
         [&, dst_matrix_lbegin, src_op_ptr, iter, idx](){
@@ -509,6 +511,9 @@ int main(int argc, char *argv[])
         for (int bidx : boundary_halo_dependencies.find(idx)->second) {
           deps = dash::tasks::in(*src_op_ptr->halo_memory().range_at(bidx).first);
         }
+
+        // corner tasks don't have dependencies to inner blocks
+        if (idx == 0 || idx == 2 || idx == 6 || idx == 8) return;
 
         /* dependency on blocks along the boundary */
         // TODO: check that directions are correct
