@@ -199,10 +199,10 @@ int main(int argc, char *argv[])
   // TODO: combine all corner elements into one task
   DEBUGOUT << "pattern.local_extent(0): " << pattern.local_extent(0) << std::endl;
   const std::map<int, std::vector<long>> halo_boundary_offsets = {
-                                                {1, {0, 1, pattern.local_extent(0)-1}}, // N depends on the row and both corners
-                                                {3, {0, 1, pattern.local_extent(0)-1}}, // W only requires the column without the corners
-                                                {5, {0, 1, pattern.local_extent(0)-1}}, // E only requires the column without the corners
-                                                {7, {0, 1, pattern.local_extent(0)-1}}, // S depends on the row and both corners
+                                                {1, {0, 1, pattern.local_extent(1)-1}}, // N depends on the row and both corners
+                                                {3, {0, 1, pattern.local_extent(0)-1}}, // W depends on the column and both corners
+                                                {5, {0, 1, pattern.local_extent(0)-1}}, // E depends on the column and both corners
+                                                {7, {0, 1, pattern.local_extent(1)-1}}, // S depends on the row and both corners
   };
 
   constexpr const auto max_idx = dash::halo::RegionCoords<2>::NumRegionsMax;
