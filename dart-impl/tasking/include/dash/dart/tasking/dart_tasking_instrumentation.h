@@ -94,4 +94,23 @@ void dart__tasking__instrument_task_add_to_queue(
     dart_task_t *task,
     dart_thread_t *thread) DART_INTERNAL;
     
+/**
+ * Instrumentation point of a dummy dependency added into the task graph
+ * replacing an input dependency, which cannot be matched yet.
+ */
+void dart__tasking__instrument_dummy_dep_create(
+    dart_task_t *task,
+    uint64_t dummy_dep,
+    uint64_t in_dep,
+    dart_task_dep_t out_dep) DART_INTERNAL;
+/**
+ * Instrumentation point of a dummy dependency captured, meaning
+ * a matching dependency was now found, the dummy dependency is
+ * not needed anymore.
+*/
+void dart__tasking__instrument_dummy_dep_capture (
+    dart_task_t *task,
+    uint64_t dummy_dep,
+    uint64_t remote_dep) DART_INTERNAL;
+
 #endif /* DART_TASKING_INSTRUMENTATION_H_ */

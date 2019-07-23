@@ -51,6 +51,15 @@ struct dart_tool_local_dep_war_cb {
     void *userdata;
 };
 
+struct dart_tool_dummy_dep_create_cb {
+    dart_tool_dummy_dep_create_cb_t cb;
+    void *userdata;
+};
+struct dart_tool_dummy_dep_capture_cb {
+    dart_tool_dummy_dep_capture_cb_t cb;
+    void *userdata;
+};
+
 typedef struct dart_tool_task_create_cb dart_tool_task_create_cb;
 typedef struct dart_tool_task_begin_cb dart_tool_task_begin_cb;
 typedef struct dart_tool_task_cancel_cb dart_tool_task_cancel_cb;
@@ -62,6 +71,9 @@ typedef struct dart_tool_task_add_to_queue_cb dart_tool_task_add_to_queue_cb;
 typedef struct dart_tool_local_dep_raw_cb dart_tool_local_dep_raw_cb;
 typedef struct dart_tool_local_dep_waw_cb dart_tool_local_dep_waw_cb;
 typedef struct dart_tool_local_dep_war_cb dart_tool_local_dep_war_cb;
+
+typedef struct dart_tool_dummy_dep_create_cb dart_tool_dummy_dep_create_cb;
+typedef struct dart_tool_dummy_dep_capture_cb dart_tool_dummy_dep_capture_cb;
 /* data structures to save the function pointer and user data from the callback */
 struct dart_tool_task_create_cb dart_tool_task_create_cb_data;
 struct dart_tool_task_begin_cb dart_tool_task_begin_cb_data;
@@ -73,6 +85,8 @@ struct dart_tool_local_dep_raw_cb dart_tool_local_dep_raw_cb_data;
 struct dart_tool_local_dep_waw_cb dart_tool_local_dep_waw_cb_data;
 struct dart_tool_local_dep_war_cb dart_tool_local_dep_war_cb_data;
 
+struct dart_tool_dummy_dep_create_cb dart_tool_dummy_dep_create_cb_data;
+struct dart_tool_dummy_dep_capture_cb dart_tool_dummy_dep_capture_cb_data;
 
 /* implementation of the register function of the callback */
 int dart_tool_register_task_create (dart_tool_task_create_cb_t cb, void *userdata_task_create) {
@@ -102,7 +116,10 @@ int dart_tool_register_task_finalize(dart_tool_task_finalize_cb_t cb, void *user
     printf("dart_tool_register_task_finalize was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_task_all_end);
     return 0;
 }
-
+void dart__tasking__instrument_dummy_dep_capture (
+    dart_task_t *task,
+    uint64_t dummy_dep,
+    uint64_t remote_dep) DART_INTERNAL;
 /* missing task_yield register functions yet*/
 
 
@@ -133,14 +150,28 @@ int dart_tool_register_local_dep_war (dart_tool_local_dep_war_cb_t cb, void *use
     return 0;
 }
 
+int dart_tool_register_dummy_dep_create(dart_tool_dummy_dep_create_cb_t cb, void *userdata_dummy_dep_create) {
+    dart_tool_dummy_dep_create_cb_data.cb = cb;
+    dart_tool_dummy_dep_create_cb_data.userdata = userdata_dummy_dep_create;
+    printf("dart_tool_register_dummy_dep_create was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_dummy_dep_create);
+    return 0;
+}
 
+int dart_tool_register_dummy_dep_capture(dart_tool_dummy_dep_capture_cb_t cb, void *userdata_dummy_dep_capture) {
+    dart_tool_dummy_dep_capture_cb_data.cb = cb;
+    dart_tool_dummy_dep_capture_cb_data.userdata = userdata_dummy_dep_capture;
+    printf("dart_tool_register_dummy_dep_capture was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_dummy_dep_capture);
+    return 0;
+}
 
 void dart__tasking__instrument_task_create(
   dart_task_t      *task,
   dart_task_prio_t  prio,
   const char       *name)
 {
-    const char *name1 = "";
+    if (!name) {
+        name = "";
+    }
     if (dart_tool_task_create_cb_data.cb) {
           dart_tool_task_create_cb_data.cb((uint64_t) task, prio, name, dart_tool_task_create_cb_data.userdata);
 
@@ -250,5 +281,26 @@ void dart__tasking__instrument_task_add_to_queue(
     }
     
 }
+void dart__tasking__instrument_dummy_dep_create(
+    dart_task_t *task,
+    uint64_t dummy_dep,
+    uint64_t in_dep,
+    dart_task_dep_t out_dep)
+{
+    if (dart_tool_dummy_dep_create_cb_data.cb) {
+        dart_tool_dummy_dep_create_cb_data.cb((uint64_t) task, dummy_dep, in_dep, out_dep.phase, dart_tool_dummy_dep_create_cb_data.userdata);
+    }
+    
+}
 
+void dart__tasking__instrument_dummy_dep_capture (
+    dart_task_t *task,
+    uint64_t dummy_dep,
+    uint64_t remote_dep)
+{
+    if (dart_tool_dummy_dep_capture_cb_data.cb) {
+        dart_tool_dummy_dep_capture_cb_data.cb((uint64_t) task, dummy_dep, remote_dep, dart_tool_dummy_dep_create_cb_data.userdata);
+    }
+    
+}
 

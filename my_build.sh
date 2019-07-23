@@ -88,7 +88,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_TCMALLOC=ON \
                         -DENABLE_MEMKIND=ON \
                         \
-                        -DBUILD_EXAMPLES=OFF \
+                        -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=OFF \
                         -DBUILD_DOCS=OFF \
                         \

@@ -747,6 +747,8 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
   dart_dephash_elem_t *rdep;
   DART_LOG_DEBUG("Handling previously unhandled remote input dependencies: %p",
                  unhandled_remote_indeps);
+  printf("Handling previously unhandled remote input dependencies: %p\n",
+                 unhandled_remote_indeps);
 
   // create tasks requested by remote units to handle copyin deps
   dart_tasking_copyin_create_delayed_tasks();
@@ -889,6 +891,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
     bool runnable = false;
 
     if (rdep->dep.phase > matching_phase) {
+        printf("skipping dep %lu", (uint64_t) rdep);
       // Skip any dependency we cannot handle yet
       dephash_list_insert_elem_sorted_phase_desc_nolock(
         &unhandled_remote_outdeps, rdep);
@@ -896,7 +899,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
     }
     //vll kante
     DART_LOG_TRACE("Handling remote dependency %p", rdep);
-    printf("Handling remote dependency %p\n", rdep);
+    printf("3) Handling remote dependency %p in phase %d\n", rdep, rdep->dep.phase);
     dart_taskphase_t phase = rdep->dep.phase;
 
     int slot = hash_gptr(rdep->dep.gptr);
@@ -916,7 +919,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
         prev = local;
       }
     }
-
+    printf("rdep->task.local %lu, local->task.local %lu\n", (uint64_t) rdep->task.local, (uint64_t) local->task.local);
     // make sure there are no colliding dependencies
     if (local != NULL && local->dep.phase == phase && local->task.local != NULL) {
       DART_LOG_ERROR("Found colliding remote output dependencies in phase %d!",
@@ -930,12 +933,15 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
     if (local != NULL && local->is_dummy) {
       dummy_task = local;
       // if there are no previous output dependencies we can release directly
+      printf("release directly 1) % lu\n", (uint64_t) local);
       if (prev == NULL) {
+        printf("runnable = true\n");
         runnable = true;
       }
     } else if (prev != NULL && prev->is_dummy) {
       dummy_task = prev;
       // if there are no previous output dependencies we can release directly
+      printf("release directly 2) % lu\n", (uint64_t) prev);
       if (local == NULL) {
         runnable = true;
       }
@@ -954,6 +960,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
                        dummy_task, rdep);
         printf("Capturing dummy dependency %p (%lu) for remote dependency %p (%lu) with local_id %lu and remote_id %lu, dep.type: %d\n",
                        dummy_task,(uint64_t) dummy_task, rdep, (uint64_t) rdep, rdep->task.local, rdep->task.remote, rdep->dep.type);
+        dart__tasking__instrument_dummy_dep_capture(rdep->task.local, (uint64_t) dummy_task, (uint64_t) rdep);
         dummy_task->task   = rdep->task;
         dummy_task->origin = rdep->origin;
         //printf("Capturing dummy dependency %p (%lu) for remote dependency %p (%lu) with local_id %lu and remote_id %lu, dep.type: %d\n",
@@ -979,6 +986,8 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
       DART_LOG_TRACE("Inserting remote out dependency %p after %p",
                      rdep, prev);
       // insert the remote dependency into the bucket
+      printf("Inserting remote out dependency %p after %\n",
+                     rdep, prev);
       //kante
       printf("local_deps[slot]: %s, rdep: %s\n", local_deps->head->task.local->descr,rdep->task.local->descr);
       dephash_list_insert_elem_after_nolock(&local_deps[slot], rdep, prev);
@@ -994,6 +1003,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
       if (local->task.local == NULL) {
         DART_LOG_WARN("Task in dependency %p already completed, cannot steal!",
                       local);
+        printf("cannot steal\n");
       } else {
         dart_dephash_elem_t *in_dep = local->dep_list;
         dart_dephash_elem_t *prev = NULL;
@@ -1008,6 +1018,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
                            in_dep, in_dep->dep.phase,
                            local, local->dep.phase,
                            rdep, rdep->dep.phase);
+            printf("stealing\n");
             if (prev == NULL) {
               local->dep_list = next;
             } else {
@@ -1295,6 +1306,10 @@ dart_tasking_datadeps_match_local_dependency(
       printf("1) Inserting dummy dependency %llu for input dependency %llu "
                       "of task %llu in phase %d with type %d\n",
                      (uint64_t) dummy, (uint64_t) new_elem, (uint64_t) task, out_dep.phase, out_dep.type);
+      //wip
+      //send dd, in_dep, phase and task t to tool
+      //call function in dart_tasking_instrumentation.c
+      dart__tasking__instrument_dummy_dep_create(task, (uint64_t) dummy, (uint64_t) new_elem, out_dep);
     } else {
       //LOCK_TASK(elem);
       if (elem->task.local != NULL) {

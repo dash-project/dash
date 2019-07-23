@@ -1214,7 +1214,7 @@ dart__tasking__init()
   dart__tasking__install_signalhandler();
   /* Before finishing initialization, a tool library is loaded if needed */
   void *handle;
-  int (*toolinit)(int);
+  int (*toolinit)(int, int);
   int toolhandle;
   /**
    * The name of the environment variable containing the path to the tool is stored in 
@@ -1230,7 +1230,7 @@ dart__tasking__init()
       printf("TOOL_PATH=%s\n", var);
       handle = dlopen(var, RTLD_LAZY);
       if (!handle) {
-          /* failed to load the tool */
+         /* failed to load the tool */
           printf("Failed to load the tool\n");
           fprintf(stderr, "Error: %s\n", dlerror());
       }
@@ -1246,11 +1246,11 @@ dart__tasking__init()
           dlclose(handle);
       }
       /* Send the toolinit function the number of threads we're using */
-      toolhandle = toolinit(dart__tasking__num_threads());
+      int pid = getpid();
+      toolhandle = toolinit(dart__tasking__num_threads(), pid);
       /* Output only for testing purposes */
       printf("toolhandle: %d (should be 0)\n", toolhandle);
   }
-  
   initialized = true;
 
   return DART_OK;
