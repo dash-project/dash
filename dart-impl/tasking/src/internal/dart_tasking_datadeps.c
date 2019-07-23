@@ -1380,6 +1380,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
           // skip this dependency because there is an OUT dependency handling it
           // we need to do this to avoid inserting a dummy for an input dependency
           // first and then inserting the output dependency
+          // TODO: this is a O(n^2) check. Can we do better?
           // TODO: see if we can detect that efficiently while inserting the OUT
           //       dependency into the tree.
           DART_LOG_TRACE("Skipping dependency %d due to conflicting "
