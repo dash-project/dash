@@ -276,6 +276,7 @@ public:
     const auto& view = this->view();
     const auto& offsets_view = view.offsets();
     const auto& extents_view = view.extents();
+
     for(auto d = 0; d < NumDimensions; ++d) {
       auto end_coord = offsets_view[d] + extents_view[d];
       if(begin_coords[d] < offsets_view[d] ||
@@ -666,10 +667,13 @@ public:
   using iterator =
     StencilIterator<ElementT, PatternT, GlobMemT, StencilSpecT, StencilViewScope::ALL>;
   using const_iterator = const iterator;
-  using iterator_inner =
+  /*using iterator_inner =
     StencilIterator<ElementT, PatternT, GlobMemT, StencilSpecT, StencilViewScope::INNER>;
+  using const_iterator_inner = const iterator;*/
+  using iterator_inner =
+    StencilIteratorTest<ElementT, PatternT, GlobMemT, StencilSpecT, StencilViewScope::INNER>;
   using const_iterator_inner = const iterator;
-  using iterator_bnd         = StencilIterator<ElementT, PatternT, GlobMemT, StencilSpecT,
+  using iterator_bnd         = StencilIteratorBound<ElementT, PatternT, GlobMemT, StencilSpecT,
                                        StencilViewScope::BOUNDARY>;
   using const_iterator_bnd   = const iterator;
 
@@ -745,7 +749,7 @@ public:
           &_stencil_spec,
           &_stencil_offsets,
           *_view_local,
-          _spec_views.boundary_views_dim(),
+          _spec_views.boundary_views(),
           0)
     , _bend(
           _local_memory,
@@ -753,7 +757,7 @@ public:
           &_stencil_spec,
           &_stencil_offsets,
           *_view_local,
-          _spec_views.boundary_views_dim(),
+          _spec_views.boundary_views(),
           _spec_views.boundary_size())
   {
   }
