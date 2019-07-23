@@ -383,13 +383,17 @@ int main(int argc, char *argv[])
     const auto coords_last   = (src_op_ptr->inner.end() - 1).coords();
     // Y-Direction: slower index, top to bottom
     auto begin_y = coords_begin[0];
-    auto end_y   = begin_y + chunk_size - 1;
     while (begin_y <= coords_last[0]) {
+      auto end_y = begin_y + chunk_size - 1;
+      if(end_y > coords_last[0])
+        end_y = coords_last[0];
       // X-Direction: fastest running index, left to right
       auto begin_x = coords_begin[1];
-      auto end_x   = begin_x + chunk_size - 1;
       while (begin_x <= coords_last[1]) {
-        dash::tasks::async(
+        auto end_x   = begin_x + chunk_size - 1;
+        if(end_x > coords_last[1])
+          end_x = coords_last[1];
+        dash::tasks::async("UPDATE_INNER",
           [=](){
             src_op_ptr->inner.update_blocked({begin_y, begin_x},{end_y, end_x}, dst_matrix_lbegin,
               [&, iter, begin_x, begin_y](auto* center, auto* center_dst, auto offset, const auto& offsets) {
@@ -459,14 +463,8 @@ int main(int argc, char *argv[])
           }
         );
         begin_x += chunk_size;
-        end_x   += chunk_size;
-        if(end_x > coords_last[1])
-          end_x = coords_last[1];
       }
       begin_y += chunk_size;
-      end_y   += chunk_size;
-      if(end_y > coords_last[0])
-        end_y = coords_last[0];
     }
 
     //minimon.leave("inner");
