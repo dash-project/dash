@@ -69,14 +69,13 @@ namespace internal {
   {
     // TODO: extend this to handle GlobIter!
     size_t chunk_size = chunking.get_chunk_size(begin, end);
-    if (chunk_size == 0) chunk_size = 1;
     InputIter from = begin;
     while (from < end) {
       InputIter to = from + chunk_size;
       if (to > end) to = end;
       dash::tasks::async(
         name,
-        [=](){
+        [f, from, to](){
           f(from, to);
         }
       );
@@ -105,14 +104,13 @@ namespace internal {
     InputIter from = begin;
     DependencyVector deps;
     deps.reserve(10);
-    int count = 0;
     while (from < end) {
       InputIter to = from + chunk_size;
       if (to > end) to = end;
       auto dep_inserter = std::inserter(deps, deps.begin());
       depedency_generator(from, to, dep_inserter);
       dash::tasks::internal::async(
-        [=](){
+        [f, from, to](){
           f(from, to);
         },
         deps,
@@ -120,7 +118,6 @@ namespace internal {
       );
       from = to;
       deps.clear();
-      count++;
     }
   }
 
