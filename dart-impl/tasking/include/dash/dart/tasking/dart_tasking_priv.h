@@ -90,7 +90,7 @@ struct dart_task_data {
   int8_t                     state;           // one of dart_task_state_t, single byte sufficient
   dart_tasklock_t            lock;
   struct task_list          *successor;       // the list of tasks that depend on this task
-  dart_dephash_elem_t       *remote_successor;
+  dart_dephash_elem_t       *remote_successor;// the list of dependencies from remote tasks directly dependending on this task
   struct dart_task_data     *parent;          // the task that created this task
   // TODO: pack using pahole, move all execution-specific fields into context
   context_t                 *taskctx;         // context to start/resume task
@@ -121,6 +121,7 @@ struct dart_task_data {
   const char                *descr;           // the description of the task
   dart_taskphase_t           phase;
   int                        num_children;
+  int16_t                    owner;           // the thread owning the task object memory
 #ifdef DART_DEBUG
   task_list_t              * children;  // list of child tasks
 #endif //DART_DEBUG
