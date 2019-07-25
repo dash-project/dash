@@ -107,9 +107,9 @@ benchmark_task_remotedep_creation(size_t num_tasks, int num_deps)
         //std::cout << "task " << from << std::endl;
       },
       [=, &array](
-        int from,
-        int to,
-        dash::tasks::DependencyVectorInserter inserter) {
+        auto from,
+        auto to,
+        auto inserter) {
         for (int d = 0; d < num_deps; d++) {
           if (UseInDep) {
             *inserter = dash::tasks::in(array[target*num_deps + d]);
@@ -148,9 +148,9 @@ benchmark_task_spreadremotedep_creation(size_t num_tasks, int num_deps)
         //std::cout << "task " << from << std::endl;
       },
       [=, &array](
-        int from,
-        int to,
-        dash::tasks::DependencyVectorInserter inserter) {
+        auto from,
+        auto to,
+        auto inserter) {
         int t = (dash::myid() + 1) % dash::size();
         for (int d = 0; d < num_deps; d++) {
           *inserter = dash::tasks::in(array[target*num_deps + d]);
@@ -188,9 +188,9 @@ benchmark_task_localdep_creation(size_t num_tasks, int num_deps)
         //std::cout << "task " << from << std::endl;
       },
       [=, &array](
-        int from,
-        int to,
-        dash::tasks::DependencyVectorInserter inserter) {
+        auto from,
+        auto to,
+        auto inserter) {
         for (int d = 0; d < num_deps; d++) {
           *inserter = dash::tasks::out(tmp[d]);
         }
