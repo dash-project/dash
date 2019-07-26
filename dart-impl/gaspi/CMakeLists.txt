@@ -29,11 +29,18 @@ set(ENABLE_PAPI ${ENABLE_PAPI}
     PARENT_SCOPE)
 set(ENABLE_IBVERBS ${ENABLE_IBVERBS}
     PARENT_SCOPE)
-
+set(ENABLE_DART_LOCALITY ${ENABLE_DART_LOCALITY}
+    PARENT_SCOPE)
+    
 message("Use compiler: " "${CC}")
 message("-- GASPI include path: " "${GASPI_INCLUDE_PATH}")
 
-
+# Locality compile flag
+#
+if(ENABLE_DART_LOCALITY)
+     set(ADDITIONAL_COMPILE_FLAGS
+          "${ADDITIONAL_COMPILE_FLAGS} -DWITHLOCALITY")
+endif()
 
 # Logging compile flags
 #

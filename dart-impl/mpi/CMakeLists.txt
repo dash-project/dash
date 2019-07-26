@@ -39,6 +39,8 @@ set(ENABLE_PAPI ${ENABLE_PAPI}
     PARENT_SCOPE)
 set(ENABLE_HDF5 ${ENABLE_HDF5}
     PARENT_SCOPE)
+set(ENABLE_DART_LOCALITY ${ENABLE_DART_LOCALITY}
+    PARENT_SCOPE)
 
 message(STATUS "MPI include path:         " ${MPI_INCLUDE_PATH})
 message(STATUS "MPI libraries:")
@@ -49,6 +51,13 @@ message(STATUS "MPI link flags:")
 foreach (MPI_LINK_FLAG ${MPI_LINK_FLAGS})
   message(STATUS "   " ${MPI_LINK_FLAG})
 endforeach()
+
+# Locality compile flag
+#
+if(ENABLE_DART_LOCALITY)
+     set(ADDITIONAL_COMPILE_FLAGS
+          "${ADDITIONAL_COMPILE_FLAGS} -DWITHLOCALITY")
+endif()
 
 ## Configure compile flags
 

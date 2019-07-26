@@ -46,6 +46,10 @@ TEST_F(TeamLocalityTest, GlobalAll)
     return;
   }
 
+  #ifndef WITHLOCALITY
+    SKIP_TEST_MSG("Skipping TeamLocalityTest with deactivated locality");
+  #endif
+
   dash::Team & team = dash::Team::All();
 
   dash::util::TeamLocality tloc(team);
@@ -107,6 +111,10 @@ TEST_F(TeamLocalityTest, SplitNUMA)
     return;
   }
 
+  #ifndef WITHLOCALITY
+    SKIP_TEST_MSG("Skipping TeamLocalityTest with deactivated locality");
+  #endif
+  
   dash::Team & team = dash::Team::All();
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",

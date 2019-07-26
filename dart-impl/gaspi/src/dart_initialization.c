@@ -4,7 +4,7 @@
 #include <dash/dart/gaspi/dart_translation.h>
 #include <dash/dart/gaspi/dart_communication_priv.h>
 
-#include <dash/dart/locality/locality.h>
+#include <dash/dart/base/locality.h>
 
 #include <limits.h>
 

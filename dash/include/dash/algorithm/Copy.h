@@ -281,12 +281,14 @@ dash::Future<ValueType *> copy_async(
     DASH_LOG_TRACE("dash::copy_async", "input range empty");
     return dash::Future<ValueType *>(out_first);
   }
-
-  dash::util::UnitLocality uloc(team, team.myid());
-  // Size of L2 data cache line:
-  int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
-  bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
-                      <= l2_line_size;
+  bool use_memcpy = false;
+  #ifdef WITHLOCALITY  
+    dash::util::UnitLocality uloc(team, team.myid());
+    // Size of L2 data cache line:
+    int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
+    use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
+                        <= l2_line_size;
+  #endif
 
   ValueType * dest_first = out_first;
   // Return value, initialize with begin of output range, indicating no values
@@ -526,11 +528,14 @@ ValueType * copy(
   ValueType   * out_first)
 {
   const auto & team = in_first.team();
-  dash::util::UnitLocality uloc(team, team.myid());
-  // Size of L2 data cache line:
-  int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
-  bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
-                      <= l2_line_size;
+  bool use_memcpy = false;
+  #ifdef WITHLOCALITY  
+    dash::util::UnitLocality uloc(team, team.myid());
+    // Size of L2 data cache line:
+    int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
+    use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
+                        <= l2_line_size;
+  #endif
 
   DASH_LOG_TRACE("dash::copy()", "blocking, global to local");
 

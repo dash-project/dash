@@ -206,9 +206,9 @@ dart_ret_t do_init()
   DART_LOG_DEBUG("dart_init: communication backend initialization finished");
 
   _dart_initialized = 1;
-
-  dart__mpi__locality_init();
-
+  #ifdef WITHLOCALITY
+    dart__mpi__locality_init();
+  #endif
   _dart_initialized = 2;
 
   DART_LOG_DEBUG("dart_init > initialization finished");
@@ -294,8 +294,9 @@ dart_ret_t dart_exit()
   dart_global_unit_t unitid;
   dart_myid(&unitid);
 
-  dart__mpi__locality_finalize();
-
+  #ifdef WITHLOCALITY
+    dart__mpi__locality_finalize();
+  #endif
   _dart_initialized = 0;
 
   DART_LOG_DEBUG("%2d: dart_exit()", unitid.id);

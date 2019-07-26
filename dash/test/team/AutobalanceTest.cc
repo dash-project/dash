@@ -148,7 +148,9 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
 {
   typedef dash::default_size_t     extent_t;
   typedef std::array<extent_t, 2>  extents_t;
-
+  #ifndef WITHLOCALITY
+    SKIP_TEST_MSG("Skipping BalanceTest with deactivated locality");
+  #endif
   if (dash::myid() != 0) {
     return;
   }

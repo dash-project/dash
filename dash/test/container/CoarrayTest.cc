@@ -360,9 +360,13 @@ TEST_F(CoarrayTest, Mutex){
 TEST_F(CoarrayTest, Comutex){
   // Check runtime conditions
   // This might deadlock if multiple units are pinned to the same CPU
-  if(!core_mapping_is_unique(dash::Team::All())){
-    SKIP_TEST_MSG("Multiple units are mapped to the same core => possible deadlock");
-  }
+  #ifdef WITLOCALITY
+    if(!core_mapping_is_unique(dash::Team::All())){
+      SKIP_TEST_MSG("Multiple units are mapped to the same core => possible deadlock");
+    }
+  #else
+    SKIP_TEST_MSG("Test cant be secured against deadlock without locality");
+  #endif
 
   // Test Setup
   const int repetitions = 10;
@@ -478,9 +482,13 @@ TEST_F(CoarrayTest, CoEvent)
   if(num_images() < 2){
     SKIP_TEST_MSG("This test requires at least 2 units");
   }
-  if(!core_mapping_is_unique(dash::Team::All())){
-    SKIP_TEST_MSG("Multiple units are mapped to the same core => possible deadlock");
-  }
+  #ifdef WITLOCALITY
+    if(!core_mapping_is_unique(dash::Team::All())){
+      SKIP_TEST_MSG("Multiple units are mapped to the same core => possible deadlock");
+    }
+  #else
+    SKIP_TEST_MSG("Test cant be secured against deadlock without locality");
+  #endif
 
   if(this_image() == 0){
     events(1).post();
@@ -535,9 +543,13 @@ TEST_F(CoarrayTest, CoEventIter)
   }
   // Check runtime conditions
   // This might deadlock if multiple units are pinned to the same CPU
-  if(!core_mapping_is_unique(dash::Team::All())){
-    SKIP_TEST_MSG("Multiple units are mapped to the same core => possible deadlock");
-  }
+  #ifdef WITLOCALITY
+    if(!core_mapping_is_unique(dash::Team::All())){
+      SKIP_TEST_MSG("Multiple units are mapped to the same core => possible deadlock");
+    }
+  #else
+    SKIP_TEST_MSG("Test cant be secured against deadlock without locality");
+  #endif
 
   dash::Coevent events;
 
