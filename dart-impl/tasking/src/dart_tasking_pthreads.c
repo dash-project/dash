@@ -1221,11 +1221,15 @@ dart__tasking__init()
    * DART__TOOLS_TOOL_ENV_VAR_PATH
   */
   const char* var = dart__base__env__string(DART__TOOLS_TOOL_ENV_VAR_PATH);
-  printf("var = %s\n", var);
+  //printf("var = %s\n", var);
   if (var == 0) {
       //printf("hier");
       DART_LOG_ERROR("Environment variable is an empty string!\n");
-      return DART_ERR_INVAL;
+      printf("Tool library is not loaded.\n");
+      /* if this line is uncommented, dart_tasking will not be initialized completely
+       * resulting in incorrect program flow.
+      */ 
+      //return DART_ERR_INVAL;
   } else {
       printf("TOOL_PATH=%s\n", var);
       handle = dlopen(var, RTLD_LAZY);

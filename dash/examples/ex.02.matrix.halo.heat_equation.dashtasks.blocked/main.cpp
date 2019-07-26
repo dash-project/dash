@@ -281,6 +281,7 @@ int main(int argc, char *argv[])
   src_halo_ptr->matrix().barrier();
 
   //minimon.enter();
+  dash::tasks::async_fence();
 
   for (auto iter = 0; iter < iterations; ++iter) {
     auto dst_matrix_lbegin = dst_halo_ptr->matrix().lbegin();

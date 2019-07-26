@@ -78,11 +78,11 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LIKWID=OFF \
                         -DENABLE_HWLOC=ON \
                         -DENABLE_PAPI=ON \
-                        -DENABLE_MKL=ON \
-                        -DENABLE_BLAS=ON \
-                        -DENABLE_LAPACK=ON \
-                        -DENABLE_SCALAPACK=ON \
-                        -DENABLE_PLASMA=ON \
+                        -DENABLE_MKL=OFF \
+                        -DENABLE_BLAS=OFF \
+                        -DENABLE_LAPACK=OFF \
+                        -DENABLE_SCALAPACK=OFF \
+                        -DENABLE_PLASMA=OFF \
                         -DENABLE_HDF5=ON \
                         -DENABLE_VALGRIND=OFF \
                         -DENABLE_TCMALLOC=ON \

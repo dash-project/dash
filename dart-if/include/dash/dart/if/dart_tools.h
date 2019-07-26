@@ -26,6 +26,8 @@ typedef void (*dart_tool_local_dep_war_cb_t) (uint64_t task1, uint64_t task2, ui
 typedef void (*dart_tool_dummy_dep_create_cb_t) (uint64_t task, uint64_t dummy_dep, uint64_t in_dep, int phase, void *userdata);
 typedef void (*dart_tool_dummy_dep_capture_cb_t) (uint64_t task, uint64_t dummy_dep, uint64_t remote_dep, void *userdata);
 
+typedef void (*dart_tool_remote_in_dep_cb_t) (uint64_t local_task, uint64_t remote_task, int local_dep_type, int remote_dep_type , int32_t local_unitid, int32_t remote_unitid,void *userdata);
+
 
 
 //register function for every event
@@ -44,8 +46,9 @@ int dart_tool_register_local_dep_waw (dart_tool_local_dep_waw_cb_t cb, void *use
 int dart_tool_register_local_dep_war (dart_tool_local_dep_war_cb_t cb, void *userdata);
 
 int dart_tool_register_dummy_dep_create (dart_tool_dummy_dep_create_cb_t cb, void *userdata);
-
 int dart_tool_register_dummy_dep_capture (dart_tool_dummy_dep_capture_cb_t cb, void *userdata);
+
+int dart_tool_register_remote_in_dep (dart_tool_remote_in_dep_cb_t cb, void *userdata);
 
 
 #ifdef __cplusplus

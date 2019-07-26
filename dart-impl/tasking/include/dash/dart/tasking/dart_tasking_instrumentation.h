@@ -113,4 +113,17 @@ void dart__tasking__instrument_dummy_dep_capture (
     uint64_t dummy_dep,
     uint64_t remote_dep) DART_INTERNAL;
 
+/**
+ * Instrumentation point of a remote input dependency matched with a
+ * fitting output dependency from another task.
+*/
+    
+void dart__tasking__instrument_remote_in_dep(
+    uint64_t local_task,
+    uint64_t remote_task,
+    int local_dep_type,
+    int remote_dep_type,
+    int32_t local_unitid,
+    int32_t remote_unitid) DART_INTERNAL;
+
 #endif /* DART_TASKING_INSTRUMENTATION_H_ */
