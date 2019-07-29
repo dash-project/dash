@@ -238,6 +238,8 @@ static inline void instrument_task_dependency(
 dart_ret_t dart_tasking_datadeps_init()
 {
   dart_myid(&myguid);
+  printf("datadeps init: %u\n", myguid);
+  printf("datadeps init.id: %u\n", myguid.id);
   dart_tasking_taskqueue_init(&local_deferred_tasks);
   int num_threads = dart__tasking__num_threads() + DART_TASKING_MAX_UTILITY_THREADS;
   dephash_elem_freelist_list = calloc(num_threads,
@@ -808,7 +810,8 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
             //kante (in_dep), local->task.local != 0, dann ex. kante zwischen local->task.local und rdep.task.local
             if (local->task.local != NULL) {
               //if local->task.local is NULL, the dependency is not longer existing
-              dart__tasking__instrument_remote_in_dep((uint64_t) local->task.local, (uint64_t) rdep->task.local, local->dep.type, local->dep.gptr.unitid, rdep->dep.type, rdep->dep.gptr.unitid);
+              //rdep->origin.id
+              dart__tasking__instrument_remote_in_dep((uint64_t) local->task.local, (uint64_t) rdep->task.local, local->dep.type, rdep->dep.type, myguid.id, rdep->origin.id);
             } 
             printf("'tis the one input remote local->task.local %lu (type:%d), rdep->task.local %lu (type:%d), pid %d\n", (uint64_t) local->task.local, local->dep.type, (uint64_t) rdep->task.local, rdep->dep.type, pid_indeps);
             break;
@@ -973,7 +976,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
                        dummy_task, rdep);
         //printf("Capturing dummy dependency %p (%lu) for remote dependency %p (%lu) with local_id %lu and remote_id %lu, dep.type: %d\n",
         //               dummy_task,(uint64_t) dummy_task, rdep, (uint64_t) rdep, rdep->task.local, rdep->task.remote, rdep->dep.type);
-        dart__tasking__instrument_dummy_dep_capture(rdep->task.local, (uint64_t) dummy_task, (uint64_t) rdep);
+        dart__tasking__instrument_dummy_dep_capture(rdep->task.local, (uint64_t) dummy_task, (uint64_t) rdep, rdep->origin.id);
         dummy_task->task   = rdep->task;
         dummy_task->origin = rdep->origin;
         //printf("Capturing dummy dependency %p (%lu) for remote dependency %p (%lu) with local_id %lu and remote_id %lu, dep.type: %d\n",
@@ -1274,10 +1277,10 @@ dart_tasking_datadeps_match_local_dependency(
         //printf("Match found.: elem->task: %llu, prev->task: %llu, dep->type:%d, elem->dep.type: %d, counter: %d\n", (uint64_t) elem->task.local, (uint64_t) task, dep->type, elem->dep.type, counter_test);
         if ((elem->dep.type == DART_DEP_OUT) && (dep->type == DART_DEP_IN)) {
           //printf("RAW depedendency from task %llu to task %llu\n", (uint64_t) elem->task.local, task);
-          dart__tasking__instrument_local_dep_raw(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset);
+          dart__tasking__instrument_local_dep_raw(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset, myguid.id, myguid.id);
         } else if ((elem->dep.type == DART_DEP_OUT) && (dep->type == DART_DEP_OUT)) {
           //printf("WAW depedendency from task %llu to task %llu\n", (uint64_t) elem->task.local, task);
-          dart__tasking__instrument_local_dep_waw(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset);
+          dart__tasking__instrument_local_dep_waw(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset, myguid.id, myguid.id);
         }
         //printf("\n");
         //printf("\n");
@@ -1323,7 +1326,7 @@ dart_tasking_datadeps_match_local_dependency(
       //wip
       //send dd, in_dep, phase and task t to tool
       //call function in dart_tasking_instrumentation.c
-      dart__tasking__instrument_dummy_dep_create(task, (uint64_t) dummy, (uint64_t) new_elem, out_dep);
+      dart__tasking__instrument_dummy_dep_create(task, (uint64_t) dummy, (uint64_t) new_elem, out_dep, myguid.id);
     } else {
       //LOCK_TASK(elem);
       if (elem->task.local != NULL) {
@@ -1332,7 +1335,7 @@ dart_tasking_datadeps_match_local_dependency(
         DART_LOG_TRACE("Making task %p a local successor of task %p "
                       "(num_deps: %i, outdep: %p)",
                       task, elem->task.local, unresolved_deps, elem);
-        printf("Making task %lu a local successor of myguidtask %lu "
+        printf("Making task %lu a local successor of task %lu "
                       "(num_deps: %i, outdep: %lu)\n",
                       (uint64_t) task, (uint64_t) elem->task.local, unresolved_deps, (uint64_t) elem);
         //kante
@@ -1374,7 +1377,7 @@ dart_tasking_datadeps_match_local_dependency(
         //printf("elem->task.local: %llu, elem->type %llu, current task %llu\n", (uint64_t) elem->task.local, (uint64_t) elem->dep.type, (uint64_t) task);
         if (elem->dep.type == DART_DEP_IN) {
           //printf("WAR depedendency from task %s to task %s\n", elem->task.local->descr, task->descr);
-          dart__tasking__instrument_local_dep_war(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset);
+          dart__tasking__instrument_local_dep_war(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset, myguid.id, myguid.id);
         }
       }
       

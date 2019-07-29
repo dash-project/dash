@@ -101,6 +101,7 @@ static dart_taskqueue_t *task_queue;
 static size_t num_units;
 
 //testing
+static dart_global_unit_t myguid;
 
 
 enum dart_thread_idle_t {
@@ -228,12 +229,13 @@ invoke_taskfn(dart_task_t *task)
   DART_ASSERT(task != NULL && task->fn != NULL);
   DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p descr:'%s')",
                  task, task->fn, task->data, task->descr);
+  dart_myid(&myguid); //testing, only need to be run once per unit
   if (setjmp(task->taskctx->cancel_return) == 0) {
-    dart__tasking__instrument_task_begin(task, dart__tasking__current_thread());
+    dart__tasking__instrument_task_begin(task, dart__tasking__current_thread(), myguid.id);
     task->fn(task->data);
     DART_LOG_DEBUG("Done with task %p (fn:%p data:%p descr:'%s')",
                    task, task->fn, task->data, task->descr);
-    dart__tasking__instrument_task_end(task, dart__tasking__current_thread());
+    dart__tasking__instrument_task_end(task, dart__tasking__current_thread(), myguid.id);
   } else {
     // we got here through longjmp, the task is cancelled
     task->state = DART_TASK_CANCELLED;
@@ -678,8 +680,9 @@ dart_task_t * create_task(
   UNLOCK_TASK(task->parent);
   task->children = NULL;
 #endif // DART_DEBUG
+  dart_myid(&myguid);
 
-  dart__tasking__instrument_task_create(task, prio, descr);
+  dart__tasking__instrument_task_create(task, prio, descr, myguid.id);
 
   return task;
 }
@@ -1350,7 +1353,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
       numa_node = dart__tasking__affinity_ptr_numa_node(task->numaptr);
     }
     /* instrumentation for the task queue*/
-    dart__tasking__instrument_task_add_to_queue(task, thread);
+    dart_myid(&myguid); //testing, should only be run once per unit
+    dart__tasking__instrument_task_add_to_queue(task, thread,myguid.id);
     if (!thread->is_utility_thread) {
 
       if (numa_node == thread->numa_id) {

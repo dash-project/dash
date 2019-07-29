@@ -9,22 +9,22 @@
 extern "C" {
 #endif
 
-typedef void (*dart_tool_task_create_cb_t) (uint64_t task, dart_task_prio_t prio, const char *name, void *userdata);
-typedef void (*dart_tool_task_begin_cb_t) (uint64_t task, uint64_t thread, void *userdata);
-typedef void (*dart_tool_task_end_cb_t) (uint64_t task, uint64_t thread, void *userdata);
+typedef void (*dart_tool_task_create_cb_t) (uint64_t task, dart_task_prio_t prio, const char *name, int32_t task_unitid, void *userdata);
+typedef void (*dart_tool_task_begin_cb_t) (uint64_t task, uint64_t thread, int32_t task_unitid, void *userdata);
+typedef void (*dart_tool_task_end_cb_t) (uint64_t task, uint64_t thread, int32_t task_unitid, void *userdata);
 typedef void (*dart_tool_task_cancel_cb_t) (uint64_t task, uint64_t thread, void *userdata);
 typedef void (*dart_tool_task_yield_leave_cb_t) (uint64_t task, uint64_t thread, void *userdata);
 typedef void (*dart_tool_task_yield_resume_cb_t) (uint64_t task, uint64_t thread, void *userdata);
 typedef void (*dart_tool_task_finalize_cb_t) (void *userdata);
 
-typedef void (*dart_tool_task_add_to_queue_cb_t) (uint64_t task, uint64_t thread, void *userdata);
+typedef void (*dart_tool_task_add_to_queue_cb_t) (uint64_t task, uint64_t thread, int32_t task_unitid, void *userdata);
 
-typedef void (*dart_tool_local_dep_raw_cb_t) (uint64_t task1, uint64_t task2, uint64_t memaddr, uint64_t orig_memaddr, void *userdata);
-typedef void (*dart_tool_local_dep_waw_cb_t) (uint64_t task1, uint64_t task2, uint64_t memaddr, uint64_t orig_memaddr, void *userdata);
-typedef void (*dart_tool_local_dep_war_cb_t) (uint64_t task1, uint64_t task2, uint64_t memaddr, uint64_t orig_memaddr, void *userdata);
+typedef void (*dart_tool_local_dep_raw_cb_t) (uint64_t task1, uint64_t task2, uint64_t memaddr, uint64_t orig_memaddr, int32_t task1_unitid, int32_t task2_unitid, void *userdata);
+typedef void (*dart_tool_local_dep_waw_cb_t) (uint64_t task1, uint64_t task2, uint64_t memaddr, uint64_t orig_memaddr, int32_t task1_unitid, int32_t task2_unitid, void *userdata);
+typedef void (*dart_tool_local_dep_war_cb_t) (uint64_t task1, uint64_t task2, uint64_t memaddr, uint64_t orig_memaddr, int32_t task1_unitid, int32_t task2_unitid, void *userdata);
 
-typedef void (*dart_tool_dummy_dep_create_cb_t) (uint64_t task, uint64_t dummy_dep, uint64_t in_dep, int phase, void *userdata);
-typedef void (*dart_tool_dummy_dep_capture_cb_t) (uint64_t task, uint64_t dummy_dep, uint64_t remote_dep, void *userdata);
+typedef void (*dart_tool_dummy_dep_create_cb_t) (uint64_t task, uint64_t dummy_dep, uint64_t in_dep, int phase, int32_t task_unitid, void *userdata);
+typedef void (*dart_tool_dummy_dep_capture_cb_t) (uint64_t task, uint64_t dummy_dep, uint64_t remote_dep, int32_t task_unitid, void *userdata);
 
 typedef void (*dart_tool_remote_in_dep_cb_t) (uint64_t local_task, uint64_t remote_task, int local_dep_type, int remote_dep_type , int32_t local_unitid, int32_t remote_unitid,void *userdata);
 
