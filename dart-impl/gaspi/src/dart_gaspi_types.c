@@ -183,6 +183,16 @@ dart_type_destroy(dart_datatype_t* dart_type)
 }
 
 dart_ret_t
+dart_type_sizeof(dart_datatype_t dart_type, int* size) 
+{
+  dart_datatype_struct_t *dts = get_datatype_struct(dart_type);
+  
+  *size = datatype_sizeof(dts);
+
+  return DART_OK;
+}
+
+dart_ret_t
 dart_op_create(
   dart_operator_t    op,
   void             * userdata,

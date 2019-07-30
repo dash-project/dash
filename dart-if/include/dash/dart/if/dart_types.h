@@ -763,6 +763,9 @@ dart_type_create_custom(
 dart_ret_t
 dart_type_destroy(dart_datatype_t *dart_type);
 
+dart_ret_t
+dart_type_sizeof(dart_datatype_t dart_type, int* size);
+
 /**
  * The operator called from a reduction operation.
  * The operator should apply the intended operation to each of the \c len

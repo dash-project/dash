@@ -354,6 +354,14 @@ dart_type_destroy(dart_datatype_t *dart_type_ptr)
   return DART_OK;
 }
 
+dart_ret_t
+dart_type_sizeof(dart_datatype_t dart_type, int* size) 
+{  
+  *size = dart__mpi__datatype_sizeof(dart_type);
+
+  return DART_OK;
+}
+
 static void destroy_basic_type(dart_datatype_t dart_type_id)
 {
   dart_datatype_struct_t *dart_type = dart__mpi__datatype_struct(dart_type_id);

@@ -1,10 +1,10 @@
-
+#include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_team_group.h>
 
 #include <dash/dart/base/logging.h>
-#include <dash/dart/gaspi/dart_mem.h>
-#include <dash/dart/gaspi/dart_types.h>
+
+#include <inttypes.h>
 
 struct dart_allocator_struct {
   dart_gptr_t           base_gptr;
@@ -49,7 +49,6 @@ dart_allocator_new(
   return DART_OK;
 }
 
-
 dart_ret_t
 dart_allocator_alloc(
   size_t             nelem,
@@ -57,10 +56,11 @@ dart_allocator_alloc(
   dart_gptr_t      * gptr,
   dart_allocator_t   allocator)
 {
-  dart_datatype_struct_t* dtype_base =
-      datatype_base_struct(get_datatype_struct(dtype));
+  int size = 0;
+  dart_type_sizeof(dtype, &size);
 
-  size_t      nbytes   = nelem * datatype_sizeof(dtype_base);
+  size_t nbytes   = nelem * size;
+
   dart_gptr_t res_gptr = allocator->base_gptr;
   ssize_t     offset   = dart_buddy_alloc(allocator->buddy_allocator, nbytes);
   if (offset < 0) {
