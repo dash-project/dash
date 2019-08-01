@@ -1279,7 +1279,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
   if (task->state == DART_TASK_CREATED)
   {
     LOCK_TASK(task);
-    if (task->state == DART_TASK_CREATED) {
+    if (task->state == DART_TASK_CREATED &&
+        dart_tasking_datadeps_is_runnable(task)) {
       task->state = DART_TASK_QUEUED;
       queuable = true;
     }
