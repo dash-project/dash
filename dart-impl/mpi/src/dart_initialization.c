@@ -320,12 +320,12 @@ dart_ret_t dart_exit()
   dart_global_unit_t unitid;
   dart_myid(&unitid);
 
-  dart_amsgq_fini();
-
   dart__mpi__locality_finalize();
 
   if (_dart_task_initialized && dart_tasking_fini)
     dart_tasking_fini();
+
+  dart_amsgq_fini();
 
   _dart_initialized = 0;
 
