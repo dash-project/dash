@@ -154,6 +154,7 @@ namespace internal {
       } else {
         std::copy(other.m_data_s, other.m_data_s + m_size, m_data);
       }
+      return *this;
     }
 
     self_t& operator=(self_t&& other) {
@@ -166,6 +167,7 @@ namespace internal {
           m_data_s[i] = std::move(other.m_data_s[i]);
         }
       }
+      return *this;
     }
 
     ~DependencyContainer(){
