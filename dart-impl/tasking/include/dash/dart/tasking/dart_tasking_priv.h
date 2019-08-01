@@ -74,6 +74,7 @@ struct task_deque{
   dart_task_t * tail;
 };
 
+typedef struct dart_thread dart_thread_t;
 
 struct dart_task_data {
   union {
@@ -172,7 +173,7 @@ typedef struct dart_taskqueue {
 /* Number of tasks queued inside a thread */
 #define THREAD_QUEUE_SIZE 16
 
-typedef struct {
+struct dart_thread {
   dart_task_t           * current_task;
   dart_task_t           * queue[THREAD_QUEUE_SIZE]; // array of tasks short-cut
   dart_task_t           * next_task;                // pointer to the next task executed in a yield
