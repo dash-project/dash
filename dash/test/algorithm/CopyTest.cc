@@ -3,6 +3,7 @@
 
 #include <dash/Array.h>
 #include <dash/Matrix.h>
+#include <dash/algorithm/Fill.h>
 
 #include <dash/algorithm/Copy.h>
 #include <dash/pattern/BlockPattern1D.h>
@@ -893,8 +894,6 @@ TEST_F(CopyTest, AsyncGlobalToLocalTest)
   }
 }
 
-#if 0
-// TODO
 TEST_F(CopyTest, AsyncAllToLocalVector)
 {
   // Copy all elements of global array into local vector:
@@ -910,18 +909,134 @@ TEST_F(CopyTest, AsyncAllToLocalVector)
   array.barrier();
 
   // Local vector to store copy of global array;
-  std::vector<int> local_vector;
+  int *local_copy = new int[num_elem_per_unit*dash::size()];
 
   // Copy values from global range to local memory.
   // All units copy first block, so unit 0 tests local-to-local copying.
   auto future = dash::copy_async(array.begin(),
-                                   array.end(),
-                                   local_vector.begin());
+                                 array.end(),
+                                 local_copy);
   auto local_dest_end = future.get();
 
-  EXPECT_EQ_U(num_elem_total, local_dest_end - local_vector.begin());
+  EXPECT_EQ_U(num_elem_total, local_dest_end - local_copy);
   for (size_t i = 0; i < array.size(); ++i) {
-    EXPECT_EQ_U(static_cast<int>(array[i]), local_vector[i]);
+    EXPECT_EQ_U(static_cast<int>(array[i]), local_copy[i]);
+  }
+  delete[] local_copy;
+}
+
+TEST_F(CopyTest, AsyncLocalVectorToAll)
+{
+  // Copy all elements of global array into local vector:
+  const int num_elem_per_unit = 20;
+  size_t num_elem_total       = _dash_size * num_elem_per_unit;
+
+  dash::Array<int> array(num_elem_total, dash::BLOCKED);
+
+  // Unit 0 copies values into the whole global array
+  if (dash::myid() == 0) {
+    int *local_copy = new int[num_elem_total];
+
+    // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
+    for (int unit = 0; unit < dash::size(); ++unit) {
+      for (auto l = 0; l < num_elem_per_unit; ++l) {
+        local_copy[unit*num_elem_per_unit + l] = ((unit + 1) * 1000) + l;
+      }
+    }
+
+    auto future = dash::copy_async(local_copy,
+                                  local_copy + num_elem_total,
+                                  array.begin());
+
+    auto global_dest_end = future.get();
+    EXPECT_EQ_U(num_elem_total, dash::distance(array.begin(), global_dest_end));
+    delete[] local_copy;
+  }
+  array.barrier();
+
+  // All units check for proper values on their side
+  for (auto l = 0; l < num_elem_per_unit; ++l) {
+    EXPECT_EQ_U(array.local[l], ((dash::myid() + 1) * 1000) + l);
   }
 }
-#endif
+
+TEST_F(CopyTest, MatrixToSmallerTeam)
+{
+  if (_dash_size < 2) {
+    SKIP_TEST_MSG("At least 2 units required for this test.");
+  }
+
+  using TeamSpecT = dash::TeamSpec<2>;
+  using MatrixT = dash::NArray<double, 2>;
+  using PatternT = typename MatrixT::pattern_type;
+  using SizeSpecT = dash::SizeSpec<2>;
+  using DistSpecT = dash::DistributionSpec<2>;
+
+  auto& team_all = dash::Team::All();
+  TeamSpecT team_all_spec(team_all.size(), 1);
+  team_all_spec.balance_extents();
+
+  auto size_spec = SizeSpecT(4*team_all_spec.extent(1),
+                             4*team_all_spec.extent(1));
+  auto dist_spec = DistSpecT(dash::BLOCKED, dash::BLOCKED);
+
+  MatrixT grid_more(size_spec, dist_spec, team_all, team_all_spec);
+  dash::fill(grid_more.begin(), grid_more.end(), (double)team_all.myid());
+  team_all.barrier();
+
+  // create a smaller team
+  dash::Team& team_fewer= team_all.split(2);
+  team_all.barrier();
+  if (!team_fewer.is_null() && 0 == team_fewer.position()) {
+    TeamSpecT team_fewer_spec(team_fewer.size(), 1);
+    team_fewer_spec.balance_extents();
+
+    MatrixT grid_fewer(size_spec, dist_spec, team_fewer, team_fewer_spec);
+    dash::fill(grid_fewer.begin(), grid_fewer.end(), -1.0);
+
+    auto lextents= grid_fewer.pattern().local_extents();
+
+    for (uint32_t y = 0; y < lextents[0]; ++y) {
+      auto gcorner_fewer = grid_fewer.pattern().global({y, 0});
+      auto gbegin = grid_more.begin() + grid_more.pattern().global_at(gcorner_fewer);
+
+      auto loffset = grid_fewer.pattern().local_at({y, 0});
+      dash::copy(gbegin, gbegin + lextents[1],
+                 grid_fewer.lbegin() + loffset);
+    }
+    team_fewer.barrier();
+
+    if (team_fewer.myid() == 0) {
+      auto gextents = grid_fewer.extents();
+      for (uint32_t y = 0; y < gextents[0]; ++y) {
+        for (uint32_t x = 0; x < gextents[1]; ++x) {
+          ASSERT_EQ_U(grid_more(y, x), grid_fewer(y, x));
+        }
+      }
+    }
+
+    team_fewer.barrier();
+
+  }
+}
+
+TEST_F(CopyTest, InputOutputTypeTest)
+{
+  /* signed/unsigned and const conversion is permitted */
+  ASSERT_TRUE_U((dash::internal::is_dash_copyable<int, int>::value));
+  ASSERT_TRUE_U((dash::internal::is_dash_copyable<const int, int>::value));
+  ASSERT_TRUE_U((dash::internal::is_dash_copyable<const int, unsigned int>::value));
+  ASSERT_TRUE_U((dash::internal::is_dash_copyable<float, float>::value));
+  /* size conversion is not permitted */
+  ASSERT_FALSE_U((dash::internal::is_dash_copyable<uint64_t, uint32_t>::value));
+  ASSERT_FALSE_U((dash::internal::is_dash_copyable<float, double>::value));
+
+  struct point_t {
+    int a;
+    int b;
+  };
+  /* no conversion between arithmetic types and non-arithmetic types */
+  ASSERT_FALSE_U((dash::internal::is_dash_copyable<point_t, uint64_t>::value));
+  ASSERT_TRUE_U((dash::internal::is_dash_copyable<const point_t, point_t>::value));
+
+}

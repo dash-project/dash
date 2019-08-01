@@ -208,11 +208,12 @@ dart_gptr_t increment(
     memory_space_contiguous) DASH_NOEXCEPT
 {
   using value_type = T;
-
+  if (mem_space == nullptr) {
+    return gptr;
+  }
   auto const gend = static_cast<dart_gptr_t>(mem_space->end());
 
-  if (mem_space == nullptr ||
-      distance<T>(gptr, gend, mem_space, memory_space_contiguous{}) <= 0) {
+  if (distance<T>(gptr, gend, mem_space, memory_space_contiguous{}) <= 0) {
     return gptr;
   }
 

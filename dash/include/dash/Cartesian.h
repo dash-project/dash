@@ -568,7 +568,7 @@ public:
     IndexType dim_offset) const {
     if (_rank == 1) {
       // Shortcut for trivial case
-      return (index >= 0 && index < size());
+      return (index >= 0 && index < this->size());
     }
     auto base_offset = 0;
     if (CoordArrangement == COL_MAJOR) {
