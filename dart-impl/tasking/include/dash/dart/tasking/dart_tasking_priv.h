@@ -169,6 +169,7 @@ typedef struct dart_taskqueue {
   dart_mutex_t        mutex;
 } dart_taskqueue_t;
 
+/* Number of tasks queued inside a thread */
 #define THREAD_QUEUE_SIZE 16
 
 typedef struct {
@@ -186,7 +187,8 @@ typedef struct {
   int8_t                  numa_id;
   bool                    is_utility_thread; // whether the thread is a worker or utility thread
   double                  last_progress_ts;  // the timestamp of the last remote progress call
-} dart_thread_t;
+  int                     last_steal_thread_id;  // the timestamp of the last remote progress call
+};
 
 dart_ret_t
 dart__tasking__init() DART_INTERNAL;
