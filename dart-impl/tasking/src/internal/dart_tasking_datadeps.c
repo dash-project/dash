@@ -1424,7 +1424,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       continue;
     } else if (guid.id != myguid.id) {
         if (task->parent->state == DART_TASK_ROOT) {
-          dart_tasking_remote_datadep(&dep, task);
+          dart_tasking_remote_datadep(&dep, guid, task);
           int32_t unresolved_deps = DART_INC_AND_FETCH32(&task->unresolved_remote_deps);
           DART_LOG_TRACE(
             "Sent remote dependency request for task %p "

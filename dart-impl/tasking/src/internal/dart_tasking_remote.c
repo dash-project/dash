@@ -346,7 +346,10 @@ void dart_tasking_remote_print_stats()
  * Send a remote data dependency request for dependency \c dep of
  * the local \c task
  */
-dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
+dart_ret_t dart_tasking_remote_datadep(
+  dart_task_dep_t   *dep,
+  dart_global_unit_t guid,
+  dart_task_t       *task)
 {
   dart_ret_t ret;
   struct remote_data_dep rdep;
@@ -355,8 +358,8 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
   rdep.phase       = dep->phase;
   rdep.type        = dep->type;
   dart_myid(&rdep.runit);
-  // the amsgq is opened on DART_TEAM_ALL and deps container global IDs
-  dart_team_unit_t team_unit = DART_TEAM_UNIT_ID(dep->gptr.unitid);
+
+  dart_team_unit_t team_unit = DART_TEAM_UNIT_ID(guid.id);
 
   DART_ASSERT(task != NULL);
 
