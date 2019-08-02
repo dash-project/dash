@@ -480,17 +480,20 @@ dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
   }
 
 
-  if (!amsgq->direct_send) {
-    for (int i = 0; i < amsgq->msg_count; ++i) {
-      if (amsgq->recv_reqs[i] != MPI_REQUEST_NULL) {
-        MPI_Request_free(&amsgq->recv_reqs[i]);
-      }
-      free(amsgq->recv_bufs[i]);
-      free(amsgq->send_bufs[i]);
+  for (int i = 0; i < amsgq->msg_count; ++i) {
+    if (amsgq->recv_reqs[i] != MPI_REQUEST_NULL) {
+      MPI_Request_free(&amsgq->recv_reqs[i]);
     }
+    free(amsgq->recv_bufs[i]);
+    if (!amsgq->direct_send) {
+      free(amsgq->send_bufs[i]);
+      free(amsgq->send_reqs[i]);
+    }
+  }
+  if (!amsgq->direct_send) {
     free(amsgq->send_bufs);
-    free(amsgq->send_outidx);
     free(amsgq->send_reqs);
+    free(amsgq->send_outidx);
   }
 
   free(amsgq->recv_bufs);
