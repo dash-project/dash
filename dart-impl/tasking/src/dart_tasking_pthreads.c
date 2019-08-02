@@ -615,9 +615,12 @@ static
 dart_task_t * allocate_task()
 {
   dart_task_t *task = NULL;
-#ifndef DART_TASKING_DONOT_REUSE
+#ifdef DART_TASKING_NOMEMPOOL
+  task = calloc(1, sizeof(*task));
+  TASKLOCK_INIT(task);
+#else // DART_TASKING_NOMEMPOOL
   task = DART_TASKLIST_ELEM_POP(task_free_lists[dart__tasking__thread_num()]);
-#endif // !DART_TASKING_DONOT_REUSE
+#endif // DART_TASKING_NOMEMPOOL
 
   if (task == NULL) {
     task_mempool_t *taskpool = __taskpool;
@@ -734,7 +737,11 @@ void dart__tasking__destroy_task(dart_task_t *task)
 
   task->state = DART_TASK_DESTROYED;
 
+#ifdef DART_TASKING_NOMEMPOOL
+  free(task);
+#else // DART_TASKING_NOMEMPOOL
   DART_TASKLIST_ELEM_PUSH(task_free_lists[task->owner], task);
+#endif // DART_TASKING_NOMEMPOOL
 }
 
 dart_task_t *

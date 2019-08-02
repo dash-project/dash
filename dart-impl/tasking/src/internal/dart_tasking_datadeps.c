@@ -355,10 +355,11 @@ dephash_allocate_elem(
 {
   // take an element from the free list if possible
   dart_dephash_elem_t *elem = NULL;
-
-#ifndef DART_TASKING_DONOT_REUSE
+#ifdef DART_TASKING_NOMEMPOOL
+  elem = malloc(sizeof(*elem));
+#else // DART_TASKING_NOMEMPOOL
   elem = DART_DEPHASH_ELEM_POP(dephash_elem_freelist);
-#endif // !DART_TASKING_DONOT_REUSE
+#endif // DART_TASKING_NOMEMPOOL
 
   if (elem == NULL){
     int thread_id = dart__tasking__thread_num();
@@ -369,7 +370,7 @@ dephash_allocate_elem(
     DART_ASSERT(thread_id >= 0 && thread_id < UINT16_MAX);
     // attempt to take an element from the pool
     if (dephash_elem_pool == NULL ||
-        !(dephash_elem_pool->pos < DART_DEPHASH_ELEM_POOL_SIZE)) {
+        dephash_elem_pool->pos >= DART_DEPHASH_ELEM_POOL_SIZE) {
       // allocate a new pool and take from that
       dephash_elem_pool = malloc(sizeof(*dephash_elem_pool));
       dephash_elem_pool->pos = 0;
@@ -438,10 +439,14 @@ static void dephash_recycle_elem(dart_dephash_elem_t *elem)
   if (elem != NULL) {
     elem->next = NULL;
     elem->prev = NULL;
+#ifdef DART_TASKING_NOMEMPOOL
+    free(elem);
+#else // DART_TASKING_NOMEMPOOL
     dart_stack_t *lifo = dephash_elem_freelist_list[elem->owner_thread];
     DART_LOG_TRACE("Pushing elem %p (prev=%p, next=%p) to freelist (head %p, thread %d)",
                    elem, elem->prev, elem->next, lifo->head.node, elem->owner_thread);
     DART_DEPHASH_ELEM_PUSH(*lifo, elem);
+#endif // DART_TASKING_NOMEMPOOL
   }
 }
 
