@@ -145,7 +145,9 @@ dart_tasking_datadeps_localize_gptr(dart_gptr_t gptr)
     dart_ret_t ret = dart_gptr_getaddr(gptr, &addr);
     DART_ASSERT_MSG(ret == DART_OK, "Failed to translate gptr={u.=%d,s=%d,o=%p}",
                     gptr.unitid, gptr.segid, gptr.addr_or_offs.addr);
-    DART_ASSERT(addr != NULL);
+    DART_ASSERT_MSG(addr != NULL,
+                    "Failed to query local address for gptr={u.=%d,s=%d,o=%p}",
+                    gptr.unitid, gptr.segid, gptr.addr_or_offs.addr);
     res.addr_or_offs.addr = addr;
   }
   res.segid = DART_TASKING_DATADEPS_LOCAL_SEGID;

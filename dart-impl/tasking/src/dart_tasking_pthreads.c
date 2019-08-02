@@ -1284,6 +1284,11 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     return;
   }
 
+  if (task->state == DART_TASK_DEFERRED) {
+    DART_LOG_TRACE("Refusing to enqueue deferred task %p", task);
+    return;
+  }
+
   bool queuable = false;
   if (task->state == DART_TASK_CREATED)
   {
@@ -1294,8 +1299,7 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
       queuable = true;
     }
     UNLOCK_TASK(task);
-  } else if (task->state == DART_TASK_SUSPENDED ||
-             task->state == DART_TASK_DEFERRED) {
+  } else if (task->state == DART_TASK_SUSPENDED) {
     queuable = true;
   }
 

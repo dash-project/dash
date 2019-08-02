@@ -538,7 +538,7 @@ void dart__dephash__print_stats(const dart_task_t *task)
       sum_elems += nb;
     }
   }
-  DART_LOG_INFO_ALWAYS(
+  DART_LOG_INFO(
     "Task %p hash table: entries:%d, sum: %d, min: %d, max: %d, empty: %d, mean: %g, variance: %g",
     task, DART_DEPHASH_SIZE, sum_elems, min_elems, max_elems, empty, mean, M2/(n-1));
 }
@@ -712,10 +712,9 @@ dart_tasking_datadeps_handle_defered_local()
     // Note: if the task has gained dependencies we drop the reference
     //       here because it will be released through a dependency release later.
     LOCK_TASK(task);
+    DART_ASSERT(task->state == DART_TASK_DEFERRED);
     bool runnable = dart_tasking_datadeps_is_runnable(task);
-    if (!runnable) {
-      task->state = DART_TASK_CREATED;
-    }
+    task->state = DART_TASK_CREATED;
     UNLOCK_TASK(task);
     if (runnable){
       DART_LOG_TRACE("Releasing deferred task %p\n", task);
@@ -900,8 +899,9 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
 
     // make sure there are no colliding dependencies
     if (local != NULL && local->dep.phase == phase && local->task.local != NULL) {
-      DART_LOG_ERROR("Found colliding remote output dependencies in phase %d!",
-                     local->dep.phase);
+      DART_LOG_ERROR("Found coliding remote output dependencies in phase %d! "
+                     "(local task %p, local dep obj %p)",
+                     local->dep.phase, local->task.local, local);
       dart_abort(DART_EXIT_ABORT);
     }
 
