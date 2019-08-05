@@ -1529,7 +1529,7 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
       if (state == DART_TASK_CREATED) {
         dart__tasking__enqueue_runnable(succ);
       } else {
-        DART_ASSERT_MSG(state == DART_TASK_CREATED ||
+        DART_ASSERT_MSG(state == DART_TASK_DEFERRED ||
                         state == DART_TASK_NASCENT,
                         "Unexpected task state %d in dependency release!", state);
       }
@@ -1569,12 +1569,14 @@ dart_ret_t dart_tasking_datadeps_release_remote_task(
 
   if (runnable) {
     // enqueue as runnable
-    if (state == DART_TASK_CREATED || state == DART_TASK_DEFERRED) {
+    if (state == DART_TASK_CREATED) {
       dart__tasking__enqueue_runnable(local_task);
     } else {
-      // if the task is nascent someone else will take care of enqueueing it
-      DART_ASSERT_MSG(state == DART_TASK_NASCENT, "Unexpected task state: %d",
-                      state);
+      // if the task is nascent or deferred someone else will
+      // take care of enqueueing it
+      DART_ASSERT_MSG(state == DART_TASK_NASCENT ||
+                      state == DART_TASK_DEFERRED,
+                      "Unexpected task state: %d", state);
     }
   }
   return DART_OK;
