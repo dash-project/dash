@@ -58,7 +58,7 @@ mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
 (cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
                         -DENVIRONMENT_TYPE=default \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.4.0-dev/ \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.4.0-dev_mpi/ \
                         -DDART_IMPLEMENTATIONS=gaspi \
                         -DENABLE_THREADSUPPORT=OFF \
                         -DENABLE_DEV_COMPILER_WARNINGS=ON \
