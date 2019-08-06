@@ -39,6 +39,25 @@ static void msg_fn(void *data)
 }
 
 void
+benchmark_poll(dart_amsgq_t amsgq, size_t num_reps)
+{
+  Timer t;
+
+  if (dash::myid() == 0) {
+    for (size_t rep = 0; rep < num_reps; ++rep) {
+      dart_amsg_process(amsgq);
+    }
+    auto elapsed = t.Elapsed();
+    std::cout << "poll:num_msg:" << num_reps
+              << ":avg:" << elapsed / num_reps
+              << "us:total:" << elapsed << "us"
+              << std::endl;
+  }
+
+  dash::barrier();
+}
+
+void
 benchmark_amsgq_root(dart_amsgq_t amsgq, size_t num_msg,
                      size_t size, bool buffered)
 {
@@ -196,6 +215,11 @@ int main(int argc, char** argv)
     if (dash::myid() == 0 && msg_recv != expected_num_msg) {
       std::cout << "WARN: expected " << expected_num_msg << " messages but saw " << msg_recv << std::endl;
     }
+    msg_recv = 0;
+  }
+
+  for (int i = 0; i < params.num_reps; i++) {
+    benchmark_poll(amsgq, params.num_msgs);
     msg_recv = 0;
   }
 
