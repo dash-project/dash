@@ -227,7 +227,7 @@ dart_task_yield(int delay) __attribute__((weak));
  * have completed.
  */
 dart_ret_t
-dart_task_wait_handle(dart_handle_t *handle, size_t num_handle);
+dart_task_wait_handle(dart_handle_t *handle, size_t num_handle) __attribute__((weak));
 
 /**
  * End the execution of the task but do not release it's dependencies until

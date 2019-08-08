@@ -7,6 +7,7 @@
 #include <dash/algorithm/LocalRange.h>
 
 #include <dash/dart/if/dart_communication.h>
+#include <dash/dart/if/dart_tasking.h>
 
 #include <algorithm>
 #include <future>
@@ -470,13 +471,19 @@ dash::Future<ValueType *> copy_async(
                     "  wait for", handles->size(), "async get request");
       DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  _out:", _out);
       if (!handles->empty()) {
-        if (dart_waitall_local(handles->data(), handles->size())
-            != DART_OK) {
-          DASH_LOG_ERROR("dash::copy_async_impl [Future]",
-                        "  dart_waitall_local failed");
-          DASH_THROW(
-            dash::exception::RuntimeError,
-            "dash::copy_async_impl [Future]: dart_waitall_local failed");
+        if (nullptr != dart_task_wait_handle) {
+          DASH_LOG_TRACE("dash::copy_async [Future]",
+                         "  Blocking task waiting for handles");
+          dart_task_wait_handle(handles->data(), handles->size());
+        } else {
+          if (dart_waitall_local(handles->data(), handles->size())
+              != DART_OK) {
+            DASH_LOG_ERROR("dash::copy_async_impl [Future]",
+                          "  dart_waitall_local failed");
+            DASH_THROW(
+              dash::exception::RuntimeError,
+              "dash::copy_async_impl [Future]: dart_waitall_local failed");
+          }
         }
       } else {
         DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  No pending handles");
@@ -745,13 +752,19 @@ dash::Future<GlobOutputIt> copy_async(
                     "  wait for", handles->size(), "async put request");
       DASH_LOG_TRACE("dash::copy_async [Future]", "  _out:", _out);
       if (!handles->empty()) {
-        if (dart_waitall(handles->data(), handles->size())
-            != DART_OK) {
-          DASH_LOG_ERROR("dash::copy_async [Future]",
-                        "  dart_waitall failed");
-          DASH_THROW(
-            dash::exception::RuntimeError,
-            "dash::copy_async [Future]: dart_waitall failed");
+        if (nullptr != dart_task_wait_handle) {
+          DASH_LOG_TRACE("dash::copy_async [Future]",
+                         "  Blocking task waiting for handles");
+          dart_task_wait_handle(handles->data(), handles->size());
+        } else {
+          if (dart_waitall(handles->data(), handles->size())
+              != DART_OK) {
+            DASH_LOG_ERROR("dash::copy_async [Future]",
+                          "  dart_waitall failed");
+            DASH_THROW(
+              dash::exception::RuntimeError,
+              "dash::copy_async [Future]: dart_waitall failed");
+          }
         }
       } else {
         DASH_LOG_TRACE("dash::copy_async [Future]", "  No pending handles");
