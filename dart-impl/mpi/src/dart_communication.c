@@ -125,6 +125,9 @@ dart_handle_t allocate_handle()
   dart_handle_t handle = DART_HANDLE_FREELIST_POP();
   if (NULL == handle) {
     handle = malloc(sizeof(*handle));
+    DART_LOG_TRACE("Allocated new handle %p", handle);
+  } else {
+    DART_LOG_TRACE("Reusing handle %p", handle);
   }
   return handle;
 }
@@ -132,6 +135,7 @@ dart_handle_t allocate_handle()
 static inline
 void release_handle(dart_handle_t handle)
 {
+  DART_LOG_TRACE("Releasing handle %p", handle);
   DART_HANDLE_FREELIST_PUSH(handle);
 }
 
@@ -1878,9 +1882,12 @@ dart_ret_t dart_testsome(
     if (handles[i] != DART_HANDLE_NULL) {
       // copy all requests, makes handling of finished requests at the end easier
       for (uint8_t j = 0; j < handles[i]->num_reqs; ++j) {
+        DART_LOG_TRACE("  Handle %p MPI_Request %p", handles[i], handles[i]->reqs[j]);
         mpi_req[r_n] = handles[i]->reqs[j];
         ++r_n;
       }
+    } else {
+      flags[i] = 1;
     }
   }
 
@@ -1902,12 +1909,13 @@ dart_ret_t dart_testsome(
         for (int j = 0; j < handles[i]->num_reqs; ++j) {
           if (mpi_req[r_n] != MPI_REQUEST_NULL) {
             handle_complete = false;
+            DART_LOG_TRACE("  MPI_Requeset %p not yet completed!", mpi_req[r_n]);
           }
           ++r_n;
         }
         if (handle_complete) {
           DART_LOG_DEBUG(
-            "dart_testsome: handle %p complete, waiting for remote completion",
+            "dart_testsome: handle %p complete",
             handles[i]);
           if (DART_OK != wait_remote_completion(&handles[i], 1)) {
             DART_LOG_ERROR("dart_testsome: MPI_Win_flush failed");

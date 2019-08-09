@@ -102,20 +102,20 @@ test_yield(dart_handle_t *handles, size_t num_handle)
 dart_ret_t
 dart__task__wait_handle(
   dart_handle_t *handles,
-  size_t         num_handle)
+  size_t         num_handles)
 {
   size_t num_units;
   dart_size(&num_units);
 
   // wait for completion if this is a singleton run
   if (num_units == 1) {
-    dart_waitall(handles, num_handle);
+    dart_waitall(handles, num_handles);
     return DART_OK;
   }
 
   // check whether the handles are all NULL
   bool all_null = true;
-  for (size_t i = 0; i < num_handle; ++i) {
+  for (size_t i = 0; i < num_handles; ++i) {
     if (handles[i] != DART_HANDLE_NULL) {
       all_null = false;
       break;
@@ -129,11 +129,14 @@ dart__task__wait_handle(
   if (dart__tasking__is_root_task(current_task)) {
     // we cannot requeue the root task so we test-and-yield
     current_task->wait_handle = NULL;
-    test_yield(handles, num_handle);
+    test_yield(handles, num_handles);
   } else {
-    dart_wait_handle_t *waithandle = allocate_waithandle(num_handle);
-    memcpy(waithandle->handle, handles, sizeof(*handles)*num_handle);
-    waithandle->num_handle    = num_handle;
+    dart_wait_handle_t *waithandle = allocate_waithandle(num_handles);
+    for (size_t i = 0; i < num_handles; ++i) {
+      waithandle->handle[i] = handles[i];
+      handles[i] = DART_HANDLE_NULL;
+    }
+    waithandle->num_handle    = num_handles;
     current_task->wait_handle = waithandle;
     // mark the task as waiting so that it won't be requeued immediately
     current_task->state = DART_TASK_BLOCKED;
@@ -146,7 +149,7 @@ dart__task__wait_handle(
       release_waithandle(current_task->wait_handle);
       current_task->wait_handle = NULL;
       current_task->state = DART_TASK_SUSPENDED;
-      test_yield(handles, num_handle);
+      test_yield(handles, num_handles);
     }
     // TODO: check wait_handle field and fall back to yield-test cycles
     DART_LOG_TRACE("wait_handle: Resuming task %p (%p)",
