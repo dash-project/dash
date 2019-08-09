@@ -512,6 +512,29 @@ public:
   }
 
   /**
+   * Returns a region index for a given dimension and \ref RegionPos
+   */
+  template<typename StencilPointT>
+  static constexpr region_index_t index(const StencilPointT& stencil) {
+    region_index_t index = 0;
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      if(stencil[d] < 0) {
+        index *= REGION_INDEX_BASE;
+        continue;
+      }
+      // in case a wrong region coordinate was set
+      if(stencil[d] > 0) {
+        index = 2 + index * REGION_INDEX_BASE;
+        continue;
+      }
+
+      index = 1 + index * REGION_INDEX_BASE;
+    }
+
+    return index;
+  }
+
+  /**
    * Returns the region index for a given \ref RegionCoords
    *
    * \return region index
@@ -1698,7 +1721,7 @@ public:
   HaloMemory(const HaloBlockT& haloblock) : _haloblock(haloblock) {
     _halobuffer.resize(haloblock.halo_size());
     auto it = _halobuffer.begin();
-
+    std::fill(_halo_offsets.begin(), _halo_offsets.end(), _halobuffer.end());
     for(const auto& region : haloblock.halo_regions()) {
       _halo_offsets[region.index()] = it;
       it += region.size();
@@ -1716,7 +1739,7 @@ public:
   }
 
   /**
-   * iReturns the range of all halo elements for the given region index.
+   * Returns the range of all halo elements for the given region index.
    * \param index halo region index
    * \return Pair of iterator. First points ot the beginning and second to the
    *         end.
@@ -1842,12 +1865,16 @@ private:
   using Pattern_t      = typename HaloBlockT::Pattern_t;
   using signed_pattern_size_t =
     typename std::make_signed<typename Pattern_t::size_type>::type;
+  using ViewSpec_t     = typename Pattern_t::viewspec_type;
 
 
   static constexpr auto NumRegionsMax = RegionCoords_t::NumRegionsMax;
   static constexpr auto MemoryArrange = Pattern_t::memory_order();
+  // value not related to array index
   static constexpr auto FastestDim    =
-    (MemoryArrange == ROW_MAJOR) ? 1 : NumDimensions;
+    MemoryArrange == ROW_MAJOR ? NumDimensions - 1 : 0;
+  static constexpr auto ContiguousDim    =
+    MemoryArrange == ROW_MAJOR ? 1 : NumDimensions;
 
 public:
   using Element_t = typename HaloBlockT::Element_t;
@@ -1885,21 +1912,21 @@ public:
   void pack() {
     region_index_t handle_pos = 0;
     for(auto r = 0; r < NumRegionsMax; ++r) {
-      const auto& halo_data = _halo_data[r];
-      if(!halo_data.needs_signal) {
+      const auto& update_data = _halo_update_data[r];
+      if(!update_data.put_data.needs_signal) {
         continue;
       }
 
-      if(halo_data.needs_packed) {
-        auto buffer_offset = _halo_buffer.lbegin() + halo_data.halo_offset;
-        for(auto& block : halo_data.block_data) {
-          auto block_begin = _local_memory + block.offset;
-          std::copy(block_begin, block_begin + block.blength, buffer_offset);
-          buffer_offset += block.blength;
+      if(update_data.pack_data.needs_packing) {
+        auto buffer_offset = _halo_buffer.lbegin() + update_data.pack_data.buffer_offset;
+        for(auto& offset : update_data.pack_data.block_offs) {
+          auto block_begin = _local_memory + offset;
+          std::copy(block_begin, block_begin + update_data.pack_data.block_len, buffer_offset);
+          buffer_offset += update_data.pack_data.block_len;
         }
       }
 
-      dash::internal::put_handle(halo_data.neighbor_signal, &_signal, 1, &_signal_handles[handle_pos]);
+      dash::internal::put_handle(update_data.put_data.signal_gptr, &_signal, 1, &_signal_handles[handle_pos]);
       ++handle_pos;
     }
 
@@ -1907,55 +1934,47 @@ public:
   }
 
   void pack(region_index_t region_index) {
-    const auto& halo_data = _halo_data[region_index];
-    if(!halo_data.needs_signal) {
+    const auto& update_data = _halo_update_data[region_index];
+    if(!update_data.needs_signal) {
       return;
     }
 
-    if(halo_data.needs_packed) {
-      auto buffer_offset = _halo_buffer.lbegin() + halo_data.halo_offset;
-      for(auto& block : halo_data.block_data) {
+    if(update_data.needs_packing) {
+      auto buffer_offset = _halo_buffer.lbegin() + update_data.halo_offset;
+      for(auto& block : update_data.block_data) {
         auto block_begin = _local_memory + block.offset;
         std::copy(block_begin, block_begin + block.blength, buffer_offset);
         buffer_offset += block.blength;
       }
     }
 
-    dash::internal::put_blocking(halo_data.neighbor_signal, &_signal, 1);
+    dash::internal::put_blocking(update_data.neighbor_signal, &_signal, 1);
   }
 
   dart_gptr_t buffer_region(region_index_t region_index) {
-    return _halo_data[region_index].neighbor_halo;
+    return _halo_update_data[region_index].get_data.halo_gptr;
   }
 
   void update_ready(region_index_t region_index) {
-    if(!_halo_data[region_index].needs_signal) {
+    auto& get_data = _halo_update_data[region_index].get_data;
+    if(!get_data.awaits_signal) {
       return;
     }
 
 
     bool signal = false;
     while(!signal) {
-      dash::internal::get_blocking(_halo_data[region_index].local_signal, &signal, 1);
+      dash::internal::get_blocking(get_data.signal_gptr, &signal, 1);
     }
     _signal_buffer.lbegin()[region_index] = 0;
-  }
-
-  void signal_reset(region_index_t region_index) {
-    if(!_halo_data[region_index].needs_signal) {
-      return;
-    }
-
-    auto region_signal = _signal_buffer.lbegin() + region_index;
-    *region_signal = 0;
   }
 
   void print_block_data() {
     std::cout << "BlockData:\n";
     for(auto r = 0; r < NumRegionsMax; ++r) {
       std::cout << "region [" << r << "] {";
-      for(auto& block : _halo_data[r].block_data) {
-        std::cout << " (" << block.offset << "," << block.blength << ")";
+      for(auto& offset : _halo_update_data[r].pack_data.block_offs) {
+        std::cout << " (" << offset << "," << _halo_update_data[r].pack_data.block_len << ")";
       }
       std::cout << " }\n";
     }
@@ -1978,24 +1997,77 @@ public:
     std::cout << " }" << std::endl;
   }
 
+  void print_pack_data() {
+    for(auto r = 0; r < NumRegionsMax; ++r) {
+      auto& data = _halo_update_data[r];
+      std::cout << "Halo Update Data (" << r << ")\n"
+                << "  Get Data:\n"
+                << "    awaits signal: " << data.get_data.awaits_signal << "\n"
+                << "    signal gptr: " << " uid: " << data.get_data.signal_gptr.unitid << " off: " << data.get_data.signal_gptr.addr_or_offs.offset << "\n"
+                << "    halo gptr: " << " uid: " << data.get_data.halo_gptr.unitid << " off: " << data.get_data.halo_gptr.addr_or_offs.offset << "\n"
+                << "  Put Data:\n"
+                << "    needs signal: " << data.put_data.needs_signal << "\n"
+                << "    halo gptr: " << " uid: " << data.put_data.signal_gptr.unitid << " off: " << data.put_data.signal_gptr.addr_or_offs.offset << "\n"
+                << "  Pack Data:\n"
+                << "    needs packed: " << data.pack_data.needs_packing << "\n"
+                << "    halo offset buffer: " << data.pack_data.buffer_offset << "\n"
+                << "    block length: " << data.pack_data.block_len << "\n";
+      std::cout << "    Block Offsets: { ";
+      for(auto& offset : data.pack_data.block_offs) {
+        std::cout << offset << " ";
+      }
+      std::cout << " }\n";
+    }
+    std::cout << std::endl;
+  }
+
+  void print_pack_data(region_index_t reg) {
+    auto& data = _halo_update_data[reg];
+    std::cout << "Halo Update Data (" << reg << ")\n"
+              << "  Get Data:\n"
+              << "    awaits signal: " << data.get_data.awaits_signal << "\n"
+              << "    signal gptr: " << " uid: " << data.get_data.signal_gptr.unitid << " off: " << data.get_data.signal_gptr.addr_or_offs.offset << "\n"
+              << "    halo gptr: " << " uid: " << data.get_data.halo_gptr.unitid << " off: " << data.get_data.halo_gptr.addr_or_offs.offset << "\n"
+              << "  Put Data:\n"
+              << "    needs signal: " << data.put_data.needs_signal << "\n"
+              << "    halo gptr: " << " uid: " << data.put_data.signal_gptr.unitid << " off: " << data.put_data.signal_gptr.addr_or_offs.offset << "\n"
+              << "  Pack Data:\n"
+              << "    needs packed: " << data.pack_data.needs_packing << "\n"
+              << "    halo offset buffer: " << data.put_data.buffer_offset << "\n"
+              << "    block length: " << data.pack_data.block_len << "\n";
+    std::cout << "    Block Offsets: { ";
+    for(auto& offset : data.pack_data.block_offs) {
+      std::cout << offset << " ";
+    }
+    std::cout << std::endl;
+  }
+
   void print_gptr(dart_gptr_t gptr, region_index_t reg, const char* location) {
     std::cout << "[" << dash::myid() << "] loc: " << location << " reg: " << reg << " uid: " << gptr.unitid << " off: " << gptr.addr_or_offs.offset << std::endl;
   }
 private:
-
-  struct BlockData {
-    pattern_size_t offset = 0;
-    pattern_size_t blength = 0;
+  struct GetData {
+    bool        awaits_signal{false};
+    dart_gptr_t signal_gptr{DART_GPTR_NULL};
+    dart_gptr_t halo_gptr{DART_GPTR_NULL};
   };
 
-  struct PackData {
-    bool                   needs_packed{false};
-    bool                   needs_signal{false};
-    dart_gptr_t            neighbor_signal{DART_GPTR_NULL};
-    dart_gptr_t            local_signal{DART_GPTR_NULL};
-    dart_gptr_t            neighbor_halo{DART_GPTR_NULL};
-    std::vector<BlockData> block_data{};
-    signed_pattern_size_t  halo_offset{-1};
+  struct PutData {
+    bool        needs_signal{false};
+    dart_gptr_t signal_gptr{DART_GPTR_NULL};
+  };
+
+  struct PackData{
+    bool                        needs_packing{false};
+    std::vector<pattern_size_t> block_offs{};
+    pattern_size_t              block_len{0};
+    signed_pattern_size_t       buffer_offset{-1};
+  };
+
+  struct HaloUpdateData {
+    PackData pack_data;
+    PutData  put_data;
+    GetData  get_data;
   };
 
   pattern_size_t num_halo_elems() {
@@ -2004,11 +2076,11 @@ private:
 
     pattern_size_t num_halo_elems = 0;
     for(auto r = 0; r < NumRegionsMax; ++r) {
-      auto region_spec = halo_spec.spec(r);
-
+      const auto& region_spec = halo_spec.spec(r);
+      auto& pack_data = _halo_update_data[r].pack_data;
       if(region_spec.extent() == 0 ||
-         region_spec.relevant_dim() == FastestDim) {
-        _halo_data[r].halo_offset = -1;
+         (region_spec.level() == 1 && region_spec.relevant_dim() == ContiguousDim)) {
+        pack_data.buffer_offset = -1;
         continue;
       }
 
@@ -2020,9 +2092,10 @@ private:
           reg_size *= view_local.extent(d);
         }
       }
-      _halo_data[r].halo_offset = num_halo_elems;
+      pack_data.buffer_offset = num_halo_elems;
       num_halo_elems += reg_size;
     }
+
     return num_halo_elems;
   }
 
@@ -2032,64 +2105,80 @@ private:
       if(region == nullptr || region->size() == 0) {
         continue;
       }
-      auto& halo_data = _halo_data[r];
-      halo_data.needs_signal = true;
+
+      auto remote_region_index = NumRegionsMax - 1 - r;
+      auto& update_data_loc = _halo_update_data[r];
+      auto& update_data_rem = _halo_update_data[remote_region_index];
+
+      update_data_rem.put_data.needs_signal = true;
+      update_data_loc.get_data.awaits_signal = true;
       _signal_handles.push_back(nullptr);
 
       auto signal_gptr = _signal_buffer.begin().dart_gptr();
       // sets local signal gptr -> necessary for dart_get
-      halo_data.local_signal = signal_gptr;
-      halo_data.local_signal.unitid = _halo_block.pattern().team().myid();
-      halo_data.local_signal.addr_or_offs.offset = r * sizeof(bool);
+      update_data_loc.get_data.signal_gptr = signal_gptr;
+      update_data_loc.get_data.signal_gptr.unitid = _halo_block.pattern().team().myid();
+      update_data_loc.get_data.signal_gptr.addr_or_offs.offset = r * sizeof(bool);
 
       // sets remote neighbor signal gptr -> necessary for dart_put
-      auto remote_region_index = NumRegionsMax - 1 - r;
       auto neighbor_id = region->begin().dart_gptr().unitid;
-      halo_data.neighbor_signal = signal_gptr;
-      halo_data.neighbor_signal.unitid = neighbor_id;
-      halo_data.neighbor_signal.addr_or_offs.offset = remote_region_index * sizeof(bool);
+      update_data_rem.put_data.signal_gptr = signal_gptr;
+      update_data_rem.put_data.signal_gptr.unitid = neighbor_id;
+      update_data_rem.put_data.signal_gptr.addr_or_offs.offset = remote_region_index * sizeof(bool);
 
+      // Halo elements can be updated with one request
+      if(region->spec().relevant_dim() == ContiguousDim && region->spec().level() == 1) {
+        update_data_loc.get_data.halo_gptr = region->begin().dart_gptr();
+        continue;
+      }
+
+      update_data_loc.get_data.halo_gptr = _halo_buffer.begin().dart_gptr();
+      update_data_loc.get_data.halo_gptr.unitid = neighbor_id;
+      update_data_loc.get_data.halo_gptr.addr_or_offs.offset = update_data_loc.pack_data.buffer_offset * sizeof(Element_t);
+
+      // Setting all packing data
       // no packing needed -> all elements are contiguous
-      if(region->spec().relevant_dim() == FastestDim) {
-        halo_data.neighbor_halo = region->begin().dart_gptr();
-
+      const auto& reg_spec = _halo_block.halo_spec().spec(remote_region_index);
+      if(reg_spec.extent() == 0 ||
+         (reg_spec.relevant_dim() == ContiguousDim && reg_spec.level() == 1)) {
+        update_data_rem.pack_data.buffer_offset = -1;
         continue;
       }
 
-      // sets the remote neighbor gptr for the packed halo buffer
-      halo_data.needs_packed = true;
-      auto neighbor_buffer = _halo_buffer.begin() + (_num_halo_elems * neighbor_id + _halo_data[remote_region_index].halo_offset);
-      halo_data.neighbor_halo = neighbor_buffer.dart_gptr();
+      auto& pack_data = update_data_rem.pack_data;
+      pack_data.needs_packing = true;
 
-      // number of contiguous elements
-      auto region_bnd = _halo_block.boundary_region(r);
-      if(region_bnd == nullptr) {
-        DASH_LOG_ERROR("halo and boundary regions differ");
-        continue;
+
+      const auto& view_glob = _halo_block.view();
+      auto reg_extents = view_glob.extents();
+      auto reg_offsets = view_glob.offsets();
+
+      for(dim_t d = 0; d < NumDimensions; ++d) {
+        if(reg_spec[d] == 1) {
+          continue;
+        }
+
+        reg_extents[d] = reg_spec.extent();
+        if(reg_spec[d] == 0) {
+          reg_offsets[d] = view_glob.extent(d) - reg_extents[d];
+        } else {
+          reg_offsets[d] = view_glob.offset(d);
+        }
       }
+      ViewSpec_t view_pack(reg_offsets, reg_extents);
 
-      pattern_size_t num_blocks      = 1;
-      pattern_size_t num_elems_block = 1;
-      auto*          off =  _halo_buffer.lbegin() + halo_data.halo_offset;
-      auto           it  = region_bnd->begin();
+      pattern_size_t num_elems_block = reg_extents[FastestDim];
+      pattern_size_t num_blocks      = view_pack.size() / num_elems_block;
 
-      if(MemoryArrange == ROW_MAJOR) {
-        num_elems_block = region_bnd->view().extent(NumDimensions - 1);
-      } else {
-        num_elems_block = region_bnd->view().extent(0);
+      pack_data.block_len = num_elems_block;
+      pack_data.block_offs.resize(num_blocks);
+
+      auto it_region = region->begin();
+      decltype(it_region) it_pack_data(&(it_region.globmem()), it_region.pattern(), view_pack);
+      for(auto& offset : pack_data.block_offs) {
+        offset  = it_pack_data.lpos().index;
+        it_pack_data += num_elems_block;
       }
-
-      size_t region_size         = region_bnd->size();
-      num_blocks                 = region_size / num_elems_block;
-
-      auto it_current = region_bnd->begin();
-      halo_data.block_data.resize(num_blocks);
-      for(auto& block : halo_data.block_data) {
-        block.offset  = it_current.lpos().index;
-        block.blength = num_elems_block;
-        it_current += num_elems_block;
-      }
-
     }
   }
 
@@ -2098,7 +2187,7 @@ private:
   std::vector<dart_handle_t>     _signal_handles;
   bool                           _signal;
   Element_t*                     _local_memory;
-  std::array<PackData,NumRegionsMax> _halo_data;
+  std::array<HaloUpdateData,NumRegionsMax> _halo_update_data;
   pattern_size_t                 _num_halo_elems;
   HaloBuffer_t                   _halo_buffer;
   HaloSignalBuffer_t             _signal_buffer;

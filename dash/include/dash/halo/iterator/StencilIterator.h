@@ -644,6 +644,201 @@ private:
   pattern_index_t                         _size;
 };  // class StencilIterator
 
+template<typename PatternT, typename StencilSpecT>
+class CoordsCalculator {
+private:
+  struct Range;
+public:
+  using Self_t = CoordsCalculator<PatternT, StencilSpecT>;
+  using Pattern_t = PatternT;
+
+  static constexpr auto NumDimensions    = Pattern_t::ndim();
+  static constexpr auto MemoryArrange    = Pattern_t::memory_order();
+  static constexpr auto FastestDimension =
+    MemoryArrange == ROW_MAJOR ? NumDimensions - 1 : 0;
+
+  using pattern_size_t        = typename Pattern_t::size_type;
+  using pattern_index_t = typename Pattern_t::index_type;
+  using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
+  using ViewSpec_t = typename Pattern_t::viewspec_type;
+  using ElementCoords_t       = std::array<pattern_index_t, NumDimensions>;
+  using LocalLayout_t =
+    CartesianIndexSpace<NumDimensions, MemoryArrange, pattern_index_t>;
+
+  CoordsCalculator(const LocalLayout_t& local_layout, const ViewSpec_t& sub_view, const StencilSpecT& stencil_spec, pattern_index_t idx = 0)
+  : _local_layout(&local_layout), _sub_view(&sub_view), _idx(idx), _size(sub_view.size()) {
+    reset();
+
+    const auto ext_max = stencil_spec.minmax_distances(FastestDimension);
+
+    _ext_dim_reduced = {std::abs(ext_max.first),
+                        _local_layout->extent(FastestDimension) - ext_max.second};
+  }
+
+  std::pair<pattern_index_t, bool> next_element() {
+    ++_idx;
+    ++_coords[FastestDimension];
+    if(_coords[FastestDimension] < _ranges[FastestDimension].end) {
+      ++_offset;
+      if(_coords[FastestDimension] >= _ext_dim_reduced.begin
+       && _coords[FastestDimension] < _ext_dim_reduced.end - 1) {
+        return {1,true};
+      }
+      return {1,false};
+    }
+
+    _coords[FastestDimension] = _sub_view->offset(FastestDimension);
+    if(MemoryArrange == ROW_MAJOR) {
+      for(dim_t d = NumDimensions-1; d > 0;) {
+        --d;
+        ++_coords[d];
+        if(_coords[d] < _ranges[d].end) {
+          _offset += _offsets_dim[d];
+          return {_offsets_dim[d], false};
+        } else {
+          _coords[d] = _ranges[d].begin;
+
+        }
+      }
+    }
+
+    if(MemoryArrange == COL_MAJOR) {
+      for(dim_t d = 1; d < NumDimensions; ++d) {
+        ++_coords[d];
+        if(_coords[d] < _ranges[d].end) {
+          _offset += _offsets_dim[d];
+          return {_offsets_dim[d], false};
+        } else {
+          _coords[d] = _ranges[d].begin;
+        }
+      }
+    }
+
+    return {0, false};
+  }
+
+  void set(const ViewSpec_t& sub_view, pattern_index_t idx = 0) {
+    _sub_view = &sub_view;
+    _idx = idx;
+    _size = _sub_view->size();
+    reset();
+  }
+
+  void set(pattern_index_t idx) {
+    if(idx < _size) {
+      _idx = idx;
+      set_coords();
+      set_offset();
+    }
+  }
+
+  const LocalLayout_t& local_layout() const { return *_local_layout; }
+
+  const ViewSpec_t& sub_view() const { return *_sub_view; }
+
+  const ElementCoords_t& coords() const { return _coords; }
+
+  const pattern_index_t& index() const { return _idx; }
+
+  const pattern_index_t& offset() const { return _offset; };
+
+  const std::array<Range, NumDimensions>& ranges() const { return _ranges; };
+
+private:
+  struct Range {
+    pattern_index_t begin = 0;
+    pattern_index_t end = 0;
+  };
+
+  void reset() {
+    if(_idx < _size) {
+      set_ranges();
+      set_coords();
+      set_offset();
+    }
+  }
+
+  void set_ranges() {
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      _ranges[d] = {_sub_view->offset(d), _sub_view->offset(d) + _sub_view->extent(d)};
+    }
+  }
+
+  void set_coords() {
+    _coords = _local_layout->coords(_idx, *_sub_view);
+  }
+
+  void set_offset() {
+    if(MemoryArrange == ROW_MAJOR) {
+      _offset = _coords[0];
+      for(dim_t d = 1; d < NumDimensions; ++d)
+        _offset = _offset * _local_layout->extent(d) + _coords[d];
+    } else {
+      _offset = _coords[NumDimensions - 1];
+      for(dim_t d = NumDimensions - 1; d > 0;) {
+        --d;
+        _offset = _offset * _local_layout->extent(d) + _coords[d];
+      }
+    }
+
+     _offsets_dim[FastestDimension] = 1;
+    if(MemoryArrange == ROW_MAJOR) {
+      if(FastestDimension > 0) {
+        _offsets_dim[FastestDimension - 1] = (_local_layout->extent(FastestDimension) - _sub_view->extent(FastestDimension)) + 1;
+      }
+      for(dim_t d = FastestDimension - 1; d > 0;) {
+        --d;
+        _offsets_dim[d] = (_local_layout->extent(d+1) - _sub_view->extent(d+1)) * _local_layout->extent(d+2) + _offsets_dim[d+1];
+      }
+    }
+
+    if(MemoryArrange == COL_MAJOR) {
+      if(NumDimensions > 1) {
+        _offsets_dim[FastestDimension + 1] = (_local_layout->extent(FastestDimension) - _sub_view->extent(FastestDimension)) + 1;
+      }
+      for(dim_t d = 2; d < NumDimensions; ++d) {
+        _offsets_dim[d] = (_local_layout->extent(d-1) - _sub_view->extent(d-1)) * _local_layout->extent(d-2) + _offsets_dim[d-1];
+      }
+    }
+  }
+
+private:
+  const LocalLayout_t* _local_layout;
+  const ViewSpec_t* _sub_view;
+  pattern_index_t   _idx;
+  pattern_index_t   _size;
+  std::array<Range, NumDimensions>          _ranges;
+  ElementCoords_t   _coords;
+  pattern_index_t   _offset;
+  std::array<pattern_index_t,NumDimensions> _offsets_dim;
+  Range             _ext_dim_reduced;
+};
+
+template <typename PatternT, typename StencilSpecT>
+std::ostream& operator<<(std::ostream& os, const CoordsCalculator<PatternT,StencilSpecT>& calc) {
+  os << "dash::halo::CoordsCalculator"
+     << "(layout: { ";
+  for(const auto& elem : calc.local_layout().extents()) {
+    os << elem << " ";
+  }
+  os << "}"
+     << "; sub_view: " << calc.sub_view()
+     << "; index: " << calc.index()
+     << "; offset: " << calc.offset()
+     << "; coords: { ";
+  for(const auto& elem : calc.coords()) {
+    os << elem << " ";
+  }
+  os << "}"
+     << "; ranges: { ";
+  for(const auto& elem : calc.ranges()) {
+    os << "(" << elem.begin << "," << elem.end << ") ";
+  }
+  os << "})";
+
+  return os;
+}
+
 template<typename HaloBlockT, typename StencilSpecT>
 class CoordsHelperBound {
 
@@ -659,6 +854,7 @@ public:
   static constexpr auto FastestDimension =
     MemoryArrange == ROW_MAJOR ? NumDimensions - 1 : 0;
 
+  using CoordsCalc_t = CoordsCalculator<Pattern_t, StencilSpecT>;
   using Element_t = typename HaloBlockT::Element_t;
   using pattern_size_t        = typename Pattern_t::size_type;
   using pattern_index_t = typename Pattern_t::index_type;
@@ -687,15 +883,22 @@ public:
     _halo_memory(halo_memory),
     _stencil_spec(&stencil_spec),
     _region_number(0),
-    _current_view(get_current_view(start_idx)),
     _stencil_offsets(stencil_offsets),
-    _idx(start_idx), _local_layout(view.extents()) {
+    _idx(start_idx),
+    _local_layout(_view->extents()) {
+    //_coords_calc(_local_layout, view, stencil_spec) {
+    _size = 0;
+    const auto ext_max = stencil_spec.minmax_distances(FastestDimension);
 
-    if(start_idx < _boundary_views->size()) {
-      init_ranges();
-      init_coords();
-      init_offset();
-      init_stencil_points();
+    _ext_dim_reduced = {std::abs(ext_max.first),
+                        _local_layout.extent(FastestDimension) - ext_max.second};
+
+    for(const auto& elem : boundary_views) {
+      _size += elem.size();
+    }
+
+    if(start_idx < _size) {
+      reset();
     }
   }
 
@@ -703,9 +906,13 @@ public:
 
   const ViewSpec_t& sub_view() const { return *(_current_view.first); }
 
+  const region_index_t region_id() const { return _region_number; }
+
   const ElementCoords_t& coords() const { return _coords; }
 
   const index_t& index() const { return _idx; }
+
+  const index_t& size() const { return _size; }
 
   const index_t& offset() const { return _offset; };
 
@@ -715,95 +922,204 @@ public:
 
   void set(index_t idx) {
     _idx = idx;
-    init_coords();
-    init_offset();
+    if(_idx >= 0 && _idx < _size) {
+      reset();
+    }
   }
 
   void next_element() {
     ++_idx;
     ++_current_view.second;
     ++_coords[FastestDimension];
-    if(_coords[FastestDimension] < _ranges[FastestDimension].second) {
-      for(auto i = 0; i < NumStencilPoints; ++i)
-        ++_stencil_mem_ptr[i];
-
-      ++_current_lmemory_addr;
-      ++_offset;
-
-      return;
-    }
-
-    if(_current_view.second == _current_view.first->size()) {
-      ++_region_number;
-      if(_region_number < _boundary_views->size()) {
-        auto& bnd_views = *_boundary_views;
-        while(bnd_views[_region_number].size() == 0) {
-          ++_region_number;
+    if(_coords[FastestDimension] < _ranges[FastestDimension].end) {
+      if(_coords[FastestDimension] >= _ext_dim_reduced.begin
+        && _coords[FastestDimension] < _ext_dim_reduced.end) {
+        ++_current_lmemory_addr;
+        ++_offset;
+        for(auto i = 0; i < NumStencilPoints; ++i) {
+          ++_stencil_mem_ptr[i];
         }
-        _current_view.first = &(bnd_views[_region_number]);
-        _current_view.second = 0;
-      } else {
-        auto& last_region = (*_boundary_views).back();
-        _current_view.first = &last_region;
-        _current_view.second = last_region.size();
 
         return;
       }
 
-      init_ranges();
-      init_coords();
-      init_offset();
-      init_stencil_points();
+      ++_current_lmemory_addr;
+      const auto& extents = _local_layout.extents();
+      for(auto i = 0; i < NumStencilPoints; ++i) {
+        if(_spoint_is_halo[i].possible) {
+          auto& stencil = (*_stencil_spec)[i];
+          auto coords = _coords;
+
+          if(_spoint_is_halo[i].always) {
+            for(auto d = 0; d < NumDimensions; ++d)
+              coords[d] += stencil[d];
+            _stencil_mem_ptr[i] = value_halo_at(_spoint_is_halo[i].index, coords);
+            continue;
+          }
+
+          bool is_halo = false;
+          region_index_t index = 0;
+          for(auto d = 0; d < NumDimensions; ++d) {
+            auto stencil_off = stencil[d];
+            if(stencil_off == 0) {
+              index = 1 + index * RegionCoords_t::REGION_INDEX_BASE;
+              continue;
+            }
+            coords[d] += stencil_off;
+            if(coords[d] < 0) {
+              index *= RegionCoords_t::REGION_INDEX_BASE;
+              is_halo = true;
+              continue;
+            }
+
+            if(coords[d] < static_cast<signed_pattern_size_t>(extents[d])) {
+              index = 1 + index * RegionCoords_t::REGION_INDEX_BASE;
+              continue;
+            }
+
+            index = 2 + index * RegionCoords_t::REGION_INDEX_BASE;
+            is_halo = true;
+          }
+          if(is_halo) {
+            _stencil_mem_ptr[i] = value_halo_at(index, coords);
+            continue;
+          }
+
+          _stencil_mem_ptr[i] = _current_lmemory_addr + (*_stencil_offsets)[i];
+        } else {
+          ++_stencil_mem_ptr[i];
+        }
+      }
+      return;
+    }
+
+    if(_current_view.second == (*_current_view.first).size()) {
+
+      auto& bnd_views = *_boundary_views;
+
+      do {
+        ++_region_number;
+        if(_region_number >= bnd_views.size()) {
+          _region_number = bnd_views.size();
+
+          return;
+        }
+
+      } while(bnd_views[_region_number].size() == 0);
+
+      if(_idx < _size) {
+        _current_view = {&bnd_views[_region_number],0};
+        init_ranges();
+        init_coords();
+        init_offset();
+        init_stencil_points();
+      }
 
       return;
     }
 
-    _coords[FastestDimension] = _current_view.first->offset(FastestDimension);
-    index_t add = 0;
-    index_t add_halo;
-    if(MemoryArrange == ROW_MAJOR) {
-      for(dim_t d = NumDimensions-1; d > 0;) {
-        --d;
-        ++_coords[d];
-        if(_coords[d] < _ranges[d].second) {
-          add = _offsets_dim[d];
-          break;
-        } else {
-          _coords[d] = _ranges[d].first;
+    pattern_index_t add = 0;
+    if(_coords[FastestDimension] < _ranges[FastestDimension].end) {
+      add = 1;
+    } else {
+      _coords[FastestDimension] = _ranges[FastestDimension].begin;
+      if(MemoryArrange == ROW_MAJOR) {
+        for(dim_t d = NumDimensions-1; d > 0;) {
+          --d;
+          ++_coords[d];
+          if(_coords[d] < _ranges[d].end) {
+            _offset += _offsets_dim[d];
+            add = _offsets_dim[d];
+            break;
+          } else {
+            _coords[d] = _ranges[d].begin;
+          }
         }
       }
-    } else {
-      for(dim_t d = 1; d < NumDimensions; ++d) {
-        ++_coords[d];
-        if(_coords[d] < _ranges[d].second) {
-          add = _offsets_dim[d];
-          break;
-        } else {
-          _coords[d] = _ranges[d].first;
+
+      if(MemoryArrange == COL_MAJOR) {
+        for(dim_t d = 1; d < NumDimensions; ++d) {
+          ++_coords[d];
+          if(_coords[d] < _ranges[d].end) {
+            _offset += _offsets_dim[d];
+            add = _offsets_dim[d];
+            break;
+          } else {
+            _coords[d] = _ranges[d].begin;
+          }
         }
       }
     }
+
+
     _current_lmemory_addr += add;
-    _offset += add;
+    const auto& extents = _local_layout.extents();
     for(auto i = 0; i < NumStencilPoints; ++i) {
-      if(_spoint_is_halo[i].first) {
+      if(_spoint_is_halo[i].possible) {
         auto& stencil = (*_stencil_spec)[i];
         auto coords = _coords;
-        for(auto d = 0; d < NumDimensions; ++d)
-          coords[d] += stencil[d];
-        _stencil_mem_ptr[i] = value_halo_at(_spoint_is_halo[i].second, coords);
+
+        if(_spoint_is_halo[i].always) {
+          for(auto d = 0; d < NumDimensions; ++d)
+            coords[d] += stencil[d];
+          _stencil_mem_ptr[i] = value_halo_at(_spoint_is_halo[i].index, coords);
+          continue;
+        }
+
+        bool is_halo = false;
+        region_index_t index = 0;
+        for(auto d = 0; d < NumDimensions; ++d) {
+          auto stencil_off = stencil[d];
+          if(stencil_off == 0) {
+            index = 1 + index * RegionCoords_t::REGION_INDEX_BASE;
+            continue;
+          }
+          coords[d] += stencil_off;
+          if(coords[d] < 0) {
+            index *= RegionCoords_t::REGION_INDEX_BASE;
+            is_halo = true;
+            continue;
+          }
+
+          if(coords[d] < static_cast<signed_pattern_size_t>(extents[d])) {
+            index = 1 + index * RegionCoords_t::REGION_INDEX_BASE;
+            continue;
+          }
+
+          index = 2 + index * RegionCoords_t::REGION_INDEX_BASE;
+          is_halo = true;
+        }
+        if(is_halo) {
+           _stencil_mem_ptr[i] = value_halo_at(index, coords);
+           continue;
+        }
+
+        _stencil_mem_ptr[i] = _current_lmemory_addr + (*_stencil_offsets)[i];
       } else {
         _stencil_mem_ptr[i] += add;
       }
     }
+ // #endif
   }
 
 
 private:
+  void reset() {
+    if(_idx < _size) {
+      _current_view = get_current_view(_idx);
+      //_coords_calc.set(*(_current_view.first), _current_view.second);
+      init_ranges();
+      init_coords();
+      init_offset();
+      init_stencil_points();
+    }
+  }
+
   void init_ranges() {
+    const auto ext_max = _stencil_spec->minmax_distances(FastestDimension);
     for(dim_t d = 0; d < NumDimensions; ++d) {
       auto sub_view = _current_view.first;
-      _ranges[d] = std::make_pair(sub_view->offset(d), sub_view->offset(d) + sub_view->extent(d));
+      _ranges[d] = {sub_view->offset(d), sub_view->offset(d) + sub_view->extent(d)};
     }
   }
 
@@ -861,33 +1177,89 @@ private:
   void init_stencil_points() {
     _current_lmemory_addr = _local_memory + _offset;
 
-    using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
+    /*using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
+    std::array<ElementCoords_t, NumStencilPoints> halo_coords{};
+    std::array<bool, NumStencilPoints>            is_halo{};
+    std::array<region_index_t, NumStencilPoints>  indexes{};
+    const auto& coords = _coords_calc.coords();
+    for(auto d = 0; d < NumDimensions; ++d) {
+      auto extent = _local_layout.extent(d);
+
+      for(auto i = 0; i < NumStencilPoints; ++i) {
+        auto& halo_coord = halo_coords[i][d];
+        halo_coord       = coords[d] + (*_stencil_spec)[i][d];
+        if(halo_coord < 0) {
+          indexes[i] *= RegionCoords_t::REGION_INDEX_BASE;
+          is_halo[i] = true;
+          continue;
+        }
+
+        if(halo_coord < static_cast<signed_extent_t>(extent)) {
+          indexes[i] = 1 + indexes[i] * RegionCoords_t::REGION_INDEX_BASE;
+          continue;
+        }
+
+        indexes[i] = 2 + indexes[i] * RegionCoords_t::REGION_INDEX_BASE;
+        is_halo[i] = true;
+      }
+    }
+
+    for(auto i = 0; i < NumStencilPoints; ++i) {
+      if(is_halo[i])
+        _stencil_mem_ptr[i] = value_halo_at(indexes[i], halo_coords[i]);
+      else
+        _stencil_mem_ptr[i] = _current_lmemory_addr + (*_stencil_offsets)[i];
+    }*/
 
     constexpr auto center = RegionCoords_t::center_index();
+    auto minmax = _stencil_spec->minmax_distances();
+    const auto& extents = _local_layout.extents();
+
     for(auto i = 0; i < NumStencilPoints; ++i) {
-      _spoint_is_halo[i] = {false, 0};
-      const auto& extents = _local_layout.extents();
+      auto& spoint_halo =_spoint_is_halo[i];
+      spoint_halo = {false, true, 0};
+
       auto halo_coord = _coords;
-      auto& index = _spoint_is_halo[i].second;
+      bool is_halo = false;
       for(auto d = 0; d < NumDimensions; ++d) {
-        halo_coord[d]      += (*_stencil_spec)[i][d];
+        auto stencil_off = (*_stencil_spec)[i][d];
+        if(stencil_off == 0) {
+          spoint_halo.index = 1 + spoint_halo.index * RegionCoords_t::REGION_INDEX_BASE;
+          continue;
+        }
+
+        halo_coord[d] += stencil_off;
         if(halo_coord[d] < 0) {
-          index *= RegionCoords_t::REGION_INDEX_BASE;
-          _spoint_is_halo[i].first = true;
+          spoint_halo.index *= RegionCoords_t::REGION_INDEX_BASE;
+          spoint_halo.possible = true;
+          is_halo = true;
+          if( halo_coord[d] > minmax[d].first) {
+            spoint_halo.always = false;
+          }
           continue;
         }
 
-        if(halo_coord[d] < static_cast<signed_extent_t>(extents[d])) {
-          index = 1 + index * RegionCoords_t::REGION_INDEX_BASE;
+        if(halo_coord[d] < static_cast<signed_pattern_size_t>(extents[d])) {
+          spoint_halo.index = 1 + spoint_halo.index * RegionCoords_t::REGION_INDEX_BASE;
+          if(_coords[d] < std::abs(minmax[d].first) ||
+            (static_cast<signed_pattern_size_t>(extents[d]) - _coords[d]) <= minmax[d].second) {
+            spoint_halo.always = false;
+            spoint_halo.possible = true;
+          }
+
           continue;
         }
 
-        index = 2 + index * RegionCoords_t::REGION_INDEX_BASE;
-        _spoint_is_halo[i].first = true;
+        spoint_halo.index = 2 + spoint_halo.index * RegionCoords_t::REGION_INDEX_BASE;
+        spoint_halo.possible = true;
+        is_halo = true;
+        if(minmax[d].second != stencil_off) {
+          spoint_halo.always = false;
+         }
       }
 
-      if(_spoint_is_halo[i].first)
-        _stencil_mem_ptr[i] = value_halo_at(index, halo_coord);
+      if(is_halo)
+        _stencil_mem_ptr[i] = value_halo_at(spoint_halo.index, halo_coord);
       else
         _stencil_mem_ptr[i] = _current_lmemory_addr + (*_stencil_offsets)[i];
     }
@@ -901,25 +1273,38 @@ private:
            + _halo_memory->offset(region_index, halo_coords));
   }
 
+  struct Range {
+    pattern_index_t begin = 0;
+    pattern_index_t end = 0;
+  };
+
+  struct HaloPoint {
+    bool           possible;
+    bool           always;
+    region_index_t index;
+  };
+
 private:
   const ViewSpec_t*                       _view;
-  const BoundaryViews_t*                        _boundary_views;
+  const BoundaryViews_t*                  _boundary_views;
   Element_t*                              _local_memory;
   HaloMemory_t*                           _halo_memory;
-  const StencilSpecT*                           _stencil_spec;
+  const StencilSpecT*                     _stencil_spec;
   size_t                                  _region_number{ 0 };
+  //CoordsCalc_t                            _coords_calc;
   ViewIndexPair_t                         _current_view;
   const StencilOffsets_t*                 _stencil_offsets;
   Element_t*                               _current_lmemory_addr;
   std::array<Element_t*, NumStencilPoints> _stencil_mem_ptr;
-  std::array<std::pair<bool,region_index_t>, NumStencilPoints>      _spoint_is_halo;
+  std::array<HaloPoint, NumStencilPoints>  _spoint_is_halo;
   index_t          _idx;
   LocalLayout_t    _local_layout;
-  Ranges_t         _ranges;
-  ElementCoords_t  _coords;
-  index_t          _offset;
-
-  std::array<index_t,NumDimensions> _offsets_dim;
+  pattern_index_t _size;
+  std::array<Range, NumDimensions>          _ranges;
+  ElementCoords_t   _coords;
+  pattern_index_t   _offset;
+  std::array<pattern_index_t,NumDimensions> _offsets_dim;
+  Range             _ext_dim_reduced;
 };
 
 template <typename HaloBlockT, typename StencilSpecT>
@@ -928,6 +1313,7 @@ std::ostream& operator<<(
   const CoordsHelperBound<HaloBlockT, StencilSpecT>& helper) {
   os << "dash::halo::CoordsHelper"
      << "(view: " << helper.view()
+     << "; region id: " << helper.region_id()
      << "; sub_view: " << helper.sub_view()
      << "; index: " << helper.index()
      << "; offset: " << helper.offset()
@@ -940,9 +1326,11 @@ std::ostream& operator<<(
   return os;
 }
 
+
+
 /*
  * Stencil specific iterator to iterate over a given scope of elements.
- * The iterator provides element access via stencil points and for boundary
+ * The iterator provides element access via stencil points andHaloMatrixWrapperBigMix3D for boundary
  * elements halo element access.
  */
 template <typename ElementT, typename PatternT, typename GlobMemT, typename StencilSpecT,
@@ -1004,7 +1392,6 @@ public:
   : _halomemory(halomemory), _stencil_spec(stencil_spec),
     _view(view_local),
     _coords_helper(view_local, boundary_views, local_memory, halomemory, *stencil_spec, stencil_offsets, idx) {
-    _size = boundary_views.size();
   }
 
    /**
@@ -1013,7 +1400,7 @@ public:
   StencilIteratorBound(const Self_t& other) = default;
 
   /**
-   * Assignment operator.
+   * Assignment operator.HaloMatrixWrapperBigMix3D
    *
    * \see DashGlobalIteratorConcept
    */
@@ -1113,16 +1500,12 @@ public:
   }
 
   Self_t& operator+=(pattern_index_t n) {
-    auto index = _coords_helper.index() + n;
-    if(index < _size)
-      _coords_helper.set(_coords_helper.index() + n);
+    _coords_helper.set(_coords_helper.index() + n);
 
     return *this;
   }
 
   Self_t& operator-=(pattern_index_t n) {
-    auto index = _coords_helper.index();
-    if(index >= n)
     _coords_helper.set(index - n);
 
     return *this;
@@ -1179,16 +1562,12 @@ private:
     return gidx_cmp(_coords_helper.index(), other._coords_helper.index());
   }
 
-
-
-
 private:
   HaloMemory_t*                           _halomemory;
   const StencilSpecT*                     _stencil_spec;
   ViewSpec_t                              _view;
-  LocalLayout_t                           _local_layout;
+  //LocalLayout_t                           _local_layout;
   CoordsHelper_t                          _coords_helper;
-  pattern_index_t                         _size;
 };  // class StencilIterator
 
 
@@ -1392,6 +1771,15 @@ public:
   Self_t& operator++() {
     ++_idx;
     next_element();
+    if(dash::myid() == 0) {
+      std::cout << "offset: " << _offset
+                << ", coords{";
+      for(auto& elem : _coords) {
+        std::cout << elem << " ";
+      }
+      std::cout << "}"
+                << ", region: " << _region_number << std::endl;
+    }
 
     return *this;
   }
@@ -1505,9 +1893,8 @@ private:
       return true;
     }
 #endif
-    if(&_view == &(other._view) || _view == other._view) {
-      return gidx_cmp(_idx, other._idx);
-    }
+    return gidx_cmp(_idx, other._idx);
+
     // TODO not the best solution
     return false;
   }
