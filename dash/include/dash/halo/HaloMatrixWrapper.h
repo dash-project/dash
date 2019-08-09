@@ -278,9 +278,9 @@ public:
         DASH_ASSERT_MSG(
             std::distance(range_mem.first, range_mem.second) == region.size(),
             "Range distance of the HaloMemory is unequal region size");
-        const auto& mem_layout = _matrix.pattern().memory_layout();
+        const auto& pattern = _matrix.pattern();
         for(auto it = region.begin(); it != it_reg_end; ++it, ++it_mem) {
-          auto coords = mem_layout.coords(it.rpos(), region.view());
+          auto coords = pattern.coords(it.rpos(), region.view());
           for(auto d = 0; d < NumDimensions; ++d) {
             coords[d] += coords_offset[d];
           }

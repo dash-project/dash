@@ -992,10 +992,6 @@ public:
    */
   const Views_t& views() const { return _views; }
 
-  pattern_index_t gpos() const {
-    return _pattern->global_at(glob_coords(_idx));
-  }
-
 private:
   template<typename CoordsT, typename DistT>
   bool check_valid_region(const CoordsT& coords, region_index_t index, const DistT& dist,
