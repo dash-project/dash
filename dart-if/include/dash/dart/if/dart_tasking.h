@@ -75,6 +75,13 @@ typedef struct dart_task_dep {
 } dart_task_dep_t;
 
 /**
+ * The maximum size of data a task can store inline, i.e., without additional
+ * allocation.
+ * The size is chosen to minimize padding while guaranteeing at least 32B space.
+ */
+#define DART_TASKING_INLINE_DATA_SIZE 38
+
+/**
  * Returns the current thread's number.
  */
 int

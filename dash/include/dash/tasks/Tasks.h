@@ -673,14 +673,15 @@ namespace internal{
     f();
 #else // DASH_TASKS_INVOKE_DIRECT
     if (dart_task_should_abort()) abort_task();
-    /*
-    if (std::is_trivially_copyable<TaskFunc>::value) {
+
+    if (std::is_trivially_copyable<TaskFunc>::value &&
+        sizeof(f) <= DART_TASKING_INLINE_DATA_SIZE) {
+      // the function is small enough to fit into the task inline so don't
+      // allocate extra memory
       dart_task_create(
         &dash::tasks::internal::invoke_task_action_void<TaskFunc>,
         &f, sizeof(f), deps.data(), deps.size(), prio, name);
-    } else
-    */
-    {
+    } else {
       dart_task_create(
         &dash::tasks::internal::invoke_task_action_void_delete<TaskFunc>,
         new TaskFunc(std::move(f)), 0,

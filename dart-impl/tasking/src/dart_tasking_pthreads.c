@@ -670,8 +670,14 @@ dart_task_t * create_task(
                  task, data, data_size, fn);
 
   if (data_size) {
-    DART_TASK_SET_FLAG(task, DART_TASK_DATA_ALLOCATED);
-    task->data           = malloc(data_size);
+    if (data_size > DART_TASKING_INLINE_DATA_SIZE) {
+      DART_TASK_SET_FLAG(task, DART_TASK_DATA_ALLOCATED);
+      task->data           = malloc(data_size);
+    } else {
+      printf("Using internal task data buffer for task %s\n", descr);
+      // use the task-internal buffer
+      task->data = task->inline_data;
+    }
     memcpy(task->data, data, data_size);
   } else {
     task->data           = data;

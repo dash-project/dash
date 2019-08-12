@@ -126,6 +126,7 @@ struct dart_task_data {
 #ifdef DART_DEBUG
   task_list_t              * children;  // list of child tasks
 #endif //DART_DEBUG
+  unsigned char              inline_data[DART_TASKING_INLINE_DATA_SIZE]; // inline data passed to the action
 };
 
 #define DART_STACK_PUSH(_head, _elem) \

@@ -2,6 +2,7 @@
 #define DASH__TASKS__PARALLELFOR_H__
 
 #include <dash/tasks/Tasks.h>
+#include <dash/tasks/internal/LambdaTraits.h>
 #include <dash/dart/if/dart_tasking.h>
 
 
@@ -70,18 +71,35 @@ namespace internal {
     // TODO: extend this to handle GlobIter!
     size_t chunk_size = chunking.get_chunk_size(begin, end);
     InputIter from = begin;
+    constexpr const bool is_mutable =
+                            internal::lambda_type<RangeFunc>::is_mutable::value;
+    std::shared_ptr<RangeFunc> f_ptr;
+    if (!is_mutable) {
+      f_ptr = std::make_shared<RangeFunc>(f);
+    }
     while (from < end) {
       InputIter to = from + chunk_size;
       if (to > end) to = end;
 #if DASH_TASKS_INVOKE_DIRECT
       f(from, to);
 #else // DASH_TASKS_INVOKE_DIRECT
-      dash::tasks::async(
-        name,
-        [f, from, to](){
-          f(from, to);
-        }
-      );
+      if (!is_mutable) {
+        dash::tasks::async(
+          name,
+          // capture the shared ptr and the range
+          [f_ptr, from, to](){
+            (*f_ptr)(from, to);
+          }
+        );
+      } else {
+        dash::tasks::async(
+          name,
+          // capture the function object and the range
+          [f, from, to](){
+            f(from, to);
+          }
+        );
+      }
 #endif // DASH_TASKS_INVOKE_DIRECT
       from = to;
     }
@@ -106,6 +124,8 @@ namespace internal {
     // TODO: extend this to handle GlobIter!
     size_t chunk_size = chunking.get_chunk_size(begin, end);
     InputIter from = begin;
+    constexpr const bool is_mutable =
+                            internal::lambda_type<RangeFunc>::is_mutable::value;
 #if DASH_TASKS_INVOKE_DIRECT
     while (from < end) {
       InputIter to = from + chunk_size;
@@ -114,24 +134,41 @@ namespace internal {
       from = to;
     }
 #else // DASH_TASKS_INVOKE_DIRECT
+    std::shared_ptr<RangeFunc> f_ptr;
+    if (!is_mutable) {
+      f_ptr = std::make_shared<RangeFunc>(f);
+    }
     DependencyContainer deps;
     while (from < end) {
       InputIter to = from + chunk_size;
       if (to > end) to = end;
       auto dep_inserter = DependencyContainerInserter(deps, deps.begin());
       depedency_generator(from, to, dep_inserter);
-      dash::tasks::internal::async(
-        [f, from, to](){
-          f(from, to);
-        },
-        deps,
-        name
-      );
+      if (!is_mutable) {
+        dash::tasks::internal::async(
+          // capture the shared ptr and the range
+          [f_ptr, from, to](){
+            (*f_ptr)(from, to);
+          },
+          deps,
+          name
+        );
+      } else {
+        dash::tasks::internal::async(
+          // capture the function object and the range
+          [f, from, to](){
+            f(from, to);
+          },
+          deps,
+          name
+        );
+      }
       from = to;
       deps.clear();
     }
 #endif // DASH_TASKS_INVOKE_DIRECT
   }
+
 
 } // namespace internal
 
