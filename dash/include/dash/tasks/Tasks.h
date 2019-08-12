@@ -77,6 +77,53 @@ namespace internal {
   using BarrierCancellationSignal = CancellationSignal<BarrierCancellation>;
   using AbortCancellationSignal  = CancellationSignal<AbortCancellation>;
 
+
+
+  /**
+   * Emulate a final statement,
+   * taken from https://github.com/Microsoft/GSL/blob/master/include/gsl/gsl_util
+   */
+  template <class F>
+  class final_act
+  {
+  public:
+      explicit final_act(F f) noexcept
+        : f_(std::move(f)), invoke_(true) {}
+
+      final_act(final_act&& other) noexcept
+      : f_(std::move(other.f_)),
+        invoke_(other.invoke_)
+      {
+          other.invoke_ = false;
+      }
+
+      final_act(const final_act&) = delete;
+      final_act& operator=(const final_act&) = delete;
+
+      ~final_act() noexcept
+      {
+          if (invoke_) f_();
+      }
+
+  private:
+      F f_;
+      bool invoke_;
+  };
+
+  template <class F>
+  inline final_act<F> finally(const F& f) noexcept
+  {
+      return final_act<F>(f);
+  }
+
+  template <class F>
+  inline final_act<F> finally(F&& f) noexcept
+  {
+      return final_act<F>(std::forward<F>(f));
+  }
+
+
+
   template<typename ReturnT = void>
   struct TaskData {
 
@@ -136,10 +183,10 @@ namespace internal {
   {
     try{
       FuncT& f = *static_cast<FuncT*>(data);
+      // at the end we have to call the destructor on the function object,
+      // the memory will be free'd by the runtime
+      auto _ = internal::finally([&](){f.~FuncT();});
       f();
-      // we have to call the destructor on the function object, the memory
-      // will be free'd by the runtime
-      f.~FuncT();
     } catch (const BaseCancellationSignal& cs) {
       // nothing to be done, the cancellation is triggered by the d'tor
     } catch (...) {
@@ -156,10 +203,10 @@ namespace internal {
   {
     try{
       FuncT& f = *static_cast<FuncT*>(data);
+      // at the end we have to call the destructor on the function object and
+      // free its memory explicitely
+      auto _ = internal::finally([&](){delete &f;});
       f();
-      // we have to call the destructor on the function object and free its
-      // memory explicitely
-      delete &f;
     } catch (const BaseCancellationSignal& cs) {
       // nothing to be done, the cancellation is triggered by the d'tor
     } catch (...) {
