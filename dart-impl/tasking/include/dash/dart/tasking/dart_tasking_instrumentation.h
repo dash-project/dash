@@ -64,37 +64,38 @@ void dart__tasking__instrument_task_finalize(
   
 /**
  * Instrumentation point of two tasks in the same local task graph share a
- * read-after-write dependency.
+ * read-after-write, write-after-write or write-after-read dependency.
 */
-void dart__tasking__instrument_local_dep_raw(
+void dart__tasking__instrument_local_dep(
     dart_task_t *task1,
     dart_task_t *task2,
     uint64_t memaddr_raw,
     uint64_t orig_memaddr_raw,
     int32_t task1_unitid,
-    int32_t task2_unitid) DART_INTERNAL;
+    int32_t task2_unitid,
+    int edge_type) DART_INTERNAL;
 /**
  * Instrumentation point of two tasks in the same local task graph share a
  * write-after-write dependency.
 */
-void dart__tasking__instrument_local_dep_waw(
-    dart_task_t *task1,
-    dart_task_t *task2,
-    uint64_t memaddr_waw,
-    uint64_t orig_memaddr_waw,
-    int32_t task1_unitid,
-    int32_t task2_unitid) DART_INTERNAL;
-/**
- * Instrumentation point of two tasks in the same local task graph share a
- * write-after-read (anti-)dependency.
-*/    
-void dart__tasking__instrument_local_dep_war(
-    dart_task_t *task1,
-    dart_task_t *task2,
-    uint64_t memaddr_war,
-    uint64_t orig_memaddr_war,
-    int32_t task1_unitid,
-    int32_t task2_unitid) DART_INTERNAL;
+// void dart__tasking__instrument_local_dep_waw(
+//     dart_task_t *task1,
+//     dart_task_t *task2,
+//     uint64_t memaddr_waw,
+//     uint64_t orig_memaddr_waw,
+//     int32_t task1_unitid,
+//     int32_t task2_unitid) DART_INTERNAL;
+// /**
+//  * Instrumentation point of two tasks in the same local task graph share a
+//  * write-after-read (anti-)dependency.
+// */    
+// void dart__tasking__instrument_local_dep_war(
+//     dart_task_t *task1,
+//     dart_task_t *task2,
+//     uint64_t memaddr_war,
+//     uint64_t orig_memaddr_war,
+//     int32_t task1_unitid,
+//     int32_t task2_unitid) DART_INTERNAL;
 /**
  * Instrumentation point of a task beeing added into the task queue.
  * Called right before inserting the task into the queue.
@@ -130,12 +131,15 @@ void dart__tasking__instrument_dummy_dep_capture (
  * fitting output dependency from another task.
 */
     
-void dart__tasking__instrument_remote_in_dep(
+void dart__tasking__instrument_remote_dep(
     uint64_t local_task,
     uint64_t remote_task,
     int local_dep_type,
     int remote_dep_type,
+    uint64_t memaddr,
+    uint64_t orig_memaddr,
     int32_t local_unitid,
-    int32_t remote_unitid) DART_INTERNAL;
+    int32_t remote_unitid,
+    int edge_type) DART_INTERNAL;
 
 #endif /* DART_TASKING_INSTRUMENTATION_H_ */

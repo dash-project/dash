@@ -37,20 +37,20 @@ struct dart_tool_task_add_to_queue_cb {
     void *userdata;
 };
 
-struct dart_tool_local_dep_raw_cb {
-    dart_tool_local_dep_raw_cb_t cb;
+struct dart_tool_local_dep_cb {
+    dart_tool_local_dep_cb_t cb;
     void *userdata;
 };
 
-struct dart_tool_local_dep_waw_cb {
-    dart_tool_local_dep_waw_cb_t cb;
-    void *userdata;
-};
-
-struct dart_tool_local_dep_war_cb {
-    dart_tool_local_dep_war_cb_t cb;
-    void *userdata;
-};
+// struct dart_tool_local_dep_waw_cb {
+//     dart_tool_local_dep_waw_cb_t cb;
+//     void *userdata;
+// };
+// 
+// struct dart_tool_local_dep_war_cb {
+//     dart_tool_local_dep_war_cb_t cb;
+//     void *userdata;
+// };
 
 struct dart_tool_dummy_dep_create_cb {
     dart_tool_dummy_dep_create_cb_t cb;
@@ -61,8 +61,8 @@ struct dart_tool_dummy_dep_capture_cb {
     void *userdata;
 };
 
-struct dart_tool_remote_in_dep_cb {
-    dart_tool_remote_in_dep_cb_t cb;
+struct dart_tool_remote_dep_cb {
+    dart_tool_remote_dep_cb_t cb;
     void *userdata;
 };
 
@@ -74,9 +74,9 @@ typedef struct dart_tool_task_yield_resume_cb dart_task_yield_resume_cb;
 typedef struct dart_tool_task_finalize_cb dart_tool_task_finalize_cb;
 typedef struct dart_tool_task_add_to_queue_cb dart_tool_task_add_to_queue_cb;
 
-typedef struct dart_tool_local_dep_raw_cb dart_tool_local_dep_raw_cb;
-typedef struct dart_tool_local_dep_waw_cb dart_tool_local_dep_waw_cb;
-typedef struct dart_tool_local_dep_war_cb dart_tool_local_dep_war_cb;
+typedef struct dart_tool_local_dep_cb dart_tool_local_dep_cb;
+// typedef struct dart_tool_local_dep_waw_cb dart_tool_local_dep_waw_cb;
+// typedef struct dart_tool_local_dep_war_cb dart_tool_local_dep_war_cb;
 
 typedef struct dart_tool_dummy_dep_create_cb dart_tool_dummy_dep_create_cb;
 typedef struct dart_tool_dummy_dep_capture_cb dart_tool_dummy_dep_capture_cb;
@@ -89,14 +89,14 @@ struct dart_tool_task_end_cb dart_tool_task_end_cb_data;
 struct dart_tool_task_finalize_cb dart_tool_task_finalize_cb_data;
 struct dart_tool_task_add_to_queue_cb dart_tool_task_add_to_queue_cb_data;
 
-struct dart_tool_local_dep_raw_cb dart_tool_local_dep_raw_cb_data;
-struct dart_tool_local_dep_waw_cb dart_tool_local_dep_waw_cb_data;
-struct dart_tool_local_dep_war_cb dart_tool_local_dep_war_cb_data;
+struct dart_tool_local_dep_cb dart_tool_local_dep_cb_data;
+//struct dart_tool_local_dep_waw_cb dart_tool_local_dep_waw_cb_data;
+//struct dart_tool_local_dep_war_cb dart_tool_local_dep_war_cb_data;
 
 struct dart_tool_dummy_dep_create_cb dart_tool_dummy_dep_create_cb_data;
 struct dart_tool_dummy_dep_capture_cb dart_tool_dummy_dep_capture_cb_data;
 
-struct dart_tool_remote_in_dep_cb dart_tool_remote_in_dep_cb_data;
+struct dart_tool_remote_dep_cb dart_tool_remote_dep_cb_data;
 
 /* implementation of the register function of the callback */
 int dart_tool_register_task_create (dart_tool_task_create_cb_t cb, void *userdata_task_create) {
@@ -135,26 +135,26 @@ int dart_tool_register_task_add_to_queue (dart_tool_task_add_to_queue_cb_t cb, v
     printf("dart_tool_register_task_add_to_queue was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_queue);
     return 0;
 }
-int dart_tool_register_local_dep_raw (dart_tool_local_dep_raw_cb_t cb, void *userdata_local_dep_raw) {
-    dart_tool_local_dep_raw_cb_data.cb = cb;
-    dart_tool_local_dep_raw_cb_data.userdata = userdata_local_dep_raw;
-    printf("dart_tool_register_local_dep_raw was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_local_dep_raw);
+int dart_tool_register_local_dep (dart_tool_local_dep_cb_t cb, void *userdata_local_dep) {
+    dart_tool_local_dep_cb_data.cb = cb;
+    dart_tool_local_dep_cb_data.userdata = userdata_local_dep;
+    printf("dart_tool_register_local_dep was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_local_dep);
     return 0;
 }
 
-int dart_tool_register_local_dep_waw (dart_tool_local_dep_waw_cb_t cb, void *userdata_local_dep_waw) {
-    dart_tool_local_dep_waw_cb_data.cb = cb;
-    dart_tool_local_dep_waw_cb_data.userdata = userdata_local_dep_waw;
-    printf("dart_tool_register_local_dep_waw was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_local_dep_waw);
-    return 0;
-}
-
-int dart_tool_register_local_dep_war (dart_tool_local_dep_war_cb_t cb, void *userdata_local_dep_war) {
-    dart_tool_local_dep_war_cb_data.cb = cb;
-    dart_tool_local_dep_war_cb_data.userdata = userdata_local_dep_war;
-    printf("dart_tool_register_local_dep_war was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_local_dep_war);
-    return 0;
-}
+// int dart_tool_register_local_dep_waw (dart_tool_local_dep_waw_cb_t cb, void *userdata_local_dep_waw) {
+//     dart_tool_local_dep_waw_cb_data.cb = cb;
+//     dart_tool_local_dep_waw_cb_data.userdata = userdata_local_dep_waw;
+//     printf("dart_tool_register_local_dep_waw was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_local_dep_waw);
+//     return 0;
+// }
+// 
+// int dart_tool_register_local_dep_war (dart_tool_local_dep_war_cb_t cb, void *userdata_local_dep_war) {
+//     dart_tool_local_dep_war_cb_data.cb = cb;
+//     dart_tool_local_dep_war_cb_data.userdata = userdata_local_dep_war;
+//     printf("dart_tool_register_local_dep_war was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_local_dep_war);
+//     return 0;
+// }
 
 int dart_tool_register_dummy_dep_create(dart_tool_dummy_dep_create_cb_t cb, void *userdata_dummy_dep_create) {
     dart_tool_dummy_dep_create_cb_data.cb = cb;
@@ -170,10 +170,10 @@ int dart_tool_register_dummy_dep_capture(dart_tool_dummy_dep_capture_cb_t cb, vo
     return 0;
 }
 
-int dart_tool_register_remote_in_dep (dart_tool_remote_in_dep_cb_t cb, void *userdata_remote_in_dep) {
-    dart_tool_remote_in_dep_cb_data.cb = cb;
-    dart_tool_remote_in_dep_cb_data.userdata = userdata_remote_in_dep;
-    printf("dart_tool_register_remote_in_dep was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_remote_in_dep);
+int dart_tool_register_remote_dep (dart_tool_remote_dep_cb_t cb, void *userdata_remote_in_dep) {
+    dart_tool_remote_dep_cb_data.cb = cb;
+    dart_tool_remote_dep_cb_data.userdata = userdata_remote_in_dep;
+    printf("dart_tool_register_remote_dep was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_remote_in_dep);
     return 0;
 }
 
@@ -184,7 +184,7 @@ void dart__tasking__instrument_task_create(
   int32_t task_unitid)
 {
     if (!name) {
-        name = "";
+        name = "<UnknownName>";
     }
     if (dart_tool_task_create_cb_data.cb) {
           dart_tool_task_create_cb_data.cb((uint64_t) task, prio, name, task_unitid, dart_tool_task_create_cb_data.userdata);
@@ -246,54 +246,55 @@ void dart__tasking__instrument_task_finalize()
     }
 }
 
-void dart__tasking__instrument_local_dep_raw(
+void dart__tasking__instrument_local_dep(
     dart_task_t *task1,
     dart_task_t *task2,
     uint64_t memaddr_raw,
     uint64_t orig_memaddr_raw,
     int32_t task1_unitid,
-    int32_t task2_unitid)
+    int32_t task2_unitid,
+    int edge_type)
 {
     //uint64_t memaddr_raw = 0;
     //uint64_t orig_memaddr_raw = 1;
-    if (dart_tool_local_dep_raw_cb_data.cb) {
-        dart_tool_local_dep_raw_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_raw, orig_memaddr_raw, task1_unitid, task2_unitid, dart_tool_local_dep_raw_cb_data.userdata);
+    if (dart_tool_local_dep_cb_data.cb) {
+        dart_tool_local_dep_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_raw, orig_memaddr_raw, task1_unitid, task2_unitid, edge_type, dart_tool_local_dep_cb_data.userdata);
     }
     
 }
 
-void dart__tasking__instrument_local_dep_waw(
-    dart_task_t *task1,
-    dart_task_t *task2,
-    uint64_t memaddr_waw,
-    uint64_t orig_memaddr_waw,
-    int32_t task1_unitid,
-    int32_t task2_unitid)
-{
-    //uint64_t memaddr_waw = 0;
-    //uint64_t orig_memaddr_waw = 1;
-    if (dart_tool_local_dep_waw_cb_data.cb) {
-        dart_tool_local_dep_waw_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_waw, orig_memaddr_waw, task1_unitid, task2_unitid, dart_tool_local_dep_waw_cb_data.userdata);
-    }
-    
-}
-
-void dart__tasking__instrument_local_dep_war(
-    dart_task_t *task1,
-    dart_task_t *task2,
-    uint64_t memaddr_war,
-    uint64_t orig_memaddr_war,
-    int32_t task1_unitid,
-    int32_t task2_unitid)
-{
-    //offset des gptr
-    //uint64_t memaddr_war = 0;
-    //uint64_t orig_memaddr_war = 1;
-    if (dart_tool_local_dep_war_cb_data.cb) {
-        dart_tool_local_dep_war_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_war, orig_memaddr_war, task1_unitid, task2_unitid,dart_tool_local_dep_war_cb_data.userdata);
-    }
-    
-}
+// void dart__tasking__instrument_local_dep_waw(
+//     dart_task_t *task1,
+//     dart_task_t *task2,
+//     uint64_t memaddr_waw,
+//     uint64_t orig_memaddr_waw,
+//     int32_t task1_unitid,
+//     int32_t task2_unitid)
+// {
+//     //uint64_t memaddr_waw = 0;
+//     //uint64_t orig_memaddr_waw = 1;
+//     if (dart_tool_local_dep_waw_cb_data.cb) {
+//         dart_tool_local_dep_waw_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_waw, orig_memaddr_waw, task1_unitid, task2_unitid, dart_tool_local_dep_waw_cb_data.userdata);
+//     }
+//     
+// }
+// 
+// void dart__tasking__instrument_local_dep_war(
+//     dart_task_t *task1,
+//     dart_task_t *task2,
+//     uint64_t memaddr_war,
+//     uint64_t orig_memaddr_war,
+//     int32_t task1_unitid,
+//     int32_t task2_unitid)
+// {
+//     //offset des gptr
+//     //uint64_t memaddr_war = 0;
+//     //uint64_t orig_memaddr_war = 1;
+//     if (dart_tool_local_dep_war_cb_data.cb) {
+//         dart_tool_local_dep_war_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_war, orig_memaddr_war, task1_unitid, task2_unitid,dart_tool_local_dep_war_cb_data.userdata);
+//     }
+//     
+// }
 void dart__tasking__instrument_task_add_to_queue(
     dart_task_t *task,
     dart_thread_t *thread,
@@ -329,16 +330,19 @@ void dart__tasking__instrument_dummy_dep_capture (
     
 }
 
-void dart__tasking__instrument_remote_in_dep(
+void dart__tasking__instrument_remote_dep(
     uint64_t local_task,
     uint64_t remote_task,
     int local_dep_type,
     int remote_dep_type,
+    uint64_t memaddr,
+    uint64_t orig_memaddr,
     int32_t local_unitid,
-    int32_t remote_unitid)
+    int32_t remote_unitid,
+    int edge_type)
 {
-    if (dart_tool_remote_in_dep_cb_data.cb) {
-        dart_tool_remote_in_dep_cb_data.cb(local_task, remote_task, local_dep_type,remote_dep_type, local_unitid, remote_unitid, dart_tool_remote_in_dep_cb_data.userdata);
+    if (dart_tool_remote_dep_cb_data.cb) {
+        dart_tool_remote_dep_cb_data.cb(local_task, remote_task, local_dep_type,remote_dep_type, memaddr, orig_memaddr, local_unitid, remote_unitid,edge_type, dart_tool_remote_dep_cb_data.userdata);
     }
     
 }
