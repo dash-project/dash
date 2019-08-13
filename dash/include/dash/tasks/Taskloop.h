@@ -5,6 +5,8 @@
 #include <dash/tasks/internal/LambdaTraits.h>
 #include <dash/dart/if/dart_tasking.h>
 
+#include <atomic>
+
 
 namespace dash{
 namespace tasks{
@@ -21,6 +23,15 @@ namespace tasks{
       return chunk_size ? chunk_size : 1;
     }
 
+    template<typename IteratorT>
+    size_t
+    get_num_chunks(IteratorT begin, IteratorT end) {
+      size_t num_chunks = std::ceil(((float)dash::distance(begin, end))
+                                                  / get_chunk_size(begin, end));
+      return num_chunks;
+    }
+
+
   private:
     size_t n;
   };
@@ -35,6 +46,13 @@ namespace tasks{
     size_t
     get_chunk_size(IteratorT, IteratorT) {
       return n;
+    }
+
+    template<typename IteratorT>
+    size_t
+    get_num_chunks(IteratorT begin, IteratorT end) {
+      size_t num_chunks = std::ceil(((float)dash::distance(begin, end)) / n);
+      return num_chunks;
     }
 
   private:
@@ -54,6 +72,50 @@ namespace internal {
   struct is_chunk_definition<dash::tasks::num_chunks> : std::true_type
   { };
 
+  /**
+   * Wrapper around a function object that contains a simple reference count.
+   * The object is allocated using \c CountedFunction<T>::create()
+   * and released as soon as all references have been dropped.
+   */
+  template<typename FunctionT>
+  struct CountedFunction {
+  private:
+    CountedFunction(const FunctionT& fn, int32_t cnt) : m_fn(fn), m_cnt(cnt)
+    { }
+  public:
+
+    static
+    CountedFunction<FunctionT>* create(const FunctionT& fn, int32_t cnt) {
+      return new CountedFunction<FunctionT>(fn, cnt);
+    }
+
+    void
+    drop(void)
+    {
+      int32_t cnt = --m_cnt;
+      if (cnt == 0) {
+        // once all references are gone we delete ourselves
+        delete this;
+      }
+    }
+
+    FunctionT& operator*()
+    {
+      return m_fn;
+    }
+
+
+    FunctionT& get()
+    {
+      return m_fn;
+    }
+
+
+  private:
+    FunctionT m_fn;
+    std::atomic<int32_t> m_cnt;
+  };
+
   template<
     class InputIter,
     class ChunkType,
@@ -69,14 +131,23 @@ namespace internal {
     const char *name = nullptr)
   {
     // TODO: extend this to handle GlobIter!
+
+    // skip empty ranges
+    if (dash::distance(begin, end) == 0) {
+      return;
+    }
+
     size_t chunk_size = chunking.get_chunk_size(begin, end);
     InputIter from = begin;
     constexpr const bool is_mutable =
                             internal::lambda_type<RangeFunc>::is_mutable::value;
-    std::shared_ptr<RangeFunc> f_ptr;
+    using CountedFunctionT = CountedFunction<RangeFunc>;
+    CountedFunctionT *f_ptr;
     if (!is_mutable) {
-      f_ptr = std::make_shared<RangeFunc>(f);
+      int32_t num_chunks = chunking.get_num_chunks(begin, end);
+      f_ptr = CountedFunctionT::create(std::move(f), num_chunks);
     }
+
     while (from < end) {
       InputIter to = from + chunk_size;
       if (to > end) to = end;
@@ -86,9 +157,13 @@ namespace internal {
       if (!is_mutable) {
         dash::tasks::async(
           name,
-          // capture the shared ptr and the range
+          // capture the counted ptr and the range
           [f_ptr, from, to](){
-            (*f_ptr)(from, to);
+            // the d'tor will finally delete the object once all
+            // references are gone
+            auto _ = internal::finally([f_ptr](){ f_ptr->drop(); });
+
+            f_ptr->get()(from, to);
           }
         );
       } else {
@@ -122,6 +197,12 @@ namespace internal {
     const char *name = nullptr)
   {
     // TODO: extend this to handle GlobIter!
+
+    // skip empty ranges
+    if (dash::distance(begin, end) == 0) {
+      return;
+    }
+
     size_t chunk_size = chunking.get_chunk_size(begin, end);
     InputIter from = begin;
     constexpr const bool is_mutable =
@@ -134,10 +215,13 @@ namespace internal {
       from = to;
     }
 #else // DASH_TASKS_INVOKE_DIRECT
-    std::shared_ptr<RangeFunc> f_ptr;
+    using CountedFunctionT = CountedFunction<RangeFunc>;
+    CountedFunctionT *f_ptr;
     if (!is_mutable) {
-      f_ptr = std::make_shared<RangeFunc>(f);
+      int32_t num_chunks = chunking.get_num_chunks(begin, end);
+      f_ptr = CountedFunctionT::create(std::move(f), num_chunks);
     }
+
     DependencyContainer deps;
     while (from < end) {
       InputIter to = from + chunk_size;
@@ -146,9 +230,13 @@ namespace internal {
       depedency_generator(from, to, dep_inserter);
       if (!is_mutable) {
         dash::tasks::internal::async(
-          // capture the shared ptr and the range
+          // capture the counted ptr and the range
           [f_ptr, from, to](){
-            (*f_ptr)(from, to);
+            // the d'tor will finally delete the object once all
+            // references are gone
+            auto _ = internal::finally([f_ptr](){ f_ptr->drop(); });
+
+            f_ptr->get()(from, to);
           },
           deps,
           name
