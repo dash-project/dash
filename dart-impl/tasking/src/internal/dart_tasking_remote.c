@@ -107,7 +107,7 @@ struct remote_operation_t {
   dart_team_unit_t         team_unit;
   uint32_t                 size; // the size of op
   bool                     direct_send;
-  bool                     blocking_progress;
+  bool                     blocking_flush;
 } remote_operation_t;
 
 #define DART_OPLIST_ELEM_POP(__list) \
@@ -219,10 +219,10 @@ process_operation_list()
   remote_operation_t *reverse_list = NULL;
 
   // reverse the list to get the oldest entry first
-  remote_operation_t *blocking_progress_op = NULL;
+  remote_operation_t *flush_op = NULL;
   while (NULL != (op = DART_OPLIST_ELEM_POP_NOLOCK(oplist))) {
-    if (op->blocking_progress) {
-      blocking_progress_op = op;
+    if (op->blocking_flush) {
+      flush_op = op;
       continue;
     }
     DART_STACK_PUSH(reverse_list, op);
@@ -240,10 +240,10 @@ process_operation_list()
     DART_OPLIST_ELEM_PUSH(operation_freelist, op);
   }
 
-  if (blocking_progress_op) {
-    dart_amsg_process_blocking(amsgq, DART_TEAM_ALL);
-    *blocking_progress_op->op.progress.signal = 1;
-    DART_OPLIST_ELEM_PUSH(operation_freelist, blocking_progress_op);
+  if (flush_op) {
+    dart_amsg_flush_buffer(amsgq);
+    *flush_op->op.progress.signal = 1;
+    DART_OPLIST_ELEM_PUSH(operation_freelist, flush_op);
   }
 }
 
@@ -388,7 +388,7 @@ dart_ret_t dart_tasking_remote_datadep(
     op->team_unit     = team_unit;
     op->op.data_dep   = rdep;
     op->direct_send   = false;
-    op->blocking_progress = false;
+    op->blocking_flush = false;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
     DART_LOG_TRACE("Enqueued remote dependency request to unit %d "
                    "(segid=%i, offset=%p, fn=%p, task=%p), op=%p",
@@ -453,7 +453,7 @@ dart_ret_t dart_tasking_remote_release_task(
     op->team_unit          = team_unit;
     op->op.task_release    = response;
     op->direct_send        = true;
-    op->blocking_progress  = false;
+    op->blocking_flush     = false;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
     DART_LOG_TRACE("Enqueued remote task release to unit %i "
         "(fn=%p, rtask=%p, depref=%p), op %p",
@@ -510,7 +510,7 @@ dart_ret_t dart_tasking_remote_release_dep(
     op->team_unit      = team_unit;
     op->op.dep_release = response;
     op->direct_send    = true;
-    op->blocking_progress = false;
+    op->blocking_flush = false;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
     DART_LOG_TRACE("Enqueued remote dependency release to unit %i "
                    "(fn=%p, task=%p, depref=%p), op %p",
@@ -571,7 +571,7 @@ dart_ret_t dart_tasking_remote_sendrequest(
     op->team_unit     = DART_TEAM_UNIT_ID(unit.id);
     op->op.sendreq    = request;
     op->direct_send   = false;
-    op->blocking_progress = false;
+    op->blocking_flush = false;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
     return DART_OK;
   }
@@ -627,9 +627,9 @@ dart_ret_t dart_tasking_remote_progress_blocking(dart_team_t team)
 {
   if (progress_thread) {
     volatile uint32_t signal = 0;
-    // signal the progress thread that we are waiting for blocking progress
+    // signal the progress thread that we are waiting for outgoing messages to be flushed
     remote_operation_t *op = allocate_op();
-    op->blocking_progress  = true;
+    op->blocking_flush     = true;
     op->direct_send        = false;
     op->op.progress.signal = &signal;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
@@ -639,12 +639,11 @@ dart_ret_t dart_tasking_remote_progress_blocking(dart_team_t team)
       struct timespec ts = {.tv_nsec = 1, .tv_sec = 0};
       nanosleep(&ts, NULL);
     }
-    return DART_OK;
   } else {
     // make sure all operations in-flight have been passed to the message queue
     process_operation_list();
-    return dart_amsg_process_blocking(amsgq, team);
   }
+  return dart_amsg_process_blocking(amsgq, team);
 }
 
 void dart_tasking_remote_handle_comm_task(dart_task_t *task, bool *enqueued)
