@@ -175,6 +175,8 @@ dart_amsg_sopnop_sendbuf(
       queue_win);
     MPI_Win_flush(target.id, queue_win);
 
+    bool do_return = false;
+
     if (writecnt >= 0) {
       // atomically fetch and update the writer offset
       MPI_Fetch_and_op(
@@ -198,6 +200,7 @@ dart_amsg_sopnop_sendbuf(
                     OFFSET_TAILPOS(queuenum), 1, MPI_INT64_T,
                     MPI_SUM, queue_win);
       MPI_Win_flush(target.id, queue_win);
+      do_return = true;
     } else {
       DART_LOG_TRACE("Queue %ld at %d processing (writecnt %ld)",
                     queuenum, target.id, writecnt);
@@ -213,7 +216,9 @@ dart_amsg_sopnop_sendbuf(
       queue_win);
     MPI_Win_flush(target.id, queue_win);
 
-    return DART_ERR_AGAIN;
+    if (do_return) {
+      return DART_ERR_AGAIN;
+    }
   } while (1);
 
   DART_LOG_TRACE("Writing %ld into queue %ld at offset %ld at unit %i",
