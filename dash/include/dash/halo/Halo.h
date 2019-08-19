@@ -2073,6 +2073,8 @@ private:
   pattern_size_t num_halo_elems() {
     const auto& halo_spec = _halo_block.halo_spec();
     const auto& view_local = _halo_block.view_local();
+    team_unit_t rank_0(0);
+    auto max_local_extents = _halo_block.pattern().local_extents(rank_0);
 
     pattern_size_t num_halo_elems = 0;
     for(auto r = 0; r < NumRegionsMax; ++r) {
@@ -2089,7 +2091,7 @@ private:
         if(region_spec[d] != 1) {
           reg_size *= region_spec.extent();
         } else {
-          reg_size *= view_local.extent(d);
+          reg_size *= max_local_extents[d];
         }
       }
       pack_data.buffer_offset = num_halo_elems;
@@ -2160,7 +2162,7 @@ private:
 
         reg_extents[d] = reg_spec.extent();
         if(reg_spec[d] == 0) {
-          reg_offsets[d] = view_glob.extent(d) - reg_extents[d];
+          reg_offsets[d] += view_glob.extent(d) - reg_extents[d];
         } else {
           reg_offsets[d] = view_glob.offset(d);
         }

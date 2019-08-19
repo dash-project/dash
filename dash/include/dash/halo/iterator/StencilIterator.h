@@ -1771,15 +1771,6 @@ public:
   Self_t& operator++() {
     ++_idx;
     next_element();
-    if(dash::myid() == 0) {
-      std::cout << "offset: " << _offset
-                << ", coords{";
-      for(auto& elem : _coords) {
-        std::cout << elem << " ";
-      }
-      std::cout << "}"
-                << ", region: " << _region_number << std::endl;
-    }
 
     return *this;
   }
