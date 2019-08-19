@@ -591,7 +591,6 @@ static void dephash_release_out_dependency(
 {
   DART_LOG_TRACE("Releasing output dependency %p (num_consumers %d)",
                  elem, elem->num_consumers);
-  //LOCK_TASK(elem);
   int slot = hash_gptr(elem->dep.gptr);
   LOCK_TASK(&local_deps[slot]);
   DART_ASSERT_MSG(elem->dep_list == NULL || elem->num_consumers > 0,
@@ -601,7 +600,11 @@ static void dephash_release_out_dependency(
     dart_dephash_elem_t *dep_list = elem->dep_list;
     elem->task.local = NULL;
     elem->dep_list   = NULL;
-    //UNLOCK_TASK(elem);
+    // unlock the slot here, no need to keep the lock
+    // NOTE: keeping the lock can be dangerous as release_dependency might trigger
+    //       operations on the hash table (inserting remote dependencies), which can
+    //       lead to a deadlock
+    UNLOCK_TASK(&local_deps[slot]);
     do {
       dart_dephash_elem_t *in_dep;
 
@@ -609,7 +612,7 @@ static void dephash_release_out_dependency(
       if (NULL == in_dep) break;
       DART_LOG_TRACE("  -> Releasing input dependency %p from out %p",
                     in_dep, elem);
-      DART_ASSERT_MSG(in_dep->dep.type == DART_DEP_IN,
+      DART_ASSERT_MSG(in_dep->dep.type == DART_DEP_IN || in_dep->dep.type == DART_DEP_COPYIN,
                       "Invalid dependency type %d in dependency %p",
                       in_dep->dep.type, in_dep);
       release_dependency(in_dep);
@@ -629,8 +632,8 @@ static void dephash_release_out_dependency(
       // recycle dephash element
       dephash_recycle_elem(elem);
     }
+    UNLOCK_TASK(&local_deps[slot]);
   }
-  UNLOCK_TASK(&local_deps[slot]);
 
 }
 
