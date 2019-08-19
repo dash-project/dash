@@ -11,7 +11,9 @@ Mutex::Mutex(Team& team)
 
 bool Mutex::init() {
   if (dart_lock_initialized(_mutex.get())) {
-    DASH_LOG_ERROR("DART lock is already initialized");
+    DASH_LOG_ERROR(
+        "dash::Mutex::init()",
+        "DART lock is already initialized");
     return false;
   }
   if (*_team != dash::Team::Null() && dash::is_initialized()) {
@@ -20,6 +22,7 @@ bool Mutex::init() {
 
     if (ret != DART_OK) {
         DASH_LOG_ERROR(
+            "dash::Mutex::init()",
             "Failed to initialize DART lock! "
             "(dart_team_lock_init failed)");
         return false;

@@ -39,6 +39,7 @@ private:
 
         if (ret != DART_OK) {
           DASH_LOG_ERROR(
+              "dash::Mutex::operator()",
               "Failed to destroy DART lock! "
               "(dart_team_lock_destroy failed)");
         }
