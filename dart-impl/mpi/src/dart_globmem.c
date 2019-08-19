@@ -173,13 +173,13 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
  */
 void dart__mpi__check_memory_model(dart_segment_info_t *segment)
 {
-  int mem_model, flag;
+  int *mem_model, flag;
   MPI_Win_get_attr(segment->win, MPI_WIN_MODEL, &mem_model, &flag);
 
   DART_ASSERT_MSG(flag != 0, "Failed to query window memory model!");
 
   segment->sync_needed = false;
-  if (mem_model != MPI_WIN_UNIFIED) {
+  if (*mem_model != MPI_WIN_UNIFIED) {
     static bool warning_printed = false;
     if (!warning_printed) {
       dart_global_unit_t myid;

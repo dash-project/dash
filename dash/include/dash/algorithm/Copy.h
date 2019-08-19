@@ -3,8 +3,8 @@
 
 #include <dash/Future.h>
 #include <dash/Iterator.h>
-
-#include <dash/algorithm/LocalRange.h>
+#include <dash/internal/Config.h>
+#include <dash/iterator/internal/ContiguousRange.h>
 
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_tasking.h>
@@ -94,6 +94,37 @@ dash::Future<ValueType *> copy_async(
 
 namespace internal {
 
+template<typename InputValueType, typename OutputValueType>
+struct local_copy_chunk {
+  const InputValueType  *src;
+        OutputValueType *dest;
+  const size_t           size;
+};
+
+template<typename InputValueType, typename OutputValueType>
+void do_local_copies(
+  std::vector<local_copy_chunk<InputValueType, OutputValueType>>& chunks)
+{
+  for (auto& chunk : chunks) {
+    std::copy(chunk.src, chunk.src + chunk.size, chunk.dest);
+  }
+}
+
+template<typename FromType, typename ToType>
+struct is_dash_copyable
+: std::integral_constant<bool,
+      /* integral and floating point values are copyable if they have the same
+       * size; but they are not convertible */
+      (((std::is_integral<FromType>::value && std::is_integral<ToType>::value) ||
+        (std::is_floating_point<FromType>::value &&
+         std::is_floating_point<ToType>::value)) &&
+        sizeof(FromType) == sizeof(ToType)) ||
+      /* non-arithmetic types are not converted (except for cv-qualification) */
+      std::is_same<typename std::remove_cv<FromType>::type,
+                   typename std::remove_cv<ToType>::type>::value>
+{ };
+
+
 // =========================================================================
 // Global to Local
 // =========================================================================
@@ -104,111 +135,89 @@ namespace internal {
  */
 template <
   typename ValueType,
-  class GlobInputIt >
+  typename GlobInputIt >
 ValueType * copy_impl(
-  GlobInputIt                  in_first,
-  GlobInputIt                  in_last,
+  GlobInputIt                  begin,
+  GlobInputIt                  end,
   ValueType                  * out_first,
-  std::vector<dart_handle_t> & handles)
+  std::vector<dart_handle_t> * handles)
 {
-  DASH_LOG_TRACE("dash::copy_impl()",
-                 "in_first:",  in_first.pos(),
-                 "in_last:",   in_last.pos(),
+  DASH_LOG_TRACE("dash::internal::copy_impl() global -> local",
+                 "in_first:",  begin.pos(),
+                 "in_last:",   end.pos(),
                  "out_first:", out_first);
-  auto pattern = in_first.pattern();
-  typedef typename decltype(pattern)::index_type index_type;
-  typedef typename decltype(pattern)::size_type  size_type;
-  size_type num_elem_total = dash::distance(in_first, in_last);
+  typedef typename GlobInputIt::size_type   size_type;
+  typedef typename GlobInputIt::value_type  input_value_type;
+  typedef          ValueType                output_value_type;
+
+  static_assert(is_dash_copyable<input_value_type, output_value_type>::value,
+                "dash::copy can only be used on same-size arithmetic types or "
+                "same non-arithmetic types");
+
+  const size_type num_elem_total = dash::distance(begin, end);
   if (num_elem_total <= 0) {
-    DASH_LOG_TRACE("dash::copy_impl", "input range empty");
+    DASH_LOG_TRACE("dash::internal::copy_impl", "input range empty");
     return out_first;
   }
   DASH_LOG_TRACE("dash::copy_impl",
                  "total elements:",    num_elem_total,
                  "expected out_last:", out_first + num_elem_total);
-  // Input iterators could be relative to a view. Map first input iterator
-  // to global index range and use it to resolve last input iterator.
-  // Do not use in_last.global() as this would span over the relative input
-  // range.
-  auto g_in_first      = in_first.global();
-  auto g_in_last       = g_in_first + num_elem_total;
-  DASH_LOG_TRACE("dash::copy_impl",
-                 "g_in_first:", g_in_first.pos(),
-                 "g_in_last:",  g_in_last.pos());
-  auto unit_first      = pattern.unit_at(g_in_first.pos());
-  DASH_LOG_TRACE_VAR("dash::copy_impl", unit_first);
-  auto unit_last       = pattern.unit_at(g_in_last.pos() - 1);
-  DASH_LOG_TRACE_VAR("dash::copy_impl", unit_last);
 
   size_type num_elem_copied = 0;
-  if (unit_first == unit_last) {
-    // Input range is located at a single remote unit:
-    DASH_LOG_TRACE("dash::copy_impl", "input range at single unit");
-    DASH_LOG_TRACE("dash::copy_impl",
-                    "get elements:",   num_elem_total);
-    auto cur_in_first  = g_in_first;
-    auto cur_out_first = out_first;
-    dart_handle_t handle;
-    dash::internal::get_handle(
-      cur_in_first.dart_gptr(),
-      cur_out_first,
-      num_elem_total,
-      &handle);
-    if (handle != DART_HANDLE_NULL) {
-      handles.push_back(handle);
-    }
-    num_elem_copied = num_elem_total;
-  } else {
-    // Input range is spread over several remote units:
-    DASH_LOG_TRACE("dash::copy_impl", "input range spans multiple units");
-    //
-    // Copy elements from every unit:
-    //
-    while (num_elem_copied < num_elem_total) {
-      // Global iterator pointing at begin of current unit's input range:
-      auto cur_in_first    = g_in_first + num_elem_copied;
-      // unit and local index of first element in current range segment:
-      auto local_pos       = pattern.local(static_cast<index_type>(
-                                             cur_in_first.pos()));
-      // Number of elements located at current source unit:
-      size_type max_elem_per_unit = pattern.local_size(local_pos.unit);
-      // Local offset of first element in input range at current unit:
-      auto l_in_first_idx  = local_pos.index;
-      // Maximum number of elements to copy from current unit:
-      auto num_unit_elem   = max_elem_per_unit - l_in_first_idx;
-      // Number of elements left to copy:
-      auto total_elem_left = num_elem_total - num_elem_copied;
-      // Number of elements to copy in this iteration.
-      auto num_copy_elem   = num_unit_elem;
-      if (num_copy_elem > total_elem_left) {
-        num_copy_elem = total_elem_left;
+
+  ContiguousRangeSet<GlobInputIt> range_set{begin, end};
+
+  std::vector<local_copy_chunk<input_value_type, output_value_type>> local_chunks;
+
+  //
+  // Copy elements from every unit:
+  //
+
+  for (auto range : range_set) {
+
+    auto cur_in        = range.first;
+    auto num_copy_elem = range.second;
+
+    DASH_ASSERT_GT(num_copy_elem, 0, "Number of elements to copy is 0");
+    auto dest_ptr = out_first + num_elem_copied;
+
+    // handle local data locally
+    if (cur_in.is_local()) {
+      // if the chunk is less than a page or if it is the only transfer
+      // don't bother post-poning it
+      input_value_type* src_ptr = cur_in.local();
+      if (num_elem_total == num_copy_elem ||
+          DASH__ARCH__PAGE_SIZE > num_copy_elem*sizeof(input_value_type)) {
+        std::copy(src_ptr, src_ptr + num_copy_elem, dest_ptr);
+      } else {
+        // larger chunks are handled later to allow overlap
+        local_chunks.push_back({src_ptr, dest_ptr, num_copy_elem});
       }
-      DASH_ASSERT_GT(num_copy_elem, 0,
-                     "Number of element to copy is 0");
-      DASH_LOG_TRACE("dash::copy_impl",
-                     "start g_idx:",    cur_in_first.pos(),
-                     "->",
-                     "unit:",           local_pos.unit,
-                     "l_idx:",          l_in_first_idx,
-                     "->",
-                     "unit elements:",  num_unit_elem,
-                     "max elem/unit:",  max_elem_per_unit,
-                     "get elements:",   num_copy_elem,
-                     "total:",          num_elem_total,
-                     "copied:",         num_elem_copied,
-                     "left:",           total_elem_left);
-      auto dest_ptr = out_first + num_elem_copied;
-      auto src_gptr = cur_in_first.dart_gptr();
-      dart_handle_t handle;
-      dash::internal::get_handle(src_gptr, dest_ptr, num_copy_elem, &handle);
-      num_elem_copied += num_copy_elem;
-      if (handle != DART_HANDLE_NULL) {
-        handles.push_back(handle);
+    } else {
+      auto src_gptr = cur_in.dart_gptr();
+
+      DASH_LOG_TRACE("dash::copy_impl", "dest_ptr", dest_ptr,
+                    "src_gptr", src_gptr, "num_copy_elem", num_copy_elem);
+
+      if (handles != nullptr) {
+        dart_handle_t handle;
+        dash::internal::get_handle(src_gptr, dest_ptr, num_copy_elem, &handle);
+        if (handle != DART_HANDLE_NULL) {
+          handles->push_back(handle);
+        }
+      } else {
+        dash::internal::get(src_gptr, dest_ptr, num_copy_elem);
       }
     }
+    num_elem_copied += num_copy_elem;
   }
 
-  ValueType * out_last = out_first + num_elem_copied;
+  do_local_copies(local_chunks);
+
+  DASH_ASSERT_EQ(num_elem_copied, num_elem_total,
+                 "Failed to find all contiguous subranges in range");
+
+  auto out_last = out_first + num_elem_copied;
   DASH_LOG_TRACE_VAR("dash::copy_impl >", out_last);
   return out_last;
 }
@@ -223,33 +232,93 @@ ValueType * copy_impl(
  */
 template <
   typename ValueType,
-  class GlobOutputIt >
+  typename GlobOutputIt >
 GlobOutputIt copy_impl(
-  ValueType                  * in_first,
-  ValueType                  * in_last,
+  ValueType                  * begin,
+  ValueType                  * end,
   GlobOutputIt                 out_first,
-  std::vector<dart_handle_t> & handles)
+  std::vector<dart_handle_t> * handles)
 {
-  DASH_LOG_TRACE("dash::copy_impl()",
-                 "l_in_first:",  in_first,
-                 "l_in_last:",   in_last,
-                 "g_out_first:", out_first);
+  DASH_LOG_TRACE("dash::copy_impl() local -> global",
+                 "in_first:",  begin,
+                 "in_last:",   end,
+                 "out_first:", out_first);
+  typedef typename GlobOutputIt::size_type  size_type;
+  typedef typename GlobOutputIt::value_type output_value_type;
+  typedef          ValueType                input_value_type;
 
-  auto num_elements = std::distance(in_first, in_last);
-  dart_handle_t handle;
-  dash::internal::put_handle(
-    out_first.dart_gptr(),
-    in_first,
-    num_elements,
-    &handle);
-  if (handle != DART_HANDLE_NULL) {
-    handles.push_back(handle);
+  static_assert(is_dash_copyable<input_value_type, output_value_type>::value,
+                "dash::copy can only be used on same-size arithmetic types or "
+                "same non-arithmetic types");
+
+  const size_type num_elem_total = dash::distance(begin, end);
+  if (num_elem_total <= 0) {
+    DASH_LOG_TRACE("dash::internal::copy_impl", "input range empty");
+    return out_first;
   }
 
-  auto out_last = out_first + num_elements;
-  DASH_LOG_TRACE("dash::copy_impl >",
-                 "g_out_last:", out_last.dart_gptr());
+  auto out_last = out_first + num_elem_total;
 
+  DASH_LOG_TRACE("dash::copy_impl",
+                 "total elements:",    num_elem_total,
+                 "expected out_last:", out_last);
+
+  size_type num_elem_copied = 0;
+
+  ContiguousRangeSet<GlobOutputIt> range_set{out_first, out_last};
+
+  std::vector<local_copy_chunk<input_value_type, output_value_type>> local_chunks;
+
+  auto in_first = begin;
+
+  //
+  // Copy elements to every unit:
+  //
+
+  for (auto range : range_set) {
+
+    auto cur_out_first  = range.first;
+    auto num_copy_elem = range.second;
+
+    DASH_ASSERT_GT(num_copy_elem, 0,
+                    "Number of elements to copy is 0");
+    input_value_type* src_ptr  = in_first + num_elem_copied;
+
+    // handle local data locally
+    if (cur_out_first.is_local()) {
+      output_value_type* dest_ptr = cur_out_first.local();
+      // if the chunk is less than a page or if it is the only transfer
+      // don't bother post-poning it
+      if (num_elem_total == num_copy_elem ||
+          DASH__ARCH__PAGE_SIZE > num_copy_elem*sizeof(input_value_type)) {
+        std::copy(src_ptr, src_ptr + num_copy_elem, dest_ptr);
+      } else {
+        // larger chunks are handled later to allow overlap
+        local_chunks.push_back({src_ptr, dest_ptr, num_copy_elem});
+      }
+    } else {
+      auto dst_gptr = cur_out_first.dart_gptr();
+      DASH_LOG_TRACE("dash::copy_impl", "src_ptr", src_ptr,
+                    "dst_gptr", dst_gptr, "num_copy_elem", num_copy_elem);
+      if (handles != nullptr) {
+        dart_handle_t handle;
+        dash::internal::put_handle(dst_gptr, src_ptr, num_copy_elem, &handle);
+        if (handle != DART_HANDLE_NULL) {
+          handles->push_back(handle);
+        }
+      } else {
+        dash::internal::put(dst_gptr, src_ptr, num_copy_elem);
+      }
+    }
+    num_elem_copied += num_copy_elem;
+  }
+
+  do_local_copies(local_chunks);
+
+  DASH_ASSERT_EQ(num_elem_copied, num_elem_total,
+                 "Failed to find all contiguous subranges in range");
+
+  DASH_LOG_TRACE_VAR("dash::copy_impl >", out_last);
   return out_last;
 }
 
@@ -275,193 +344,22 @@ dash::Future<ValueType *> copy_async(
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
-  const auto & team = in_first.team();
-
   DASH_LOG_TRACE("dash::copy_async()", "async, global to local");
   if (in_first == in_last) {
     DASH_LOG_TRACE("dash::copy_async", "input range empty");
     return dash::Future<ValueType *>(out_first);
   }
 
-  dash::util::UnitLocality uloc(team, team.myid());
-  // Size of L2 data cache line:
-  int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
-  bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
-                      <= l2_line_size;
-
-  ValueType * dest_first = out_first;
-  // Return value, initialize with begin of output range, indicating no values
-  // have been copied:
-  ValueType * out_last   = out_first;
-  // Check if part of the input range is local:
-  DASH_LOG_TRACE_VAR("dash::copy_async", in_first.dart_gptr());
-  DASH_LOG_TRACE_VAR("dash::copy_async", in_last.dart_gptr());
-  DASH_LOG_TRACE_VAR("dash::copy_async", out_first);
-  auto li_range_in     = local_index_range(in_first, in_last);
-  // Number of elements in the local subrange:
-  auto num_local_elem  = li_range_in.end - li_range_in.begin;
-  // Total number of elements to be copied:
-  auto total_copy_elem = in_last - in_first;
-
-  // Instead of testing in_first.local() and in_last.local(), this test for a
-  // local-only range only requires one call to in_first.local() which increases
-  // throughput by ~10% for local ranges.
-  if (num_local_elem == total_copy_elem) {
-    // Entire input range is local:
-    DASH_LOG_TRACE("dash::copy_async", "entire input range is local");
-    ValueType * l_out_last = out_first + total_copy_elem;
-    auto const * l_in_first = in_first.local();
-    auto const * l_in_last  = l_in_first + total_copy_elem;
-
-    // Use memcpy for data ranges below 64 KB
-    if (use_memcpy) {
-      std::memcpy(out_first,        // destination
-                  in_first.local(), // source
-                  num_local_elem * sizeof(ValueType));
-      out_last = out_first + num_local_elem;
-    } else {
-      auto const * l_in_first = in_first.local();
-      auto const * l_in_last  = l_in_first + num_local_elem;
-      out_last = std::copy(l_in_first,
-                           l_in_last,
-                           out_first);
-    }
-    DASH_LOG_TRACE("dash::copy_async", "finished local copy of",
-                   (out_last - out_first), "elements");
-    return dash::Future<ValueType *>(out_last);
-  }
-
   auto handles = std::make_shared<std::vector<dart_handle_t>>();
 
-  DASH_LOG_TRACE("dash::copy_async", "local range:",
-                 li_range_in.begin,
-                 li_range_in.end,
-                 "in_first.is_local:", in_first.is_local());
-  // Check if global input range is partially local:
-  if (num_local_elem > 0) {
-    // Part of the input range is local, copy local input subrange to local
-    // output range directly.
-    auto pattern          = in_first.pattern();
-    // Map input iterators to global index domain:
-    auto g_in_first       = in_first.global();
-    auto g_in_last        = g_in_first + total_copy_elem;
-    DASH_LOG_TRACE("dash::copy_async", "resolving local subrange");
-    DASH_LOG_TRACE_VAR("dash::copy_async", num_local_elem);
-    // Local index range to global input index range:
-    // Global index of local range begin index:
-    auto g_l_offset_begin = pattern.global(li_range_in.begin);
-    // Global index of local range end index:
-    auto g_l_offset_end   = pattern.global(li_range_in.end-1)
-                            + 1; // pat.global(l_end) would be out of range
-    DASH_LOG_TRACE("dash::copy_async",
-                   "global index range of local subrange:",
-                   "begin:", g_l_offset_begin, "end:", g_l_offset_end);
-    // Global position of input start iterator:
-    auto g_offset_begin   = g_in_first.pos();
-    // Convert local subrange to global iterators:
-    auto g_l_in_first     = g_in_first + (g_l_offset_begin - g_offset_begin);
-    auto g_l_in_last      = g_in_first + (g_l_offset_end   - g_offset_begin);
-    DASH_LOG_TRACE("dash::copy_async", "global it. range of local subrange:",
-                   "begin:", g_l_in_first.pos(), "end:", g_l_in_last.pos());
-    DASH_LOG_TRACE_VAR("dash::copy_async", g_l_in_last.pos());
-    //
-    // -----------------------------------------------------------------------
-    // Copy remote elements preceding the local subrange:
-    //
-    auto num_prelocal_elem = g_l_in_first.pos() - g_in_first.pos();
-    DASH_LOG_TRACE_VAR("dash::copy_async", num_prelocal_elem);
-    if (num_prelocal_elem > 0) {
-      DASH_LOG_TRACE("dash::copy_async",
-                     "copy global range preceding local subrange",
-                     "g_in_first:", g_in_first.pos(),
-                     "g_in_last:",  g_l_in_first.pos());
-      // ... [ --- copy --- | ... l ... | ........ ]
-      //     ^              ^           ^          ^
-      //     in_first       l_in_first  l_in_last  in_last
-      dash::internal::copy_impl(g_in_first,
-                                g_l_in_first,
-                                dest_first,
-                                *handles);
-      // Advance output pointers:
-      out_last   += num_prelocal_elem;
-      dest_first  = out_last;
-    }
-    //
-    // -----------------------------------------------------------------------
-    // Copy remote elements succeeding the local subrange:
-    //
-    auto num_postlocal_elem = in_last.pos() - g_l_offset_end;
-    DASH_LOG_TRACE_VAR("dash::copy_async", num_postlocal_elem);
-    if (num_postlocal_elem > 0) {
-      dest_first += num_local_elem;
-      DASH_LOG_TRACE("dash::copy_async",
-                     "copy global range succeeding local subrange",
-                     "in_first:", g_l_in_last.pos(),
-                     "in_last:",  g_in_last.pos());
-      // ... [ ........ | ... l ... | --- copy --- ]
-      //     ^          ^           ^              ^
-      //     in_first   l_in_first  l_in_last      in_last
-      dash::internal::copy_impl(g_l_in_last,
-                                g_in_last,
-                                dest_first,
-                                *handles);
-      out_last += num_postlocal_elem;
-    }
-    //
-    // -----------------------------------------------------------------------
-    // Copy local subrange:
-    //
-    // Convert local subrange of global input to native pointers:
-    //
-    // ... [ ........ | --- l --- | ........ ]
-    //     ^          ^           ^          ^
-    //     in_first   l_in_first  l_in_last  in_last
-    //
-    auto const * l_in_first = g_l_in_first.local();
-    auto const * l_in_last  = l_in_first + num_local_elem;
-    DASH_LOG_TRACE_VAR("dash::copy_async", l_in_first);
-    DASH_LOG_TRACE_VAR("dash::copy_async", l_in_last);
-    // Verify conversion of global input iterators to local pointers:
-    DASH_ASSERT_MSG(l_in_first != nullptr,
-                    "dash::copy_async: first index in global input (" <<
-                    g_l_in_first.pos() << ") is not local");
+  auto out_last = dash::internal::copy_impl(in_first, in_last,
+                                            out_first, handles.get());
 
-    DASH_LOG_TRACE("dash::copy_async", "copy local subrange",
-                   "num_copy_elem:", l_in_last - l_in_first);
-    ValueType * local_out_first = out_first + num_prelocal_elem;
-    ValueType * local_out_last  = local_out_first + num_local_elem;
-
-    // Use memcpy for data ranges below 64 KB
-    if (use_memcpy) {
-      std::memcpy(local_out_first, // destination
-                  l_in_first,      // source
-                  num_local_elem * sizeof(ValueType));
-      local_out_last = local_out_first + num_local_elem;
-    } else {
-      local_out_last = std::copy(l_in_first,
-                                 l_in_last,
-                                 local_out_first);
-    }
-    DASH_LOG_TRACE("dash::copy_async", "<< std::shared_future >>",
-                   "finished local copy of",
-                   (local_out_last - local_out_first),
-                   "elements");
-    out_last += (local_out_last - local_out_first);
-  } else {
-    DASH_LOG_TRACE("dash::copy_async", "no local subrange");
-    // All elements in input range are remote
-    dash::internal::copy_impl(in_first,
-                              in_last,
-                              dest_first,
-                              *handles);
-    out_last = out_first + total_copy_elem;
-  }
-  DASH_LOG_TRACE("dash::copy_async", "preparing future");
   if (handles->empty()) {
-    DASH_LOG_TRACE("dash::copy_async >", "finished (no pending handles), ",
-                   "out_last:", out_last);
+    DASH_LOG_TRACE("dash::copy_async", "all transfers completed");
     return dash::Future<ValueType *>(out_last);
   }
+
   dash::Future<ValueType *> fut_result(
     // wait
     [=]() mutable {
@@ -496,8 +394,7 @@ dash::Future<ValueType *> copy_async(
     [=](ValueType ** out) mutable {
       int32_t flag;
       DASH_ASSERT_RETURNS(
-        DART_OK,
-        dart_testall_local(handles->data(), handles->size(), &flag));
+        dart_testall_local(handles->data(), handles->size(), &flag), DART_OK);
       if (flag) {
         handles->clear();
         *out = out_last;
@@ -508,8 +405,7 @@ dash::Future<ValueType *> copy_async(
     [=]() mutable {
       for (auto& handle : *handles) {
         DASH_ASSERT_RETURNS(
-          DART_OK,
-          dart_handle_free(&handle));
+          dart_handle_free(&handle), DART_OK);
       }
     }
   );
@@ -526,189 +422,44 @@ dash::Future<ValueType *> copy_async(
  */
 template <
   typename ValueType,
-  class    GlobInputIt >
+  class    GlobInputIt,
+  bool     UseHandles = false >
 ValueType * copy(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
-  const auto & team = in_first.team();
-  dash::util::UnitLocality uloc(team, team.myid());
-  // Size of L2 data cache line:
-  int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
-  bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
-                      <= l2_line_size;
-
   DASH_LOG_TRACE("dash::copy()", "blocking, global to local");
 
-  ValueType * dest_first = out_first;
-  // Return value, initialize with begin of output range, indicating no
-  // values have been copied:
-  ValueType * out_last   = out_first;
-  // Check if part of the input range is local:
   DASH_LOG_TRACE_VAR("dash::copy", in_first.dart_gptr());
   DASH_LOG_TRACE_VAR("dash::copy", in_last.dart_gptr());
   DASH_LOG_TRACE_VAR("dash::copy", out_first);
-  auto li_range_in     = local_index_range(in_first, in_last);
-  // Number of elements in the local subrange:
-  auto num_local_elem  = li_range_in.end - li_range_in.begin;
-  // Total number of elements to be copied:
-  auto total_copy_elem = in_last - in_first;
 
-  // Instead of testing in_first.local() and in_last.local(), this test for
-  // a local-only range only requires one call to in_first.local() which
-  // increases throughput by ~10% for local ranges.
-  if (num_local_elem == total_copy_elem) {
-    // Entire input range is local:
-    DASH_LOG_TRACE("dash::copy", "entire input range is local");
-    ValueType * out_last = out_first + total_copy_elem;
-    // Use memcpy for data ranges below 64 KB
-    if (use_memcpy) {
-      std::memcpy(out_first,        // destination
-                  in_first.local(), // source
-                  num_local_elem * sizeof(ValueType));
-      out_last = out_first + num_local_elem;
-    } else {
-      auto * l_in_first = in_first.local();
-      auto * l_in_last  = l_in_first + num_local_elem;
-      out_last = std::copy(l_in_first,
-                           l_in_last,
-                           out_first);
-    }
-    DASH_LOG_TRACE("dash::copy", "finished local copy of",
-                   (out_last - out_first), "elements");
-    return out_last;
+  if (in_first == in_last) {
+    DASH_LOG_TRACE("dash::copy", "input range empty");
+    return out_first;
   }
 
-  std::vector<dart_handle_t> handles;
-
-  DASH_LOG_TRACE("dash::copy", "local range:",
-                 li_range_in.begin,
-                 li_range_in.end,
-                 "in_first.is_local:", in_first.is_local());
-  // Check if global input range is partially local:
-  if (num_local_elem > 0) {
-    // Part of the input range is local, copy local input subrange to local
-    // output range directly.
-    auto pattern          = in_first.pattern();
-    // Map input iterators to global index domain:
-    auto g_in_first       = in_first.global();
-    auto g_in_last        = g_in_first + total_copy_elem;
-    DASH_LOG_TRACE("dash::copy", "resolving local subrange");
-    DASH_LOG_TRACE_VAR("dash::copy", num_local_elem);
-    // Local index range to global input index range:
-    // Global index of local range begin index:
-    auto g_l_offset_begin = pattern.global(li_range_in.begin);
-    // Global index of local range end index:
-    auto g_l_offset_end   = pattern.global(li_range_in.end-1)
-                            + 1; // pat.global(l_end) would be out of range
-    DASH_LOG_TRACE("dash::copy",
-                   "global index range of local subrange:",
-                   "begin:", g_l_offset_begin, "end:", g_l_offset_end);
-
-    // Global position of input start iterator:
-    auto g_offset_begin   = g_in_first.pos();
-    // Convert local subrange to global iterators:
-    auto g_l_in_first     = g_in_first + (g_l_offset_begin - g_offset_begin);
-    auto g_l_in_last      = g_in_first + (g_l_offset_end   - g_offset_begin);
-    DASH_LOG_TRACE("dash::copy", "global it. range of local subrange:",
-                   "begin:", g_l_in_first.pos(), "end:", g_l_in_last.pos());
-    DASH_LOG_TRACE_VAR("dash::copy", g_l_in_last.pos());
-
-    auto num_prelocal_elem  = g_l_in_first.pos() - g_in_first.pos();
-    auto num_postlocal_elem = in_last.pos() - g_l_offset_end;
-    DASH_LOG_TRACE_VAR("dash::copy", num_prelocal_elem);
-    DASH_LOG_TRACE_VAR("dash::copy", num_postlocal_elem);
-
-    //
-    // -----------------------------------------------------------------------
-    // Copy remote elements preceding the local subrange:
-    //
-    if (num_prelocal_elem > 0) {
-      DASH_LOG_TRACE("dash::copy",
-                     "copy global range preceding local subrange",
-                     "g_in_first:", g_in_first.pos(),
-                     "g_in_last:",  g_l_in_first.pos());
-      // ... [ --- copy --- | ... l ... | ........ ]
-      //     ^              ^           ^          ^
-      //     in_first       l_in_first  l_in_last  in_last
-      out_last = dash::internal::copy_impl(g_in_first,
-                                           g_l_in_first,
-                                           dest_first,
-                                           handles);
-      // Advance output pointers:
-      dest_first = out_last;
-    }
-    //
-    // -----------------------------------------------------------------------
-    // Copy local subrange:
-    //
-    // Convert local subrange of global input to native pointers:
-    //
-    // ... [ ........ | --- l --- | ........ ]
-    //     ^          ^           ^          ^
-    //     in_first   l_in_first  l_in_last  in_last
-    //
-    auto * l_in_first = g_l_in_first.local();
-    auto * l_in_last  = l_in_first + num_local_elem;
-    DASH_LOG_TRACE_VAR("dash::copy", l_in_first);
-    DASH_LOG_TRACE_VAR("dash::copy", l_in_last);
-    // Verify conversion of global input iterators to local pointers:
-    DASH_ASSERT_MSG(l_in_first != nullptr,
-                    "dash::copy: first index in global input (" <<
-                    g_l_in_first.pos() << ") is not local");
-
-    DASH_LOG_TRACE("dash::copy", "copy local subrange",
-                   "num_copy_elem:", l_in_last - l_in_first);
-    // Use memcpy for data ranges below 64 KB
-    if (use_memcpy) {
-      std::memcpy(dest_first, // destination
-                  l_in_first, // source
-                  num_local_elem * sizeof(ValueType));
-      out_last = dest_first + num_local_elem;
-    } else {
-      out_last = std::copy(l_in_first,
-                           l_in_last,
-                           dest_first);
-    }
-    // Assert that all elements in local range have been copied:
-    DASH_ASSERT_EQ(out_last, dest_first + num_local_elem,
-                   "Expected to copy " << num_local_elem << " local elements "
-                   "but copied " << (out_last - dest_first));
-    DASH_LOG_TRACE("dash::copy", "finished local copy of",
-                   (out_last - dest_first), "elements");
-    // Advance output pointers:
-    dest_first = out_last;
-    //
-    // -----------------------------------------------------------------------
-    // Copy remote elements succeeding the local subrange:
-    //
-    if (num_postlocal_elem > 0) {
-      DASH_LOG_TRACE("dash::copy",
-                     "copy global range succeeding local subrange",
-                     "in_first:", g_l_in_last.pos(),
-                     "in_last:",  g_in_last.pos());
-      // ... [ ........ | ... l ... | --- copy --- ]
-      //     ^          ^           ^              ^
-      //     in_first   l_in_first  l_in_last      in_last
-      out_last = dash::internal::copy_impl(g_l_in_last,
-                                           g_in_last,
-                                           dest_first,
-                                           handles);
-    }
-  } else {
-    DASH_LOG_TRACE("dash::copy", "no local subrange");
-    // All elements in input range are remote
+  ValueType *out_last;
+  if (UseHandles) {
+    std::vector<dart_handle_t> handles;
     out_last = dash::internal::copy_impl(in_first,
                                          in_last,
-                                         dest_first,
-                                         handles);
-  }
+                                         out_first,
+                                         &handles);
+    if (!handles.empty()) {
+      DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
+                    "num_handles: ", handles.size());
+      dart_waitall_local(handles.data(), handles.size());
+    }
 
-  if (!handles.empty()) {
-    DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
-                  "num_handles: ", handles.size());
-    dart_waitall_local(handles.data(), handles.size());
+  } else {
+    out_last = dash::internal::copy_impl(in_first,
+                                         in_last,
+                                         out_first,
+                                         nullptr);
+    DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete");
+    dart_flush_local_all(in_first.dart_gptr());
   }
 
   DASH_LOG_TRACE("dash::copy >", "finished,",
@@ -728,17 +479,22 @@ ValueType * copy(
  */
 template <
   typename ValueType,
-  class GlobOutputIt >
+  typename GlobOutputIt >
 dash::Future<GlobOutputIt> copy_async(
   ValueType    * in_first,
   ValueType    * in_last,
   GlobOutputIt   out_first)
 {
+  if (in_first == in_last) {
+    DASH_LOG_TRACE("dash::copy_async", "input range empty");
+    return dash::Future<GlobOutputIt>(out_first);
+  }
+
   auto handles  = std::make_shared<std::vector<dart_handle_t>>();
   auto out_last = dash::internal::copy_impl(in_first,
                                             in_last,
                                             out_first,
-                                            *handles);
+                                            handles.get());
 
   if (handles->empty()) {
     return dash::Future<GlobOutputIt>(out_last);
@@ -778,8 +534,7 @@ dash::Future<GlobOutputIt> copy_async(
     [=](GlobOutputIt *out) mutable {
       int32_t flag;
       DASH_ASSERT_RETURNS(
-        DART_OK,
-        dart_testall(handles->data(), handles->size(), &flag));
+        dart_testall(handles->data(), handles->size(), &flag), DART_OK);
       if (flag) {
         handles->clear();
         *out = out_last;
@@ -790,8 +545,7 @@ dash::Future<GlobOutputIt> copy_async(
     [=]() mutable {
       for (auto& handle : *handles) {
         DASH_ASSERT_RETURNS(
-          DART_OK,
-          dart_handle_free(&handle));
+          dart_handle_free(&handle), DART_OK);
       }
     }
   );
@@ -805,98 +559,36 @@ dash::Future<GlobOutputIt> copy_async(
  */
 template <
   typename ValueType,
-  class GlobOutputIt >
+  typename GlobOutputIt,
+  bool     UseHandles = false >
 GlobOutputIt copy(
   ValueType    * in_first,
   ValueType    * in_last,
   GlobOutputIt   out_first)
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, local to global");
-  // Return value, initialize with begin of output range, indicating no values
-  // have been copied:
-  GlobOutputIt out_last   = out_first;
-  // Number of elements to copy in total:
-  auto num_elements       = std::distance(in_first, in_last);
-  DASH_LOG_TRACE_VAR("dash::copy", num_elements);
-  // Global iterator pointing at hypothetical end of output range:
-  GlobOutputIt out_h_last = out_first + num_elements;
-  DASH_LOG_TRACE_VAR("dash::copy", out_first.pos());
-  DASH_LOG_TRACE_VAR("dash::copy", out_h_last.pos());
-  // Test if a subrange of global output range is local:
-  auto li_range_out       = local_index_range(out_first, out_h_last);
-  DASH_LOG_TRACE_VAR("dash::copy", li_range_out.begin);
-  DASH_LOG_TRACE_VAR("dash::copy", li_range_out.end);
-  // Number of elements in the local subrange:
-  auto num_local_elem     = li_range_out.end - li_range_out.begin;
   // handles to wait on at the end
-  std::vector<dart_handle_t> handles;
-  // Check if part of the output range is local:
-  if (num_local_elem > 0) {
-    // Part of the output range is local
-    // Copy local input subrange to local output range directly:
-    const auto &pattern = out_first.pattern();
-    DASH_LOG_TRACE("dash::copy", "resolving local subrange");
-    DASH_LOG_TRACE_VAR("dash::copy", num_local_elem);
-    // Local index range to global output index range:
-    auto g_l_offset_begin   = pattern.global(li_range_out.begin);
-    DASH_LOG_TRACE_VAR("dash::copy", g_l_offset_begin);
-    auto g_l_offset_end     = pattern.global(li_range_out.end-1)
-                              + 1; // pat.global(l_end) would be out of range
-    DASH_LOG_TRACE_VAR("dash::copy", g_l_offset_end);
-    // Offset of local subrange in output range
-    auto l_elem_offset      = g_l_offset_begin - out_first.pos();
-    DASH_LOG_TRACE_VAR("dash::copy",l_elem_offset);
-    // Convert local subrange of global output to native pointers:
-    ValueType * l_out_first = (out_first + l_elem_offset).local();
-    DASH_LOG_TRACE_VAR("dash::copy", l_out_first);
-    ValueType * l_out_last  = l_out_first + num_local_elem;
-    DASH_LOG_TRACE_VAR("dash::copy", l_out_last);
-    // ... [ ........ | ---- l ---- | ......... ] ...
-    //     ^          ^             ^           ^
-    //     out_first  l_out_first   l_out_last  out_last
-    out_last                = out_first + num_local_elem;
-    // Assert that all elements in local range have been copied:
-    DASH_LOG_TRACE("dash::copy", "copying local subrange");
-    DASH_LOG_TRACE_VAR("dash::copy", in_first);
-    DASH_ASSERT_RETURNS(
-      std::copy(in_first + l_elem_offset,
-                in_first + l_elem_offset + num_local_elem,
-                l_out_first),
-      l_out_last);
-    // Copy to remote elements preceding the local subrange:
-    if (g_l_offset_begin > out_first.pos()) {
-      DASH_LOG_TRACE("dash::copy", "copy to global preceding local subrange");
-      out_last = dash::internal::copy_impl(
-                   in_first,
-                   in_first + l_elem_offset,
-                   out_first,
-                   handles);
-    }
-    // Copy to remote elements succeeding the local subrange:
-    if (g_l_offset_end < out_h_last.pos()) {
-      DASH_LOG_TRACE("dash::copy", "copy to global succeeding local subrange");
-      out_last = dash::internal::copy_impl(
-                   in_first + l_elem_offset + num_local_elem,
-                   in_last,
-                   out_first + num_local_elem,
-                   handles);
+  GlobOutputIt out_last;
+  if (UseHandles) {
+    std::vector<dart_handle_t> handles;
+    out_last = dash::internal::copy_impl(in_first,
+                                         in_last,
+                                         out_first,
+                                         &handles);
+
+    if (!handles.empty()) {
+      DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
+                    "num_handles: ", handles.size());
+      dart_waitall(handles.data(), handles.size());
     }
   } else {
-    // All elements in output range are remote
-    DASH_LOG_TRACE("dash::copy", "no local subrange");
-    out_last = dash::internal::copy_impl(
-                 in_first,
-                 in_last,
-                 out_first,
-                 handles);
+    out_last = dash::internal::copy_impl(in_first,
+                                         in_last,
+                                         out_first,
+                                         nullptr);
+    DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete");
+    dart_flush_all(out_first.dart_gptr());
   }
-
-  if (!handles.empty()) {
-    DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
-                  "num_handles: ", handles.size());
-    dart_waitall(handles.data(), handles.size());
-  }
-
   return out_last;
 }
 

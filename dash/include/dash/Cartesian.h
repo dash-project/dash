@@ -568,7 +568,7 @@ public:
     IndexType dim_offset) const {
     if (_rank == 1) {
       // Shortcut for trivial case
-      return (index >= 0 && index < size());
+      return (index >= 0 && index < this->size());
     }
     auto base_offset = 0;
     if (CoordArrangement == COL_MAJOR) {
@@ -698,6 +698,8 @@ public:
     }
     // Tiles in at least one dimension
     // TODO
+    DASH_THROW(dash::exception::NotImplemented,
+               "CartesianIndexSpace::resize(IndexType) not implemented for tiles!");
   }
 
   /**
@@ -737,6 +739,8 @@ public:
     }
     // Tiles in at least one dimension
     // TODO
+    DASH_THROW(dash::exception::NotImplemented,
+               "CartesianIndexSpace::at(IndexType) not implemented for tiles!");
   }
 
   /**
@@ -758,11 +762,6 @@ public:
     for (auto d = 0; d < NumDimensions; ++d) {
       coords[d] = point[d] + viewspec[d].offset;
     }
-    if (!_distspec.is_tiled()) {
-      // Default case, no tiles
-      return parent_t::at(coords);
-    }
-    // Tiles in at least one dimension
     return at(coords);
   }
 
@@ -778,6 +777,8 @@ public:
     }
     // Tiles in at least one dimension
     // TODO
+    DASH_THROW(dash::exception::NotImplemented,
+               "CartesianIndexSpace::coords(IndexType) not implemented for tiles!");
   }
 
 private:

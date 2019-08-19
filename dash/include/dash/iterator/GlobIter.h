@@ -48,6 +48,7 @@ class GlobIter {
   using iterator_category = std::random_access_iterator_tag;
   using value_type        = ElementType;
   using difference_type   = typename PatternType::index_type;
+  using size_type         = typename PatternType::size_type;
   using pointer           = PointerType;
   using reference         = ReferenceType;
 
