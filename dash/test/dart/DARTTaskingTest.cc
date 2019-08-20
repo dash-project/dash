@@ -88,7 +88,7 @@ static void testfn_nested_deps(void *data) {
     );
   }
 
-  dart_task_complete();
+  dart_task_complete(false);
 
   ASSERT_EQ(i, val);
 }
@@ -186,7 +186,7 @@ TEST_F(DARTTaskingTest, BulkAtomicIncrement)
     );
   }
 
-  dart_task_complete();
+  dart_task_complete(false);
 
   ASSERT_EQ(i, val);
 }
@@ -219,7 +219,7 @@ TEST_F(DARTTaskingTest, Yield)
   // yield here to test yielding from the master thread
   dart_task_yield(-1);
 
-  dart_task_complete();
+  dart_task_complete(false);
 
   ASSERT_EQ(2*i, val);
 }
@@ -261,7 +261,7 @@ TEST_F(DARTTaskingTest, LocalDirectDependency)
   }
   dart_task_freeref(&prev_task);
 
-  dart_task_complete();
+  dart_task_complete(false);
 
   ASSERT_EQ(i, val);
 }
@@ -301,7 +301,7 @@ TEST_F(DARTTaskingTest, LocalOutDependency)
     );
   }
 
-  dart_task_complete();
+  dart_task_complete(false);
 
   ASSERT_EQ(i, val);
 }
@@ -346,7 +346,7 @@ TEST_F(DARTTaskingTest, LocalInOutDependencies)
     );
   }
 
-  dart_task_complete();
+  dart_task_complete(false);
 
   ASSERT_EQ(i, val);
 }
@@ -390,7 +390,7 @@ TEST_F(DARTTaskingTest, SameLocalInOutDependency)
     );
   }
 
-  dart_task_complete();
+  dart_task_complete(false);
 
   ASSERT_EQ(i, val);
 }
@@ -429,7 +429,7 @@ TEST_F(DARTTaskingTest, InOutDependency)
     );
   }
 
-  dart_task_complete();
+  dart_task_complete(false);
 
   ASSERT_EQ(i, val);
 }
@@ -449,7 +449,7 @@ TEST_F(DARTTaskingTest, NestedTaskDeps)
     );
   }
 
-  dart_task_complete();
+  dart_task_complete(false);
 }
 
 
@@ -488,7 +488,7 @@ TEST_F(DARTTaskingTest, CancelLocal)
     );
   }
 
-  dart_task_complete();
+  dart_task_complete(false);
 
   ASSERT_EQ(TASK_CANCEL_CUTOFF, val);
 
@@ -529,7 +529,7 @@ TEST_F(DARTTaskingTest, CancelBcast)
     );
   }
 
-  dart_task_complete();
+  dart_task_complete(false);
 
   ASSERT_EQ(TASK_CANCEL_CUTOFF, val);
 }
@@ -595,7 +595,7 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
     dart_task_phase_advance();
   }
 
-  dart_task_complete();
+  dart_task_complete(false);
 
   // fetch result
   dart_get_blocking(&val, gptr1, 1, DART_TYPE_INT, DART_TYPE_INT);
@@ -667,7 +667,7 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDepRoot)
     dart_task_phase_advance();
   }
 
-  dart_task_complete();
+  dart_task_complete(false);
 
   int expected = TASK_CANCEL_CUTOFF+1;
   // check result
