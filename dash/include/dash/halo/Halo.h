@@ -5,6 +5,7 @@
 
 #include <dash/internal/Logging.h>
 #include <dash/util/FunctionalExpr.h>
+#include <dash/Array.h>
 
 #include <functional>
 
@@ -33,8 +34,8 @@ public:
    * All stencil point values are 0 and default coefficient = 1.0.
    */
   StencilPoint() {
-    for(dim_t i(0); i < NumDimensions; ++i) {
-      this->_values[i] = 0;
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      this->_values[d] = 0;
     }
   }
 
@@ -70,8 +71,8 @@ public:
    */
   int max() const {
     int max = 0;
-    for(dim_t i(0); i < NumDimensions; ++i)
-      max = std::max(max, (int) std::abs(this->_values[i]));
+    for(dim_t d = 0; d < NumDimensions; ++d)
+      max = std::max(max, (int) std::abs(this->_values[d]));
     return max;
   }
 
