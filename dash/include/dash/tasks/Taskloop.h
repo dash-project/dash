@@ -140,7 +140,8 @@ namespace internal {
     size_t chunk_size = chunking.get_chunk_size(begin, end);
     InputIter from = begin;
     constexpr const bool is_mutable =
-                            internal::lambda_type<RangeFunc>::is_mutable::value;
+                            !internal::is_const_callable<RangeFunc, InputIter, InputIter>::value;
+
     using CountedFunctionT = CountedFunction<RangeFunc>;
     CountedFunctionT *f_ptr;
     if (!is_mutable) {
@@ -206,7 +207,8 @@ namespace internal {
     size_t chunk_size = chunking.get_chunk_size(begin, end);
     InputIter from = begin;
     constexpr const bool is_mutable =
-                            internal::lambda_type<RangeFunc>::is_mutable::value;
+                            !internal::is_const_callable<RangeFunc, InputIter, InputIter>::value;
+
 #if DASH_TASKS_INVOKE_DIRECT
     while (from < end) {
       InputIter to = from + chunk_size;

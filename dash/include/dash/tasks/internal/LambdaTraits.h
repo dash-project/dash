@@ -11,39 +11,45 @@ namespace tasks
 namespace internal
 {
 
-    namespace lambda_detail
-    {
-        template<class Ret, class Cls, class IsMutable, class... Args>
-        struct types
-        {
-            using is_mutable = IsMutable;
+  /**
+   * Implementation of is_detected taken from
+   * https://rawgit.com/cplusplus/fundamentals-ts/v2/fundamentals-ts.html#meta.detect
+   */
+  template<class...>
+  using void_t = void;
 
-            enum { arity = sizeof...(Args) };
+  struct nonesuch {
+    nonesuch() = delete;
+    ~nonesuch() = delete;
+    nonesuch(nonesuch const&) = delete;
 
-            using return_type = Ret;
+    void operator=(nonesuch const&) = delete;
+  };
 
-            template<size_t i>
-            struct arg
-            {
-                typedef typename std::tuple_element<i, std::tuple<Args...>>::type type;
-            };
-        };
-    }
+  template <class Default, class AlwaysVoid,
+        template<class...> class Op, class... Args>
+  struct DETECTOR { // exposition only
+    using value_t = std::false_type;
+    using type = Default;
+  };
 
-    template<class Ld>
-    struct lambda_type
-        : lambda_type<decltype(&Ld::operator())>
-    {};
+  template <class Default, template<class...> class Op, class... Args>
+  struct DETECTOR<Default, void_t<Op<Args...>>, Op, Args...> { // exposition only
+    using value_t = std::true_type;
+    using type = Op<Args...>;
+  };
 
-    template<class Ret, class Cls, class... Args>
-    struct lambda_type<Ret(Cls::*)(Args...)>
-        : lambda_detail::types<Ret,Cls,std::true_type,Args...>
-    {};
+  template <template<class...> class Op, class... Args>
+  using is_detected = typename DETECTOR<nonesuch, void, Op, Args...>::value_t;
 
-    template<class Ret, class Cls, class... Args>
-    struct lambda_type<Ret(Cls::*)(Args...) const>
-        : lambda_detail::types<Ret,Cls,std::false_type,Args...>
-    {};
+  template<class FuncT, class... Args>
+  using const_lvalue_callable_foo_t = decltype(std::declval<const FuncT&>().operator()(std::declval<Args>()...));
+
+  /**
+   * Check whether a function is callable on a const-qualified rhs.
+   */
+  template<typename FuncT, class... Args>
+  using is_const_callable = is_detected<const_lvalue_callable_foo_t, FuncT, Args...>;
 
 }
 }
