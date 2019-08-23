@@ -40,6 +40,16 @@
  */
 #define DART_AMSGQ_SOPNOP_FLUSH_ENVSTR  "DART_AMSGQ_SOPNOP_FLUSH"
 
+/**
+ * Name of the environment variable controling whether single-value
+ * single-direction updates should be performed using MPI_Fetch_and_op or
+ * MPI_Accumulate.
+ *
+ * Type: boolean
+ * Default: false
+ */
+#define DART_AMSGQ_SOPNOP_FETCHOP_ENVSTR  "DART_AMSGQ_SOPNOP_FETCHOP"
+
 struct dart_amsgq_impl_data {
   MPI_Win           queue_win;
   int64_t          *queue_ptr;
@@ -63,11 +73,24 @@ static const int64_t mone = -1;
 static       int64_t tmp  = -1;
 
 static bool do_flush = true;
+static bool use_fetchop = false;
 
 #define OFFSET_QUEUENUM                 0
 #define OFFSET_TAILPOS(q)    (sizeof(int64_t)+q*2*sizeof(int64_t))
 #define OFFSET_WRITECNT(q)   (OFFSET_TAILPOS(q)+sizeof(int64_t))
 #define OFFSET_DATA(q, qs)   (OFFSET_WRITECNT(1)+sizeof(int64_t)+q*qs)
+
+static inline
+void update_value(const int64_t *val, int target, int offset, MPI_Win win)
+{
+  if (use_fetchop) {
+    // tmp is a dummy, not relevant
+    MPI_Fetch_and_op(val, &tmp, MPI_INT64_T, target, offset, MPI_SUM, win);
+  } else {
+    MPI_Accumulate(val, 1, MPI_INT64_T, target, offset,
+                   1, MPI_INT64_T, MPI_SUM, win);
+  }
+}
 
 static dart_ret_t
 dart_amsg_sopnop_openq(
@@ -87,7 +110,8 @@ dart_amsg_sopnop_openq(
     sleeptime.tv_sec  = sleep_us / 1000000;
     sleeptime.tv_nsec = sleep_us % 1000000;
 
-    do_flush = dart__base__env__bool(DART_AMSGQ_SOPNOP_FLUSH_ENVSTR, true);
+    do_flush    = dart__base__env__bool(DART_AMSGQ_SOPNOP_FLUSH_ENVSTR, true);
+    use_fetchop = dart__base__env__bool(DART_AMSGQ_SOPNOP_FETCHOP_ENVSTR, false);
   }
 
   struct dart_amsgq_impl_data *res = calloc(1, sizeof(struct dart_amsgq_impl_data));
@@ -212,9 +236,8 @@ dart_amsg_sopnop_sendbuf(
       DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld, writecnt %ld),"
                     "reverting by %ld",
                     queuenum, target.id, offset, writecnt, neg_msg_size);
-      MPI_Accumulate(&neg_msg_size, 1, MPI_INT64_T, target.id,
-                    OFFSET_TAILPOS(queuenum), 1, MPI_INT64_T,
-                    MPI_SUM, queue_win);
+      update_value(&neg_msg_size, target.id, OFFSET_TAILPOS(queuenum),
+                   queue_win);
       MPI_Win_flush(target.id, queue_win);
       do_return = true;
     } else {
@@ -222,14 +245,7 @@ dart_amsg_sopnop_sendbuf(
                     queuenum, target.id, writecnt);
     }
     // deregister as a writer
-    MPI_Fetch_and_op(
-      &mone,
-      &tmp,
-      MPI_INT64_T,
-      target.id,
-      OFFSET_WRITECNT(queuenum),
-      MPI_SUM,
-      queue_win);
+    update_value(&mone, target.id, OFFSET_WRITECNT(queuenum), queue_win);
 
     if (do_flush) {
       MPI_Win_flush(target.id, queue_win);
@@ -263,14 +279,7 @@ dart_amsg_sopnop_sendbuf(
                  queuenum, target.id);
 
   // deregister as a writer
-  MPI_Fetch_and_op(
-    &mone,
-    &tmp,
-    MPI_INT64_T,
-    target.id,
-    OFFSET_WRITECNT(queuenum),
-    MPI_SUM,
-    queue_win);
+  update_value(&mone, target.id, OFFSET_WRITECNT(queuenum), queue_win);
 
   if (do_flush) {
     MPI_Win_flush(target.id, queue_win);
