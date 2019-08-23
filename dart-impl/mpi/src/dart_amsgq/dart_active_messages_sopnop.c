@@ -312,6 +312,7 @@ amsg_sopnop_process_internal(
      */
 
     // see whether there is anything available
+    /*
     MPI_Fetch_and_op(
       NULL,
       &tailpos,
@@ -319,6 +320,16 @@ amsg_sopnop_process_internal(
       comm_rank,
       OFFSET_TAILPOS(queuenum),
       MPI_NO_OP,
+      queue_win);
+    */
+    MPI_Get(
+      &tailpos,
+      1,
+      MPI_INT64_T,
+      comm_rank,
+      OFFSET_TAILPOS(queuenum),
+      1,
+      MPI_INT64_T,
       queue_win);
     MPI_Win_flush(comm_rank, queue_win);
 
@@ -376,6 +387,7 @@ amsg_sopnop_process_internal(
                        writecnt, queuenum);
 
         do {
+          /*
           MPI_Fetch_and_op(
             NULL,
             &writecnt,
@@ -383,6 +395,16 @@ amsg_sopnop_process_internal(
             comm_rank,
             OFFSET_WRITECNT(queuenum),
             MPI_NO_OP,
+            queue_win);
+          */
+          MPI_Get(
+            &writecnt,
+            1,
+            MPI_INT64_T,
+            comm_rank,
+            OFFSET_WRITECNT(queuenum),
+            1,
+            MPI_INT64_T,
             queue_win);
           MPI_Win_flush(comm_rank, queue_win);
         } while (writecnt > processing_signal);
