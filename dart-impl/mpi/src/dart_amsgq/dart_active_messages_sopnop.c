@@ -30,6 +30,16 @@
  */
 #define DART_AMSGQ_SOPNOP_SLEEP_ENVSTR  "DART_AMSGQ_SOPNOP_SLEEP"
 
+/**
+ * Name of the environment variable specifying whether a flush is performed
+ * at the end of a write operation. Avoiding thus flush can reduce latency
+ * but *may* lead to deadlocks due to the weak guarantees MPI gives us.
+ *
+ * Type: boolean
+ * Default: true
+ */
+#define DART_AMSGQ_SOPNOP_FLUSH_ENVSTR  "DART_AMSGQ_SOPNOP_FLUSH"
+
 struct dart_amsgq_impl_data {
   MPI_Win           queue_win;
   int64_t          *queue_ptr;
@@ -47,6 +57,12 @@ static uint32_t msgcnt = 0;
 
 static struct timespec sleeptime = {-1, -1};
 static int64_t sleep_us = -1;
+
+static const int64_t one  = 1;
+static const int64_t mone = -1;
+static       int64_t tmp  = -1;
+
+static bool do_flush = true;
 
 #define OFFSET_QUEUENUM                 0
 #define OFFSET_TAILPOS(q)    (sizeof(int64_t)+q*2*sizeof(int64_t))
@@ -70,6 +86,8 @@ dart_amsg_sopnop_openq(
     sleep_us  = dart__base__env__us(DART_AMSGQ_SOPNOP_SLEEP_ENVSTR, 0);
     sleeptime.tv_sec  = sleep_us / 1000000;
     sleeptime.tv_nsec = sleep_us % 1000000;
+
+    do_flush = dart__base__env__bool(DART_AMSGQ_SOPNOP_FLUSH_ENVSTR, true);
   }
 
   struct dart_amsgq_impl_data *res = calloc(1, sizeof(struct dart_amsgq_impl_data));
@@ -143,8 +161,6 @@ dart_amsg_sopnop_sendbuf(
   DART_LOG_DEBUG("dart_amsg_trysend: u:%i ds:%zu",
                  target.id, data_size);
 
-  const int64_t one  = 1;
-  const int64_t mone = -1;
   int64_t msg_size = data_size;
   int64_t offset;
   int64_t queuenum;
@@ -208,13 +224,16 @@ dart_amsg_sopnop_sendbuf(
     // deregister as a writer
     MPI_Fetch_and_op(
       &mone,
-      &writecnt,
+      &tmp,
       MPI_INT64_T,
       target.id,
       OFFSET_WRITECNT(queuenum),
       MPI_SUM,
       queue_win);
-    MPI_Win_flush(target.id, queue_win);
+
+    if (do_flush) {
+      MPI_Win_flush(target.id, queue_win);
+    }
 
     if (do_return) {
       return DART_ERR_AGAIN;
@@ -246,17 +265,20 @@ dart_amsg_sopnop_sendbuf(
   // deregister as a writer
   MPI_Fetch_and_op(
     &mone,
-    &writecnt,
+    &tmp,
     MPI_INT64_T,
     target.id,
     OFFSET_WRITECNT(queuenum),
     MPI_SUM,
     queue_win);
-  MPI_Win_flush(target.id, queue_win);
+
+  if (do_flush) {
+    MPI_Win_flush(target.id, queue_win);
+  }
 
   DART_LOG_TRACE("Sent message of size %zu with payload %zu to unit "
-                "%d starting at offset %ld (writecnt=%ld)",
-                msg_size, data_size, target.id, offset, writecnt-1);
+                "%d starting at offset %ld",
+                msg_size, data_size, target.id, offset);
 
   return DART_OK;
 }
@@ -401,6 +423,11 @@ dart_amsg_sopnop_process_blocking(
   int         flag = 0;
   MPI_Request req;
 
+  if (!do_flush) {
+    // flush all outstanding deregistrations
+    MPI_Win_flush_all(amsgq->queue_win);
+  }
+
   // keep processing until all incoming messages have been dealt with
   MPI_Ibarrier(amsgq->comm, &req);
   do {
@@ -421,15 +448,13 @@ static dart_ret_t
 dart_amsg_sopnop_closeq(struct dart_amsgq_impl_data* amsgq)
 {
   // check for late messages
-  uint32_t tailpos1, tailpos2;
-  int      unitid;
-
-  MPI_Comm_rank(amsgq->comm, &unitid);
+  int64_t tailpos1, tailpos2;
+  int     unitid = amsgq->comm_rank;
 
   MPI_Fetch_and_op(
     NULL,
     &tailpos1,
-    MPI_INT32_T,
+    MPI_INT64_T,
     unitid,
     OFFSET_TAILPOS(0),
     MPI_NO_OP,
@@ -437,7 +462,7 @@ dart_amsg_sopnop_closeq(struct dart_amsgq_impl_data* amsgq)
   MPI_Fetch_and_op(
     NULL,
     &tailpos2,
-    MPI_INT32_T,
+    MPI_INT64_T,
     unitid,
     OFFSET_TAILPOS(1),
     MPI_NO_OP,

@@ -474,8 +474,8 @@ dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
       int flag;
       MPI_Test(&amsgq->recv_reqs[i], &flag, MPI_STATUS_IGNORE);
       if (flag) {
-        DART_LOG_WARN("Cowardly refusing to invoke %d unhandled incoming active "
-                      "messages upon shutdown!", outcount);
+        DART_LOG_WARN("Cowardly refusing to invoke unhandled incoming active "
+                      "messages upon shutdown!");
       } else {
         // cancel the request
         MPI_Cancel(&amsgq->recv_reqs[i]);
