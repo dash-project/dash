@@ -157,7 +157,7 @@ void smooth(Array_t & data_old, Array_t & data_new){
     if (rows_per_task == 0) rows_per_task = 1;
 //    std::cout << "rows_per_task: " << rows_per_task << std::endl;
     // Inner rows
-    dash::tasks::taskloop(1L, lext_x-1, dash::tasks::chunk_size(rows_per_task),
+    dash::tasks::taskloop("TASKLOOP", 1L, lext_x-1, dash::tasks::chunk_size(rows_per_task),
         [=, &data_old, &data_new](index_t from, index_t to) {
           //std::cout << "Iterating from " << from << " to " << to << std::endl;
 //         Extrae_eventandcounters(1000, 1);
@@ -208,7 +208,7 @@ void smooth(Array_t & data_old, Array_t & data_new){
 
     if(!is_top){
       // top row
-      dash::tasks::async(
+      dash::tasks::async("IS_TOP",
         [=, &data_old, &data_new] {
           const element_t *__restrict down_row = data_old.local.row(1).lbegin();
           const element_t *__restrict curr_row = data_old.local.row(0).lbegin();
@@ -233,7 +233,7 @@ void smooth(Array_t & data_old, Array_t & data_new){
 
     if(!is_bottom){
       // bottom row
-      dash::tasks::async(
+      dash::tasks::async("IS_BOTTOM",
         [=, &data_old, &data_new] {
           const element_t *__restrict   up_row = data_old[local_end_gidx[0] - 1].begin().local();
           const element_t *__restrict curr_row = data_old[local_end_gidx[0]].begin().local();
@@ -310,7 +310,7 @@ int main(int argc, char* argv[])
 
   // create a dummy task to fire up the worker threads and exclude them
   // from time measurements (similar to OpenMP version)
-  dash::tasks::async([]()
+  dash::tasks::async("DUMMY_TASK",[]()
     {if (dash::myid() > dash::size()) std::cout << "huh?"; }
   );
   dash::tasks::complete();

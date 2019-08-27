@@ -24,6 +24,7 @@
 #include <dash/dart/tasking/dart_tasking_extrae.h>
 #include <dash/dart/tasking/dart_tasking_craypat.h>
 #include <dash/dart/tasking/dart_tasking_instrumentation.h>
+#include <dash/dart/if/dart_communication.h>
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -102,6 +103,7 @@ static size_t num_units;
 
 //testing
 static dart_global_unit_t myguid;
+static bool use_tool_interface = false;
 
 
 enum dart_thread_idle_t {
@@ -1217,7 +1219,7 @@ dart__tasking__init()
   dart__tasking__install_signalhandler();
   /* Before finishing initialization, a tool library is loaded if needed */
   void *handle;
-  int (*toolinit)(int, int);
+  int (*toolinit)(int, int, int, int, int *);
   int toolhandle;
   /**
    * The name of the environment variable containing the path to the tool is stored in 
@@ -1225,7 +1227,7 @@ dart__tasking__init()
   */
   const char* var = dart__base__env__string(DART__TOOLS_TOOL_ENV_VAR_PATH);
   //printf("var = %s\n", var);
-  if (var == 0) {
+  if (!var) {
       //printf("hier");
       DART_LOG_ERROR("Environment variable is an empty string!\n");
       printf("Tool library is not loaded.\n");
@@ -1253,10 +1255,29 @@ dart__tasking__init()
           dlclose(handle);
       }
       /* Send the toolinit function the number of threads we're using */
+      use_tool_interface = true; //to enable finalizing
       int pid = getpid();
-      toolhandle = toolinit(dart__tasking__num_threads(), pid);
-      /* Output only for testing purposes */
-      printf("toolhandle: %d (should be 0)\n", toolhandle);
+      dart_myid(&myguid);
+      int sendarray[0];
+      sendarray[0] = pid;
+      int *rbuf;
+      if (myguid.id == 0) {
+        rbuf = (int *)malloc(num_units*sizeof(int));  
+      }
+      /* Create the dart_team_unit_t struct, then override team value to 0 (root).
+       * We need this in the dart_gather function to send everything to unit 0.
+       */ 
+      dart_team_unit_t rootTeam;
+      dart_team_myid(DART_TEAM_ALL, &rootTeam);
+      rootTeam.id = 0;
+
+      dart_ret_t gather = dart_gather(sendarray,rbuf, 1, DART_TYPE_INT,rootTeam, DART_TEAM_ALL);
+      if (gather == DART_OK) {
+        toolhandle = toolinit(dart__tasking__num_threads(), pid, num_units, myguid.id, rbuf);
+        if (toolhandle == 0) {
+            printf("Tool successfully initialized in unit %d!\n", myguid.id);
+        }
+      }
   }
   initialized = true;
 
@@ -1788,8 +1809,9 @@ dart__tasking__fini()
 
   dart__tasking__cancellation_fini();
   //test todo
-  //dart__tasking__instrument_task_finalize();
-
+  if (use_tool_interface) {
+    dart__tasking__instrument_task_finalize();
+  }
   initialized = false;
   DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");
 
