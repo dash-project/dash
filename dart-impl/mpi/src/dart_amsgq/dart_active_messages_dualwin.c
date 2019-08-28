@@ -191,7 +191,7 @@ dart_amsg_dualwin_sendbuf(
       queue_win);
     MPI_Win_flush_local(target.id, queue_win);
 
-    if (offset >= 0 && (offset + msg_size) <= amsgq->queue_size) break;
+    if (offset >= 0 && (offset + msg_size) < amsgq->queue_size) break;
 
     // the queue is full, reset the offset
     int64_t neg_msg_size = -msg_size;
@@ -204,7 +204,7 @@ dart_amsg_dualwin_sendbuf(
 
     // return error if the queue is full, otherwise try again
     if (offset >= 0) {
-    dart__base__mutex_unlock(&amsgq->send_mutex);
+      dart__base__mutex_unlock(&amsgq->send_mutex);
       return DART_ERR_AGAIN;
     }
   } while (1);
