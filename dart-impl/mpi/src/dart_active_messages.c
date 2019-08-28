@@ -33,12 +33,22 @@
  */
 #define DART_AMSGQ_SIZE_ENVSTR  "DART_AMSGQ_SIZE"
 
-#define MSGCACHE_SIZE (4*1024)
+/**
+ * Name of the environment variable specifying the maximum size of a message
+ * sent in the active message queue.
+ *
+ * Type: integral value with optional B, K, M, G qualifier.
+ * Default: 4096B
+ */
+#define DART_AMSGQ_MSGSIZE_ENVSTR  "DART_AMSGQ_MSGSIZE"
+
+#define DEFAULT_MSGCACHE_SIZE (4*1024)
 
 static bool initialized          = false;
 static bool needs_translation    = false;
 static intptr_t *offsets         = NULL;
 static size_t msgq_size_override = 0;
+static size_t msgq_msgsize = DEFAULT_MSGCACHE_SIZE;
 
 typedef struct cached_message_s cached_message_t;
 typedef struct message_cache_s  message_cache_t;
@@ -128,6 +138,7 @@ dart_amsg_init()
   }
 
   msgq_size_override = dart__base__env__size(DART_AMSGQ_SIZE_ENVSTR, 0);
+  msgq_msgsize       = dart__base__env__size(DART_AMSGQ_MSGSIZE_ENVSTR, DEFAULT_MSGCACHE_SIZE);
 
   res = exchange_fnoffsets();
 
@@ -149,7 +160,7 @@ dart_amsg_openq(
   (*queue)->message_cache = calloc(team_size, sizeof(message_cache_t*));
   dart__base__mutex_init(&(*queue)->mutex);
   return amsgq_impl.openq(
-                  MSGCACHE_SIZE,
+                  msgq_msgsize,
                   msgq_size_override ? msgq_size_override : msg_count,
                   team,
                   &(*queue)->impl);
@@ -252,7 +263,7 @@ dart_amsg_buffered_send(
   if (amsgq->message_cache[target.id] == NULL) {
     dart__base__mutex_lock(&amsgq->mutex);
     if (amsgq->message_cache[target.id] == NULL) {
-      cache = malloc(sizeof(message_cache_t) + MSGCACHE_SIZE);
+      cache = malloc(sizeof(message_cache_t) + msgq_msgsize);
       cache->pos           = 0;
       pthread_rwlock_init(&cache->mutex, NULL);
       amsgq->message_cache[target.id] = cache;
@@ -269,14 +280,14 @@ dart_amsg_buffered_send(
   int size_required = sizeof(cached_message_t) + data_size;
   pthread_rwlock_rdlock(&cache->mutex);
   int pos = DART_FETCH_AND_ADD32(&cache->pos, size_required);
-  while ((pos + size_required) > MSGCACHE_SIZE) {
+  while ((pos + size_required) > msgq_msgsize) {
     // revert reservation
     DART_FETCH_AND_ADD32(&cache->pos, -size_required);
     pthread_rwlock_unlock(&cache->mutex);
     // try to get a writelock
     pthread_rwlock_wrlock(&cache->mutex);
     // check whether we still need to flush
-    if (cache->pos + size_required > MSGCACHE_SIZE) {
+    if (cache->pos + size_required > msgq_msgsize) {
       // we got a write-lock, go to flush the buffer
       dart_ret_t ret;
       do {
