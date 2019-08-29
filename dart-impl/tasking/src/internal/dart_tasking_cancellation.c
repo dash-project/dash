@@ -7,6 +7,7 @@
 #include <dash/dart/tasking/dart_tasking_cancellation.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_remote.h>
+#include <dash/dart/tasking/dart_tasking_instrumentation.h>
 
 /**
  * Cancellation related functionality.

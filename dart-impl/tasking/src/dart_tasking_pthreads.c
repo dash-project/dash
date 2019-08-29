@@ -233,15 +233,16 @@ invoke_taskfn(dart_task_t *task)
                  task, task->fn, task->data, task->descr);
   dart_myid(&myguid); //testing, only need to be run once per unit
   if (setjmp(task->taskctx->cancel_return) == 0) {
-    dart__tasking__instrument_task_begin(task, dart__tasking__current_thread(), myguid.id);
+    dart__tasking__instrument_task_begin(task, dart__tasking__current_thread());
     task->fn(task->data);
     DART_LOG_DEBUG("Done with task %p (fn:%p data:%p descr:'%s')",
                    task, task->fn, task->data, task->descr);
-    dart__tasking__instrument_task_end(task, dart__tasking__current_thread(), myguid.id);
+    dart__tasking__instrument_task_end(task, dart__tasking__current_thread());
   } else {
     // we got here through longjmp, the task is cancelled
     task->state = DART_TASK_CANCELLED;
     DART_LOG_DEBUG("Task %p (fn:%p data:%p) cancelled", task, task->fn, task->data);
+    dart_myid(&myguid);
     dart__tasking__instrument_task_cancel(task, dart__tasking__current_thread());
   }
 }
@@ -684,7 +685,7 @@ dart_task_t * create_task(
 #endif // DART_DEBUG
   dart_myid(&myguid);
 
-  dart__tasking__instrument_task_create(task, prio, descr, myguid.id);
+  dart__tasking__instrument_task_create(task, prio, descr);
 
   return task;
 }
@@ -1257,6 +1258,9 @@ dart__tasking__init()
       /* Send the toolinit function the number of threads we're using */
       use_tool_interface = true; //to enable finalizing
       int pid = getpid();
+      if (pid <= 1000) {
+        pid = pid + 1000;    
+      }
       dart_myid(&myguid);
       int sendarray[0];
       sendarray[0] = pid;
@@ -1375,7 +1379,7 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     }
     /* instrumentation for the task queue*/
     dart_myid(&myguid); //testing, should only be run once per unit
-    dart__tasking__instrument_task_add_to_queue(task, thread,myguid.id);
+    dart__tasking__instrument_task_add_to_queue(task, thread);
     if (!thread->is_utility_thread) {
 
       if (numa_node == thread->numa_id) {

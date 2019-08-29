@@ -12,8 +12,7 @@
 void dart__tasking__instrument_task_create(
   dart_task_t      *task,
   dart_task_prio_t  prio,
-  const char       *name,
-  int32_t task_unitid) DART_INTERNAL;
+  const char       *name) DART_INTERNAL;
 
 /**
  * Instrumentation point of a task begin event. Called right before the
@@ -21,8 +20,7 @@ void dart__tasking__instrument_task_create(
  */
 void dart__tasking__instrument_task_begin(
   dart_task_t   *task,
-  dart_thread_t *thread,
-  int32_t task_unitid) DART_INTERNAL;
+  dart_thread_t *thread) DART_INTERNAL;
 
 /**
  * Instrumentation point of a task end event. Called right after the execution
@@ -30,8 +28,7 @@ void dart__tasking__instrument_task_begin(
  */
 void dart__tasking__instrument_task_end(
   dart_task_t   *task,
-  dart_thread_t *thread,
-  int32_t task_unitid) DART_INTERNAL;
+  dart_thread_t *thread) DART_INTERNAL;
 
 /**
  * Instrumentation point of a task cancel event. Called before leaving the
@@ -102,8 +99,7 @@ void dart__tasking__instrument_local_dep(
 */
 void dart__tasking__instrument_task_add_to_queue(
     dart_task_t *task,
-    dart_thread_t *thread,
-    int32_t task_unitid) DART_INTERNAL;
+    dart_thread_t *thread) DART_INTERNAL;
     
 /**
  * Instrumentation point of a dummy dependency added into the task graph

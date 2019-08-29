@@ -1385,7 +1385,7 @@ dart_tasking_datadeps_match_local_dependency(
                       "(num_deps: %i, outdep: %p)",
                       task, elem->task.local, unresolved_deps, elem);
         printf("Making task %lu a local successor of task %lu "
-                      "(num_deps: %i, outdep: %lu)\n",
+                       "(num_deps: %i, outdep: %lu)\n",
                       (uint64_t) task, (uint64_t) elem->task.local, unresolved_deps, (uint64_t) elem);
         //kante
 //        number_of_local_matches--;

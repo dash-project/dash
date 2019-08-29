@@ -68,6 +68,7 @@ struct dart_tool_remote_dep_cb {
 
 typedef struct dart_tool_task_create_cb dart_tool_task_create_cb;
 typedef struct dart_tool_task_begin_cb dart_tool_task_begin_cb;
+typedef struct dart_tool_task_end_cb dart_tool_task_end_cb;
 typedef struct dart_tool_task_cancel_cb dart_tool_task_cancel_cb;
 typedef struct dart_tool_task_yield_leave_cb dart_task_yield_leave_cb;
 typedef struct dart_tool_task_yield_resume_cb dart_task_yield_resume_cb;
@@ -86,6 +87,9 @@ typedef struct dart_tool_remote_in_dep_cb dart_tool_remote_in_dep_cb;
 struct dart_tool_task_create_cb dart_tool_task_create_cb_data;
 struct dart_tool_task_begin_cb dart_tool_task_begin_cb_data;
 struct dart_tool_task_end_cb dart_tool_task_end_cb_data;
+struct dart_tool_task_cancel_cb dart_tool_task_cancel_cb_data;
+struct dart_tool_task_yield_leave_cb dart_tool_task_yield_leave_cb_data;
+struct dart_tool_task_yield_resume_cb dart_tool_task_yield_resume_cb_data;
 struct dart_tool_task_finalize_cb dart_tool_task_finalize_cb_data;
 struct dart_tool_task_add_to_queue_cb dart_tool_task_add_to_queue_cb_data;
 
@@ -127,6 +131,27 @@ int dart_tool_register_task_finalize(dart_tool_task_finalize_cb_t cb, void *user
     return 0;
 }
 /* missing task_yield register functions yet*/
+
+int dart_tool_register_task_cancel(dart_tool_task_cancel_cb_t cb, void *userdata_task_cancel) {
+    dart_tool_task_cancel_cb_data.cb = cb;
+    dart_tool_task_cancel_cb_data.userdata = userdata_task_cancel;
+    printf("dart_tool_register_task_cancel was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_task_cancel);
+    return 0;
+}
+
+int dart_tool_register_task_yield_leave(dart_tool_task_yield_leave_cb_t cb, void *userdata_task_yield_leave) {
+    dart_tool_task_yield_leave_cb_data.cb = cb;
+    dart_tool_task_yield_leave_cb_data.userdata = userdata_task_yield_leave;
+    printf("dart_tool_register_task_yield_leave was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_task_yield_leave);
+    return 0;
+}
+
+int dart_tool_register_task_yield_resume (dart_tool_task_yield_resume_cb_t cb, void *userdata_task_yield_resume) {
+    dart_tool_task_yield_resume_cb_data.cb = cb;
+    dart_tool_task_yield_resume_cb_data.userdata = userdata_task_yield_resume;
+    printf("dart_tool_register_task_yield_resume was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_task_yield_resume);    
+    return 0;
+}
 
 
 int dart_tool_register_task_add_to_queue (dart_tool_task_add_to_queue_cb_t cb, void *userdata_queue) {
@@ -180,36 +205,33 @@ int dart_tool_register_remote_dep (dart_tool_remote_dep_cb_t cb, void *userdata_
 void dart__tasking__instrument_task_create(
   dart_task_t      *task,
   dart_task_prio_t  prio,
-  const char       *name,
-  int32_t task_unitid)
+  const char       *name)
 {
     if (!name) {
         name = "<UnknownName>";
     }
     if (dart_tool_task_create_cb_data.cb) {
-          dart_tool_task_create_cb_data.cb((uint64_t) task, prio, name, task_unitid, dart_tool_task_create_cb_data.userdata);
+          dart_tool_task_create_cb_data.cb((uint64_t) task, prio, name, dart_tool_task_create_cb_data.userdata);
 
     }
 }
 
 void dart__tasking__instrument_task_begin(
   dart_task_t   *task,
-  dart_thread_t *thread,
-  int32_t task_unitid)
+  dart_thread_t *thread)
 {
     if (dart_tool_task_begin_cb_data.cb) {
-        dart_tool_task_begin_cb_data.cb((uint64_t) task, (uint64_t) thread, task_unitid, dart_tool_task_begin_cb_data.userdata);
+        dart_tool_task_begin_cb_data.cb((uint64_t) task, (uint64_t) thread, dart_tool_task_begin_cb_data.userdata);
     }
   // TODO
 }
 
 void dart__tasking__instrument_task_end(
   dart_task_t   *task,
-  dart_thread_t *thread,
-  int32_t task_unitid)
+  dart_thread_t *thread)
 {
     if (dart_tool_task_end_cb_data.cb) {
-        dart_tool_task_end_cb_data.cb((uint64_t) task, (uint64_t) thread, task_unitid, dart_tool_task_end_cb_data.userdata);
+        dart_tool_task_end_cb_data.cb((uint64_t) task, (uint64_t) thread, dart_tool_task_end_cb_data.userdata);
     }
   // TODO
 }
@@ -218,7 +240,9 @@ void dart__tasking__instrument_task_cancel(
   dart_task_t   *task,
   dart_thread_t *thread)
 {
-  //printf("DASH: task cancel\n");
+  if (dart_tool_task_cancel_cb_data.cb) {
+      dart_tool_task_cancel_cb_data.cb((uint64_t) task, (uint64_t) thread, dart_tool_task_cancel_cb_data.userdata);    
+  }
   // TODO
 }
 
@@ -226,7 +250,9 @@ void dart__tasking__instrument_task_yield_leave(
   dart_task_t   *task,
   dart_thread_t *thread)
 {
-  //printf("DASH: task yield leave\n");
+  if (dart_tool_task_yield_leave_cb_data.cb) {
+      dart_tool_task_yield_leave_cb_data.cb((uint64_t) task, (uint64_t) thread, dart_tool_task_yield_leave_cb_data.userdata);
+  }
   // TODO
 }
 
@@ -235,7 +261,9 @@ void dart__tasking__instrument_task_yield_resume(
   dart_task_t   *task,
   dart_thread_t *thread)
 {
-  //printf("DASH: task yield resume\n");
+  if (dart_tool_task_yield_resume_cb_data.cb) {
+      dart_tool_task_yield_resume_cb_data.cb((uint64_t) task, (uint64_t) thread, dart_tool_task_yield_resume_cb_data.userdata);
+  }  
   // TODO
 }
 
@@ -297,11 +325,10 @@ void dart__tasking__instrument_local_dep(
 // }
 void dart__tasking__instrument_task_add_to_queue(
     dart_task_t *task,
-    dart_thread_t *thread,
-    int32_t task_unitid)
+    dart_thread_t *thread)
 {
     if (dart_tool_task_add_to_queue_cb_data.cb) {
-        dart_tool_task_add_to_queue_cb_data.cb((uint64_t) task, (uint64_t) thread, task_unitid, dart_tool_task_add_to_queue_cb_data.userdata);
+        dart_tool_task_add_to_queue_cb_data.cb((uint64_t) task, (uint64_t) thread, dart_tool_task_add_to_queue_cb_data.userdata);
     }
     
 }
