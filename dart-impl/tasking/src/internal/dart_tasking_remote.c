@@ -151,45 +151,21 @@ remote_operation_t* allocate_op()
 }
 
 static inline
-void send_direct(remote_operation_t *op)
+void do_send(
+  bool                      direct_send,
+  dart_team_unit_t          team_unit,
+  dart_task_action_t        fn,
+  void                     *data,
+  uint32_t                  size)
 {
   while (1) {
     int ret;
-    DART_LOG_TRACE("Sending op %p to unit %d to buffer", op, op->team_unit.id);
-    ret = dart_amsg_trysend(
-            op->team_unit,
-            amsgq,
-            op->fn,
-            &op->op,
-            op->size);
-    if (ret == DART_OK) {
-      // the message was successfully sent
-      break;
-    } else  if (ret == DART_ERR_AGAIN) {
-      // cannot be sent at the moment, just try again
-      dart_amsg_process(amsgq);
-      continue;
+    if (direct_send) {
+      DART_LOG_TRACE("Sending op %p to unit %d to buffer", data, team_unit.id);
+      ret = dart_amsg_trysend(team_unit, amsgq, fn, data, size);
     } else {
-      // at this point wen can only abort!
-      DART_ASSERT_MSG(ret != DART_ERR_AGAIN,
-                      "Failed to send active message to unit %i",
-                      op->team_unit.id);
+      ret = dart_amsg_buffered_send(team_unit, amsgq, fn, data, size);
     }
-  }
-}
-
-static inline
-void send_buffered(remote_operation_t *op)
-{
-  while (1) {
-    int ret;
-    DART_LOG_TRACE("Sending op %p to unit %d to buffer", op, op->team_unit.id);
-    ret = dart_amsg_buffered_send(
-            op->team_unit,
-            amsgq,
-            op->fn,
-            &op->op,
-            op->size);
     if (ret == DART_OK) {
       // the message was successfully sent
       break;
@@ -199,9 +175,8 @@ void send_buffered(remote_operation_t *op)
       continue;
     } else {
       // at this point wen can only abort!
-      DART_ASSERT_MSG(ret != DART_ERR_AGAIN,
-                      "Failed to send active message to unit %i",
-                      op->team_unit.id);
+      DART_LOG_ERROR("Failed to send active message to unit %d", team_unit.id);
+      dart_abort(DART_EXIT_ABORT);
     }
   }
 }
@@ -232,11 +207,7 @@ process_operation_list()
   while (1) {
     DART_STACK_POP(reverse_list, op);
     if (op == NULL) break;
-    if (op->direct_send) {
-      send_direct(op);
-    } else {
-      send_buffered(op);
-    }
+    do_send(op->direct_send, op->team_unit, op->fn, &op->op, op->size);
     DART_OPLIST_ELEM_PUSH(operation_freelist, op);
   }
 
@@ -369,7 +340,6 @@ dart_ret_t dart_tasking_remote_datadep(
   dart_global_unit_t guid,
   dart_task_t       *task)
 {
-  dart_ret_t ret;
   struct remote_data_dep rdep;
   rdep.gptr        = dep->gptr;
   rdep.rtask.local = task;
@@ -398,31 +368,12 @@ dart_ret_t dart_tasking_remote_datadep(
     return DART_OK;
   }
 
-  while (1) {
-    ret = dart_amsg_buffered_send(
-            team_unit,
-            amsgq,
-            &enqueue_from_remote,
-            &rdep,
-            sizeof(rdep));
-    if (ret == DART_OK) {
-      // the message was successfully sent
-      DART_LOG_TRACE("Sent remote dependency request to unit t:%i "
-          "(segid=%i, offset=%p, fn=%p, task=%p)",
-          team_unit.id, dep->gptr.segid,
-          dep->gptr.addr_or_offs.addr,
-          &release_remote_dependency, task);
-      break;
-    } else  if (ret == DART_ERR_AGAIN) {
-      // cannot be sent at the moment, just try again
-      dart_amsg_process(amsgq);
-      continue;
-    } else {
-      DART_LOG_ERROR(
-          "Failed to send active message to unit %i", dep->gptr.unitid);
-      return DART_ERR_OTHER;
-    }
-  }
+  do_send(false, team_unit, &enqueue_from_remote, &rdep, sizeof(rdep));
+  DART_LOG_TRACE("Sent remote dependency request to unit t:%i "
+      "(segid=%i, offset=%p, fn=%p, task=%p)",
+      team_unit.id, dep->gptr.segid,
+      dep->gptr.addr_or_offs.addr,
+      &release_remote_dependency, task);
   return DART_OK;
 }
 
@@ -461,29 +412,10 @@ dart_ret_t dart_tasking_remote_release_task(
     return DART_OK;
   }
 
-  while (1) {
-    dart_ret_t ret;
-    ret = dart_amsg_trysend(
-            team_unit,
-            amsgq,
-            &release_remote_task,
-            &response,
-            sizeof(response));
-    if (ret == DART_OK) {
-      // the message was successfully sent
-      DART_LOG_TRACE("Sent remote task release to unit %i "
-          "(fn=%p, rtask=%p, depref=%p)",
-          team_unit.id, &release_remote_task, rtask.local, (void*)depref);
-      break;
-    } else  if (ret == DART_ERR_AGAIN) {
-      // cannot be sent at the moment, just try again
-      dart_amsg_process(amsgq);
-      continue;
-    } else {
-      DART_LOG_ERROR("Failed to send active message to unit %i", unit.id);
-      return DART_ERR_OTHER;
-    }
-  }
+  do_send(true, team_unit, &release_remote_task, &response, sizeof(response));
+  DART_LOG_TRACE("Sent remote task release to unit %i "
+      "(fn=%p, rtask=%p, depref=%p)",
+      team_unit.id, &release_remote_task, rtask.local, (void*)depref);
 
   return DART_OK;
 }
@@ -519,30 +451,11 @@ dart_ret_t dart_tasking_remote_release_dep(
     return DART_OK;
   }
 
-  while (1) {
-    dart_ret_t ret;
-    ret = dart_amsg_trysend(
-            team_unit,
-            amsgq,
-            &release_remote_dependency,
-            &response,
-            sizeof(response));
-    if (ret == DART_OK) {
-      // the message was successfully sent
-      DART_LOG_TRACE("Sent remote dependency release to unit %i "
-                     "(fn=%p, task=%p, depref=%p)",
-                     team_unit.id,
-                     &release_remote_dependency, rtask.local, (void*)depref);
-      break;
-    } else  if (ret == DART_ERR_AGAIN) {
-      // cannot be sent at the moment, just try again
-      dart_amsg_process(amsgq);
-      continue;
-    } else {
-      DART_LOG_ERROR("Failed to send active message to unit %i", unit.id);
-      return DART_ERR_OTHER;
-    }
-  }
+  do_send(true, team_unit, &release_remote_dependency, &response, sizeof(response));
+  DART_LOG_TRACE("Sent remote dependency release to unit %i "
+                 "(fn=%p, task=%p, depref=%p)",
+                 team_unit.id,
+                 &release_remote_dependency, rtask.local, (void*)depref);
 
   return DART_OK;
 }
@@ -576,23 +489,9 @@ dart_ret_t dart_tasking_remote_sendrequest(
     return DART_OK;
   }
 
-  while (1) {
-    int ret;
-    ret = dart_amsg_buffered_send(DART_TEAM_UNIT_ID(unit.id), amsgq,
-                                  &request_send, &request, sizeof(request));
-    if (ret == DART_OK) {
-      // the message was successfully sent
-      break;
-    } else  if (ret == DART_ERR_AGAIN) {
-      // cannot be sent at the moment, just try again
-      dart_amsg_process(amsgq);
-      continue;
-    } else {
-      DART_LOG_ERROR(
-          "Failed to send active message to unit %i", unit.id);
-      return DART_ERR_OTHER;
-    }
-  }
+  do_send(false, DART_TEAM_UNIT_ID(unit.id), &request_send,
+          &request, sizeof(request));
+
   return DART_OK;
 }
 
