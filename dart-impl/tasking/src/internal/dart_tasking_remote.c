@@ -19,6 +19,16 @@
 #include <stdint.h>
 #include <time.h>
 
+/**
+ * Name of the environment variable specifying whether all message types are
+ * to be sent coalesced. By default, dependency releases are sent directly.
+ * Accumulating them might help increase bandwidth at the cost of some
+ * added latency.
+ *
+ * Type: boolean
+ * Default: false
+ */
+#define DART_THREAD_COALESCE_RELEASE_ENVSTR  "DART_THREAD_COALESCE_RELEASE"
 
 static dart_amsgq_t amsgq;
 //#define DART_RTASK_QLEN 1024*1024
@@ -31,6 +41,8 @@ static uint64_t progress_sending_us      = 0;
 static uint64_t progress_waitprogress_us = 0;
 static uint64_t progress_commtasks_us    = 0;
 static uint64_t progress_iteration_count = 0;
+
+static bool coalesce_release = false;
 
 struct remote_data_dep {
   /** Global pointer to the data \c rtask depends on */
@@ -287,6 +299,9 @@ dart_ret_t dart_tasking_remote_init()
       handle_comm_tasks = dart__base__env__us(
                                   DART_THREAD_PROGRESS_COMMTASKS_ENVSTR, false);
     }
+
+    coalesce_release = dart__base__env__bool(DART_THREAD_COALESCE_RELEASE_ENVSTR,
+                                             false);
     initialized = true;
   }
   return DART_OK;
@@ -397,13 +412,15 @@ dart_ret_t dart_tasking_remote_release_task(
 
   DART_ASSERT(rtask.remote != NULL);
 
+  bool direct_send = !coalesce_release;
+
   if (progress_thread) {
     remote_operation_t *op = allocate_op();
     op->fn                 = &release_remote_task;
     op->size               = sizeof(response);
     op->team_unit          = team_unit;
     op->op.task_release    = response;
-    op->direct_send        = true;
+    op->direct_send        = direct_send;
     op->blocking_flush     = false;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
     DART_LOG_TRACE("Enqueued remote task release to unit %i "
@@ -412,7 +429,7 @@ dart_ret_t dart_tasking_remote_release_task(
     return DART_OK;
   }
 
-  do_send(true, team_unit, &release_remote_task, &response, sizeof(response));
+  do_send(direct_send, team_unit, &release_remote_task, &response, sizeof(response));
   DART_LOG_TRACE("Sent remote task release to unit %i "
       "(fn=%p, rtask=%p, depref=%p)",
       team_unit.id, &release_remote_task, rtask.local, (void*)depref);
@@ -435,13 +452,15 @@ dart_ret_t dart_tasking_remote_release_dep(
   dart_team_unit_t team_unit;
   team_unit.id = unit.id;
 
+  bool direct_send = !coalesce_release;
+
   if (progress_thread) {
     remote_operation_t *op = allocate_op();
     op->fn             = &release_remote_dependency;
     op->size           = sizeof(response);
     op->team_unit      = team_unit;
     op->op.dep_release = response;
-    op->direct_send    = true;
+    op->direct_send    = direct_send;
     op->blocking_flush = false;
     DART_OPLIST_ELEM_PUSH(operation_list, op);
     DART_LOG_TRACE("Enqueued remote dependency release to unit %i "
@@ -451,7 +470,7 @@ dart_ret_t dart_tasking_remote_release_dep(
     return DART_OK;
   }
 
-  do_send(true, team_unit, &release_remote_dependency, &response, sizeof(response));
+  do_send(direct_send, team_unit, &release_remote_dependency, &response, sizeof(response));
   DART_LOG_TRACE("Sent remote dependency release to unit %i "
                  "(fn=%p, task=%p, depref=%p)",
                  team_unit.id,
