@@ -195,7 +195,7 @@ public:
 
     if (_group != DART_GROUP_NULL) {
       if (DART_OK != dart_group_destroy(&_group)) {
-        DASH_LOG_ERROR("Failed to destroy DART group!");
+        DASH_LOG_ERROR("dash::Team d'tor", "Failed to destroy DART group!");
       }
     }
 
@@ -224,7 +224,7 @@ public:
         DART_TEAM_ALL  != _dartid) {
       if (DART_OK != dart_team_destroy(&_dartid))
       {
-        DASH_LOG_ERROR("Failed to destroy DART group!");
+        DASH_LOG_ERROR("dash::Team d'tor", "Failed to destroy DART group!");
       }
     }
   }
@@ -692,6 +692,12 @@ private:
 bool operator==(
   const Team::Deallocator & lhs,
   const Team::Deallocator & rhs);
+
+class TeamPtr {
+
+  std::shared_ptr<Team*> _teamptr;
+
+}; // class TeamPtr
 
 }  // namespace dash
 

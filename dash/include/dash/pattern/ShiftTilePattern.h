@@ -825,7 +825,7 @@ public:
     }
     std::array<IndexType, NumDimensions> g_coords =
       global(team().myid(), l_coords);
-    auto offset = _memory_layout.at(g_coords);
+    auto offset = global_at(g_coords);
     DASH_LOG_TRACE_VAR("ShiftTilePattern.global >", offset);
     return offset;
   }
@@ -848,7 +848,7 @@ public:
                    "local_coords:", local_coords);
     std::array<IndexType, NumDimensions> global_coords =
       global(unit, local_coords);
-    auto g_index = _memory_layout.at(global_coords);
+    auto g_index = global_at(global_coords);
     DASH_LOG_TRACE_VAR("ShiftTilePattern.global_index >", g_index);
     return g_index;
   }
@@ -1067,7 +1067,7 @@ public:
     DASH_LOG_TRACE_VAR("ShiftTilePattern.has_local_elements()", unit);
     DASH_LOG_TRACE_VAR("ShiftTilePattern.has_local_elements()", viewspec);
     // Apply viewspec offset in dimension to given position
-    dim_offset += viewspec[dim].offset;
+    dim_offset += viewspec.offset(dim);
     // Offset to block offset
     IndexType block_coord_d    = dim_offset / _blocksize_spec.extent(dim);
     DASH_LOG_TRACE_VAR("ShiftTilePattern.has_local_elements", block_coord_d);
@@ -1376,25 +1376,6 @@ public:
   }
 
   /**
-   * Cartesian index space representing the underlying memory model of the
-   * pattern.
-   *
-   * \see DashPatternConcept
-   */
-  const MemoryLayout_t & memory_layout() const {
-    return _memory_layout;
-  }
-
-  /**
-   * Cartesian index space representing the underlying local memory model
-   * of this pattern for the calling unit.
-   * Not part of DASH Pattern concept.
-   */
-  const LocalMemoryLayout_t & local_memory_layout() const {
-    return _local_memory_layout;
-  }
-
-  /**
    * Cartesian arrangement of the Team containing the units to which this
    * pattern's elements are mapped.
    *
@@ -1411,8 +1392,39 @@ public:
    * \see DashPatternConcept
    */
   std::array<IndexType, NumDimensions> coords(
+    /// Global index (offset) to convert
     IndexType index) const {
-    return _memory_layout.coords(index);
+
+    ::std::array<IndexType, NumDimensions> pos{};
+    auto block_coords = _blockspec.coords(index / _blocksize_spec.size());
+    auto phase_coords = _blocksize_spec.coords(index % _blocksize_spec.size());
+    for (auto d = 0; d < NumDimensions; ++d) {
+      pos[d] = block_coords[d]*_blocksize_spec.extent(d) + phase_coords[d];
+    }
+    return pos;
+  }
+
+  /**
+   * Convert given global linear offset (index) to global cartesian
+   * coordinates using viewspec.
+   *
+   * \see DashPatternConcept
+   */
+  std::array<IndexType, NumDimensions> coords(
+    /// Global index (offset) to convert
+    IndexType          index,
+    /// View specification (offsets) to apply on \c coords
+    const ViewSpec_t & viewspec) const {
+
+    ::std::array<IndexType, NumDimensions> pos;
+    auto block_coords = _blockspec.coords(index / _blocksize_spec.size(),
+                                          viewspec);
+    auto phase_coords = _blocksize_spec.coords(index % _blocksize_spec.size(),
+                                               viewspec);
+    for (auto d = 0; d < NumDimensions; ++d) {
+      pos[d] = block_coords[d]*_blocksize_spec.extent(d) + phase_coords[d];
+    }
+    return pos;
   }
 
   /**

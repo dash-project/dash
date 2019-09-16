@@ -120,7 +120,7 @@ reduce(
     g_result.valid = true;
   }
   if (!g_result.valid) {
-    DASH_LOG_ERROR("Found invalid reduction value!");
+    DASH_LOG_ERROR("dash::reduce()", "Found invalid reduction value!");
   }
   auto result = g_result.value;
 
