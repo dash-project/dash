@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 [![CI Status](https://circleci.com/gh/dash-project/dash.svg?style=shield&circle-token=cd221e93159f5c97477c9699f3b7adc54d344ae6)](https://circleci.com/gh/dash-project/dash)
 [![Build Status](https://travis-ci.org/dash-project/dash.svg?branch=development)](https://travis-ci.org/dash-project/dash) [![Documentation Status](https://readthedocs.org/projects/dash/badge/?version=latest)](http://dash.readthedocs.io/en/latest/?badge=latest) [![Documentation](https://codedocs.xyz/dash-project/dash.svg)](https://codedocs.xyz/dash-project/dash/)
 [![codecov](https://codecov.io/gh/dash-project/dash/branch/development/graph/badge.svg)](https://codecov.io/gh/dash-project/dash)
@@ -334,4 +333,3 @@ The Munich Network Management homepage: http://www.mnm-team.org
 
 =======
 # dash-gaspi-backup
->>>>>>> da3a147815ea9b6f5ee44acfd627a0ca9f2f465b
