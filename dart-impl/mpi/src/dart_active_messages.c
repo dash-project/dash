@@ -87,6 +87,7 @@ static inline dart_ret_t exchange_fnoffsets();
 enum {
   DART_AMSGQ_SINGLEWIN,
   DART_AMSGQ_SOPNOP,
+  DART_AMSGQ_SOPNOP2,
   DART_AMSGQ_SENDRECV,
   DART_AMSGQ_DUALWIN
 };
@@ -94,6 +95,7 @@ enum {
 static struct dart_env_str2int env_vals[] = {
   {"singlewin", DART_AMSGQ_SINGLEWIN},
   {"sopnop",    DART_AMSGQ_SOPNOP},
+  {"sopnop2",    DART_AMSGQ_SOPNOP2},
   {"sendrecv",  DART_AMSGQ_SENDRECV},
   {"dualwin",  DART_AMSGQ_DUALWIN},
   {NULL, 0}
@@ -118,6 +120,10 @@ dart_amsg_init()
       break;
     case DART_AMSGQ_SOPNOP:
       res = dart_amsg_sopnop_init(&amsgq_impl);
+      DART_LOG_TRACE("Using same-op-no-op single-window active message queue");
+      break;
+    case DART_AMSGQ_SOPNOP2:
+      res = dart_amsg_sopnop2_init(&amsgq_impl);
       DART_LOG_TRACE("Using same-op-no-op single-window active message queue");
       break;
     case DART_AMSGQ_SENDRECV:
