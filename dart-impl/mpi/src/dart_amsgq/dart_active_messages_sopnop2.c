@@ -121,7 +121,7 @@ uint64_t unset_bit64(uint64_t value, int pos)
                                       uint32_t: unset_bit32(_val, _pos), \
                                       uint64_t: unset_bit64(_val, _pos))
 
-
+static inline
 uint64_t fuse(int a, int b)
 {
   uint64_t aa = a;
