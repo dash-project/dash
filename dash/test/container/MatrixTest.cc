@@ -1091,8 +1091,8 @@ TEST_F(MatrixTest, UnderfilledBlockedPatternExtents)
   dash::TeamSpec<2> teamspec( numunits, 1 );
   teamspec.balance_extents();
 
-  extent_t w = 13;
-  extent_t h =  7;
+  extent_t w = 13*dash::size();
+  extent_t h =  7*dash::size();
 
   auto distspec = dash::DistributionSpec<2>(dash::BLOCKED, dash::BLOCKED);
 
@@ -1477,7 +1477,7 @@ TEST_F(MatrixTest, LocalMatrixRefs)
 
   uint myid = static_cast<uint>(dash::Team::GlobalUnitID().id);
 
-  const uint nelts = 40;
+  const uint nelts = 40*dash::size();
 
   dash::NArray<value_t, 2> mat(nelts, nelts);
 
@@ -1588,7 +1588,7 @@ TEST_F(MatrixTest, MoveSemantics){
   using matrix_t = dash::NArray<double, 2>;
   // move construction
   {
-    matrix_t matrix_a(10, 5);
+    matrix_t matrix_a(10*dash::size(), 5*dash::size());
 
     *(matrix_a.lbegin()) = 5;
     dash::barrier();
@@ -1600,9 +1600,9 @@ TEST_F(MatrixTest, MoveSemantics){
   dash::barrier();
   //move assignment
   {
-    matrix_t matrix_a(10, 5);
+    matrix_t matrix_a(10*dash::size(), 5*dash::size());
     {
-      matrix_t matrix_b(8, 5);
+      matrix_t matrix_b(8*dash::size(), 5*dash::size());
 
       *(matrix_a.lbegin()) = 1;
       *(matrix_b.lbegin()) = 2;
@@ -1614,8 +1614,8 @@ TEST_F(MatrixTest, MoveSemantics){
   dash::barrier();
   // swap
   {
-    matrix_t matrix_a(10, 5);
-    matrix_t matrix_b(8, 5);
+    matrix_t matrix_a(10*dash::size(), 5*dash::size());
+    matrix_t matrix_b(8*dash::size(), 5*dash::size());
 
     *(matrix_a.lbegin()) = 1;
     *(matrix_b.lbegin()) = 2;
