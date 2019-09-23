@@ -498,8 +498,7 @@ int grequest_poll_fn(void *data, MPI_Status *status)
           MPI_Grequest_complete(state->req);
         } else {
           // start again by querying the queuenum
-          MPI_Get(&state->queuenum, 1, MPI_INT64_T, target,
-                  OFFSET_QUEUENUM, 1, MPI_INT64_T, queue_win);
+          initiate_queuenum_fetch(state);
           state->state = DART_GREQUEST_QUEUENUM;
         }
         return MPI_SUCCESS;

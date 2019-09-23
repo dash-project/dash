@@ -110,6 +110,11 @@ static struct dart_env_str2int env_vals[] = {
 static uint32_t msgcnt = 0;
 #endif // DART_ENABLE_LOGGING
 
+
+static
+dart_ret_t
+flush_buffer_all(dart_amsgq_t amsgq, bool blocking);
+
 dart_ret_t
 dart_amsg_init()
 {
@@ -315,29 +320,36 @@ dart_amsg_buffered_send(
     // revert reservation
     DART_FETCH_AND_ADD32(&cache->pos, -size_required);
     pthread_rwlock_unlock(&cache->mutex);
-    // try to get a writelock
-    pthread_rwlock_wrlock(&cache->mutex);
-    // check whether we still need to flush
-    if (cache->pos + size_required > msgq_msgsize) {
-      // we got a write-lock, go to flush the buffer
-      dart_ret_t ret;
-      do {
-        DART_LOG_TRACE("Flushing buffer to %d", target.id);
-        ret = amsgq_impl.trysend(target, amsgq->impl, cache->buffer, cache->pos);
-        if (DART_ERR_AGAIN == ret) {
-          // try to process our messages while waiting for the other side
-          amsgq_impl.process(amsgq->impl);
-        } else if (ret != DART_OK) {
-          pthread_rwlock_unlock(&cache->mutex);
-          DART_LOG_ERROR("Failed to flush message cache!");
-          return ret;
-        }
-      } while (ret != DART_OK);
-      // reset position
-      cache->pos = 0;
+
+    // if the implementation provides an efficient to flush the whole buffer
+    // we flush all buffers to avoid serializing flushes
+    if (amsgq->flush_info != NULL) {
+      flush_buffer_all(amsgq, false);
+    } else {
+      // try to get a writelock
+      pthread_rwlock_wrlock(&cache->mutex);
+      // check whether we still need to flush
+      if (cache->pos + size_required > msgq_msgsize) {
+        // we got a write-lock, go to flush the buffer
+        dart_ret_t ret;
+        do {
+          DART_LOG_TRACE("Flushing buffer to %d", target.id);
+          ret = amsgq_impl.trysend(target, amsgq->impl, cache->buffer, cache->pos);
+          if (DART_ERR_AGAIN == ret) {
+            // try to process our messages while waiting for the other side
+            amsgq_impl.process(amsgq->impl);
+          } else if (ret != DART_OK) {
+            pthread_rwlock_unlock(&cache->mutex);
+            DART_LOG_ERROR("Failed to flush message cache!");
+            return ret;
+          }
+        } while (ret != DART_OK);
+        // reset position
+        cache->pos = 0;
+      }
+      // release write lock and take the readlock again
+      pthread_rwlock_unlock(&cache->mutex);
     }
-    // release write lock and take the readlock again
-    pthread_rwlock_unlock(&cache->mutex);
     pthread_rwlock_rdlock(&cache->mutex);
     pos = DART_FETCH_AND_ADD32(&cache->pos, size_required);
   }
