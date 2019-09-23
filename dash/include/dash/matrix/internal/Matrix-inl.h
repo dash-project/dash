@@ -207,7 +207,7 @@ bool Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
   const PatternT & pattern)
 {
   DASH_LOG_TRACE("Matrix.allocate()", "pattern",
-                 pattern.memory_layout().extents());
+                 _pattern.extents());
   if (&_pattern != &pattern) {
     DASH_LOG_TRACE("Matrix.allocate()", "using specified pattern");
     _pattern = pattern;

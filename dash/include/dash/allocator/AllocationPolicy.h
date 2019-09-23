@@ -202,6 +202,8 @@ public:
       return true;
     }
 
+    dart_flush(gptr);
+
     auto ret = dart_team_memfree(gptr) == DART_OK;
 
     return ret;
