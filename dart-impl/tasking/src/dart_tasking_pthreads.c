@@ -1230,6 +1230,7 @@ dart__tasking__init()
   //printf("var = %s\n", var);
   if (!var) {
       //printf("hier");
+      //TODO: display error only once, not once per instance
       DART_LOG_ERROR("Environment variable is an empty string!\n");
       printf("Tool library is not loaded.\n");
       /* if this line is uncommented, dart_tasking will not be initialized completely

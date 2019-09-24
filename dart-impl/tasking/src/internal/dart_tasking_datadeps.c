@@ -527,7 +527,10 @@ void dart__dephash__print_stats(const dart_task_t *task)
   uint32_t n = 0;
   double mean = 0.0, M2 = 0.0;
   for (uint32_t i = 0; i < DART_DEPHASH_SIZE; ++i) {
-    uint32_t nb = task->local_deps[i].num_outdeps;
+    uint32_t nb = 0;
+    if (task->local_deps != NULL) {
+      nb = task->local_deps[i].num_outdeps;
+    }
     if (nb == 0) {
       ++empty;
     } else {
