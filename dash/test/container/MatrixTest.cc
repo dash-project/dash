@@ -1121,8 +1121,8 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
   dash::TeamSpec<2> teamspec( numunits, 1 );
   teamspec.balance_extents();
 
-  uint32_t w= 13;
-  uint32_t h= 7;
+  uint32_t w= 13*dash::size();
+  uint32_t h= 7*dash::size();
   auto distspec= dash::DistributionSpec<2>( dash::BLOCKED, dash::BLOCKED );
   dash::NArray<uint32_t, 2> narray( dash::SizeSpec<2>( h, w ),
       distspec, dash::Team::All(), teamspec );
