@@ -77,7 +77,7 @@ struct dart_amsgq_impl_data {
   dart_mutex_t      send_mutex;
   dart_mutex_t      processing_mutex;
   int               comm_rank;
-  int64_t           prev_tailpos;
+  int               prev_tailpos;
 };
 
 enum {
@@ -671,43 +671,21 @@ amsg_sopnop_process_internal(
       DART_LOG_TRACE("Queue %ld has tailpos %ld", queuenum, tailpos);
 
       int64_t writecnt;
-      int64_t tmp = 0;
-      int64_t newqueue = (queuenum == 0) ? 1 : 0;
+      int64_t queue_tmp      = 0;
+      int64_t newqueue       = (queuenum == 0) ? 1 :  0;
       int64_t queue_swap_sum = (queuenum == 0) ? 1 : -1;
 
-      const int64_t processing_signal     = fuse( PROCESSING_SIGNAL, 0);
-      const int64_t neg_processing_signal = fuse(-PROCESSING_SIGNAL, 0);
-
-      // reset the writecnt on the new queue to release it
-      uint64_t fused_tmpval;
-      MPI_Fetch_and_op(
-        &neg_processing_signal,
-        &fused_tmpval,
-        MPI_INT64_T,
-        comm_rank,
-        OFFSET_WRITECNT(newqueue),
-        MPI_SUM,
-        queue_win);
+      const int64_t processing_signal = fuse(PROCESSING_SIGNAL, 0);
 
       // swap the queue number
       MPI_Fetch_and_op(
         &queue_swap_sum,
-        &tmp,
+        &queue_tmp,
         MPI_INT64_T,
         comm_rank,
         OFFSET_QUEUENUM,
         MPI_SUM,
         queue_win);
-
-#ifdef DART_ENABLE_ASSERTIONS
-      MPI_Win_flush(comm_rank, queue_win);
-      DART_ASSERT(tmp == queuenum);
-      int32_t oldwritecnt = first(fused_tmpval);
-      if (oldwritecnt < PROCESSING_SIGNAL) {
-        DART_LOG_ERROR("oldwritecnt too small: %d (limit %d)", oldwritecnt, PROCESSING_SIGNAL);
-      }
-      DART_ASSERT(oldwritecnt >= PROCESSING_SIGNAL);
-#endif // DART_ENABLE_ASSERTIONS
 
       // wait for all writers to finish
       MPI_Fetch_and_op(
@@ -718,15 +696,36 @@ amsg_sopnop_process_internal(
         OFFSET_WRITECNT(queuenum),
         MPI_SUM,
         queue_win);
-      MPI_Win_flush(comm_rank, queue_win);
 
-      writecnt = first(fused_val);
+      /*
+       * reset the writecnt on the new queue to release it
+       * NOTE: this is not strictly single_op_no_op anymore but it's necessary to
+       *       make sure that there are no race conditions (e.g., process A
+       *       trying to write to a processing queue, the queue being released,
+       *       process B starting the write to it and process A finally aborting
+       *       its attempt to write; in that case an already processed message
+       *       is re-read and the message by process B is lost).
+       *       Mixing fetch-op and cas should be fine on most systems.
+       */
+      const uint64_t zero  = 0;
+      int64_t fused_tmpval = 0;
+      const int64_t prev_processing_signal = fuse(PROCESSING_SIGNAL, amsgq->prev_tailpos);
+      do {
+        if (fused_tmpval != prev_processing_signal) {
+          MPI_Compare_and_swap(
+            &zero,
+            &prev_processing_signal,
+            &fused_tmpval,
+            MPI_INT64_T,
+            comm_rank,
+            OFFSET_WRITECNT(newqueue),
+            queue_win);
+        }
 
-      if (writecnt > 0) {
-        DART_LOG_TRACE("Waiting for writecnt=%ld writers on queue %ld to finish",
-                       writecnt, queuenum);
+        MPI_Win_flush(comm_rank, queue_win);
 
-        do {
+        writecnt = first(fused_val);
+        if (writecnt > 0) {
           MPI_Fetch_and_op(
             &tmp, // not relevant
             &fused_val,
@@ -735,27 +734,14 @@ amsg_sopnop_process_internal(
             OFFSET_WRITECNT(queuenum),
             MPI_NO_OP,
             queue_win);
-          /*
-          MPI_Get(
-            &writecnt,
-            1,
-            MPI_INT64_T,
-            comm_rank,
-            OFFSET_WRITECNT(queuenum),
-            1,
-            MPI_INT64_T,
-            queue_win);
-          */
-          MPI_Win_flush(comm_rank, queue_win);
-          writecnt = first(fused_val);
-        } while (writecnt > PROCESSING_SIGNAL);
-        DART_LOG_TRACE("Done waiting for writers on queue %ld", queuenum);
-      }
-      tailpos = second(fused_val);
+          // flush will happen in next iteration
+        }
+      } while (fused_tmpval != prev_processing_signal || writecnt > 0);
 
-      // reset tailpos
-      fused_val = fuse(0, -tailpos);
-      update_value(&fused_val, comm_rank, OFFSET_WRITECNT(queuenum), queue_win);
+      DART_ASSERT(queue_tmp == queuenum);
+
+      tailpos = second(fused_val);
+      amsgq->prev_tailpos = tailpos;
 
       DART_LOG_TRACE("Starting processing queue %ld: tailpos %ld",
                      queuenum, tailpos);
@@ -763,9 +749,6 @@ amsg_sopnop_process_internal(
       void *dbuf = (void*)((intptr_t)amsgq->queue_ptr +
                                   OFFSET_DATA(queuenum, amsgq->queue_size));
       dart__amsgq__process_buffer(dbuf, tailpos);
-
-      // flush the reset of the tailpos
-      MPI_Win_flush(comm_rank, queue_win);
 
     }
   } while (blocking && tailpos > 0);
