@@ -78,13 +78,16 @@ struct dart_amsgq_impl_data {
   dart_mutex_t      processing_mutex;
   int               comm_rank;
   int               prev_tailpos;
+  bool              needs_flush;
 };
 
 enum {
   DART_GREQUEST_FAILED = 0, // reserved for a failed attempt
   DART_GREQUEST_START = 1,
+  DART_GREQUEST_RETRY,
   DART_GREQUEST_QUEUENUM,
   DART_GREQUEST_REGISTER,
+  DART_GREQUEST_OFFSET,
   DART_GREQUEST_PUT,
   DART_GREQUEST_COMPLETE,
 };
@@ -313,7 +316,7 @@ dart_amsg_sopnop_sendbuf(
 
     DART_ASSERT(queuenum == 0 || queuenum == 1);
 
-    uint64_t writecnt_offset = fuse(1, msg_size);
+    uint64_t writecnt_offset = fuse(1, 0);
 
     uint64_t fused_val;
     // register as a writer
@@ -330,33 +333,56 @@ dart_amsg_sopnop_sendbuf(
     int64_t writecnt = first(fused_val);
     offset = second(fused_val);
 
+
+    if (writecnt < 0) {
+      // queue is processing
+      DART_LOG_TRACE("Queue %ld at %d processing, retrying (writecnt %ld)",
+                    queuenum, target.id, writecnt);
+      update_value(&dereg_value, target.id, OFFSET_WRITECNT(queuenum), queue_win);
+      continue;
+    }
+
     DART_LOG_TRACE("Queue %ld at %d: writecnt %ld, offset %ld (fused_val %lu)",
                    queuenum, target.id, writecnt, offset, fused_val);
 
-    bool do_return = false;
 
-    if (writecnt >= 0) {
-
-      // if the message fits we can write it
-      if (offset >= 0 && (offset + msg_size) <= amsgq->queue_size) break;
-
-      // the queue is full, reset the offset
+    // check early if the queue is full
+    if (offset < 0 || (offset + msg_size) > amsgq->queue_size) {
+      // the queue is full, deregister and come back later
       DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld, writecnt %ld)",
                     queuenum, target.id, offset, writecnt);
-      do_return = true;
-    } else {
-      DART_LOG_TRACE("Queue %ld at %d processing, retrying (writecnt %ld)",
-                    queuenum, target.id, writecnt);
+      update_value(&dereg_value, target.id, OFFSET_WRITECNT(queuenum), queue_win);
+      return DART_ERR_AGAIN;
     }
+
+    writecnt_offset = fuse(0, msg_size);
+
+    // reserve a slot
+    MPI_Fetch_and_op(
+      &writecnt_offset,
+      &fused_val,
+      MPI_UINT64_T,
+      target.id,
+      OFFSET_WRITECNT(queuenum),
+      MPI_SUM,
+      queue_win);
+    MPI_Win_flush(target.id, queue_win);
+
+    offset = second(fused_val);
+
+    // if the message fits we can write it
+    if (offset >= 0 && (offset + msg_size) <= amsgq->queue_size) break;
+
+    // the queue is full, reset the offset
+    DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld, writecnt %ld)",
+                  queuenum, target.id, offset, writecnt);
     writecnt_offset = fuse(-1, -msg_size);
     // deregister as a writer
     update_value(&writecnt_offset, target.id, OFFSET_WRITECNT(queuenum), queue_win);
 
     MPI_Win_flush_local(target.id, queue_win);
 
-    if (do_return) {
-      return DART_ERR_AGAIN;
-    }
+    return DART_ERR_AGAIN;
   } while (1);
 
   DART_LOG_TRACE("Writing %ld into queue %ld at offset %ld at unit %i",
@@ -426,7 +452,7 @@ int grequest_poll_fn(void *data, MPI_Status *status)
 
       return MPI_SUCCESS;
     }
-    case DART_GREQUEST_QUEUENUM:
+    case DART_GREQUEST_RETRY:
     {
       int flag;
       MPI_Test(&state->opreq, &flag, MPI_STATUS_IGNORE);
@@ -434,13 +460,37 @@ int grequest_poll_fn(void *data, MPI_Status *status)
         // come back later
         return MPI_SUCCESS;
       }
+      int64_t writecnt = first(state->fused_val);
+
+      if (writecnt < 0) {
+        initiate_queuenum_fetch(state);
+        state->state = DART_GREQUEST_QUEUENUM;
+        return MPI_SUCCESS;
+      }
+
+      // we skipped one round so don't requery the queue number but try again to register
+
+      state->opreq = MPI_REQUEST_NULL;
+
+      /* fall through */
+    }
+    case DART_GREQUEST_QUEUENUM:
+    {
+      if (state->opreq != MPI_REQUEST_NULL) {
+        int flag;
+        MPI_Test(&state->opreq, &flag, MPI_STATUS_IGNORE);
+        if (0 == flag) {
+          // come back later
+          return MPI_SUCCESS;
+        }
+      }
 
       // kick off registration
-      state->fused_op = fuse(1, state->flush_info->size);
+      state->fused_op = fuse(1, 0);
 
       // register as a writer
       MPI_Rget_accumulate(
-        &state->fused_op, 1, MPI_UINT64_T,
+        &state->fused_op,  1, MPI_UINT64_T,
         &state->fused_val, 1, MPI_UINT64_T,
         state->flush_info->target, OFFSET_WRITECNT(state->queuenum),
         1, MPI_UINT64_T, MPI_SUM, state->amsgq->queue_win, &state->opreq);
@@ -451,9 +501,6 @@ int grequest_poll_fn(void *data, MPI_Status *status)
     }
     case DART_GREQUEST_REGISTER:
     {
-      int target = state->flush_info->target;
-      MPI_Win queue_win = state->amsgq->queue_win;
-
       int flag;
       MPI_Test(&state->opreq, &flag, MPI_STATUS_IGNORE);
       if (0 == flag) {
@@ -462,47 +509,93 @@ int grequest_poll_fn(void *data, MPI_Status *status)
       }
 
       int64_t writecnt = first(state->fused_val);
-      int64_t offset   = second(state->fused_val);
+
       int64_t queuenum = state->queuenum;
+      int target = state->flush_info->target;
+
+      if (writecnt < 0) {
+        // queue is processing, go back to start
+        DART_LOG_TRACE("Queue %ld at %d processing, retrying (writecnt %ld)",
+                      queuenum, target, writecnt);
+
+        // kick off deregistration
+        MPI_Rget_accumulate(
+          &dereg_value,      1, MPI_UINT64_T,
+          &state->fused_val, 1, MPI_UINT64_T,
+          target, OFFSET_WRITECNT(queuenum),
+          1, MPI_UINT64_T, MPI_SUM, state->amsgq->queue_win, &state->opreq);
+
+        state->state = DART_GREQUEST_RETRY;
+        return MPI_SUCCESS;
+      }
+
+      int64_t offset = second(state->fused_val);
+      if ((offset + state->flush_info->size) > state->amsgq->queue_size) {
+        // queue is full, come back later
+
+        // the queue is full, reset the offset
+        DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld)",
+                      queuenum, target, offset);
+        // deregister as a writer
+        update_value(&dereg_value, target, OFFSET_WRITECNT(queuenum),
+                     state->amsgq->queue_win);
+
+        // we throw our hands up and mark the request as completed
+        state->state = DART_GREQUEST_FAILED;
+        MPI_Grequest_complete(state->req);
+        return MPI_SUCCESS;
+      }
+
+      // reserve a slot
+      state->fused_op = fuse(0, state->flush_info->size);
+      MPI_Rget_accumulate(
+        &state->fused_op, 1, MPI_UINT64_T,
+        &state->fused_val, 1, MPI_UINT64_T,
+        target, OFFSET_WRITECNT(queuenum),
+        1, MPI_UINT64_T, MPI_SUM, state->amsgq->queue_win, &state->opreq);
+
+      // that's it for this iteration
+      state->state = DART_GREQUEST_OFFSET;
+      return MPI_SUCCESS;
+    }
+    case DART_GREQUEST_OFFSET:
+    {
+      int flag;
+      MPI_Test(&state->opreq, &flag, MPI_STATUS_IGNORE);
+      if (0 == flag) {
+        // come back later
+        return MPI_SUCCESS;
+      }
+
+      int target = state->flush_info->target;
+      int64_t queuenum = state->queuenum;
+      MPI_Win queue_win = state->amsgq->queue_win;
+
+      int64_t offset   = second(state->fused_val);
+      int64_t writecnt = first(state->fused_val);
       int64_t msg_size = state->flush_info->size;
 
       DART_LOG_TRACE("Queue %ld at %d: writecnt %ld, offset %ld (fused_val %lu)",
                      queuenum, target, writecnt,
                      offset, state->fused_val);
 
-      bool do_complete = false;
+      // if the message does not fit we have to wait for the queue to be processed
+      if (!(offset >= 0 && (offset + msg_size) <= state->amsgq->queue_size)) {
 
-      do {
-        if (writecnt >= 0) {
-
-          // if the message fits we can start writing it
-          if (offset >= 0 && (offset + msg_size) <= state->amsgq->queue_size) break;
-
-          // the queue is full, reset the offset
-          DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld, writecnt %ld)",
-                        queuenum, target, offset, writecnt);
-          do_complete = true;
-        } else {
-          DART_LOG_TRACE("Queue %ld at %d processing, retrying (writecnt %ld)",
-                        queuenum, target, writecnt);
-        }
-        uint64_t writecnt_offset = fuse(-1, -msg_size);
+        // the queue is full, reset the offset
+        DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld)",
+                      queuenum, target, offset);
+        state->fused_op = fuse(-1, -msg_size);
         // deregister as a writer
-        update_value(&writecnt_offset, target, OFFSET_WRITECNT(queuenum), queue_win);
+        update_value(&state->fused_op, target, OFFSET_WRITECNT(queuenum), queue_win);
 
-        MPI_Win_flush_local(target, queue_win);
+        state->amsgq->needs_flush = true;
 
-        if (do_complete) {
-          // we throw our hands up and mark the request as completed
-          state->state = DART_GREQUEST_FAILED;
-          MPI_Grequest_complete(state->req);
-        } else {
-          // start again by querying the queuenum
-          initiate_queuenum_fetch(state);
-          state->state = DART_GREQUEST_QUEUENUM;
-        }
+        // we throw our hands up and mark the request as completed
+        state->state = DART_GREQUEST_FAILED;
+        MPI_Grequest_complete(state->req);
         return MPI_SUCCESS;
-      } while (0);
+      }
 
       // advance to next step
 
@@ -510,9 +603,6 @@ int grequest_poll_fn(void *data, MPI_Status *status)
                     msg_size, queuenum, offset, target);
 
       // Write our payload
-
-      DART_LOG_TRACE("MPI_Put into queue %ld offset %ld (%ld)",
-                    queuenum, offset, OFFSET_DATA(queuenum, state->amsgq->queue_size) + offset);
       MPI_Put(
         state->flush_info->data,
         msg_size,
@@ -540,10 +630,6 @@ int grequest_poll_fn(void *data, MPI_Status *status)
 
       // deregister as a writer
       update_value(&dereg_value, target, OFFSET_WRITECNT(queuenum), queue_win);
-
-      if (do_flush) {
-        MPI_Win_flush(target, queue_win);
-      }
 
       DART_LOG_TRACE("Sent message of size %zu to unit "
                     "%d starting at offset %ld",
@@ -607,6 +693,11 @@ dart_amsg_sopnop_sendbuf_all(
   }
 
   MPI_Waitall(num_info, reqs, MPI_STATUSES_IGNORE);
+
+  if (do_flush || amsgq->needs_flush) {
+    MPI_Win_flush_all(amsgq->queue_win);
+    amsgq->needs_flush = false;
+  }
 
   free(states);
 
@@ -675,7 +766,13 @@ amsg_sopnop_process_internal(
       int64_t newqueue       = (queuenum == 0) ? 1 :  0;
       int64_t queue_swap_sum = (queuenum == 0) ? 1 : -1;
 
-      const int64_t processing_signal = fuse(PROCESSING_SIGNAL, 0);
+      const int64_t processing_signal     = fuse( PROCESSING_SIGNAL, 0);
+      const int64_t neg_processing_signal = fuse(-PROCESSING_SIGNAL, -amsgq->prev_tailpos);
+
+      // reset the writecnt on the new queue
+      MPI_Accumulate(
+        &neg_processing_signal,    1, MPI_INT64_T, comm_rank,
+        OFFSET_WRITECNT(newqueue), 1, MPI_INT64_T, MPI_SUM, queue_win);
 
       // swap the queue number
       MPI_Fetch_and_op(
@@ -697,35 +794,12 @@ amsg_sopnop_process_internal(
         MPI_SUM,
         queue_win);
 
-      /*
-       * reset the writecnt on the new queue to release it
-       * NOTE: this is not strictly single_op_no_op anymore but it's necessary to
-       *       make sure that there are no race conditions (e.g., process A
-       *       trying to write to a processing queue, the queue being released,
-       *       process B starting the write to it and process A finally aborting
-       *       its attempt to write; in that case an already processed message
-       *       is re-read and the message by process B is lost).
-       *       Mixing fetch-op and cas should be fine on most systems.
-       */
-      const uint64_t zero  = 0;
-      int64_t fused_tmpval = 0;
-      const int64_t prev_processing_signal = fuse(PROCESSING_SIGNAL, amsgq->prev_tailpos);
       do {
-        if (fused_tmpval != prev_processing_signal) {
-          MPI_Compare_and_swap(
-            &zero,
-            &prev_processing_signal,
-            &fused_tmpval,
-            MPI_INT64_T,
-            comm_rank,
-            OFFSET_WRITECNT(newqueue),
-            queue_win);
-        }
-
         MPI_Win_flush(comm_rank, queue_win);
 
         writecnt = first(fused_val);
-        if (writecnt > 0) {
+        if (!(writecnt == 0 || writecnt == PROCESSING_SIGNAL)) {
+          /*
           MPI_Fetch_and_op(
             &tmp, // not relevant
             &fused_val,
@@ -734,9 +808,13 @@ amsg_sopnop_process_internal(
             OFFSET_WRITECNT(queuenum),
             MPI_NO_OP,
             queue_win);
+          */
+          // TODO: using get here to save on atomics, might have to change later
+          MPI_Get(&fused_val, 1, MPI_INT64_T, comm_rank,
+                  OFFSET_WRITECNT(queuenum), 1, MPI_UINT64_T, queue_win);
           // flush will happen in next iteration
         }
-      } while (fused_tmpval != prev_processing_signal || writecnt > 0);
+      } while (!(writecnt == 0 || writecnt == PROCESSING_SIGNAL));
 
       DART_ASSERT(queue_tmp == queuenum);
 
@@ -797,7 +875,7 @@ static dart_ret_t
 dart_amsg_sopnop_closeq(struct dart_amsgq_impl_data* amsgq)
 {
   // check for late messages
-  int64_t tailpos1, tailpos2;
+  int64_t tailpos1, tailpos2, writecnt1, writecnt2;
   uint64_t fused_val1, fused_val2;
   int     unitid = amsgq->comm_rank;
 
@@ -820,9 +898,11 @@ dart_amsg_sopnop_closeq(struct dart_amsgq_impl_data* amsgq)
   MPI_Win_flush_local(unitid, amsgq->queue_win);
 
   tailpos1 = second(fused_val1);
+  writecnt1 = first(fused_val1);
   tailpos2 = second(fused_val2);
+  writecnt2 = first(fused_val2);
 
-  if (tailpos1 > 0 || tailpos2 > 0) {
+  if ((writecnt1 >= 0 && tailpos1 > 0) || (writecnt2 >= 0 && tailpos2 > 0)) {
     DART_LOG_WARN("Cowardly refusing to invoke unhandled incoming active "
                   "messages upon shutdown (tailpos %d+%d)!", tailpos1, tailpos2);
   }
