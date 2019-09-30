@@ -445,10 +445,11 @@ namespace internal {
     auto g_begin = begin.global();
     auto u_begin = pattern.unit_at(g_begin.pos());
     auto g_end   = end.global();
-    auto u_end   = pattern.unit_at(g_end.pos());
+    auto u_end   = pattern.unit_at(g_end.pos() - 1);
     if (u_begin != u_end) {
-      DASH_LOG_ERROR("Cannot copy-in across unit boundaries: begin %d, end %d",
-                     u_begin, u_end);
+      DASH_LOG_ERROR("dash::tasks::copyin",
+                     "Cannot copy-in across unit boundaries: begin ",
+                     u_begin, ", end ", u_end);
     }
 #endif // DASH_DEBUG
     return TaskDependency(begin.dart_gptr(),
@@ -523,10 +524,11 @@ namespace internal {
     auto g_begin = begin.global();
     auto u_begin = pattern.unit_at(g_begin.pos());
     auto g_end   = end.global();
-    auto u_end   = pattern.unit_at(g_end.pos());
+    auto u_end   = pattern.unit_at(g_end.pos() - 1);
     if (u_begin != u_end) {
-      DASH_LOG_ERROR("Cannot copy-in across unit boundaries: begin %d, end %d",
-                     u_begin, u_end);
+      DASH_LOG_ERROR("dash::tasks::copyin",
+                     "Cannot copy-in across unit boundaries: begin ",
+                     u_begin, ", end ", u_end);
     }
 #endif // DASH_DEBUG
     if (begin.is_local()) {
