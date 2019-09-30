@@ -213,9 +213,6 @@ dart_amsg_trysend(
   dart_task_action_t remote_fn_ptr =
                         (dart_task_action_t)translate_fnptr(fn, target, amsgq);
 
-  DART_LOG_DEBUG("dart_amsg_trysend: u:%i t:%i translated fn:%p",
-                 target.id, amsgq->team, remote_fn_ptr);
-
   size_t msg_size = (sizeof(struct dart_amsg_header) + data_size);
 
   // assemble the message on the stack
@@ -229,6 +226,9 @@ dart_amsg_trysend(
   msg->header.msgid     = DART_FETCH_AND_INC32(&msgcnt);
 #endif
   memcpy(msg->data, data, data_size);
+
+  DART_LOG_DEBUG("dart_amsg_trysend: u:%i t:%i translated fn:%p id=%d",
+                 target.id, amsgq->team, remote_fn_ptr, msg->header.msgid);
 
   return amsgq_impl.trysend(target, amsgq->impl, msg, msg_size);
 }

@@ -173,9 +173,10 @@ void do_send(
   while (1) {
     int ret;
     if (direct_send) {
-      DART_LOG_TRACE("Sending op %p to unit %d to buffer", data, team_unit.id);
+      DART_LOG_TRACE("Sending op %p to unit %d directly", data, team_unit.id);
       ret = dart_amsg_trysend(team_unit, amsgq, fn, data, size);
     } else {
+      DART_LOG_TRACE("Sending op %p to unit %d to buffer", data, team_unit.id);
       ret = dart_amsg_buffered_send(team_unit, amsgq, fn, data, size);
     }
     if (ret == DART_OK) {
