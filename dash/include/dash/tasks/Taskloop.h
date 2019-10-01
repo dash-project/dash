@@ -3,6 +3,7 @@
 
 #include <dash/tasks/Tasks.h>
 #include <dash/tasks/internal/LambdaTraits.h>
+#include <dash/Exception.h>
 #include <dash/dart/if/dart_tasking.h>
 
 #include <atomic>
@@ -19,16 +20,17 @@ namespace tasks{
     template<typename IteratorT>
     size_t
     get_chunk_size(IteratorT begin, IteratorT end) {
-      size_t chunk_size = std::ceil(((float)dash::distance(begin, end)) / n);
+      size_t nelem = dash::distance(begin, end);
+      // round-up if necessary
+      size_t chunk_size = (nelem + n - 1) / n;
+
       return chunk_size ? chunk_size : 1;
     }
 
     template<typename IteratorT>
     size_t
-    get_num_chunks(IteratorT begin, IteratorT end) {
-      size_t num_chunks = std::ceil(((float)dash::distance(begin, end))
-                                                  / get_chunk_size(begin, end));
-      return num_chunks;
+    get_num_chunks(IteratorT, IteratorT) {
+      return n;
     }
 
 
@@ -39,7 +41,7 @@ namespace tasks{
 
   class chunk_size {
   public:
-    explicit chunk_size(size_t nc) : n{nc?nc:1}
+    explicit chunk_size(size_t cs) : n{cs?cs:1}
     { }
 
     template<typename IteratorT>
@@ -51,7 +53,9 @@ namespace tasks{
     template<typename IteratorT>
     size_t
     get_num_chunks(IteratorT begin, IteratorT end) {
-      size_t num_chunks = std::ceil(((float)dash::distance(begin, end)) / n);
+      size_t nelem = dash::distance(begin, end);
+      // round-up if necessary
+      size_t num_chunks = (nelem + n - 1) / n;
       return num_chunks;
     }
 
@@ -82,6 +86,8 @@ namespace internal {
   private:
     CountedFunction(const FunctionT& fn, int32_t cnt) : m_fn(fn), m_cnt(cnt)
     { }
+    ~CountedFunction() { }
+
   public:
 
     static
@@ -93,6 +99,7 @@ namespace internal {
     drop(void)
     {
       int32_t cnt = --m_cnt;
+      DASH_ASSERT(cnt >= 0);
       if (cnt == 0) {
         // once all references are gone we delete ourselves
         delete this;
