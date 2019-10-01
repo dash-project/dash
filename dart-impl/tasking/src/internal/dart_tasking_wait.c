@@ -45,6 +45,8 @@ dart_wait_handle_t *allocate_waithandle(int num_handle)
 static inline
 void release_waithandle(dart_wait_handle_t *waithandle)
 {
+  if (waithandle == NULL) return;
+
   DART_ASSERT_MSG(waithandle->num_handle > 0,
                   "Refusing to release empty waithandle!");
   if (waithandle->num_handle > WAIT_HANDLE_FREELIST_MAX_SIZE) {
@@ -280,6 +282,8 @@ dart__task__detach_handle(
 
   dart_task_t *task = dart__tasking__current_task();
 
+  DART_LOG_TRACE("Detaching task %p on %zu handles %p", task, num_handle, handles);
+
   // mark the task as detached
   dart__tasking__mark_detached(task);
 
@@ -298,6 +302,8 @@ dart__task__detach_handle(
 
     waithandle->num_handle    = num_nn_handles;
     task->wait_handle = waithandle;
+
+
   }
   return DART_OK;
 }
