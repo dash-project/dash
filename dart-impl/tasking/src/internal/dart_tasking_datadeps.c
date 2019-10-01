@@ -1282,6 +1282,22 @@ dart_tasking_datadeps_match_local_dependency(
           }
           elem->num_consumers--;
           task->unresolved_deps--;
+
+          // remove from owned deps
+          dart_dephash_elem_t *prev = NULL;
+          dart_dephash_elem_t *iter2;
+          for (iter2 = task->deps_owned; iter2 != NULL; iter2 = iter2->next_in_task) {
+            if (iter2 == iter) {
+              if (prev == NULL) {
+                task->deps_owned = iter2->next_in_task;
+              } else {
+                prev->next_in_task = iter2->next_in_task;
+              }
+            }
+            prev = iter2;
+          }
+          // done
+          break;
         }
         prev = iter;
       }
