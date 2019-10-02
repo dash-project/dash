@@ -1,3 +1,4 @@
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
@@ -18,6 +19,10 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_active_messages_priv.h>
+
+
+#ifdef DART_HAVE_MPI_EGREQ
+
 
 #ifdef OMPI_MAJOR_VERSION
 // forward declaration, not needed once we figure out how this works in OMPI
@@ -934,3 +939,14 @@ dart_amsg_sopnop4_init(dart_amsgq_impl_t* impl)
   impl->process_blocking = dart_amsg_sopnop_process_blocking;
   return DART_OK;
 }
+
+#else
+
+dart_ret_t
+dart_amsg_sopnop4_init(dart_amsgq_impl_t* impl)
+{
+  DART_LOG_ERROR("MPI is missing support for extended generalized requests!");
+  return DART_ERR_INVAL;
+}
+
+#endif // DART_HAVE_MPI_EGREQ

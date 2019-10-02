@@ -140,6 +140,9 @@ if (NOT DEFINED MPI_IMPL_ID)
     endif ()
   endif ()
 
+  # check support for extended generalized requests
+  check_mpi_compile(${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_mpi_egreq.c HAVE_MPI_EGREQ)
+
   # restore state
   cmake_pop_check_state()
 
@@ -165,6 +168,13 @@ if (NOT DEFINED MPI_IMPL_ID)
     set(MPI_IS_DART_COMPATIBLE TRUE CACHE BOOL
       "MPI LIB has support for MPI-3")
   endif()
+
+  if (HAVE_MPI_EGREQ)
+    set(MPI_COMPILE_FLAGS "${MPI_COMPILE_FLAGS} -DDART_HAVE_MPI_EGREQ")
+    message(STATUS "Found support for MPI extended generalized requests")
+  else()
+    message(STATUS "Missing support for MPI extended generalized requests")
+  endif(HAVE_MPI_EGREQ)
 
   set (CMAKE_C_COMPILER ${CMAKE_C_COMPILER_SAFE})
   set (MPI_INCLUDE_PATH ${MPI_INCLUDE_PATH}   CACHE STRING "MPI include path")
