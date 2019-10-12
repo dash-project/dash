@@ -1265,6 +1265,46 @@ dart_tasking_datadeps_match_local_dependency(
     if (elem != NULL) {
       int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                     &task->unresolved_deps);
+
+      // check if we already have an input dependency on that task and remove it
+      dart_dephash_elem_t *prev = NULL;
+      dart_dephash_elem_t *iter;
+      for (iter = elem->dep_list; iter != NULL; iter = iter->next) {
+        if (iter->task.local == task) {
+          DART_LOG_TRACE("Removing input dependency %p of task %p from output "
+                         "dependency %p of task %p",
+                         iter, task, elem, elem->task.local);
+          if (prev == NULL) {
+            // first element, replace head
+            elem->dep_list = iter->next;
+          } else {
+            prev->next = iter->next;
+          }
+          elem->num_consumers--;
+          task->unresolved_deps--;
+
+          // remove from owned deps
+          dart_dephash_elem_t *prev = NULL;
+          dart_dephash_elem_t *iter2;
+          for (iter2 = task->deps_owned; iter2 != NULL; iter2 = iter2->next_in_task) {
+            if (iter2 == iter) {
+              if (prev == NULL) {
+                task->deps_owned = iter2->next_in_task;
+              } else {
+                prev->next_in_task = iter2->next_in_task;
+              }
+            }
+            prev = iter2;
+          }
+          // done
+          break;
+        }
+        prev = iter;
+      }
+      if (iter != NULL) {
+        dephash_recycle_elem(iter);
+      }
+
       DART_LOG_TRACE("Making task %p a local successor of task %p in out dep %p"
                     "(num_deps: %i)",
                     task, elem->task.local, elem, unresolved_deps);
