@@ -1280,8 +1280,9 @@ dart_tasking_datadeps_match_local_dependency(
           } else {
             prev->next = iter->next;
           }
+          DART_DEC_AND_FETCH32(&task->unresolved_deps);
+          // mark consumer as gone (does not need to be protected)
           elem->num_consumers--;
-          task->unresolved_deps--;
 
           // remove from owned deps
           dart_dephash_elem_t *prev = NULL;
@@ -1293,6 +1294,7 @@ dart_tasking_datadeps_match_local_dependency(
               } else {
                 prev->next_in_task = iter2->next_in_task;
               }
+              break;
             }
             prev = iter2;
           }
