@@ -1262,43 +1262,57 @@ dart_tasking_datadeps_match_local_dependency(
       //UNLOCK_TASK(elem);
     }
   } else {
-    bool insert_outdep = true;
     if (elem != NULL) {
+      int32_t unresolved_deps = DART_INC_AND_FETCH32(
+                                    &task->unresolved_deps);
 
-      // check if we already have an input dependency on that task
+      // check if we already have an input dependency on that task and remove it
       dart_dephash_elem_t *prev = NULL;
       dart_dephash_elem_t *iter;
       for (iter = elem->dep_list; iter != NULL; iter = iter->next) {
         if (iter->task.local == task) {
-          /**
-           * We found a pair of tasks that have two dependencies between them: one IN, one OUT.
-           * The first one is an IN dep, the second one is an OUT dep.
-           * We do not insert the OUT dep as the IN dep is sufficient. The OUT dependency
-           * of the first task is only released after the IN dep has been resolved, i.e.,
-           * the second task has completed execution.
-           */
-          insert_outdep = false;
-          DART_LOG_TRACE("Ignoring OUT dependency %p of task %p after finding an "
-                         "IN %p dependency matching OUT dep %p of task %p already",
-                         dep, task, iter, elem, elem->task);
+          DART_LOG_TRACE("Removing input dependency %p of task %p from output "
+                         "dependency %p of task %p",
+                         iter, task, elem, elem->task.local);
+          if (prev == NULL) {
+            // first element, replace head
+            elem->dep_list = iter->next;
+          } else {
+            prev->next = iter->next;
+          }
+          elem->num_consumers--;
+          task->unresolved_deps--;
+
+          // remove from owned deps
+          dart_dephash_elem_t *prev = NULL;
+          dart_dephash_elem_t *iter2;
+          for (iter2 = task->deps_owned; iter2 != NULL; iter2 = iter2->next_in_task) {
+            if (iter2 == iter) {
+              if (prev == NULL) {
+                task->deps_owned = iter2->next_in_task;
+              } else {
+                prev->next_in_task = iter2->next_in_task;
+              }
+            }
+            prev = iter2;
+          }
+          // done
           break;
         }
         prev = iter;
       }
-      if (insert_outdep) {
-        int32_t unresolved_deps = DART_INC_AND_FETCH32(
-                                      &task->unresolved_deps);
-        DART_LOG_TRACE("Making task %p a local successor of task %p in out dep %p"
-                      "(num_deps: %i)",
-                      task, elem->task.local, elem, unresolved_deps);
+      if (iter != NULL) {
+        dephash_recycle_elem(iter);
       }
+
+      DART_LOG_TRACE("Making task %p a local successor of task %p in out dep %p"
+                    "(num_deps: %i)",
+                    task, elem->task.local, elem, unresolved_deps);
     } else {
       DART_LOG_TRACE("No previous out dependency for task %p", task);
     }
-    if (insert_outdep) {
-      // insert output dependency into the hash table
-      dephash_add_local_nolock(dep, task, slot);
-    }
+    // insert output dependency into the hash table
+    dephash_add_local_nolock(dep, task, slot);
   }
 
   UNLOCK_TASK(&parent->local_deps[slot]);
