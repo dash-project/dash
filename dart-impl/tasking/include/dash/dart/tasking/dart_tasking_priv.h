@@ -163,7 +163,7 @@ struct dart_task_data {
  * copyin tasks.
  * TODO: expose this to the user?
  */
-#define DART_PRIO_INLINE (__DART_PRIO_COUNT)
+#define DART_PRIO_INLINE (-__DART_PRIO_COUNT)
 
 typedef struct dart_taskqueue {
   size_t              num_elem;
