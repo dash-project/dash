@@ -783,7 +783,7 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
            local != NULL;
            local = local->next) {
         if (DEP_ADDR_EQ(local->dep, rdep->dep)) {
-          if (local->dep.phase == rdep->dep.phase) {
+          if (local->dep.phase == rdep->dep.phase && !local->is_dummy) {
             DART_LOG_ERROR(
               "Found conflicting dependencies on local memory address %p in "
               "phase %d: local OUT task %p ('%s'), remote IN from unit %d",
