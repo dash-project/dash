@@ -109,7 +109,7 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
 
 TEST_F(DARTMemAllocTest, SegmentReuseTest)
 {
-  const size_t block_size = 10*dash::size();
+  const size_t block_size = 10;
   dart_gptr_t gptr;
   ASSERT_EQ_U(
     DART_OK,
