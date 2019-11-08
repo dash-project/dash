@@ -91,6 +91,7 @@ enum {
   DART_AMSGQ_SOPNOP2,
   DART_AMSGQ_SOPNOP3,
   DART_AMSGQ_SOPNOP4,
+  DART_AMSGQ_SOPNOP5,
   DART_AMSGQ_SENDRECV,
   DART_AMSGQ_DUALWIN
 };
@@ -101,6 +102,7 @@ static struct dart_env_str2int env_vals[] = {
   {"sopnop2",    DART_AMSGQ_SOPNOP2},
   {"sopnop3",    DART_AMSGQ_SOPNOP3},
   {"sopnop4",    DART_AMSGQ_SOPNOP4},
+  {"sopnop4",    DART_AMSGQ_SOPNOP5},
   {"sendrecv",  DART_AMSGQ_SENDRECV},
   {"dualwin",  DART_AMSGQ_DUALWIN},
   {NULL, 0}
@@ -142,6 +144,10 @@ dart_amsg_init()
       break;
     case DART_AMSGQ_SOPNOP4:
       res = dart_amsg_sopnop4_init(&amsgq_impl);
+      DART_LOG_TRACE("Using same-op-no-op single-window active message queue");
+      break;
+    case DART_AMSGQ_SOPNOP5:
+      res = dart_amsg_sopnop5_init(&amsgq_impl);
       DART_LOG_TRACE("Using same-op-no-op single-window active message queue");
       break;
     case DART_AMSGQ_SENDRECV:
