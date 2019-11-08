@@ -994,7 +994,7 @@ dart_amsg_sopnop_closeq(struct dart_amsgq_impl_data* amsgq)
 
 
 dart_ret_t
-dart_amsg_sopnop4_init(dart_amsgq_impl_t* impl)
+dart_amsg_sopnop5_init(dart_amsgq_impl_t* impl)
 {
   impl->openq   = dart_amsg_sopnop_openq;
   impl->closeq  = dart_amsg_sopnop_closeq;
