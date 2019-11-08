@@ -783,7 +783,7 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
            local != NULL;
            local = local->next) {
         if (DEP_ADDR_EQ(local->dep, rdep->dep)) {
-          if (local->dep.phase == rdep->dep.phase) {
+          if (local->dep.phase == rdep->dep.phase && !local->is_dummy) {
             DART_LOG_ERROR(
               "Found conflicting dependencies on local memory address %p in "
               "phase %d: local OUT task %p ('%s'), remote IN from unit %d",
@@ -1179,17 +1179,14 @@ dart_tasking_datadeps_match_local_dependency(
 {
   dart_task_t *parent = task->parent;
 
-  // TODO: we cannot short-cut here because we need to store all local input
-  //       dependencies to match against remote input dependencies
-  //if (parent->local_deps == NULL) return DART_OK;
   dephash_require_alloc(parent);
 
   int slot;
   slot = hash_gptr(dep->gptr);
 
-  // lock task to make sure the hash table is consistent
-  // TODO: more fine-grained locking on bucket level
-  LOCK_TASK(&parent->local_deps[slot]);
+  dart_dephash_head_t* local_deps = parent->local_deps;
+
+  LOCK_TASK(&local_deps[slot]);
 
   DART_LOG_TRACE("Matching local dependency for task %p (off: %p, type:%d)",
                  task, dep->gptr.addr_or_offs.addr, dep->type);
@@ -1200,7 +1197,7 @@ dart_tasking_datadeps_match_local_dependency(
   */
   dart_dephash_elem_t *prev = NULL;
   dart_dephash_elem_t *elem = NULL;
-  for (elem = parent->local_deps[slot].head;
+  for (elem = local_deps[slot].head;
       elem != NULL; prev = elem, elem = elem->next)
   {
     DART_ASSERT_MSG(elem->prev == prev,
@@ -1269,38 +1266,62 @@ dart_tasking_datadeps_match_local_dependency(
       // check if we already have an input dependency on that task and remove it
       dart_dephash_elem_t *prev = NULL;
       dart_dephash_elem_t *iter;
-      for (iter = elem->dep_list; iter != NULL; iter = iter->next) {
-        if (iter->task.local == task) {
+      for (iter = task->deps_owned; iter != NULL; iter = iter->next_in_task) {
+        // dep_list points to the output dependency the IN dep refers to
+        if (iter->dep.type == DART_DEP_IN && iter->dep_list == elem) {
+
           DART_LOG_TRACE("Removing input dependency %p of task %p from output "
                          "dependency %p of task %p",
                          iter, task, elem, elem->task.local);
+          // found one, remove it from the task...
           if (prev == NULL) {
-            // first element, replace head
-            elem->dep_list = iter->next;
+            task->deps_owned = iter->next;
           } else {
             prev->next = iter->next;
           }
-          elem->num_consumers--;
-          task->unresolved_deps--;
 
-          // remove from owned deps
           dart_dephash_elem_t *prev = NULL;
           dart_dephash_elem_t *iter2;
-          for (iter2 = task->deps_owned; iter2 != NULL; iter2 = iter2->next_in_task) {
+          // ... and from the OUT dependency
+          for (iter2 = elem->dep_list; iter2 != NULL; iter2 = iter->next) {
             if (iter2 == iter) {
-              if (prev == NULL) {
-                task->deps_owned = iter2->next_in_task;
+              if (prev = NULL) {
+                elem->dep_list = iter2->next;
               } else {
-                prev->next_in_task = iter2->next_in_task;
+                prev->next = iter2->next;
               }
+              // done
+              break;
             }
             prev = iter2;
           }
+
+          DART_ASSERT_MSG(elem->dep_list == NULL || iter2 != NULL,
+                          "Found IN dependency %p in task %p that is not in list "
+                          "of OUT dep %p of task %p", iter, task,
+                          elem, elem->task.local);
+
+          // mark consumer as gone (does not need to be protected)
+          int nc = --(elem->num_consumers);
+          DART_ASSERT(nc >= 0);
+
+          if (elem->task.local != NULL) {
+            // if the task is already completed it has already marked that dependency
+            // as resolved, otherwise we need to release that dependency ourselves
+            unresolved_deps = DART_DEC_AND_FETCH32(&task->unresolved_deps);
+          } else if (nc == 0) {
+            // we were the last consumer on this dependency and the task has
+            // already completed so remove it from the slot
+            dephash_remove_dep_from_bucket_nolock(elem, local_deps, slot);
+            unresolved_deps = DART_DEC_AND_FETCH32(&task->unresolved_deps);
+          }
+
           // done
           break;
         }
         prev = iter;
       }
+
       if (iter != NULL) {
         dephash_recycle_elem(iter);
       }
@@ -1315,7 +1336,7 @@ dart_tasking_datadeps_match_local_dependency(
     dephash_add_local_nolock(dep, task, slot);
   }
 
-  UNLOCK_TASK(&parent->local_deps[slot]);
+  UNLOCK_TASK(&local_deps[slot]);
 
   return DART_OK;
 }

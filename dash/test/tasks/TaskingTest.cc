@@ -1,9 +1,12 @@
 #include "TaskingTest.h"
 
 #include <dash/tasks/Tasks.h>
+#include <dash/tasks/Taskloop.h>
 #include <dash/Array.h>
 #include <dash/Matrix.h>
 #include <dash/algorithm/Fill.h>
+
+#include <algorithm>
 
 #ifdef DASH_TEST_TASKSUPPORT
 
@@ -250,6 +253,59 @@ TEST_F(TaskingTest, RemoteDepsDoubleBufferStencil)
   for (int i = 0; i < num_elems_per_unit; ++i) {
     ASSERT_EQ_U(num_iter+myid, matrix2.local(0, i));
   }
+}
+
+
+TEST_F(TaskingTest, Taskloop)
+{
+  size_t nelem = 1000;
+  std::vector<uint64_t> vals(nelem);
+  std::fill(vals.begin(), vals.end(), 0);
+
+  dash::tasks::taskloop(vals.begin(), vals.end(),
+    [&](auto begin, auto end){
+      for (auto iter = begin; iter != end; iter++) {
+        *iter *= 2;
+      }
+    },
+    [&](auto begin, auto end, auto deps){
+      deps = dash::tasks::out(*begin);
+    });
+
+  dash::tasks::taskloop(vals.begin(), vals.end(),
+    [&](auto begin, auto end){
+      std::for_each(begin, end,
+                  [](uint64_t elem){ ASSERT_EQ_U(elem, 0); });
+    },
+    [&](auto begin, auto end, auto deps){
+      deps = dash::tasks::in(*begin);
+    });
+
+  dash::tasks::taskloop(vals.begin(), vals.end(),
+    [&](auto begin, auto end){
+      for (auto iter = begin; iter != end; iter++) {
+        *iter += 1;
+      }
+    },
+    [&](auto begin, auto end, auto deps){
+      deps = dash::tasks::out(*begin);
+    });
+
+  dash::tasks::taskloop(vals.begin(), vals.end(),
+    [&](auto begin, auto end){
+      for (auto iter = begin; iter != end; iter++) {
+        *iter -= 1;
+      }
+    },
+    [&](auto begin, auto end, auto deps){
+      deps = dash::tasks::out(*begin);
+    });
+
+  dash::tasks::complete();
+
+  std::for_each(vals.begin(), vals.end(),
+               [](uint64_t elem){ ASSERT_EQ_U(elem, 0); });
+
 }
 
 #endif // DASH_TEST_TASKSUPPORT
