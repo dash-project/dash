@@ -42,6 +42,29 @@ int ompi_grequestx_start(
   MPIX_Grequest_start(query_fn,free_fn,cancel_fn,poll_fn,NULL/*MPICH has an extra wait function*/,extra_state,request)
 #endif
 
+
+#define DART_STACK_PUSH(_head, _elem) \
+  DART_STACK_PUSH_MEMB(_head, _elem, next)
+
+#define DART_STACK_POP(_head, _elem) \
+  DART_STACK_POP_MEMB(_head, _elem, next)
+
+#define DART_STACK_PUSH_MEMB(_head, _elem, _memb) \
+  do {                                \
+    (_elem)->_memb = (_head);           \
+    (_head) = (_elem);                    \
+  } while (0)
+
+#define DART_STACK_POP_MEMB(_head, _elem, _memb) \
+  do {                               \
+    _elem = _head;                   \
+    if (_elem != NULL) {             \
+      _head = (_elem)->_memb;        \
+      (_elem)->_memb = NULL;         \
+    }                                \
+  } while (0)
+
+
 /* Setting the upper-most bit on the reader count signals processing */
 #define PROCESSING_SIGNAL (-((int32_t)1<<30))
 
@@ -81,6 +104,9 @@ struct dart_amsgq_impl_data {
   MPI_Comm          comm;
   dart_mutex_t      send_mutex;
   dart_mutex_t      processing_mutex;
+  struct dart_grequest_state *states;
+  MPI_Request      *reqs;
+  int              *outidx;
   int               comm_rank;
   int               prev_tailpos;
   bool              needs_flush;
@@ -98,15 +124,17 @@ enum {
 };
 
 struct dart_grequest_state {
-  uint64_t offset;                // the offset at which to write
-  uint64_t fused_val;             // values that holds fused reqistration/msgsize
-  uint64_t fused_op;              // values that holds fused reqistration/msgsize
-  uint64_t queuenum;              // the queue into which to write
-  int state;                      // where in the process we are
+  struct dart_grequest_state *next;     // linked list pointer
+  uint64_t offset;                      // the offset at which to write
+  uint64_t fused_val;                   // values that holds fused reqistration/msgsize
+  uint64_t fused_op;                    // values that holds fused reqistration/msgsize
+  uint64_t queuenum;                    // the queue into which to write
+  int      state;                       // where in the process we are
+  int      idx;                         // index in the allocated array
   struct dart_flush_info * flush_info;  // the flush information
   struct dart_amsgq_impl_data * amsgq;  // the amsgq to use
-  MPI_Request req;                // request to store the grequest in
-  MPI_Request opreq;              // request that can be used by operations
+  MPI_Request req;                      // request to store the grequest in
+  MPI_Request opreq;                    // request that can be used by operations
 };
 
 #ifdef DART_ENABLE_LOGGING
@@ -123,6 +151,8 @@ static       uint64_t dereg_value;
 
 static bool do_flush = true;
 static bool use_fetchop = false;
+
+static int pipeline_depth = 4;
 
 #define NUM_QUEUES                      2
 #define OFFSET_QUEUENUM                 0
@@ -270,6 +300,10 @@ dart_amsg_sopnop_openq(
   MPI_Info_free(&info);
 
   memset(res->queue_ptr, 0, win_size);
+
+  res->states = malloc(pipeline_depth * sizeof(struct dart_grequest_state));
+  res->reqs   = malloc(pipeline_depth * sizeof(MPI_Request));
+  res->outidx = malloc(pipeline_depth * sizeof(*res->outidx));
 
   // properly initialize the writecnt of the second queue
   *(int64_t*)(((intptr_t)res->queue_ptr) + OFFSET_WRITECNT(1)) = fuse(PROCESSING_SIGNAL, 0);
@@ -678,38 +712,60 @@ dart_amsg_sopnop_sendbuf_all(
   struct dart_flush_info      * flush_info,
   int                           num_info)
 {
-  // no locks needed, MPI will take care of it
+  dart__base__mutex_lock(&amsgq->send_mutex);
 
-  struct dart_grequest_state *states = malloc(num_info * sizeof(struct dart_grequest_state));
-  MPI_Request *reqs = malloc(num_info * sizeof(MPI_Request));
+
+  // put all elements into a lifo
+  struct dart_grequest_state *state_lifo = NULL;
+  for (int i = 0; i < pipeline_depth; ++i) {
+    amsgq->states[i].idx = i;
+    DART_STACK_PUSH(state_lifo, &amsgq->states[i]);
+  }
 
   //printf("dart_amsg_sopnop_sendbuf_all\n");
 
+  int num_active = 0;
+
   for (int i = 0; i < num_info; ++i) {
-    states[i].state = DART_GREQUEST_QUEUENUM;
-    states[i].flush_info = &flush_info[i];
-    states[i].amsgq = amsgq;
-    states[i].flush_info->status = 0;
+    struct dart_grequest_state *state = NULL;
+
+    do {
+      DART_STACK_POP(state_lifo, state);
+      if (NULL != state) break;
+      // wait for some operations to complete
+      int outcount;
+      MPI_Waitsome(num_active, amsgq->reqs, &outcount, amsgq->outidx, MPI_STATUSES_IGNORE);
+      num_active -= outcount;
+      for (int i = 0; i < outcount; ++i) {
+        DART_STACK_PUSH(state_lifo, &amsgq->states[amsgq->outidx[i]]);
+      }
+    } while (true);
+
+    state->state = DART_GREQUEST_QUEUENUM;
+    state->flush_info = &flush_info[i];
+    state->amsgq = amsgq;
+    state->flush_info->status = 0;
 
     // fetch queue number
-    initiate_queuenum_fetch(&states[i]);
+    initiate_queuenum_fetch(state);
     // hand the operation to MPI
     MPIX_Grequest_start(
       grequest_query_fn, grequest_free_fn,
       grequest_cancel_fn, grequest_poll_fn,
-      &states[i], &states[i].req);
-    reqs[i] = states[i].req;
+      state, &state->req);
+    amsgq->reqs[state->idx] = state->req;
+
+    ++num_active;
   }
 
-  MPI_Waitall(num_info, reqs, MPI_STATUSES_IGNORE);
+  MPI_Waitall(num_info, amsgq->reqs, MPI_STATUSES_IGNORE);
 
   if (do_flush || amsgq->needs_flush) {
     MPI_Win_flush_all(amsgq->queue_win);
     amsgq->needs_flush = false;
   }
 
-  free(states);
-  free(reqs);
+  dart__base__mutex_unlock(&amsgq->send_mutex);
 
   return DART_OK;
 }
@@ -926,6 +982,10 @@ dart_amsg_sopnop_closeq(struct dart_amsgq_impl_data* amsgq)
 
   dart__base__mutex_destroy(&amsgq->send_mutex);
   dart__base__mutex_destroy(&amsgq->processing_mutex);
+
+  free(amsgq->outidx);
+  free(amsgq->states);
+  free(amsgq->reqs);
 
   free(amsgq);
 
