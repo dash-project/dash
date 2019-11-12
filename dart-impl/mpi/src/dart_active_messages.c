@@ -33,12 +33,22 @@
  */
 #define DART_AMSGQ_SIZE_ENVSTR  "DART_AMSGQ_SIZE"
 
-#define MSGCACHE_SIZE (4*1024)
+/**
+ * Name of the environment variable specifying the maximum size of a message
+ * sent in the active message queue.
+ *
+ * Type: integral value with optional B, K, M, G qualifier.
+ * Default: 4096B
+ */
+#define DART_AMSGQ_MSGSIZE_ENVSTR  "DART_AMSGQ_MSGSIZE"
+
+#define DEFAULT_MSGCACHE_SIZE (4*1024)
 
 static bool initialized          = false;
 static bool needs_translation    = false;
 static intptr_t *offsets         = NULL;
 static size_t msgq_size_override = 0;
+static size_t msgq_msgsize = DEFAULT_MSGCACHE_SIZE;
 
 typedef struct cached_message_s cached_message_t;
 typedef struct message_cache_s  message_cache_t;
@@ -62,6 +72,7 @@ struct dart_amsgq {
   size_t                        team_size;
   dart_team_t                   team;
   message_cache_t             **message_cache;
+  struct dart_flush_info       *flush_info;
 };
 
 static dart_amsgq_impl_t amsgq_impl = {NULL, NULL, NULL, NULL, NULL};
@@ -77,6 +88,10 @@ static inline dart_ret_t exchange_fnoffsets();
 enum {
   DART_AMSGQ_SINGLEWIN,
   DART_AMSGQ_SOPNOP,
+  DART_AMSGQ_SOPNOP2,
+  DART_AMSGQ_SOPNOP3,
+  DART_AMSGQ_SOPNOP4,
+  DART_AMSGQ_SOPNOP5,
   DART_AMSGQ_SENDRECV,
   DART_AMSGQ_DUALWIN
 };
@@ -84,6 +99,10 @@ enum {
 static struct dart_env_str2int env_vals[] = {
   {"singlewin", DART_AMSGQ_SINGLEWIN},
   {"sopnop",    DART_AMSGQ_SOPNOP},
+  {"sopnop2",    DART_AMSGQ_SOPNOP2},
+  {"sopnop3",    DART_AMSGQ_SOPNOP3},
+  {"sopnop4",    DART_AMSGQ_SOPNOP4},
+  {"sopnop4",    DART_AMSGQ_SOPNOP5},
   {"sendrecv",  DART_AMSGQ_SENDRECV},
   {"dualwin",  DART_AMSGQ_DUALWIN},
   {NULL, 0}
@@ -92,6 +111,11 @@ static struct dart_env_str2int env_vals[] = {
 #ifdef DART_ENABLE_LOGGING
 static uint32_t msgcnt = 0;
 #endif // DART_ENABLE_LOGGING
+
+
+static
+dart_ret_t
+flush_buffer_all(dart_amsgq_t amsgq, bool blocking);
 
 dart_ret_t
 dart_amsg_init()
@@ -108,6 +132,22 @@ dart_amsg_init()
       break;
     case DART_AMSGQ_SOPNOP:
       res = dart_amsg_sopnop_init(&amsgq_impl);
+      DART_LOG_TRACE("Using same-op-no-op single-window active message queue");
+      break;
+    case DART_AMSGQ_SOPNOP2:
+      res = dart_amsg_sopnop2_init(&amsgq_impl);
+      DART_LOG_TRACE("Using same-op-no-op single-window active message queue");
+      break;
+    case DART_AMSGQ_SOPNOP3:
+      res = dart_amsg_sopnop3_init(&amsgq_impl);
+      DART_LOG_TRACE("Using same-op-no-op single-window active message queue");
+      break;
+    case DART_AMSGQ_SOPNOP4:
+      res = dart_amsg_sopnop4_init(&amsgq_impl);
+      DART_LOG_TRACE("Using same-op-no-op single-window active message queue");
+      break;
+    case DART_AMSGQ_SOPNOP5:
+      res = dart_amsg_sopnop5_init(&amsgq_impl);
       DART_LOG_TRACE("Using same-op-no-op single-window active message queue");
       break;
     case DART_AMSGQ_SENDRECV:
@@ -128,6 +168,7 @@ dart_amsg_init()
   }
 
   msgq_size_override = dart__base__env__size(DART_AMSGQ_SIZE_ENVSTR, 0);
+  msgq_msgsize       = dart__base__env__size(DART_AMSGQ_MSGSIZE_ENVSTR, DEFAULT_MSGCACHE_SIZE);
 
   res = exchange_fnoffsets();
 
@@ -141,18 +182,30 @@ dart_amsg_openq(
   dart_team_t team,
   dart_amsgq_t * queue)
 {
+  dart_ret_t ret;
   size_t team_size;
   dart_team_size(team, &team_size);
-  *queue = malloc(sizeof(struct dart_amsgq));
-  (*queue)->team = team;
-  (*queue)->team_size = team_size;
-  (*queue)->message_cache = calloc(team_size, sizeof(message_cache_t*));
-  dart__base__mutex_init(&(*queue)->mutex);
-  return amsgq_impl.openq(
-                  MSGCACHE_SIZE,
+  dart_amsgq_t q = malloc(sizeof(struct dart_amsgq));
+  q->team = team;
+  q->team_size = team_size;
+  q->message_cache = calloc(team_size, sizeof(message_cache_t*));
+  dart__base__mutex_init(&q->mutex);
+
+  ret = amsgq_impl.openq(
+                  msgq_msgsize,
                   msgq_size_override ? msgq_size_override : msg_count,
                   team,
-                  &(*queue)->impl);
+                  &(q->impl));
+
+  if (amsgq_impl.trysend_all) {
+    q->flush_info = malloc(team_size*sizeof(struct dart_flush_info));
+  } else {
+    q->flush_info = NULL;
+  }
+
+  *queue = q;
+
+  return ret;
 }
 
 dart_ret_t
@@ -165,9 +218,6 @@ dart_amsg_trysend(
 {
   dart_task_action_t remote_fn_ptr =
                         (dart_task_action_t)translate_fnptr(fn, target, amsgq);
-
-  DART_LOG_DEBUG("dart_amsg_trysend: u:%i t:%i translated fn:%p",
-                 target.id, amsgq->team, remote_fn_ptr);
 
   size_t msg_size = (sizeof(struct dart_amsg_header) + data_size);
 
@@ -182,6 +232,9 @@ dart_amsg_trysend(
   msg->header.msgid     = DART_FETCH_AND_INC32(&msgcnt);
 #endif
   memcpy(msg->data, data, data_size);
+
+  DART_LOG_DEBUG("dart_amsg_trysend: u:%i t:%i translated fn:%p id=%d",
+                 target.id, amsgq->team, remote_fn_ptr, msg->header.msgid);
 
   return amsgq_impl.trysend(target, amsgq->impl, msg, msg_size);
 }
@@ -252,7 +305,7 @@ dart_amsg_buffered_send(
   if (amsgq->message_cache[target.id] == NULL) {
     dart__base__mutex_lock(&amsgq->mutex);
     if (amsgq->message_cache[target.id] == NULL) {
-      cache = malloc(sizeof(message_cache_t) + MSGCACHE_SIZE);
+      cache = malloc(sizeof(message_cache_t) + msgq_msgsize);
       cache->pos           = 0;
       pthread_rwlock_init(&cache->mutex, NULL);
       amsgq->message_cache[target.id] = cache;
@@ -269,33 +322,40 @@ dart_amsg_buffered_send(
   int size_required = sizeof(cached_message_t) + data_size;
   pthread_rwlock_rdlock(&cache->mutex);
   int pos = DART_FETCH_AND_ADD32(&cache->pos, size_required);
-  while ((pos + size_required) > MSGCACHE_SIZE) {
+  while ((pos + size_required) > msgq_msgsize) {
     // revert reservation
     DART_FETCH_AND_ADD32(&cache->pos, -size_required);
     pthread_rwlock_unlock(&cache->mutex);
-    // try to get a writelock
-    pthread_rwlock_wrlock(&cache->mutex);
-    // check whether we still need to flush
-    if (cache->pos + size_required > MSGCACHE_SIZE) {
-      // we got a write-lock, go to flush the buffer
-      dart_ret_t ret;
-      do {
-        DART_LOG_TRACE("Flushing buffer to %d", target.id);
-        ret = amsgq_impl.trysend(target, amsgq->impl, cache->buffer, cache->pos);
-        if (DART_ERR_AGAIN == ret) {
-          // try to process our messages while waiting for the other side
-          amsgq_impl.process(amsgq->impl);
-        } else if (ret != DART_OK) {
-          pthread_rwlock_unlock(&cache->mutex);
-          DART_LOG_ERROR("Failed to flush message cache!");
-          return ret;
-        }
-      } while (ret != DART_OK);
-      // reset position
-      cache->pos = 0;
+
+    // if the implementation provides an efficient to flush the whole buffer
+    // we flush all buffers to avoid serializing flushes
+    if (amsgq->flush_info != NULL) {
+      flush_buffer_all(amsgq, false);
+    } else {
+      // try to get a writelock
+      pthread_rwlock_wrlock(&cache->mutex);
+      // check whether we still need to flush
+      if (cache->pos + size_required > msgq_msgsize) {
+        // we got a write-lock, go to flush the buffer
+        dart_ret_t ret;
+        do {
+          DART_LOG_TRACE("Flushing buffer to %d", target.id);
+          ret = amsgq_impl.trysend(target, amsgq->impl, cache->buffer, cache->pos);
+          if (DART_ERR_AGAIN == ret) {
+            // try to process our messages while waiting for the other side
+            amsgq_impl.process(amsgq->impl);
+          } else if (ret != DART_OK) {
+            pthread_rwlock_unlock(&cache->mutex);
+            DART_LOG_ERROR("Failed to flush message cache!");
+            return ret;
+          }
+        } while (ret != DART_OK);
+        // reset position
+        cache->pos = 0;
+      }
+      // release write lock and take the readlock again
+      pthread_rwlock_unlock(&cache->mutex);
     }
-    // release write lock and take the readlock again
-    pthread_rwlock_unlock(&cache->mutex);
     pthread_rwlock_rdlock(&cache->mutex);
     pos = DART_FETCH_AND_ADD32(&cache->pos, size_required);
   }
@@ -314,9 +374,99 @@ dart_amsg_buffered_send(
   return DART_OK;
 }
 
+static
+dart_ret_t
+flush_buffer_all(dart_amsgq_t amsgq, bool blocking)
+{
+  int comm_size = amsgq->team_size;
+
+  // prevent other threads from interfering
+  dart__base__mutex_lock(&amsgq->mutex);
+
+  struct dart_flush_info *flush_info = amsgq->flush_info;
+  int num_info = 0;
+
+  for (int target = 0; target < comm_size; ++target) {
+    message_cache_t *cache = amsgq->message_cache[target];
+    if (cache != NULL) {
+      if (cache->pos > 0 || blocking) {
+        pthread_rwlock_wrlock(&cache->mutex);
+
+        if (cache->pos == 0) {
+          // mpf, someone else processed that cache already
+          pthread_rwlock_unlock(&cache->mutex);
+          continue;
+        }
+
+        flush_info[num_info].data = cache->buffer;
+        flush_info[num_info].size = cache->pos;
+        flush_info[num_info].target = target;
+        ++num_info;
+      }
+    }
+  }
+
+  while (num_info > 0) {
+    dart_ret_t ret;
+    ret = amsgq_impl.trysend_all(amsgq->impl, flush_info, num_info);
+
+    int num_complete = 0;
+    for (int i = 0; i < num_info; ++i) {
+      message_cache_t *cache = amsgq->message_cache[flush_info[i].target];
+      if (flush_info[i].status != 0) {
+        ++num_complete;
+        cache->pos = 0;
+      }
+      // unlock the cache
+      pthread_rwlock_unlock(&cache->mutex);
+    }
+
+    if (num_info == num_complete) break;
+
+    // progress incoming messages and try again
+    amsgq_impl.process(amsgq->impl);
+
+    for (int i = 0; i < num_info; ++i) {
+      if (flush_info[i].status == 0) {
+        message_cache_t *cache = amsgq->message_cache[flush_info[i].target];
+        // retake lock on the cache
+        if (cache->pos > 0 || blocking) {
+          pthread_rwlock_wrlock(&cache->mutex);
+
+          if (cache->pos == 0) {
+            // mpf, someone else processed that cache already
+            pthread_rwlock_unlock(&cache->mutex);
+            --num_info;
+            continue;
+          }
+        }
+        // move the entry to the front
+        for (int j = 0; j < i; ++j) {
+          if (flush_info[j].status != 0) {
+            // this one is complete, so re-use its slot
+            flush_info[j] = flush_info[i];
+            break;
+          }
+        }
+      } else {
+        --num_info;
+      }
+    }
+    DART_ASSERT(num_info >= 0);
+  }
+
+  dart__base__mutex_unlock(&amsgq->mutex);
+  return DART_OK;
+}
+
+
 dart_ret_t
 flush_buffer(dart_amsgq_t amsgq, bool blocking)
 {
+  if (amsgq->flush_info != NULL) {
+    return flush_buffer_all(amsgq, blocking);
+  }
+
   int comm_size = amsgq->team_size;
 
   for (int target = 0; target < comm_size; ++target) {
@@ -336,6 +486,7 @@ flush_buffer(dart_amsgq_t amsgq, bool blocking)
         do {
           ret = amsgq_impl.trysend(t, amsgq->impl, cache->buffer, cache->pos);
           if (DART_ERR_AGAIN == ret) {
+            // TODO: this has the potential to deadlock as a message may trigger outgoing messages!
             amsgq_impl.process(amsgq->impl);
           } else if (ret != DART_OK) {
             DART_LOG_ERROR("Failed to flush message cache!");
@@ -351,6 +502,7 @@ flush_buffer(dart_amsgq_t amsgq, bool blocking)
 
   return DART_OK;
 }
+
 
 dart_ret_t
 dart_amsg_flush_buffer(dart_amsgq_t amsgq)

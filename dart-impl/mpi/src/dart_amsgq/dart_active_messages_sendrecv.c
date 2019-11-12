@@ -469,28 +469,30 @@ dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
     MPI_Waitall(amsgq->msg_count, amsgq->send_reqs, MPI_STATUSES_IGNORE);
   }
 
-  int outcount = 0;
-  MPI_Testsome(
-    amsgq->msg_count, amsgq->recv_reqs, &outcount,
-    amsgq->recv_outidx, MPI_STATUSES_IGNORE);
-
-  if (outcount) {
-    DART_LOG_WARN("Cowardly refusing to invoke %d unhandled incoming active "
-                  "messages upon shutdown!", outcount);
-  }
-
-
-  if (!amsgq->direct_send) {
-    for (int i = 0; i < amsgq->msg_count; ++i) {
-      if (amsgq->recv_reqs[i] != MPI_REQUEST_NULL) {
-        MPI_Request_free(&amsgq->recv_reqs[i]);
+  for (int i = 0; i < amsgq->msg_count; ++i) {
+    if (amsgq->recv_reqs[i] != MPI_REQUEST_NULL) {
+      int flag;
+      MPI_Test(&amsgq->recv_reqs[i], &flag, MPI_STATUS_IGNORE);
+      if (flag) {
+        DART_LOG_WARN("Cowardly refusing to invoke unhandled incoming active "
+                      "messages upon shutdown!");
+      } else {
+        // cancel the request
+        MPI_Cancel(&amsgq->recv_reqs[i]);
       }
-      free(amsgq->recv_bufs[i]);
-      free(amsgq->send_bufs[i]);
+      // free the request
+      MPI_Request_free(&amsgq->recv_reqs[i]);
     }
+    free(amsgq->recv_bufs[i]);
+    if (!amsgq->direct_send) {
+      free(amsgq->send_bufs[i]);
+      free(amsgq->send_reqs[i]);
+    }
+  }
+  if (!amsgq->direct_send) {
     free(amsgq->send_bufs);
-    free(amsgq->send_outidx);
     free(amsgq->send_reqs);
+    free(amsgq->send_outidx);
   }
 
   free(amsgq->recv_bufs);

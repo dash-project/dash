@@ -89,7 +89,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_MEMKIND=ON \
                         \
                         -DBUILD_EXAMPLES=ON \
-                        -DBUILD_TESTS=OFF \
+                        -DBUILD_TESTS=ON \
                         -DBUILD_DOCS=ON \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \

@@ -39,6 +39,25 @@ static void msg_fn(void *data)
 }
 
 void
+benchmark_poll(dart_amsgq_t amsgq, size_t num_reps)
+{
+  Timer t;
+
+  if (dash::myid() == 0) {
+    for (size_t rep = 0; rep < num_reps; ++rep) {
+      dart_amsg_process(amsgq);
+    }
+    auto elapsed = t.Elapsed();
+    std::cout << "poll:num_msg:" << num_reps
+              << ":avg:" << elapsed / num_reps
+              << "us:total:" << elapsed << "us"
+              << std::endl;
+  }
+
+  dash::barrier();
+}
+
+void
 benchmark_amsgq_root(dart_amsgq_t amsgq, size_t num_msg,
                      size_t size, bool buffered)
 {
@@ -159,6 +178,51 @@ benchmark_amsgq_alltoall(dart_amsgq_t amsgq, size_t num_msg,
 }
 
 
+void
+benchmark_amsgq_scatter(dart_amsgq_t amsgq, size_t num_msg,
+                         size_t size, bool buffered)
+{
+  dart_team_unit_t target = next_target(dash::Team::All().myid());
+  dart_team_unit_t first_target = target;
+  void *buf = calloc(size, sizeof(char));
+  Timer t;
+
+  for (size_t i = 0; i < num_msg; ++i) {
+    dart_ret_t ret;
+
+    // flush if we sent one message to each peer
+    if (i > 0 && target.id == first_target.id) {
+      dart_amsg_flush_buffer(amsgq);
+    }
+
+    while ((ret = dart_amsg_buffered_send(target, amsgq, &msg_fn, buf, size)) != DART_OK) {
+      if (ret == DART_ERR_AGAIN) {
+        dart_amsg_process(amsgq);
+        // try again
+      } else {
+        std::cerr << "ERROR: Failed to send active message!" << std::endl;
+        dart_abort(-6);
+      }
+    }
+    target = next_target(target);
+  }
+  // wait for all messages to complete
+  dart_amsg_process_blocking(amsgq, DART_TEAM_ALL);
+
+  if (dash::myid() == 0) {
+    auto elapsed = t.Elapsed();
+    size_t total_msg = msg_recv*dash::size();
+    std::cout << "scatter:num_msg:" << total_msg
+              << ":" << (buffered ? "buffered" : "direct")
+              << ":msg:" << size
+              << ":avg:" << elapsed / total_msg
+              << "us:total:" << elapsed << "us"
+              << std::endl;
+  }
+
+  free(buf);
+}
+
 int main(int argc, char** argv)
 {
   // initialize MPI without thread-support, not needed
@@ -178,9 +242,10 @@ int main(int argc, char** argv)
   // warm up
   benchmark_amsgq_alltoall(amsgq, params.num_msgs, params.size, params.buffered);
   msg_recv = 0;
+  size_t expected_num_msg;
 
   // root with empty message
-  size_t expected_num_msg = params.num_msgs*(dash::size()-1);
+  expected_num_msg = params.num_msgs*(dash::size()-1);
   for (int i = 0; i < params.num_reps; i++) {
     benchmark_amsgq_root(amsgq, params.num_msgs, 0, false);
     if (dash::myid() == 0 && msg_recv != expected_num_msg) {
@@ -196,6 +261,21 @@ int main(int argc, char** argv)
     if (dash::myid() == 0 && msg_recv != expected_num_msg) {
       std::cout << "WARN: expected " << expected_num_msg << " messages but saw " << msg_recv << std::endl;
     }
+    msg_recv = 0;
+  }
+
+  // scatter
+  expected_num_msg = params.num_msgs;
+  for (int i = 0; i < params.num_reps; i++) {
+    benchmark_amsgq_scatter(amsgq, params.num_msgs, params.size, params.buffered);
+    if (dash::myid() == 0 && msg_recv != expected_num_msg) {
+      std::cout << "WARN: expected " << expected_num_msg << " messages but saw " << msg_recv << std::endl;
+    }
+    msg_recv = 0;
+  }
+
+  for (int i = 0; i < params.num_reps; i++) {
+    benchmark_poll(amsgq, params.num_msgs);
     msg_recv = 0;
   }
 

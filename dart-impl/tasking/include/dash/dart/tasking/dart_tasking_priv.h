@@ -23,8 +23,8 @@ struct task_list;
 #define HAVE_RESCHEDULING_YIELD 1
 #endif // USE_UCONTEXT
 
-// disable re-use of objects, can help in debugging
-//#define DART_TASKING_DONOT_REUSE
+// define to malloc/free all objects and not reuse them
+//#define DART_TASKING_NOMEMPOOL
 
 typedef enum {
   DART_TASK_ROOT     = -1, // special state assigned to the root task
@@ -74,6 +74,7 @@ struct task_deque{
   dart_task_t * tail;
 };
 
+typedef struct dart_thread dart_thread_t;
 
 struct dart_task_data {
   union {
@@ -90,7 +91,7 @@ struct dart_task_data {
   int8_t                     state;           // one of dart_task_state_t, single byte sufficient
   dart_tasklock_t            lock;
   struct task_list          *successor;       // the list of tasks that depend on this task
-  dart_dephash_elem_t       *remote_successor;
+  dart_dephash_elem_t       *remote_successor;// the list of dependencies from remote tasks directly dependending on this task
   struct dart_task_data     *parent;          // the task that created this task
   // TODO: pack using pahole, move all execution-specific fields into context
   context_t                 *taskctx;         // context to start/resume task
@@ -121,9 +122,11 @@ struct dart_task_data {
   const char                *descr;           // the description of the task
   dart_taskphase_t           phase;
   int                        num_children;
+  int16_t                    owner;           // the thread owning the task object memory
 #ifdef DART_DEBUG
   task_list_t              * children;  // list of child tasks
 #endif //DART_DEBUG
+  unsigned char              inline_data[DART_TASKING_INLINE_DATA_SIZE]; // inline data passed to the action
 };
 
 #define DART_STACK_PUSH(_head, _elem) \
@@ -160,7 +163,7 @@ struct dart_task_data {
  * copyin tasks.
  * TODO: expose this to the user?
  */
-#define DART_PRIO_INLINE (__DART_PRIO_COUNT)
+#define DART_PRIO_INLINE (-__DART_PRIO_COUNT)
 
 typedef struct dart_taskqueue {
   size_t              num_elem;
@@ -168,9 +171,10 @@ typedef struct dart_taskqueue {
   dart_mutex_t        mutex;
 } dart_taskqueue_t;
 
+/* Number of tasks queued inside a thread */
 #define THREAD_QUEUE_SIZE 16
 
-typedef struct {
+struct dart_thread {
   dart_task_t           * current_task;
   dart_task_t           * queue[THREAD_QUEUE_SIZE]; // array of tasks short-cut
   dart_task_t           * next_task;                // pointer to the next task executed in a yield
@@ -185,7 +189,8 @@ typedef struct {
   int8_t                  numa_id;
   bool                    is_utility_thread; // whether the thread is a worker or utility thread
   double                  last_progress_ts;  // the timestamp of the last remote progress call
-} dart_thread_t;
+  int                     last_steal_thread_id;  // the timestamp of the last remote progress call
+};
 
 dart_ret_t
 dart__tasking__init() DART_INTERNAL;

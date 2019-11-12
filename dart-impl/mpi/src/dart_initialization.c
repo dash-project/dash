@@ -13,6 +13,7 @@
 #include <dash/dart/if/dart_team_group.h>
 
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/env.h>
 #include <dash/dart/tasking/dart_tasking_init.h>
 #include <dash/dart/mpi/dart_mpi_util.h>
 #include <dash/dart/mpi/dart_mem.h>
@@ -24,6 +25,15 @@
 #include <dash/dart/mpi/dart_active_messages_priv.h>
 
 #define DART_LOCAL_ALLOC_SIZE (1024UL*1024*16)
+
+/**
+ * Name of environment variable controling whether MPI should be initialized
+ * using MPI_Init_threads (default) or MPI_Init (if true).
+ *
+ * Type: boolean
+ * Default: false
+ */
+#define DART_MPI_NOTHREAD_INIT_ENVSTR "DART_MPI_NOTHREAD_INIT"
 
 /* Point to the base address of memory region for local allocation. */
 static int _init_by_dart = 0;
@@ -271,15 +281,21 @@ dart_ret_t dart_init_thread(
     _init_by_dart = 1;
     DART_LOG_DEBUG("dart_init: MPI_Init");
 #if defined(DART_ENABLE_THREADSUPPORT)
-    int thread_required = MPI_THREAD_MULTIPLE;
-    MPI_Init_thread(argc, argv, thread_required, &thread_provided);
-    DART_LOG_DEBUG("MPI_Init_thread provided = %i", thread_provided);
-    if (thread_provided != MPI_THREAD_MULTIPLE) {
-      dart_global_unit_t uid;
-      dart_myid(&uid);
-      if (uid.id == 0) {
-        DART_LOG_WARN("DART compiled with thread-support but MPI failed to "
-                      "provide MPI_THREAD_MULTIPLE during init!");
+    if (dart__base__env__bool(DART_MPI_NOTHREAD_INIT_ENVSTR, false)) {
+      DART_LOG_DEBUG("Initialization without threads requested through %s",
+                     DART_MPI_NOTHREAD_INIT_ENVSTR);
+      MPI_Init(argc, argv);
+    } else {
+      int thread_required = MPI_THREAD_MULTIPLE;
+      MPI_Init_thread(argc, argv, thread_required, &thread_provided);
+      DART_LOG_DEBUG("MPI_Init_thread provided = %i", thread_provided);
+      if (thread_provided != MPI_THREAD_MULTIPLE) {
+        dart_global_unit_t uid;
+        dart_myid(&uid);
+        if (uid.id == 0) {
+          DART_LOG_WARN("DART compiled with thread-support but MPI failed to "
+                        "provide MPI_THREAD_MULTIPLE during init!");
+        }
       }
     }
   } else {
@@ -320,12 +336,12 @@ dart_ret_t dart_exit()
   dart_global_unit_t unitid;
   dart_myid(&unitid);
 
-  dart_amsgq_fini();
-
   dart__mpi__locality_finalize();
 
   if (_dart_task_initialized && dart_tasking_fini)
     dart_tasking_fini();
+
+  dart_amsgq_fini();
 
   _dart_initialized = 0;
 

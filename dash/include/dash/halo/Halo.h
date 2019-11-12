@@ -1217,7 +1217,7 @@ public:
    * \see DashGlobalIteratorConcept
    */
   pattern_index_t gpos() const {
-    return _pattern->memory_layout().at(glob_coords(_idx));
+    return _pattern->global_at(glob_coords(_idx));
   }
 
   std::array<pattern_index_t, NumDimensions> gcoords() const {
@@ -1348,7 +1348,7 @@ private:
 
   std::array<pattern_index_t, NumDimensions> glob_coords(
     pattern_index_t idx) const {
-    return _pattern->memory_layout().coords(idx, _region_view);
+    return _pattern->coords(idx, _region_view);
   }
 
 private:

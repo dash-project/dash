@@ -199,10 +199,10 @@ int main(int argc, char *argv[])
   // TODO: combine all corner elements into one task
   DEBUGOUT << "pattern.local_extent(0): " << pattern.local_extent(0) << std::endl;
   const std::map<int, std::vector<long>> halo_boundary_offsets = {
-                                                {1, {0, 1, pattern.local_extent(0)-1}}, // N depends on the row and both corners
-                                                {3, {0, 1, pattern.local_extent(0)-1}}, // W only requires the column without the corners
-                                                {5, {0, 1, pattern.local_extent(0)-1}}, // E only requires the column without the corners
-                                                {7, {0, 1, pattern.local_extent(0)-1}}, // S depends on the row and both corners
+                                                {1, {0, 1, pattern.local_extent(1)-1}}, // N depends on the row and both corners
+                                                {3, {0, 1, pattern.local_extent(0)-1}}, // W depends on the column and both corners
+                                                {5, {0, 1, pattern.local_extent(0)-1}}, // E depends on the column and both corners
+                                                {7, {0, 1, pattern.local_extent(1)-1}}, // S depends on the row and both corners
   };
 
   constexpr const auto max_idx = dash::halo::RegionCoords<2>::NumRegionsMax;
@@ -384,13 +384,17 @@ int main(int argc, char *argv[])
     const auto coords_last   = (src_op_ptr->inner.end() - 1).coords();
     // Y-Direction: slower index, top to bottom
     auto begin_y = coords_begin[0];
-    auto end_y   = begin_y + chunk_size - 1;
     while (begin_y <= coords_last[0]) {
+      auto end_y = begin_y + chunk_size - 1;
+      if(end_y > coords_last[0])
+        end_y = coords_last[0];
       // X-Direction: fastest running index, left to right
       auto begin_x = coords_begin[1];
-      auto end_x   = begin_x + chunk_size - 1;
       while (begin_x <= coords_last[1]) {
-        dash::tasks::async(
+        auto end_x   = begin_x + chunk_size - 1;
+        if(end_x > coords_last[1])
+          end_x = coords_last[1];
+        dash::tasks::async("UPDATE_INNER",
           [=](){
             src_op_ptr->inner.update_blocked({begin_y, begin_x},{end_y, end_x}, dst_matrix_lbegin,
               [&, iter, begin_x, begin_y](auto* center, auto* center_dst, auto offset, const auto& offsets) {
@@ -460,20 +464,16 @@ int main(int argc, char *argv[])
           }
         );
         begin_x += chunk_size;
-        end_x   += chunk_size;
-        if(end_x > coords_last[1])
-          end_x = coords_last[1];
       }
       begin_y += chunk_size;
-      end_y   += chunk_size;
-      if(end_y > coords_last[0])
-        end_y = coords_last[0];
     }
 
     //minimon.leave("inner");
 
     // BOUNDARY
     for (int idx = 0; idx < max_idx; ++idx) {
+      // Region index 4 is the inner area
+      if (idx == 4) continue;
       DEBUGOUT << "Creating boundary update task for region " << idx << " in " << iter << std::endl;
       dash::tasks::async("UPDATE_BOUNDARY",
         [&, dst_matrix_lbegin, src_op_ptr, iter, idx](){
@@ -512,6 +512,9 @@ int main(int argc, char *argv[])
         for (int bidx : boundary_halo_dependencies.find(idx)->second) {
           deps = dash::tasks::in(*src_op_ptr->halo_memory().range_at(bidx).first);
         }
+
+        // corner tasks don't have dependencies to inner blocks
+        if (idx == 0 || idx == 2 || idx == 6 || idx == 8) return;
 
         /* dependency on blocks along the boundary */
         // TODO: check that directions are correct

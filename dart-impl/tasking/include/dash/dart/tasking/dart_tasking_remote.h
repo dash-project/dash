@@ -20,8 +20,9 @@ void dart_tasking_remote_print_stats() DART_INTERNAL;
  */
 dart_ret_t
 dart_tasking_remote_datadep(
-  dart_task_dep_t *dep,
-  dart_task_t     *task) DART_INTERNAL;
+  dart_task_dep_t   *dep,
+  dart_global_unit_t guid,
+  dart_task_t       *task) DART_INTERNAL;
 
 /**
  * Send a release for the remote task \c rtask to \c unit, potentially

@@ -308,11 +308,13 @@ dart_task_t *task_deque_pop(struct task_deque *deque)
       DART_LOG_TRACE(
           "dart_tasking_taskqueue_pop: taking last element from queue "
           "tq:%p tq->head:%p tq->tail:%p", deque, deque->head, deque->tail);
+      DART_ASSERT(task->next == NULL);
       deque->head = deque->tail = NULL;
     } else {
       DART_LOG_TRACE(
           "dart_tasking_taskqueue_pop: taking element from queue "
           "tq:%p tq->head:%p tq->tail:%p", deque, deque->head, deque->tail);
+      DART_ASSERT(task->next != NULL);
       // simply advance the head pointer
       deque->head = task->next;
       // the head has no previous element

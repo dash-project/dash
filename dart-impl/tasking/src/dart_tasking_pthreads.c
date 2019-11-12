@@ -90,8 +90,9 @@ static _Thread_local dart_thread_t* __tpd = NULL;
 static pthread_cond_t  task_avail_cond   = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// task life-cycle list
-static dart_stack_t task_free_list = DART_STACK_INITIALIZER;
+// task life-cycle list, the tasks are not free'd directly but instead the
+// memory is free'd through the memory pool
+static dart_stack_t *task_free_lists;
 
 static dart_thread_t **thread_pool;
 
@@ -140,6 +141,29 @@ static dart_task_t root_task = {
     , .children       = NULL
 #endif
 };
+
+
+/* Memory pool for task objects. The memory is never reclaimed,
+ * tasks are instead inserted into the free list upon release.
+ */
+#define TASK_MEMPOOL_SIZE 64
+typedef
+struct task_mempool task_mempool_t;
+
+struct task_mempool {
+  size_t pos;
+  task_mempool_t *next;
+  dart_task_t tasks[TASK_MEMPOOL_SIZE];
+};
+
+/* Thread-private task memory pool */
+static _Thread_local task_mempool_t* __taskpool = NULL;
+
+/*
+ * Back-references to each thread's memory pool, which will be used for
+ * eventually free'ing the memory allocated in private.
+ */
+static task_mempool_t **thread_task_mempool = NULL;
 
 static void
 destroy_threadpool();
@@ -548,7 +572,12 @@ dart_task_t * next_task(dart_thread_t *thread)
   }
   if (task != NULL) return task;
 
-  // if still not successful, try to steal from another thread on the same NUMA node
+  // try to steal from the last successful thread
+  task = next_task_thread_back(thread_pool[thread->last_steal_thread_id]);
+
+  if (task != NULL) return task;
+
+  // if not successful, try to steal from another thread on the same NUMA node
   for (int target = (thread->thread_id + 1) % num_threads;
         target   != thread->thread_id;
         target    = (++target == num_threads) ? 0 : target) {
@@ -558,6 +587,7 @@ dart_task_t * next_task(dart_thread_t *thread)
       task = next_task_thread_back(target_thread);
       if (task != NULL) {
         DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
+        thread->last_steal_thread_id = target;
         return task;
       }
     }
@@ -580,10 +610,12 @@ dart_task_t * next_task(dart_thread_t *thread)
          target    != thread->thread_id;
          target     = (++target == num_threads) ? 0 : target) {
       dart_thread_t *target_thread = thread_pool[target];
-      if (dart__likely(target_thread != NULL)) {
+      if (dart__likely(target_thread != NULL) &&
+          target_thread->numa_id != thread->numa_id) {
         task = next_task_thread_back(target_thread);
         if (task != NULL) {
           DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
+          thread->last_steal_thread_id = target;
           return task;
         }
       }
@@ -598,12 +630,26 @@ static
 dart_task_t * allocate_task()
 {
   dart_task_t *task = NULL;
-#ifndef DART_TASKING_DONOT_REUSE
-  task = DART_TASKLIST_ELEM_POP(task_free_list);
-#endif // !DART_TASKING_DONOT_REUSE
+#ifdef DART_TASKING_NOMEMPOOL
+  task = calloc(1, sizeof(*task));
+  TASKLOCK_INIT(task);
+#else // DART_TASKING_NOMEMPOOL
+  task = DART_TASKLIST_ELEM_POP(task_free_lists[dart__tasking__thread_num()]);
+#endif // DART_TASKING_NOMEMPOOL
 
   if (task == NULL) {
-    task = malloc(sizeof(dart_task_t));
+    task_mempool_t *taskpool = __taskpool;
+    if (taskpool == NULL || taskpool->pos == TASK_MEMPOOL_SIZE-1) {
+      // allocate a new task memory pool
+      taskpool = malloc(sizeof(task_mempool_t));
+      taskpool->pos = 0;
+      taskpool->next = __taskpool;
+      __taskpool = taskpool;
+    }
+    // take the next task from the memory pool
+    task = &(taskpool->tasks[taskpool->pos++]);
+    // owner is only set once, should not change
+    task->owner = dart__tasking__thread_num();
     TASKLOCK_INIT(task);
   }
 
@@ -639,8 +685,13 @@ dart_task_t * create_task(
                  task, data, data_size, fn);
 
   if (data_size) {
-    DART_TASK_SET_FLAG(task, DART_TASK_DATA_ALLOCATED);
-    task->data           = malloc(data_size);
+    if (data_size > DART_TASKING_INLINE_DATA_SIZE) {
+      DART_TASK_SET_FLAG(task, DART_TASK_DATA_ALLOCATED);
+      task->data           = malloc(data_size);
+    } else {
+      // use the task-internal buffer
+      task->data = task->inline_data;
+    }
     memcpy(task->data, data, data_size);
   } else {
     task->data           = data;
@@ -707,7 +758,11 @@ void dart__tasking__destroy_task(dart_task_t *task)
 
   task->state = DART_TASK_DESTROYED;
 
-  DART_TASKLIST_ELEM_PUSH(task_free_list, task);
+#ifdef DART_TASKING_NOMEMPOOL
+  free(task);
+#else // DART_TASKING_NOMEMPOOL
+  DART_TASKLIST_ELEM_PUSH(task_free_lists[task->owner], task);
+#endif // DART_TASKING_NOMEMPOOL
 }
 
 dart_task_t *
@@ -951,6 +1006,7 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->numa_id           = 0;
   thread->is_utility_thread = false;
   thread->ctx_to_enter      = NULL;
+  thread->last_steal_thread_id = 0;
   dart__base__stack_init(&thread->ctxlist);
 
   DART_LOG_TRACE("Thread %i (%p) has task queue %p",
@@ -1074,6 +1130,9 @@ void* thread_main(void *data)
   // unset thread-private data
   __tpd = NULL;
 
+  // make the thread's memory pool available to the main thread
+  thread_task_mempool[threadid] = __taskpool;
+
   return NULL;
 }
 
@@ -1160,6 +1219,11 @@ dart__tasking__init()
 
   DART_LOG_TRACE("root_task: %p", &root_task);
 
+  task_free_lists = malloc(num_threads * sizeof(*task_free_lists));
+  for (int i = 0; i < num_threads; ++i) {
+    dart__base__stack_init(&task_free_lists[i]);
+  }
+
 #ifdef USE_EXTRAE
   if (Extrae_define_event_type) {
     unsigned nvalues = 3;
@@ -1167,6 +1231,7 @@ dart__tasking__init()
   }
 #endif
 
+  thread_task_mempool = calloc(num_threads, sizeof(*thread_task_mempool));
 
   dart__tasking__context_init();
 
@@ -1309,17 +1374,22 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     return;
   }
 
+  if (task->state == DART_TASK_DEFERRED) {
+    DART_LOG_TRACE("Refusing to enqueue deferred task %p", task);
+    return;
+  }
+
   bool queuable = false;
   if (task->state == DART_TASK_CREATED)
   {
     LOCK_TASK(task);
-    if (task->state == DART_TASK_CREATED) {
+    if (task->state == DART_TASK_CREATED &&
+        dart_tasking_datadeps_is_runnable(task)) {
       task->state = DART_TASK_QUEUED;
       queuable = true;
     }
     UNLOCK_TASK(task);
-  } else if (task->state == DART_TASK_SUSPENDED ||
-             task->state == DART_TASK_DEFERRED) {
+  } else if (task->state == DART_TASK_SUSPENDED) {
     queuable = true;
   }
 
@@ -1747,24 +1817,27 @@ destroy_threadpool()
 
   // unset thread-private data
   __tpd = NULL;
+  // save the main thread's taskpool
+  thread_task_mempool[0] = __taskpool;
+  __taskpool = NULL;
 
   for (int i = 0; i < num_threads; ++i) {
     free(thread_pool[i]);
     thread_pool[i] = NULL;
+    // free the task memory pools
+    task_mempool_t *tmp = thread_task_mempool[i];
+    while (tmp != NULL) {
+      task_mempool_t *next = tmp->next;
+      free(tmp);
+      tmp = next;
+    }
   }
 
   free(thread_pool);
   thread_pool = NULL;
+  free(thread_task_mempool);
+  thread_task_mempool = NULL;
   dart__tasking__affinity_fini();
-}
-
-static void
-free_tasklist(dart_stack_t *tasklist)
-{
-  dart_task_t *task;
-  while (NULL != (task = DART_TASKLIST_ELEM_POP(*tasklist))) {
-    free(task);
-  }
 }
 
 dart_ret_t
@@ -1787,7 +1860,8 @@ dart__tasking__fini()
   dart__tasking__ayudame_fini();
 #endif // DART_ENABLE_AYUDAME
 
-  free_tasklist(&task_free_list);
+  free(task_free_lists);
+  task_free_lists = NULL;
 
   dart_tasking_datadeps_reset(&root_task);
 

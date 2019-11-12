@@ -2,7 +2,11 @@
 #define DASH__TASKS__PARALLELFOR_H__
 
 #include <dash/tasks/Tasks.h>
+#include <dash/tasks/internal/LambdaTraits.h>
+#include <dash/Exception.h>
 #include <dash/dart/if/dart_tasking.h>
+
+#include <atomic>
 
 
 namespace dash{
@@ -16,9 +20,19 @@ namespace tasks{
     template<typename IteratorT>
     size_t
     get_chunk_size(IteratorT begin, IteratorT end) {
-      size_t chunk_size = std::ceil(((float)dash::distance(begin, end)) / n);
+      size_t nelem = dash::distance(begin, end);
+      // round-up if necessary
+      size_t chunk_size = (nelem + n - 1) / n;
+
       return chunk_size ? chunk_size : 1;
     }
+
+    template<typename IteratorT>
+    size_t
+    get_num_chunks(IteratorT, IteratorT) {
+      return n;
+    }
+
 
   private:
     size_t n;
@@ -27,13 +41,22 @@ namespace tasks{
 
   class chunk_size {
   public:
-    explicit chunk_size(size_t nc) : n{nc?nc:1}
+    explicit chunk_size(size_t cs) : n{cs?cs:1}
     { }
 
     template<typename IteratorT>
     size_t
     get_chunk_size(IteratorT, IteratorT) {
       return n;
+    }
+
+    template<typename IteratorT>
+    size_t
+    get_num_chunks(IteratorT begin, IteratorT end) {
+      size_t nelem = dash::distance(begin, end);
+      // round-up if necessary
+      size_t num_chunks = (nelem + n - 1) / n;
+      return num_chunks;
     }
 
   private:
@@ -53,6 +76,53 @@ namespace internal {
   struct is_chunk_definition<dash::tasks::num_chunks> : std::true_type
   { };
 
+  /**
+   * Wrapper around a function object that contains a simple reference count.
+   * The object is allocated using \c CountedFunction<T>::create()
+   * and released as soon as all references have been dropped.
+   */
+  template<typename FunctionT>
+  struct CountedFunction {
+  private:
+    CountedFunction(const FunctionT& fn, int32_t cnt) : m_fn(fn), m_cnt(cnt)
+    { }
+    ~CountedFunction() { }
+
+  public:
+
+    static
+    CountedFunction<FunctionT>* create(const FunctionT& fn, int32_t cnt) {
+      return new CountedFunction<FunctionT>(fn, cnt);
+    }
+
+    void
+    drop(void)
+    {
+      int32_t cnt = --m_cnt;
+      DASH_ASSERT(cnt >= 0);
+      if (cnt == 0) {
+        // once all references are gone we delete ourselves
+        delete this;
+      }
+    }
+
+    FunctionT& operator*()
+    {
+      return m_fn;
+    }
+
+
+    FunctionT& get()
+    {
+      return m_fn;
+    }
+
+
+  private:
+    FunctionT m_fn;
+    std::atomic<int32_t> m_cnt;
+  };
+
   template<
     class InputIter,
     class ChunkType,
@@ -68,18 +138,52 @@ namespace internal {
     const char *name = nullptr)
   {
     // TODO: extend this to handle GlobIter!
+
+    // skip empty ranges
+    if (dash::distance(begin, end) == 0) {
+      return;
+    }
+
     size_t chunk_size = chunking.get_chunk_size(begin, end);
-    if (chunk_size == 0) chunk_size = 1;
     InputIter from = begin;
+    constexpr const bool is_mutable =
+                            !internal::is_const_callable<RangeFunc, InputIter, InputIter>::value;
+
+    using CountedFunctionT = CountedFunction<RangeFunc>;
+    CountedFunctionT *f_ptr;
+    if (!is_mutable) {
+      int32_t num_chunks = chunking.get_num_chunks(begin, end);
+      f_ptr = CountedFunctionT::create(std::move(f), num_chunks);
+    }
+
     while (from < end) {
       InputIter to = from + chunk_size;
       if (to > end) to = end;
-      dash::tasks::async(
-        name,
-        [=](){
-          f(from, to);
-        }
-      );
+#if DASH_TASKS_INVOKE_DIRECT
+      f(from, to);
+#else // DASH_TASKS_INVOKE_DIRECT
+      if (!is_mutable) {
+        dash::tasks::async(
+          name,
+          // capture the counted ptr and the range
+          [f_ptr, from, to](){
+            // the d'tor will finally delete the object once all
+            // references are gone
+            auto _ = internal::finally([f_ptr](){ f_ptr->drop(); });
+
+            f_ptr->get()(from, to);
+          }
+        );
+      } else {
+        dash::tasks::async(
+          name,
+          // capture the function object and the range
+          [f, from, to](){
+            f(from, to);
+          }
+        );
+      }
+#endif // DASH_TASKS_INVOKE_DIRECT
       from = to;
     }
   }
@@ -101,28 +205,67 @@ namespace internal {
     const char *name = nullptr)
   {
     // TODO: extend this to handle GlobIter!
+
+    // skip empty ranges
+    if (dash::distance(begin, end) == 0) {
+      return;
+    }
+
     size_t chunk_size = chunking.get_chunk_size(begin, end);
     InputIter from = begin;
-    DependencyVector deps;
-    deps.reserve(10);
-    int count = 0;
+    constexpr const bool is_mutable =
+                            !internal::is_const_callable<RangeFunc, InputIter, InputIter>::value;
+
+#if DASH_TASKS_INVOKE_DIRECT
     while (from < end) {
       InputIter to = from + chunk_size;
       if (to > end) to = end;
-      auto dep_inserter = std::inserter(deps, deps.begin());
+      f(from, to);
+      from = to;
+    }
+#else // DASH_TASKS_INVOKE_DIRECT
+    using CountedFunctionT = CountedFunction<RangeFunc>;
+    CountedFunctionT *f_ptr;
+    if (!is_mutable) {
+      int32_t num_chunks = chunking.get_num_chunks(begin, end);
+      f_ptr = CountedFunctionT::create(std::move(f), num_chunks);
+    }
+
+    DependencyContainer deps;
+    while (from < end) {
+      InputIter to = from + chunk_size;
+      if (to > end) to = end;
+      auto dep_inserter = DependencyContainerInserter(deps, deps.begin());
       depedency_generator(from, to, dep_inserter);
-      dash::tasks::internal::async(
-        [=](){
-          f(from, to);
-        },
-        deps,
-        name
-      );
+      if (!is_mutable) {
+        dash::tasks::internal::async(
+          // capture the counted ptr and the range
+          [f_ptr, from, to](){
+            // the d'tor will finally delete the object once all
+            // references are gone
+            auto _ = internal::finally([f_ptr](){ f_ptr->drop(); });
+
+            f_ptr->get()(from, to);
+          },
+          deps,
+          name
+        );
+      } else {
+        dash::tasks::internal::async(
+          // capture the function object and the range
+          [f, from, to](){
+            f(from, to);
+          },
+          deps,
+          name
+        );
+      }
       from = to;
       deps.clear();
-      count++;
     }
+#endif // DASH_TASKS_INVOKE_DIRECT
   }
+
 
 } // namespace internal
 

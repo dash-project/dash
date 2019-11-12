@@ -182,9 +182,9 @@ void smooth(Array_t & data_old, Array_t & data_new){
         // dependency generator: use the first element of the first
         // row in the chunks as sentinel
         [=, &data_old, &data_new](
-          index_t from,
-          index_t to,
-          dash::tasks::DependencyVectorInserter inserter)
+          auto from,
+          auto to,
+          auto inserter)
         {
           size_t chunk_size = to - from;
 

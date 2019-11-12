@@ -88,6 +88,13 @@ typedef struct dart_task_dep {
 } dart_task_dep_t;
 
 /**
+ * The maximum size of data a task can store inline, i.e., without additional
+ * allocation.
+ * The size is chosen to minimize padding while guaranteeing at least 32B space.
+ */
+#define DART_TASKING_INLINE_DATA_SIZE 38
+
+/**
  * Returns the current thread's number.
  */
 int
@@ -240,7 +247,7 @@ dart_task_yield(int delay) __attribute__((weak));
  * have completed.
  */
 dart_ret_t
-dart_task_wait_handle(dart_handle_t *handle, size_t num_handle);
+dart_task_wait_handle(dart_handle_t *handle, size_t num_handle) __attribute__((weak));
 
 /**
  * End the execution of the task but do not release it's dependencies until
