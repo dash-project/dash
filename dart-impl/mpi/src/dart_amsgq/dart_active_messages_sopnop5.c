@@ -1008,7 +1008,7 @@ dart_amsg_sopnop5_init(dart_amsgq_impl_t* impl)
 #else
 
 dart_ret_t
-dart_amsg_sopnop4_init(dart_amsgq_impl_t* impl)
+dart_amsg_sopnop5_init(dart_amsgq_impl_t* impl)
 {
   DART_LOG_ERROR("MPI is missing support for extended generalized requests!");
   return DART_ERR_INVAL;
