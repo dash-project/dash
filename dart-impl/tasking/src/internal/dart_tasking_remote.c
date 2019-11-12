@@ -451,9 +451,9 @@ dart_ret_t dart_tasking_remote_release_task(
       DART_LOG_TRACE("Sent remote task release to unit %i "
           "(fn=%p, rtask=%p, depref=%p)",
           team_unit.id, &release_remote_task, rtask.local, (void*)depref);
-      printf("Sent remote task release to unit %i "
-          "(fn=%lu, rtask=%lu, depref=%lu)\n",
-          team_unit.id, (uint64_t) &release_remote_task, (uint64_t) rtask.local, (uint64_t) (void*)depref);
+      //printf("Sent remote task release to unit %i "
+      //    "(fn=%lu, rtask=%lu, depref=%lu)\n",
+      //    team_unit.id, (uint64_t) &release_remote_task, (uint64_t) rtask.local, (uint64_t) (void*)depref);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be sent at the moment, just try again

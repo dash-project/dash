@@ -76,8 +76,6 @@ typedef struct dart_tool_task_finalize_cb dart_tool_task_finalize_cb;
 typedef struct dart_tool_task_add_to_queue_cb dart_tool_task_add_to_queue_cb;
 
 typedef struct dart_tool_local_dep_cb dart_tool_local_dep_cb;
-// typedef struct dart_tool_local_dep_waw_cb dart_tool_local_dep_waw_cb;
-// typedef struct dart_tool_local_dep_war_cb dart_tool_local_dep_war_cb;
 
 typedef struct dart_tool_dummy_dep_create_cb dart_tool_dummy_dep_create_cb;
 typedef struct dart_tool_dummy_dep_capture_cb dart_tool_dummy_dep_capture_cb;
@@ -94,8 +92,6 @@ struct dart_tool_task_finalize_cb dart_tool_task_finalize_cb_data;
 struct dart_tool_task_add_to_queue_cb dart_tool_task_add_to_queue_cb_data;
 
 struct dart_tool_local_dep_cb dart_tool_local_dep_cb_data;
-//struct dart_tool_local_dep_waw_cb dart_tool_local_dep_waw_cb_data;
-//struct dart_tool_local_dep_war_cb dart_tool_local_dep_war_cb_data;
 
 struct dart_tool_dummy_dep_create_cb dart_tool_dummy_dep_create_cb_data;
 struct dart_tool_dummy_dep_capture_cb dart_tool_dummy_dep_capture_cb_data;
@@ -166,20 +162,6 @@ int dart_tool_register_local_dep (dart_tool_local_dep_cb_t cb, void *userdata_lo
     printf("dart_tool_register_local_dep was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_local_dep);
     return 0;
 }
-
-// int dart_tool_register_local_dep_waw (dart_tool_local_dep_waw_cb_t cb, void *userdata_local_dep_waw) {
-//     dart_tool_local_dep_waw_cb_data.cb = cb;
-//     dart_tool_local_dep_waw_cb_data.userdata = userdata_local_dep_waw;
-//     printf("dart_tool_register_local_dep_waw was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_local_dep_waw);
-//     return 0;
-// }
-// 
-// int dart_tool_register_local_dep_war (dart_tool_local_dep_war_cb_t cb, void *userdata_local_dep_war) {
-//     dart_tool_local_dep_war_cb_data.cb = cb;
-//     dart_tool_local_dep_war_cb_data.userdata = userdata_local_dep_war;
-//     printf("dart_tool_register_local_dep_war was called\nPointer: %p and userdata %d\n", cb, *(int*) userdata_local_dep_war);
-//     return 0;
-// }
 
 int dart_tool_register_dummy_dep_create(dart_tool_dummy_dep_create_cb_t cb, void *userdata_dummy_dep_create) {
     dart_tool_dummy_dep_create_cb_data.cb = cb;
@@ -269,6 +251,7 @@ void dart__tasking__instrument_task_yield_resume(
 
 void dart__tasking__instrument_task_finalize()
 {
+    
     if (dart_tool_task_finalize_cb_data.cb) {
         dart_tool_task_finalize_cb_data.cb(dart_tool_task_finalize_cb_data.userdata);
     }
@@ -290,39 +273,6 @@ void dart__tasking__instrument_local_dep(
     }
     
 }
-
-// void dart__tasking__instrument_local_dep_waw(
-//     dart_task_t *task1,
-//     dart_task_t *task2,
-//     uint64_t memaddr_waw,
-//     uint64_t orig_memaddr_waw,
-//     int32_t task1_unitid,
-//     int32_t task2_unitid)
-// {
-//     //uint64_t memaddr_waw = 0;
-//     //uint64_t orig_memaddr_waw = 1;
-//     if (dart_tool_local_dep_waw_cb_data.cb) {
-//         dart_tool_local_dep_waw_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_waw, orig_memaddr_waw, task1_unitid, task2_unitid, dart_tool_local_dep_waw_cb_data.userdata);
-//     }
-//     
-// }
-// 
-// void dart__tasking__instrument_local_dep_war(
-//     dart_task_t *task1,
-//     dart_task_t *task2,
-//     uint64_t memaddr_war,
-//     uint64_t orig_memaddr_war,
-//     int32_t task1_unitid,
-//     int32_t task2_unitid)
-// {
-//     //offset des gptr
-//     //uint64_t memaddr_war = 0;
-//     //uint64_t orig_memaddr_war = 1;
-//     if (dart_tool_local_dep_war_cb_data.cb) {
-//         dart_tool_local_dep_war_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_war, orig_memaddr_war, task1_unitid, task2_unitid,dart_tool_local_dep_war_cb_data.userdata);
-//     }
-//     
-// }
 void dart__tasking__instrument_task_add_to_queue(
     dart_task_t *task,
     dart_thread_t *thread)

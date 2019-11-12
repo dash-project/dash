@@ -231,7 +231,6 @@ invoke_taskfn(dart_task_t *task)
   DART_ASSERT(task != NULL && task->fn != NULL);
   DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p descr:'%s')",
                  task, task->fn, task->data, task->descr);
-  dart_myid(&myguid); //testing, only need to be run once per unit
   if (setjmp(task->taskctx->cancel_return) == 0) {
     dart__tasking__instrument_task_begin(task, dart__tasking__current_thread());
     task->fn(task->data);
@@ -242,7 +241,6 @@ invoke_taskfn(dart_task_t *task)
     // we got here through longjmp, the task is cancelled
     task->state = DART_TASK_CANCELLED;
     DART_LOG_DEBUG("Task %p (fn:%p data:%p) cancelled", task, task->fn, task->data);
-    dart_myid(&myguid);
     dart__tasking__instrument_task_cancel(task, dart__tasking__current_thread());
   }
 }
@@ -289,7 +287,7 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
       task->taskctx = dart__tasking__context_create(
                         (context_func_t*)&wrap_task, task);
     }
-
+   
     // update current task
     set_current_task(task);
     // store current thread's context and jump into new task
@@ -683,8 +681,6 @@ dart_task_t * create_task(
   UNLOCK_TASK(task->parent);
   task->children = NULL;
 #endif // DART_DEBUG
-  dart_myid(&myguid);
-
   dart__tasking__instrument_task_create(task, prio, descr);
 
   return task;
@@ -1227,16 +1223,14 @@ dart__tasking__init()
    * DART__TOOLS_TOOL_ENV_VAR_PATH
   */
   const char* var = dart__base__env__string(DART__TOOLS_TOOL_ENV_VAR_PATH);
+  dart_myid(&myguid);
   //printf("var = %s\n", var);
   if (!var) {
-      //printf("hier");
-      //TODO: display error only once, not once per instance
-      DART_LOG_ERROR("Environment variable is an empty string!\n");
-      printf("Tool library is not loaded.\n");
-      /* if this line is uncommented, dart_tasking will not be initialized completely
-       * resulting in incorrect program flow.
-      */ 
-      //return DART_ERR_INVAL;
+      //do nothing
+      printf("Tool interface disabled on unit %d.\n", myguid.id);
+  } else if (*var == '\0') {
+      DART_LOG_ERROR("Environment variable is an empty string!\n"); //not set
+      printf("var == 0\n");
   } else {
       printf("TOOL_PATH=%s\n", var);
       handle = dlopen(var, RTLD_LAZY);
@@ -1245,7 +1239,7 @@ dart__tasking__init()
           printf("Failed to load the tool\n");
           fprintf(stderr, "Error: %s\n", dlerror());
       }
-      printf("handle: %d\n", handle);
+      //printf("handle: %d\n", handle);
       /**
        * The init function name has to be stored in DART__TOOLS_TOOL_INIT_FUNCTION_NAME
        * in dart_tools.h 
@@ -1262,7 +1256,6 @@ dart__tasking__init()
       if (pid <= 1000) {
         pid = pid + 1000;    
       }
-      dart_myid(&myguid);
       int sendarray[0];
       sendarray[0] = pid;
       int *rbuf;
@@ -1379,7 +1372,6 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
       numa_node = dart__tasking__affinity_ptr_numa_node(task->numaptr);
     }
     /* instrumentation for the task queue*/
-    dart_myid(&myguid); //testing, should only be run once per unit
     dart__tasking__instrument_task_add_to_queue(task, thread);
     if (!thread->is_utility_thread) {
 
@@ -1516,6 +1508,7 @@ dart__tasking__task_complete(bool local_only)
     }
   } else {
     EXTRAE_EXIT(EVENT_TASK);
+    printf("extrae\n");
   }
 
   // 1) wake up all threads (might later be done earlier)
@@ -1813,7 +1806,6 @@ dart__tasking__fini()
   dart_tasking_tasklist_fini();
 
   dart__tasking__cancellation_fini();
-  //test todo
   if (use_tool_interface) {
     dart__tasking__instrument_task_finalize();
   }

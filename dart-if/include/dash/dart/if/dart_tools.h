@@ -20,8 +20,6 @@ typedef void (*dart_tool_task_finalize_cb_t) (void *userdata);
 typedef void (*dart_tool_task_add_to_queue_cb_t) (uint64_t task, uint64_t thread, void *userdata);
 
 typedef void (*dart_tool_local_dep_cb_t) (uint64_t task1, uint64_t task2, uint64_t memaddr, uint64_t orig_memaddr, int32_t task1_unitid, int32_t task2_unitid, int edge_type,  void *userdata);
-//typedef void (*dart_tool_local_dep_waw_cb_t) (uint64_t task1, uint64_t task2, uint64_t memaddr, uint64_t orig_memaddr, int32_t task1_unitid, int32_t task2_unitid, void *userdata);
-//typedef void (*dart_tool_local_dep_war_cb_t) (uint64_t task1, uint64_t task2, uint64_t memaddr, uint64_t orig_memaddr, int32_t task1_unitid, int32_t task2_unitid, void *userdata);
 
 typedef void (*dart_tool_dummy_dep_create_cb_t) (uint64_t task, uint64_t dummy_dep, uint64_t in_dep, int phase, int32_t task_unitid, void *userdata);
 typedef void (*dart_tool_dummy_dep_capture_cb_t) (uint64_t task, uint64_t dummy_dep, uint64_t remote_dep, int32_t task_unitid, void *userdata);
@@ -42,8 +40,6 @@ int dart_tool_register_task_finalize (dart_tool_task_finalize_cb_t cb, void *use
 int dart_tool_register_task_add_to_queue (dart_tool_task_add_to_queue_cb_t cb, void *userdata);
 
 int dart_tool_register_local_dep (dart_tool_local_dep_cb_t cb, void *userdata);
-//int dart_tool_register_local_dep_waw (dart_tool_local_dep_waw_cb_t cb, void *userdata);
-//int dart_tool_register_local_dep_war (dart_tool_local_dep_war_cb_t cb, void *userdata);
 
 int dart_tool_register_dummy_dep_create (dart_tool_dummy_dep_create_cb_t cb, void *userdata);
 int dart_tool_register_dummy_dep_capture (dart_tool_dummy_dep_capture_cb_t cb, void *userdata);

@@ -20,7 +20,7 @@ void dart__tasking__instrument_task_create(
  */
 void dart__tasking__instrument_task_begin(
   dart_task_t   *task,
-  dart_thread_t *thread) DART_INTERNAL;
+  dart_thread_t *thread)  DART_INTERNAL;
 
 /**
  * Instrumentation point of a task end event. Called right after the execution

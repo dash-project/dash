@@ -54,7 +54,7 @@ fi
 # Configure with default release build settings:
 mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
-(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
+(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
                         -DBUILD_SHARED_LIBS=OFF \
                         -DBUILD_GENERIC=OFF \
                         -DENVIRONMENT_TYPE=default \
