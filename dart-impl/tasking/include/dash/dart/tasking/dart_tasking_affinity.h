@@ -40,7 +40,7 @@ dart__tasking__affinity_ptr_numa_node(const void *ptr) DART_INTERNAL;
  * Set affinity for a utility thread. This is typically done by preventing
  * the utility thread from running on the main thread's CPU.
  */
-void
+int
 dart__tasking__affinity_set_utility(
   pthread_t pthread,
   int       dart_thread_id) DART_INTERNAL;

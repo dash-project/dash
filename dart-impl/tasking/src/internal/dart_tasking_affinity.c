@@ -223,7 +223,7 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
   return entry;
 }
 
-void
+int
 dart__tasking__affinity_set_utility(pthread_t pthread, int dart_thread_id)
 {
   dart__unused(dart_thread_id);
@@ -263,6 +263,8 @@ dart__tasking__affinity_set_utility(pthread_t pthread, int dart_thread_id)
     }
   }
   hwloc_bitmap_free(cpuset);
+
+  return entry;
 }
 
 int
@@ -347,7 +349,7 @@ dart__tasking__affinity_init()
 }
 
 
-void
+int
 dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
 {
   cpu_set_t cpuset;
@@ -372,9 +374,11 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
   CPU_SET(entry, &cpuset);
 
   pthread_setaffinity_np(pthread, sizeof(cpu_set_t), &cpuset);
+
+  return entry;
 }
 
-void
+int
 dart__tasking__affinity_set_utility(pthread_t pthread, int dart_thread_id)
 {
   dart__unused(dart_thread_id);
@@ -398,6 +402,8 @@ dart__tasking__affinity_set_utility(pthread_t pthread, int dart_thread_id)
   CPU_SET(entry, &cpuset);
 
   pthread_setaffinity_np(pthread, sizeof(cpu_set_t), &cpuset);
+
+  return entry;
 }
 
 int
