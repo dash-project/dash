@@ -97,6 +97,15 @@ int ompi_grequestx_start(
  */
 #define DART_AMSGQ_SOPNOP_FETCHOP_ENVSTR  "DART_AMSGQ_SOPNOP_FETCHOP"
 
+/**
+ * Name of the environment variable controling the limit on the number of
+ * interleaved send operations.
+ *
+ * Type: integer
+ * Default: 16
+ */
+#define DART_AMSGQ_SOPNOP_PARLIMIT_ENVSTR  "DART_AMSGQ_SOPNOP_PARLIMIT"
+
 struct dart_amsgq_impl_data {
   MPI_Win           queue_win;
   int64_t          *queue_ptr;
@@ -152,7 +161,7 @@ static       uint64_t dereg_value;
 static bool do_flush = true;
 static bool use_fetchop = false;
 
-static int pipeline_depth = 4;
+static int pipeline_depth = 16;
 
 #define NUM_QUEUES                      2
 #define OFFSET_QUEUENUM                 0
@@ -257,6 +266,9 @@ dart_amsg_sopnop_openq(
 
     do_flush    = dart__base__env__bool(DART_AMSGQ_SOPNOP_FLUSH_ENVSTR, true);
     use_fetchop = dart__base__env__bool(DART_AMSGQ_SOPNOP_FETCHOP_ENVSTR, false);
+
+    pipeline_depth = dart__base__env__number(DART_AMSGQ_SOPNOP_PARLIMIT_ENVSTR,
+                                             pipeline_depth);
 
     dereg_value = fuse(-1, 0);
   }
