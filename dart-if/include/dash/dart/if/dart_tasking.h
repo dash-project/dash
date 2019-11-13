@@ -109,7 +109,7 @@ dart_task_create(
         void           (*fn) (void *),
         void            *data,
         size_t           data_size,
-  const dart_task_dep_t *deps,
+        dart_task_dep_t *deps,
         size_t           ndeps,
         dart_task_prio_t prio,
   const char            *descr);
@@ -137,7 +137,7 @@ dart_task_create_handle(
         void           (*fn) (void *),
         void            *data,
         size_t           data_size,
-  const dart_task_dep_t *deps,
+        dart_task_dep_t *deps,
         size_t           ndeps,
         dart_task_prio_t prio,
         dart_taskref_t  *taskref);
@@ -266,6 +266,8 @@ dart_task_phase_current();
  */
 dart_ret_t
 dart_task_phase_resync(dart_team_t team);
+
+void *dart_task_depinfo(dart_taskref_t task, int depnum);
 
 
 #ifdef __cplusplus

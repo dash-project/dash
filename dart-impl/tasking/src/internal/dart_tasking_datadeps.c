@@ -48,54 +48,6 @@
   dart__base__stack_push(&__freelist, &DART_STACK_MEMBER_GET(__elem))
 
 /**
- * Represents a dependency in the dependency hash table.
- */
-struct dart_dephash_elem {
-  union {
-    // atomic list used for free elements
-    DART_STACK_MEMBER_DEF;
-    // double linked list
-    struct {
-      dart_dephash_elem_t *next;
-      dart_dephash_elem_t *prev;
-    };
-  };
-  dart_dephash_elem_t      *next_in_task;   // list in the task struct
-  dart_task_dep_t           dep;            // IN or OUT dependency information
-  dart_dephash_elem_t      *dep_list;       // For OUT: start of list of assigned IN dependencies
-                                            // For IN:  back-pointer to OUT dependency
-  taskref                   task;           // task this dependency belongs to
-  /*
-   * TODO: this needs reconsideration, try to use atomics instead of locking
-   *       the bucket and only lock the bucket when removing an element.
-   * *Possible solution*
-   *
-   * When registering with an out dep:
-   * CAS num_consumers *and* use_cnt to increment both and abort if
-   * num_consumers is -1.
-   *
-   * When deregistering from an output dependency:
-   * decrement num_consumers and if 0 CAS use_cnt *and* num_consumers to signal
-   * ownership of the element (num_consumer=-1) and detect whether someone else
-   * has registered with the outdep in between (in which case we do not remove
-   * the object). Needs thorough testing!
-  union {
-    struct {
-      int32_t               num_consumers;  // For OUT: the number of consumers still not completed
-      int32_t               use_cnt;        // incremented everytime an input dependency is registered with an output dependency,
-                                            // needed to detect race conditions when freeing an output dependency
-    };
-    uint64_t                refcnt_value;   // value used for CAS operations on the above values
-  };
-  */
-  int32_t                   num_consumers;
-  dart_global_unit_t        origin;         // the unit owning the task
-  uint16_t                  owner_thread;   // the thread that owns the element
-  //dart_tasklock_t           lock;           // lock used for element-wise locking
-  bool                      is_dummy;       // whether an output dependency is not backed by a task
-};
-
-/**
  * Represents the head of a bucket in the dependency hash table.
  */
 struct dart_dephash_head {
@@ -1099,17 +1051,14 @@ dart_tasking_datadeps_handle_copyin(
         dart_task_t     * task)
 {
   int slot;
-  dart_gptr_t dest_gptr;
-
-  dest_gptr.addr_or_offs.addr = dep->copyin.dest;
-  dest_gptr.flags             = 0;
-  dest_gptr.segid             = DART_TASKING_DATADEPS_LOCAL_SEGID;
-  dest_gptr.teamid            = 0;
-  dest_gptr.unitid            = myguid.id;
-  slot = hash_gptr(dest_gptr);
+  dart_gptr_t src_gptr = dep->copyin.gptr;
+  slot = hash_gptr(src_gptr);
   int iter = 0;
   DART_LOG_TRACE("Handling copyin dep (unit %d, phase %d)",
-                 dep->copyin.gptr.unitid, dep->phase);
+                 src_gptr.unitid, dep->phase);
+
+  // we store the *remote* address in the hash table so that other copyin
+  // dependency easily identify it
 
   do {
     dart_task_t *parent = task->parent;
@@ -1119,30 +1068,37 @@ dart_tasking_datadeps_handle_copyin(
       dart_dephash_elem_t *elem = NULL;
       for (elem = parent->local_deps[slot].head;
            elem != NULL; elem = elem->next) {
-        if (elem->dep.gptr.addr_or_offs.addr == dep->copyin.dest) {
+        if (DART_DEP_COPYIN == elem->dep.type &&
+            DART_GPTR_EQUAL(dep->copyin.gptr, elem->dep.copyin.gptr)) {
           if (elem->dep.phase < dep->phase) {
             // phases are stored in decending order so we can stop here
             break;
           }
-          // So far we can only re-use prefetching in the same phase
+          // So far we can only re-use copyins in the same phase
           // TODO: can we figure out whether we can go back further?
           //       Might need help from the remote side.
-          if (IS_OUT_DEP(elem->dep) && dep->phase == elem->dep.phase) {
+          if (dep->phase == elem->dep.phase &&
+              // make sure both use the same buffer
+              elem->dep.copyin.dest == dep->copyin.dest) {
             UNLOCK_TASK(&parent->local_deps[slot]);
             // we're not the first --> add a dependency to the task that does the copy
             DART_INC_AND_FETCH32(&task->unresolved_deps);
 
             // register the depdendency with the output dependency
             dart_task_dep_t in_dep;
-            in_dep.type  = DART_DEP_IN;
-            in_dep.gptr  = dest_gptr;
+            in_dep.type  = DART_DEP_COPYIN;
+            in_dep.gptr  = src_gptr;
             in_dep.phase = dep->phase;
             dart_dephash_elem_t *new_elem;
             new_elem = dephash_allocate_elem(&in_dep, TASKREF(task), myguid);
             DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
             register_at_out_dep_nolock(elem, new_elem);
 
+            // let the task know where to find the buffer
+            task->copyin_ptr[task->num_copyin_ptr++] = &elem->dep.copyin.dest;
+
             dart_task_t *elem_task = elem->task.local;
+            dart__unused(elem_task); // << maybe unused if logging is off
             DART_LOG_TRACE("Copyin: task %p waits for copyin task %p", task, elem_task);
 
             // we're done
@@ -1160,7 +1116,7 @@ dart_tasking_datadeps_handle_copyin(
     // so create a new one
     DART_LOG_TRACE("Creating copyin task in phase %d (dest %p)",
                    dep->phase, dep->copyin.dest);
-    dart_tasking_copyin_create_task(dep, dest_gptr, TASKREF(task));
+    dart_tasking_copyin_create_task(dep, TASKREF(task));
   } while (0 == iter++);
 
   return DART_OK;
@@ -1285,7 +1241,7 @@ dart_tasking_datadeps_match_local_dependency(
           // ... and from the OUT dependency
           for (iter2 = elem->dep_list; iter2 != NULL; iter2 = iter->next) {
             if (iter2 == iter) {
-              if (prev = NULL) {
+              if (NULL == prev) {
                 elem->dep_list = iter2->next;
               } else {
                 prev->next = iter2->next;
@@ -1385,6 +1341,7 @@ dart_tasking_datadeps_match_delayed_local_indep(
       if (elem->task.local != NULL) {
         int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                       &task->unresolved_deps);
+        dart__unused(unresolved_deps);
         DART_LOG_TRACE("Making task %p a local successor of task %p using delayed dependency "
                       "(state: %i | num_deps: %i)",
                       task, elem_task,
@@ -1407,22 +1364,30 @@ dart_tasking_datadeps_match_delayed_local_indep(
   return DART_OK;
 }
 
+DART_INLINE
+size_t
+max_num_copyin_available(dart_task_t *task)
+{
+  return (DART_TASK_STRUCT_SIZE - ((intptr_t)task->copyin_ptr - (intptr_t)task))
+            / sizeof(*task->copyin_ptr);
+}
 
-/**
- * Find all tasks this task depends on and add the task to the dependency hash
- * table. All earlier tasks are considered up to the first task with OUT|INOUT
- * dependency.
- */
-dart_ret_t dart_tasking_datadeps_handle_task(
+DART_INLINE
+void
+dart_tasking_datadeps_handle_copyin_deps(
     dart_task_t           *task,
-    const dart_task_dep_t *deps,
+    dart_task_dep_t       *deps,
     size_t                 ndeps)
 {
-  DART_LOG_DEBUG("Datadeps: task %p has %zu data dependencies in phase %i",
-                 task, ndeps, task->phase);
+  // check how many copyin dependencies and if there is enough space available
+  size_t num_copyin = dart_tasking_datadeps_num_copyin(deps, ndeps);
+  if (num_copyin > max_num_copyin_available(task)) {
+    DART_LOG_WARN("Allocating extra space for %zu copyin dependencies, "
+                  "check DART_TASK_STRUCT_SIZE!", num_copyin);
+    task->copyin_ptr = malloc(num_copyin*sizeof(*task->copyin_ptr));
+    DART_TASK_SET_FLAG(task, DART_TASK_COPYIN_ALLOCATED);
+  }
 
-  // order dependencies: copyin dependencies need to come first
-  // to avoid a circular dependency with the copyin-task
   for (size_t i = 0; i < ndeps; i++) {
     if (deps[i].type == DART_DEP_COPYIN) {
       dart_task_dep_t dep = deps[i];
@@ -1431,8 +1396,38 @@ dart_ret_t dart_tasking_datadeps_handle_task(
         dep.phase = task->phase;
       }
       dart_tasking_datadeps_handle_copyin(&dep, task);
+      if (NULL != dep.copyin.dest) {
+        // register an input dependency on the provided destination buffer
+        dart_task_dep_t indep;
+        indep.phase = dep.phase;
+        indep.gptr.addr_or_offs.addr = dep.copyin.dest;
+        indep.gptr.segid = DART_SEGMENT_LOCAL;
+        indep.gptr.teamid = 0;
+        indep.gptr.unitid = myguid.id;
+        indep.gptr.flags  = 0;
+        indep.type = DART_DEP_IN;
+        deps[i] = indep;
+      }
     }
   }
+}
+
+/**
+ * Find all tasks this task depends on and add the task to the dependency hash
+ * table. All earlier tasks are considered up to the first task with OUT|INOUT
+ * dependency.
+ */
+dart_ret_t dart_tasking_datadeps_handle_task(
+    dart_task_t           *task,
+    dart_task_dep_t       *deps,
+    size_t                 ndeps)
+{
+  DART_LOG_DEBUG("Datadeps: task %p has %zu data dependencies in phase %i",
+                 task, ndeps, task->phase);
+
+  // order dependencies: copyin dependencies need to come first
+  // to avoid a circular dependency with the copyin-task
+  dart_tasking_datadeps_handle_copyin_deps(task, deps, ndeps);
 
   for (size_t i = 0; i < ndeps; i++) {
     dart_task_dep_t dep = deps[i];
@@ -1441,7 +1436,9 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       continue;
     }
 
+#if 0
     // check for duplicate dependencies
+    // TODO: this is now done inline!
     if (dep.type == DART_DEP_IN) {
       bool needs_skipping = false;
       for (int j = 0; j < ndeps; ++j) {
@@ -1461,6 +1458,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       // skip processing of this dependency
       if (needs_skipping) continue;
     }
+#endif // 0
 
     // adjust the phase of the dependency if required
     if (dep.phase == DART_PHASE_TASK) {
@@ -1491,10 +1489,14 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       if (task->numaptr == NULL) task->numaptr = dep.copyin.dest;
       // nothing to be done, handled above
       continue;
+    } else if (dep.type == DART_DEP_COPYIN_OUT) {
+      // treat as output dependency, but don't localize the gptr
+      dart_tasking_datadeps_match_local_dependency(&dep, task);
     } else if (guid.id != myguid.id) {
         if (task->parent->state == DART_TASK_ROOT) {
           dart_tasking_remote_datadep(&dep, guid, task);
           int32_t unresolved_deps = DART_INC_AND_FETCH32(&task->unresolved_remote_deps);
+          dart__unused(unresolved_deps); // << maybe unused
           DART_LOG_TRACE(
             "Sent remote dependency request for task %p "
             "(unit=%i, team=%i, segid=%i, offset=%p, num_deps=%i)",

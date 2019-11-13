@@ -51,6 +51,27 @@ namespace internal
   template<typename FuncT, class... Args>
   using is_const_callable = is_detected<const_lvalue_callable_foo_t, FuncT, Args...>;
 
+
+  template<typename _Func>
+  struct lambda_traits_helper
+  { };
+
+  template<typename _Ret, class _Cls, typename... _Args>
+  struct lambda_traits_helper<_Ret (_Cls::*)(_Args...)> {
+    using return_type = _Ret;
+    using args_tuple  = std::tuple<_Args...>;
+    static constexpr const int num_args = sizeof...(_Args);
+  };
+
+  template<typename _Ret, class _Cls, typename... _Args>
+  struct lambda_traits_helper<_Ret (_Cls::*)(_Args...) const>
+  : lambda_traits_helper<_Ret (_Cls::*)(_Args...)>
+  { };
+
+  template<class FuncT>
+  struct lambda_traits : public lambda_traits_helper<decltype(&FuncT::operator())>
+  { };
+
 }
 }
 }

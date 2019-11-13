@@ -209,7 +209,7 @@ void smooth(Array_t & data_old, Array_t & data_new){
     if(!is_top){
       // top row
       dash::tasks::async(
-        [=, &data_old, &data_new] {
+        [=, &data_old, &data_new] (element_t *up_row) {
           const element_t *__restrict down_row = data_old.local.row(1).lbegin();
           const element_t *__restrict curr_row = data_old.local.row(0).lbegin();
               element_t *__restrict  out_row = data_new.lbegin();
@@ -234,7 +234,7 @@ void smooth(Array_t & data_old, Array_t & data_new){
     if(!is_bottom){
       // bottom row
       dash::tasks::async(
-        [=, &data_old, &data_new] {
+        [=, &data_old, &data_new] (element_t *down_row) {
           const element_t *__restrict   up_row = data_old[local_end_gidx[0] - 1].begin().local();
           const element_t *__restrict curr_row = data_old[local_end_gidx[0]].begin().local();
                 element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
