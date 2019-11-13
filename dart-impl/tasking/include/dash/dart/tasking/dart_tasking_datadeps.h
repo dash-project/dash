@@ -36,6 +36,16 @@ extern dart_taskqueue_t local_deferred_tasks DART_INTERNAL;
  */
 #define DART_DEP_DELAYED_IN (DART_DEP_IGNORE + 1)
 
+/**
+ * A dependency type for copyin tasks (the tasks that do the actual copying) that
+ * is used to store the output dependency part of the copyin dependency.
+ * Semantically this is neither an output dependency (as the task only reads
+ * the remote side) nor an input dependency (it behaves as an output dependency
+ * locally). We also cannot use the target buffer as a dependency since that
+ * might be allocated during execution of the task.
+ */
+#define DART_DEP_COPYIN_OUT (DART_DEP_DELAYED_IN + 1)
+
 
 /**
  * Initialize the data dependency management system.
@@ -51,7 +61,7 @@ dart_ret_t dart_tasking_datadeps_fini() DART_INTERNAL;
  */
 dart_ret_t dart_tasking_datadeps_handle_task(
     dart_task_t           *task,
-    const dart_task_dep_t *deps,
+    dart_task_dep_t       *deps,
     size_t                 ndeps) DART_INTERNAL;
 
 /**
@@ -163,6 +173,19 @@ dart_tasking_datadeps_localize_gptr(dart_gptr_t gptr)
                  gptr.unitid, gptr.teamid, gptr.segid, gptr.addr_or_offs.addr,
                  res.unitid, res.teamid, res.segid, res.addr_or_offs.addr);
 
+  return res;
+}
+
+DART_INLINE
+size_t
+dart_tasking_datadeps_num_copyin(
+    const dart_task_dep_t *deps,
+    size_t                 ndeps)
+{
+  size_t res = 0;
+  for (size_t i = 0; i < ndeps; ++i) {
+    if (DART_DEP_COPYIN == deps[i].type) ++res;
+  }
   return res;
 }
 

@@ -670,17 +670,24 @@ dart_task_t * create_task(
                  task, data, data_size, fn);
 
   if (data_size) {
-    if (data_size > DART_TASKING_INLINE_DATA_SIZE) {
+    const size_t var_space_size = DART_TASK_STRUCT_SIZE - sizeof(dart_task_t);
+    if (data_size > var_space_size) {
       DART_TASK_SET_FLAG(task, DART_TASK_DATA_ALLOCATED);
       task->data           = malloc(data_size);
+      // adjust the copyin ptr
+      task->copyin_ptr     = (void*)((uintptr_t)task + sizeof(*task));
     } else {
       printf("Using internal task data buffer for task %s\n", descr);
       // use the task-internal buffer
-      task->data = task->inline_data;
+      task->data = task + sizeof(*task);
+      // adjust the copyin ptr
+      task->copyin_ptr     = (void*)((uintptr_t)task->data + data_size);
     }
     memcpy(task->data, data, data_size);
   } else {
     task->data           = data;
+    // adjust the copyin ptr
+    task->copyin_ptr     = (void*)((uintptr_t)task + sizeof(*task));
   }
 
   if (task->parent->state == DART_TASK_ROOT) {
@@ -1393,7 +1400,7 @@ dart__tasking__create_task(
           void           (*fn) (void *),
           void            *data,
           size_t           data_size,
-    const dart_task_dep_t *deps,
+          dart_task_dep_t *deps,
           size_t           ndeps,
           dart_task_prio_t prio,
     const char            *descr,
