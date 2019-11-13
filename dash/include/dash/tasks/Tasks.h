@@ -137,7 +137,7 @@ namespace internal {
   };
 
 
-  template<typename T>
+  template<typename T, typename ... DepTypes>
   typename std::enable_if<!std::is_same<T, void>::value, void>::type
   invoke_task_action_impl(TaskData<T>& data)
   {
@@ -150,22 +150,67 @@ namespace internal {
     }
   }
 
+
   template<typename T>
+  T& ptr_to_ref(T* v)
+  {
+    return *v;
+  }
+
+  template<typename T>
+  T& ptr_to_ref(T& v)
+  {
+    return v;
+  }
+
+  template<int I, typename TupleT, typename T, typename ...DepTypes>
+  void
+  extract_depinfo(dart_taskref_t task, TupleT &tuple) {
+    std::get<I>(tuple) = static_cast<T*>(dart_task_depinfo(task, I));
+    extract_depinfo<I+1, TupleT, DepTypes...>(task, tuple);
+  }
+
+  template<int I, typename TupleT>
+  void
+  extract_depinfo(dart_taskref_t, TupleT &)
+  { }
+
+  template<int ...>
+  struct seq { };
+
+  template<int N, int ...S>
+  struct gens : gens<N-1, N-1, S...> { };
+
+  template<int ...S>
+  struct gens<0, S...> {
+    typedef seq<S...> type;
+  };
+
+  template<typename FuncT, typename TupleT, int ...S>
+  void
+  invoke_function_with_params(FuncT& func, TupleT &params, seq<S...>)
+  {
+    func(ptr_to_ref(std::get<S>(params))...);
+  }
+
+  template<typename T, typename ... DepTypes>
   typename std::enable_if<std::is_same<T, void>::value, void>::type
   invoke_task_action_impl(TaskData<T>& data)
   {
     task_action_t<T>& func = data.func;
-    func();
+    std::tuple<DepTypes*...> deps;
+    extract_depinfo<0, decltype(deps), DepTypes...>(dart_task_current_task(), deps);
+    invoke_function_with_params(func, deps, typename gens<sizeof...(DepTypes)>::type());
   }
 
 
-  template<typename T=void>
+  template<typename T=void, typename ... DepTypes>
   void
   invoke_task_action(void *data)
   {
     try {
       TaskData<T> *td = static_cast<TaskData<T>*>(data);
-      invoke_task_action_impl(*td);
+      invoke_task_action_impl<T, DepTypes...>(*td);
       delete td;
     } catch (const BaseCancellationSignal& cs) {
       // nothing to be done, the cancellation is triggered by the d'tor
@@ -177,7 +222,7 @@ namespace internal {
     }
   }
 
-  template<typename FuncT>
+  template<typename FuncT, typename ... DepTypes>
   void
   invoke_task_action_void(void *data)
   {
@@ -186,7 +231,9 @@ namespace internal {
       // at the end we have to call the destructor on the function object,
       // the memory will be free'd by the runtime
       auto _ = internal::finally([&](){f.~FuncT();});
-      f();
+      std::tuple<DepTypes*...> deps;
+      extract_depinfo<0, decltype(deps), DepTypes...>(dart_task_current_task(), deps);
+      invoke_function_with_params(f, deps, typename gens<sizeof...(DepTypes)>::type());
     } catch (const BaseCancellationSignal& cs) {
       // nothing to be done, the cancellation is triggered by the d'tor
     } catch (...) {
@@ -197,7 +244,7 @@ namespace internal {
     }
   }
 
-  template<typename FuncT>
+  template<typename FuncT, typename ... DepTypes>
   void
   invoke_task_action_void_delete(void *data)
   {
@@ -206,7 +253,9 @@ namespace internal {
       // at the end we have to call the destructor on the function object and
       // free its memory explicitely
       auto _ = internal::finally([&](){delete &f;});
-      f();
+      std::tuple<DepTypes*...> deps;
+      extract_depinfo<0, decltype(deps), DepTypes...>(dart_task_current_task(), deps);
+      invoke_function_with_params(f, deps, typename gens<sizeof...(DepTypes)>::type());
     } catch (const BaseCancellationSignal& cs) {
       // nothing to be done, the cancellation is triggered by the d'tor
     } catch (...) {
@@ -259,8 +308,12 @@ namespace internal {
   /**
    * A class representing a task dependency.
    */
+  template<typename ValueType, bool IsCopyin>
   class TaskDependency {
   public:
+
+    using value_type = ValueType;
+    using is_copyin  = IsCopyin;
 
     /**
      * Create an empty dependency that will be ignored.
@@ -281,13 +334,12 @@ namespace internal {
     /**
      * Create a data dependency using a local pointer.
      */
-    template<typename T>
     TaskDependency(
-      const T             * lptr,
+      const ValueType     * lptr,
       dart_task_deptype_t   type,
       dart_taskphase_t      phase = DART_PHASE_TASK) {
       _dep.gptr  = DART_GPTR_NULL;
-      _dep.gptr.addr_or_offs.addr = const_cast<T*>(lptr);
+      _dep.gptr.addr_or_offs.addr = const_cast<ValueType*>(lptr);
       _dep.gptr.segid  = -1; // segment ID for attached memory, not translated
       _dep.gptr.unitid = dash::myid();
       _dep.gptr.teamid = dash::Team::All().dart_id();
@@ -315,8 +367,7 @@ namespace internal {
      * Create a direct task dependency using a \ref TaskHandle created
      * previously.
      */
-    template<typename T>
-    TaskDependency(const TaskHandle<T>& handle) {
+    TaskDependency(const TaskHandle<ValueType>& handle) {
       _dep.task  = handle.dart_handle();
       _dep.type  = DART_DEP_DIRECT;
     }
@@ -341,8 +392,8 @@ namespace internal {
   template<typename GlobRefT>
   auto
   in(GlobRefT&& globref, int32_t phase = DART_PHASE_TASK)
-    -> decltype((void)(globref.dart_gptr()), TaskDependency()) {
-    return TaskDependency(globref.dart_gptr(), DART_DEP_IN, phase);
+    -> decltype((void)(globref.dart_gptr()), TaskDependency<typename GlobRefT::value_type>()) {
+    return TaskDependency<typename GlobRefT::value_type, false>(globref.dart_gptr(), DART_DEP_IN, phase);
   }
 
 #if 0
@@ -385,9 +436,9 @@ namespace internal {
   in(T& lref, int32_t phase = DART_PHASE_TASK)
     // exclude range types covered above
     -> typename std::enable_if<!(internal::has_gptr<T>::value),
-                               TaskDependency>::type
+                               TaskDependency<T, false>>::type
   {
-    return TaskDependency(&lref, DART_DEP_IN, phase);
+    return TaskDependency<T, false>(&lref, DART_DEP_IN, phase);
   }
 
   /**
@@ -412,8 +463,8 @@ namespace internal {
     size_t     nelem,
     ValueT   * target,
     int32_t    phase = DART_PHASE_TASK)
-    -> decltype((void)(globref.dart_gptr()), TaskDependency()) {
-    return TaskDependency(globref.dart_gptr(), nelem*sizeof(ValueT),
+    -> decltype((void)(globref.dart_gptr()), TaskDependency<ValueT, true>()) {
+    return TaskDependency<ValueT, true>(globref.dart_gptr(), nelem*sizeof(ValueT),
                           target, phase);
   }
 
@@ -439,7 +490,7 @@ namespace internal {
     IterT&&   end,
     ValueT  * target,
     int32_t   phase = DART_PHASE_TASK)
-    -> decltype((void)(begin.dart_gptr()), TaskDependency()) {
+    -> decltype((void)(begin.dart_gptr()), TaskDependency<typename IterT::value_type, true>()) {
 #if defined(DASH_DEBUG)
     auto pattern = begin.pattern();
     auto g_begin = begin.global();
@@ -452,7 +503,8 @@ namespace internal {
                      u_begin, ", end ", u_end);
     }
 #endif // DASH_DEBUG
-    return TaskDependency(begin.dart_gptr(),
+    return TaskDependency<typename IterT::value_type, true>(
+                          begin.dart_gptr(),
                           dash::distance(begin, end)*sizeof(ValueT),
                           target, phase);
   }
@@ -484,11 +536,14 @@ namespace internal {
     size_t     nelem,
     ValueT   * target,
     int32_t    phase = DART_PHASE_TASK)
-    -> decltype((void)(globref.dart_gptr()), TaskDependency()) {
+    -> decltype((void)(globref.dart_gptr()),
+                  TaskDependency<typename GlobRefT::value_type, true>()) {
     if (globref.is_local()) {
-      return TaskDependency(globref.dart_gptr(), DART_DEP_IN, phase);
+      return TaskDependency<typename GlobRefT::value_type, true>(
+                          globref.dart_gptr(), DART_DEP_IN, phase);
     }
-    return TaskDependency(globref.dart_gptr(), nelem*sizeof(ValueT),
+    return TaskDependency<typename GlobRefT::value_type, true>(
+                          globref.dart_gptr(), nelem*sizeof(ValueT),
                           target, phase);
   }
 
@@ -518,7 +573,7 @@ namespace internal {
     IterT&&   end,
     ValueT  * target,
     int32_t   phase = DART_PHASE_TASK)
-    -> decltype((void)(begin.dart_gptr()), TaskDependency()) {
+    -> decltype((void)(begin.dart_gptr()), TaskDependency<typename IterT::value_type, true>()) {
 #if defined(DASH_DEBUG)
     auto pattern = begin.pattern();
     auto g_begin = begin.global();
@@ -532,9 +587,10 @@ namespace internal {
     }
 #endif // DASH_DEBUG
     if (begin.is_local()) {
-      return TaskDependency(begin.dart_gptr(), DART_DEP_IN, phase);
+      return TaskDependency<typename IterT::value_type, true>(begin.dart_gptr(), DART_DEP_IN, phase);
     }
-    return TaskDependency(begin.dart_gptr(),
+    return TaskDependency<typename IterT::value_type, true>(
+                          begin.dart_gptr(),
                           dash::distance(begin, end)*sizeof(ValueT),
                           target, phase);
   }
@@ -547,8 +603,8 @@ namespace internal {
   template<typename GlobRefT>
   auto
   out(GlobRefT&& globref, int32_t phase = DART_PHASE_TASK)
-    -> decltype((void)(globref.dart_gptr()), TaskDependency())  {
-    return TaskDependency(globref.dart_gptr(), DART_DEP_OUT, phase);
+    -> decltype((void)(globref.dart_gptr()), TaskDependency<typename GlobRefT::value_type>())  {
+    return TaskDependency<typename GlobRefT::value_type>(globref.dart_gptr(), DART_DEP_OUT, phase);
   }
 
 #if 0
@@ -593,8 +649,8 @@ namespace internal {
   out(T& lref, int32_t phase = DART_PHASE_TASK)
     // exclude range types covered above
     -> typename std::enable_if<!(internal::has_gptr<T>::value),
-                               TaskDependency>::type {
-    return TaskDependency(&lref, DART_DEP_OUT, phase);
+                               TaskDependency<T>>::type {
+    return TaskDependency<T>(&lref, DART_DEP_OUT, phase);
   }
 
 
@@ -604,9 +660,9 @@ namespace internal {
    * \sa TaskDependency
    */
   template<typename T>
-  TaskDependency
+  TaskDependency<T>
   direct(const TaskHandle<T>& taskref) {
-    return TaskDependency(taskref);
+    return TaskDependency<T>(taskref);
   }
 
   /**
@@ -616,9 +672,9 @@ namespace internal {
    */
   template<typename T=int>
   constexpr
-  TaskDependency
+  TaskDependency<T>
   none() {
-    return TaskDependency();
+    return TaskDependency<T>();
   }
 
   /**
@@ -664,12 +720,12 @@ namespace internal {
   }
 
 namespace internal{
-  template<class TaskFunc, typename DepContainer>
+  template<class TaskFunc, typename DepContainer, typename ... DepTypes>
   void
   async(
     TaskFunc            f,
     dart_task_prio_t    prio,
-    DepContainer&&      deps,
+    DepContainer&       deps,
     const char         *name = nullptr) {
 #if DASH_TASKS_INVOKE_DIRECT
     f();
@@ -681,7 +737,7 @@ namespace internal{
       // the function is small enough to fit into the task inline so don't
       // allocate extra memory
       dart_task_create(
-        &dash::tasks::internal::invoke_task_action_void<TaskFunc>,
+        &dash::tasks::internal::invoke_task_action_void<TaskFunc, DepTypes...>,
         &f, sizeof(f), deps.data(), deps.size(), prio, name);
     } else {
       dart_task_create(
@@ -723,19 +779,19 @@ namespace internal{
    *
    * \note This function is a cancellation point.
    */
-  template<class TaskFunc, typename ... Args>
+  template<class TaskFunc, typename T, typename ... Args>
   void
   async(
     TaskFunc                f,
     dart_task_prio_t        prio,
-    TaskDependency          dep,
+    TaskDependency<T>       dep,
     Args&&...               args){
     std::array<dart_task_dep_t, sizeof...(args)+1> deps(
     {{
       static_cast<dart_task_dep_t>(dep),
       static_cast<dart_task_dep_t>(args)...
     }});
-    internal::async(f, prio, deps);
+    internal::async<TaskFunc, decltype(deps), T, typename Args::value_type...>(f, prio, deps);
   }
 
 
@@ -766,7 +822,7 @@ namespace internal{
   template<class TaskFunc, typename ... Args>
   void
   async(TaskFunc f, Args&&... args){
-    async(f, DART_PRIO_PARENT, std::forward<Args>(args)...);
+    async<TaskFunc, Args...>(f, DART_PRIO_PARENT, std::forward<Args>(args)...);
   }
 
 
@@ -792,20 +848,20 @@ namespace internal{
    *
    * \note This function is a cancellation point.
    */
-  template<class TaskFunc, typename ... Args>
+  template<class TaskFunc, typename T, typename ... Args>
   void
   async(
     const char*             name,
     TaskFunc                f,
     dart_task_prio_t        prio,
-    TaskDependency          dep,
+    TaskDependency<T>       dep,
     Args&&...               args){
     std::array<dart_task_dep_t, sizeof...(args)+1> deps(
     {{
       static_cast<dart_task_dep_t>(dep),
       static_cast<dart_task_dep_t>(args)...
     }});
-    internal::async(f, prio, deps, name);
+    internal::async<TaskFunc, decltype(deps), T, typename Args::value_type...>(f, prio, deps, name);
   }
 
 
@@ -902,13 +958,13 @@ namespace internal{
    *
    * \sa TaskHandle
    */
-  template<class TaskFunc, typename ... Args>
+  template<class TaskFunc, typename T, typename ... Args>
   auto
   async_handle(
     TaskFunc f,
-    dart_task_prio_t prio,
-    TaskDependency   dep,
-    Args&&...        args) -> TaskHandle<decltype(f())>
+    dart_task_prio_t  prio,
+    TaskDependency<T> dep,
+    Args&&...         args) -> TaskHandle<decltype(f())>
   {
     std::array<dart_task_dep_t, sizeof...(args)+1> deps(
     {{
