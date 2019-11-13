@@ -26,17 +26,38 @@ if (NOT DEFINED MPI_IMPL_ID)
       COMMAND "${MPI_C_COMPILER}" -c "${sourcefile}" -o "${CMAKE_BINARY_DIR}/${filename}.o"
       RESULT_VARIABLE RETURN_VAL
       OUTPUT_VARIABLE OUTPUT
-      ERROR_VARIABLE  OUTPUT
+      ERROR_VARIABLE  OUTPUT_ERROR
     )
 
     if (RETURN_VAL EQUAL 0)
       set (${resvar} TRUE PARENT_SCOPE)
     else ()
       set (${resvar} FALSE PARENT_SCOPE)
-      message (STATUS "Failed to execute MPI compiler: \n${OUTPUT}")
+      message (STATUS "Failed to execute MPI compiler: \n${OUTPUT_ERROR}")
     endif ()
 
   endfunction ()
+
+  function (check_mpi_link sourcefile resvar)
+
+    # check for MPI-3
+    get_filename_component(filename ${sourcefile} NAME)
+    execute_process(
+      COMMAND "${MPI_C_COMPILER}" "${sourcefile}" -o "${CMAKE_BINARY_DIR}/${filename}.o"
+      RESULT_VARIABLE RETURN_VAL
+      OUTPUT_VARIABLE OUTPUT
+      ERROR_VARIABLE  OUTPUT_ERROR
+    )
+
+    if (RETURN_VAL EQUAL 0)
+      set (${resvar} TRUE PARENT_SCOPE)
+    else ()
+      set (${resvar} FALSE PARENT_SCOPE)
+      message (STATUS "Failed to execute MPI compiler: \n${OUTPUT_ERROR}")
+    endif ()
+
+  endfunction ()
+
 
 
   # Determine MPI implementation
@@ -141,7 +162,7 @@ if (NOT DEFINED MPI_IMPL_ID)
   endif ()
 
   # check support for extended generalized requests
-  check_mpi_compile(${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_mpi_egreq.c HAVE_MPI_EGREQ)
+  check_mpi_link(${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_mpi_egreq.c HAVE_MPI_EGREQ)
 
   # restore state
   cmake_pop_check_state()
