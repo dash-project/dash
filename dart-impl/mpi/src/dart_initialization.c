@@ -207,7 +207,10 @@ dart_ret_t do_init()
 
   _dart_initialized = 1;
 
-  dart__mpi__locality_init();
+  #ifdef WITHLOCALITY
+    DART_LOG_DEBUG("ENABELING DART BASE LOCALITY");
+    dart__mpi__locality_init();
+  #endif
 
   _dart_initialized = 2;
 

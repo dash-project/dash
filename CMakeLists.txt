@@ -85,6 +85,8 @@ option(ENABLE_MEMKIND
        "Specify whether Memkind features are enabled" on)
 option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
+option(ENABLE_DART_LOCALITY
+       "Specify if locality schould be enabled" on)
 
 if (BUILD_COVERAGE_TESTS)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
@@ -285,10 +287,12 @@ message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
         ${ENABLE_PLASMA})
 message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
-message(INFO "Memkind support:          (ENABLE_MEMKIND)                    "
+message(INFO "Memkind support:          (ENABLE_MEMKIND)                 "
         ${ENABLE_MEMKIND})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
+message(INFO "Enable DART locality:     (ENABLE_DART_LOCALITY)           "
+        ${ENABLE_DART_LOCALITY})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
 message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
 if (DEFINED MPI_IMPL_ID)
