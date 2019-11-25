@@ -296,8 +296,9 @@ dart_ret_t dart_exit()
   }
   dart_global_unit_t unitid;
   dart_myid(&unitid);
-
-  dart__mpi__locality_finalize();
+  #ifdef WITHLOCALITY
+    dart__mpi__locality_finalize();
+  #endif
 
   _dart_initialized = 0;
 

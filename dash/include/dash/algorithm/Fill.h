@@ -48,7 +48,7 @@ void fill(
   value_t * lfirst      = index_range.begin;
   value_t * llast       = index_range.end;
 
-#ifdef DASH_ENABLE_OPENMP
+#if defined(DASH_ENABLE_OPENMP) && defined(WITHLOCALITY)
   dash::util::UnitLocality uloc;
   auto n_threads = uloc.num_domain_threads();
   auto nlocal    = llast - lfirst;

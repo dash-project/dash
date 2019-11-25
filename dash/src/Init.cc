@@ -66,8 +66,10 @@ void dash::init(int * argc, char ** *argv)
     dash::barrier();
   }
 
-  DASH_LOG_DEBUG("dash::init", "dash::util::Locality::init()");
-  dash::util::Locality::init();
+  #ifdef WITHLOCALITY
+    DASH_LOG_DEBUG("dash::init", "dash::util::Locality::init()");
+    dash::util::Locality::init();
+  #endif
   DASH_LOG_DEBUG("dash::init >");
 }
 

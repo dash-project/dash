@@ -53,7 +53,7 @@ const ElementType * min_element(
   Compare             compare
     = std::less<const ElementType &>())
 {
-#ifdef DASH_ENABLE_OPENMP
+#if defined(DASH_ENABLE_OPENMP) && defined(WITHLOCALITY)
 #define ROUNDUP(T, A) ((T + A - 1) & ~(A - 1))
 
   typedef typename std::decay<ElementType>::type      value_t;
