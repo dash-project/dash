@@ -45,7 +45,9 @@ TEST_F(TeamLocalityTest, GlobalAll)
   if (dash::myid().id != 0) {
     return;
   }
-
+  #ifndef WITHLOCALITY
+    SKIP_TEST_MSG("Skipping BalanceTest with deactivated locality");
+  #endif
   dash::Team & team = dash::Team::All();
 
   dash::util::TeamLocality tloc(team);
@@ -106,7 +108,9 @@ TEST_F(TeamLocalityTest, SplitNUMA)
   if (dash::myid().id != 0) {
     return;
   }
-
+  #ifndef WITHLOCALITY
+    SKIP_TEST_MSG("Skipping BalanceTest with deactivated locality");
+  #endif
   dash::Team & team = dash::Team::All();
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",

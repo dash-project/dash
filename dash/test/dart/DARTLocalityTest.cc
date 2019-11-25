@@ -78,6 +78,9 @@ bool domains_find_each(
 
 TEST_F(DARTLocalityTest, CloneLocalityDomain)
 {
+  #ifndef WITHLOCALITY
+    SKIP_TEST_MSG("Skipping LocalityTest with deactivated locality");
+  #endif
   dart_domain_locality_t * loc_team_all_orig;
   EXPECT_EQ_U(
     DART_OK,
@@ -97,6 +100,9 @@ TEST_F(DARTLocalityTest, CloneLocalityDomain)
 
 TEST_F(DARTLocalityTest, FindLocalityDomain)
 {
+  #ifndef WITHLOCALITY
+    SKIP_TEST_MSG("Skipping LocalityTest with deactivated locality");
+  #endif
   dart_domain_locality_t * loc_team_all_orig;
   EXPECT_EQ_U(
     DART_OK,
@@ -107,6 +113,9 @@ TEST_F(DARTLocalityTest, FindLocalityDomain)
 
 TEST_F(DARTLocalityTest, ExcludeLocalityDomain)
 {
+  #ifndef WITHLOCALITY
+    SKIP_TEST_MSG("Skipping LocalityTest with deactivated locality");
+  #endif
   dart_domain_locality_t * loc_team_all_orig;
   EXPECT_EQ_U(
     DART_OK,
@@ -144,6 +153,9 @@ TEST_F(DARTLocalityTest, ExcludeLocalityDomain)
 
 TEST_F(DARTLocalityTest, UnitLocality)
 {
+  #ifndef WITHLOCALITY
+    SKIP_TEST_MSG("Skipping LocalityTest with deactivated locality");
+  #endif
   DASH_LOG_TRACE("DARTLocalityTest.Domains",
                  "get local unit locality descriptor");
   dart_unit_locality_t * ul;
@@ -194,6 +206,9 @@ TEST_F(DARTLocalityTest, UnitLocality)
 
 TEST_F(DARTLocalityTest, Domains)
 {
+  #ifndef WITHLOCALITY
+    SKIP_TEST_MSG("Skipping LocalityTest with deactivated locality");
+  #endif
   DASH_LOG_TRACE("DARTLocalityTest.Domains",
                  "get global domain descriptor");
   dart_domain_locality_t * dl;
@@ -215,6 +230,9 @@ TEST_F(DARTLocalityTest, Domains)
 
 TEST_F(DARTLocalityTest, ScopeDomains)
 {
+  #ifndef WITHLOCALITY
+    SKIP_TEST_MSG("Skipping LocalityTest with deactivated locality");
+  #endif
   if (0 != dash::myid().id) {
     return;
   }
