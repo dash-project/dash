@@ -69,6 +69,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_SHARED_WINDOWS=ON \
                         -DENABLE_DYNAMIC_WINDOWS=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
+                        -DENABLE_DART_LOCALITY=ON \
                         \
                         -DENABLE_LOGGING=OFF \
                         -DENABLE_TRACE_LOGGING=OFF \
