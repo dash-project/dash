@@ -88,6 +88,12 @@ option(ENABLE_NASTYMPI
 option(ENABLE_DART_LOCALITY
        "Specify if locality schould be enabled" on)
 
+# Locality compile flag
+if(ENABLE_DART_LOCALITY)
+     set(ADDITIONAL_COMPILE_FLAGS
+          "${ADDITIONAL_COMPILE_FLAGS} -DWITHLOCALITY")
+endif()
+
 if (BUILD_COVERAGE_TESTS)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
   # This has to be done globally as otherwise linking might fail
