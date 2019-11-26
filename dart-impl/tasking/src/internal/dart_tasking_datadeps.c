@@ -559,9 +559,10 @@ release_dependency(dart_dephash_elem_t *elem)
   if (elem->origin.id == myguid.id) {
     DART_LOG_TRACE("Releasing local %s dependency %p",
                    elem->dep.type == DART_DEP_IN ? "in" : "out", elem);
-    bool runnable = release_local_dep_counter(elem->task.local);
+    dart_task_t *task = elem->task.local;
+    bool runnable = release_local_dep_counter(task);
     if (runnable) {
-      dart__tasking__enqueue_runnable(elem->task.local);
+      dart__tasking__enqueue_runnable(task);
     }
   } else {
     // send remote output dependency release together with reference
