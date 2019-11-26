@@ -126,6 +126,7 @@ struct dart_task_data {
   dart_dephash_elem_t       *deps_owned;      // list of dependencies owned by this task
   dart_wait_handle_t        *wait_handle;
   const char                *descr;           // the description of the task
+  uint64_t                   instance;        // the instance counter of this task object
   dart_taskphase_t           phase;
   int                        num_children;
   int16_t                    owner;           // the thread owning the task object memory
