@@ -23,7 +23,7 @@ typedef dart_mutex_t dart_tasklock_t;
 
 #define UNLOCK_TASK(__task) dart__base__mutex_unlock(&(__task)->lock)
 
-# elif defined(__STDC_NO_ATOMICS__) || defined (USE_CMP_SWAP)
+# elif defined(__STDC_NO_ATOMICS__) && defined (USE_CMP_SWAP)
 
 #include <dash/dart/base/atomic.h>
 
@@ -45,6 +45,27 @@ typedef int32_t dart_tasklock_t;
   dart__unused(lck);                                      \
   DART_ASSERT(lck == 1);                                  \
 } while(0)
+
+#elif defined(USE_CMP_SWAP)
+
+typedef int32_t dart_tasklock_t;
+#define TASKLOCK_INITIALIZER ((int32_t)0)
+
+#define TASKLOCK_INIT(__task) do {  \
+  __task->lock = TASKLOCK_INITIALIZER;\
+} while (0)
+
+#define LOCK_TASK(__task) do {\
+  int cnt = 0; \
+  dart_tasklock_t tmp = 0; \
+  while ((__task)->lock || !atomic_compare_exchange_weak_explicit(&(__task)->lock, &tmp, 1, memory_order_acquire, memory_order_relaxed)) \
+  { if (++cnt == 1000) { sched_yield(); cnt = 0; } } \
+} while(0)
+
+#define UNLOCK_TASK(__task) do {                          \
+  atomic_store_explicit(&(__task)->lock, 0, memory_order_release); \
+} while(0)
+
 
 #else // defined(__STDC_NO_ATOMICS__)
 
