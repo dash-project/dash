@@ -4,7 +4,9 @@
 //#define USE_DART_MUTEX
 
 // Set this to disable the use of atomic_flag_test_and_set
-#define USE_CMP_SWAP
+//#define USE_CMP_SWAP
+
+#define USE_DART_MUTEX
 
 #ifdef USE_DART_MUTEX
 
@@ -27,7 +29,7 @@ typedef dart_mutex_t dart_tasklock_t;
 
 #include <dash/dart/base/atomic.h>
 
-typedef int32_t dart_tasklock_t;
+typedef volatile int32_t dart_tasklock_t;
 #define TASKLOCK_INITIALIZER ((int32_t)0)
 
 #define TASKLOCK_INIT(__task) do {  \
@@ -59,7 +61,7 @@ typedef int32_t dart_tasklock_t;
   int cnt = 0; \
   dart_tasklock_t tmp = 0; \
   while ((__task)->lock || !atomic_compare_exchange_weak_explicit(&(__task)->lock, &tmp, 1, memory_order_acquire, memory_order_relaxed)) \
-  { if (++cnt == 1000) { sched_yield(); cnt = 0; } } \
+  { tmp = 0; if (++cnt == 1000) { sched_yield(); cnt = 0; } } \
 } while(0)
 
 #define UNLOCK_TASK(__task) do {                          \
