@@ -527,20 +527,23 @@ void dart__dephash__print_stats(const dart_task_t *task)
   uint32_t empty     = 0;
   uint32_t n = 0;
   double mean = 0.0, M2 = 0.0;
-  for (uint32_t i = 0; i < DART_DEPHASH_SIZE; ++i) {
-    uint32_t nb = task->local_deps[i].num_outdeps;
-    if (nb == 0) {
-      ++empty;
-    } else {
-      double delta, delta2;
-      n++;
-      delta  = nb - mean;
-      mean  += delta / n;
-      delta2 = nb - mean;
-      M2    += delta2*delta2;
-      if (nb > max_elems) max_elems = nb;
-      if (nb < min_elems) min_elems = nb;
-      sum_elems += nb;
+
+  if (task->local_deps != NULL) {
+    for (uint32_t i = 0; i < DART_DEPHASH_SIZE; ++i) {
+      uint32_t nb = task->local_deps[i].num_outdeps;
+      if (nb == 0) {
+        ++empty;
+      } else {
+        double delta, delta2;
+        n++;
+        delta  = nb - mean;
+        mean  += delta / n;
+        delta2 = nb - mean;
+        M2    += delta2*delta2;
+        if (nb > max_elems) max_elems = nb;
+        if (nb < min_elems) min_elems = nb;
+        sum_elems += nb;
+      }
     }
   }
   DART_LOG_INFO(
