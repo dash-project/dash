@@ -1246,15 +1246,19 @@ dart_tasking_datadeps_match_local_dependency(
                      dummy, new_elem, task, out_dep.phase);
     } else {
       //LOCK_TASK(elem);
-      if (elem->task.local != NULL &&
-          // don't register with an OUT on the same task
-          !(elem->task.local == task && elem->origin.id == myguid.id)) {
-        int32_t unresolved_deps = DART_INC_AND_FETCH32(
-                                      &task->unresolved_deps);
-        DART_LOG_TRACE("Making task %p a local successor of task %p "
-                      "(num_deps: %i, outdep: %p)",
-                      task, elem->task.local, unresolved_deps, elem);
-        register_at_out_dep_nolock(elem, new_elem);
+      if (elem->task.local != NULL) {
+        if (elem->task.local == task && elem->origin.id == myguid.id) {
+          // don't register with an OUT dependency of the same task
+          DART_STACK_POP_MEMB(task->deps_owned, new_elem, next_in_task);
+          dephash_recycle_elem(new_elem);
+        } else {
+          int32_t unresolved_deps = DART_INC_AND_FETCH32(
+                                        &task->unresolved_deps);
+          DART_LOG_TRACE("Making task %p a local successor of task %p with indep %p"
+                         "(num_deps: %i, outdep: %p)",
+                         task, elem->task.local, new_elem, unresolved_deps, elem);
+          register_at_out_dep_nolock(elem, new_elem);
+        }
       } else {
         //DART_INC_AND_FETCH32(&elem->num_consumers);
         elem->num_consumers++;
