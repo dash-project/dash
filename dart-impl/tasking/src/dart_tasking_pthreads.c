@@ -183,6 +183,7 @@ static int64_t acc_idle_time_us     = 0;
 static int64_t acc_post_time_us     = 0;
 _Thread_local static int64_t thread_acc_idle_time_us = 0;
 _Thread_local static int64_t thread_idle_start_ts    = 0;
+_Thread_local static int64_t thread_acc_post_time_us        = 0;
 
 dart_task_t *
 dart__tasking__root_task()
@@ -893,8 +894,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     }
     // return to previous task
     set_current_task(current_task);
-    DART_FETCH_AND_ADD64(&acc_post_time_us,
-                         current_time_us() - postprocessing_start_ts);
+    acc_post_time_us += current_time_us() - postprocessing_start_ts;
   }
 }
 
@@ -1103,6 +1103,7 @@ void* thread_main(void *data)
   }
 
   DART_FETCH_AND_ADD64(&acc_idle_time_us, thread_acc_idle_time_us);
+  DART_FETCH_AND_ADD64(&acc_post_time_us, thread_acc_post_time_us);
 
   DART_ASSERT_MSG(
     thread == get_current_thread(), "Detected invalid thread return!");
