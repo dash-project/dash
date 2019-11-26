@@ -394,6 +394,7 @@ dephash_allocate_elem(
   //TASKLOCK_INIT(elem);
   elem->next = elem->prev = NULL;
   elem->is_dummy = false;
+  elem->next_in_task = NULL;
 
   DART_LOG_TRACE("Allocated elem %p (task %p)", elem, task.local);
 
