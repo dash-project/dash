@@ -626,17 +626,14 @@ static void dephash_release_out_dependency(
     } while (1);
   } else {
     //UNLOCK_TASK(elem);
-    // if there are no active input dependencies we can immediately release the next
+    // there are no active input dependencies so we can immediately release the next
     // output dependency
-    int32_t num_consumers = elem->num_consumers;
-    if (num_consumers == 0) {
-      DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep", elem);
-      dephash_release_next_out_dependency_nolock(elem);
-      // remove from hash table bucket
-      dephash_remove_dep_from_bucket_nolock(elem, local_deps, slot);
-      // recycle dephash element
-      dephash_recycle_elem(elem);
-    }
+    DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep", elem);
+    dephash_release_next_out_dependency_nolock(elem);
+    // remove from hash table bucket
+    dephash_remove_dep_from_bucket_nolock(elem, local_deps, slot);
+    // recycle dephash element
+    dephash_recycle_elem(elem);
     UNLOCK_TASK(&local_deps[slot]);
   }
 
@@ -863,6 +860,7 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
   return DART_OK;
 }
 
+static
 dart_ret_t
 dart_tasking_datadeps_handle_defered_remote_outdeps(
   dart_taskphase_t matching_phase)
