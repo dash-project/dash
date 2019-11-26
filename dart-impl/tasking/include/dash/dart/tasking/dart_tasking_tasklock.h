@@ -3,6 +3,9 @@
 
 //#define USE_DART_MUTEX
 
+// Set this to disable the use of atomic_flag_test_and_set
+#define USE_CMP_SWAP
+
 #ifdef USE_DART_MUTEX
 
 #include <dash/dart/base/mutex.h>
@@ -20,7 +23,7 @@ typedef dart_mutex_t dart_tasklock_t;
 
 #define UNLOCK_TASK(__task) dart__base__mutex_unlock(&(__task)->lock)
 
-# elif defined(__STDC_NO_ATOMICS__)
+# elif defined(__STDC_NO_ATOMICS__) || defined (USE_CMP_SWAP)
 
 #include <dash/dart/base/atomic.h>
 
@@ -33,7 +36,7 @@ typedef int32_t dart_tasklock_t;
 
 #define LOCK_TASK(__task) do {\
   int cnt = 0; \
-  while (!DART_COMPARE_AND_SWAP32(&(__task)->lock, 0, 1)) \
+  while ((__task)->lock || !DART_COMPARE_AND_SWAP32(&(__task)->lock, 0, 1)) \
   { if (++cnt == 1000) { sched_yield(); cnt = 0; } } \
 } while(0)
 
