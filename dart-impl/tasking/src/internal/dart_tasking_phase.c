@@ -39,7 +39,7 @@ static void do_matching()
     } else {
       matching_interval = 1;
     }
-    DART_LOG_TRACE("Next matching interval: %d", matching_interval);
+    DART_LOG_TRACE("Next matching interval: %d", next_interval);
   }
   phases_remaining = matching_interval;
 }
