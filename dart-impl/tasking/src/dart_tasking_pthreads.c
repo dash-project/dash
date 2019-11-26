@@ -129,7 +129,7 @@ static dart_task_t root_task = {
     .num_children     = 0,
     .state            = DART_TASK_ROOT,
     .descr            = "root_task"
-#ifdef DART_DEBUG
+#ifdef TRACK_CHILDREN
     , .children       = NULL
 #endif
 };
@@ -712,12 +712,12 @@ dart_task_t * create_task(
     task->descr = descr;
   }
 
-#ifdef DART_DEBUG
+#ifdef TRACK_CHILDREN
   LOCK_TASK(task->parent);
   dart_tasking_tasklist_prepend(&task->parent->children, task);
   UNLOCK_TASK(task->parent);
   task->children = NULL;
-#endif // DART_DEBUG
+#endif // TRACK_CHILDREN
 
   return task;
 }
@@ -733,11 +733,11 @@ void dart__tasking__destroy_task(dart_task_t *task)
     dart__tasking__phase_take_task(task->phase);
   }
 
-#ifdef DART_DEBUG
+#ifdef TRACK_CHILDREN
   LOCK_TASK(task->parent);
   dart_tasking_tasklist_remove(&task->parent->children, task);
   UNLOCK_TASK(task->parent);
-#endif // DART_DEBUG
+#endif // TRACK_CHILDREN
 
   dart_tasking_datadeps_reset(task);
 
