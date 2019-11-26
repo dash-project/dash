@@ -1246,7 +1246,9 @@ dart_tasking_datadeps_match_local_dependency(
                      dummy, new_elem, task, out_dep.phase);
     } else {
       //LOCK_TASK(elem);
-      if (elem->task.local != NULL) {
+      if (elem->task.local != NULL &&
+          // don't register with an OUT on the same task
+          !(elem->task.local == task && elem->origin.id == myguid.id)) {
         int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                       &task->unresolved_deps);
         DART_LOG_TRACE("Making task %p a local successor of task %p "
