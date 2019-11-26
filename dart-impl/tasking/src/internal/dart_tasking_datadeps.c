@@ -1273,7 +1273,7 @@ dart_tasking_datadeps_match_local_dependency(
       // check if we already have an input dependency on that task and remove it
       dart_dephash_elem_t *prev = NULL;
       dart_dephash_elem_t *iter;
-      for (iter = task->deps_owned; iter != NULL; iter = iter->next_in_task) {
+      for (iter = task->deps_owned; iter != NULL; prev = iter, iter = iter->next_in_task) {
         // dep_list points to the output dependency the IN dep refers to
         if (iter->dep.type == DART_DEP_IN && iter->dep_list == elem) {
 
@@ -1282,17 +1282,17 @@ dart_tasking_datadeps_match_local_dependency(
                          iter, task, elem, elem->task.local);
           // found one, remove it from the task...
           if (prev == NULL) {
-            task->deps_owned = iter->next;
+            task->deps_owned = iter->next_in_task;
           } else {
-            prev->next = iter->next;
+            prev->next_in_task = iter->next_in_task;
           }
 
           dart_dephash_elem_t *prev = NULL;
           dart_dephash_elem_t *iter2;
           // ... and from the OUT dependency
-          for (iter2 = elem->dep_list; iter2 != NULL; iter2 = iter->next) {
+          for (iter2 = elem->dep_list; iter2 != NULL; prev = iter2, iter2 = iter2->next) {
             if (iter2 == iter) {
-              if (prev = NULL) {
+              if (prev == NULL) {
                 elem->dep_list = iter2->next;
               } else {
                 prev->next = iter2->next;
@@ -1300,7 +1300,6 @@ dart_tasking_datadeps_match_local_dependency(
               // done
               break;
             }
-            prev = iter2;
           }
 
           DART_ASSERT_MSG(elem->dep_list == NULL || iter2 != NULL,
@@ -1326,10 +1325,10 @@ dart_tasking_datadeps_match_local_dependency(
           // done
           break;
         }
-        prev = iter;
       }
 
       if (iter != NULL) {
+        iter->dep_list = NULL;
         dephash_recycle_elem(iter);
       }
 
@@ -1448,6 +1447,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       continue;
     }
 
+#if 0
     // check for duplicate dependencies
     if (dep.type == DART_DEP_IN) {
       bool needs_skipping = false;
@@ -1468,6 +1468,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       // skip processing of this dependency
       if (needs_skipping) continue;
     }
+#endif
 
     // adjust the phase of the dependency if required
     if (dep.phase == DART_PHASE_TASK) {
