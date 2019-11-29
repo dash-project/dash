@@ -7,13 +7,7 @@
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
 #include <dash/dart/tasking/dart_tasking_wait.h>
 
-#define DART_TASK_BLOCKING_WAIT
-
-#ifdef DART_TASK_BLOCKING_WAIT
-#define DEFAULT_WAIT_TYPE COPYIN_WAIT_BLOCK
-#else
-#define DEFAULT_WAIT_TYPE COPYIN_WAIT_YIELD
-#endif
+#define DEFAULT_WAIT_TYPE COPYIN_WAIT_DETACH_INLINE
 
 #define COPYIN_TASK_PRIO (INT_MAX-1)
 
