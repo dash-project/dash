@@ -8,9 +8,11 @@
 #include <stdint.h>
 #include <sched.h>
 
-//#define DART_MUTEX_ATOMIC_LOCK
+#define DART_MUTEX_ATOMIC_LOCK
 
-#define DART_MUTEX_CAS
+
+/* TODO: using CAS seems broken, check that! */
+//#define DART_MUTEX_CAS
 
 // enable to yield after this many unsuccesful attempts
 //#define DART_MUTEX_SCHED_YIELD 1000
