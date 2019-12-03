@@ -736,6 +736,8 @@ dart_task_t * create_task(
 
   dart__tasking__instrument_task_create(task, prio, descr);
 
+  dart__tasking__instrument_task_create(task, prio, descr);
+
   return task;
 }
 
