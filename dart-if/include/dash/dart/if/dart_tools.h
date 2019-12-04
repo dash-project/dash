@@ -3,7 +3,7 @@
 
 #include <dash/dart/if/dart_tasking.h>
 
-#define DART__TOOLS_TOOL_ENV_VAR_PATH "TOOL_PATH"
+#define DART__TOOLS_TOOL_ENV_VAR_PATH "DART_TOOL_PATH"
 #define DART__TOOLS_TOOL_INIT_FUNCTION_NAME "init_ext_tool"
 #ifdef __cplusplus
 extern "C" {

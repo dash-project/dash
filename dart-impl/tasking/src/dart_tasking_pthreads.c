@@ -1297,7 +1297,7 @@ dart__tasking__init()
       DART_LOG_ERROR("Environment variable is an empty string!\n"); //not set
       printf("var == 0\n");
   } else {
-      printf("TOOL_PATH=%s\n", var);
+      printf("DART_TOOL_PATH=%s\n", var);
       handle = dlopen(var, RTLD_LAZY);
       if (!handle) {
          /* failed to load the tool */
