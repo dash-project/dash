@@ -721,9 +721,13 @@ dart_task_t * create_task(
   // if descr is an absolute path (as with __FILE__) we only use the basename
   if (descr && descr[0] == '/') {
     const char *descr_base = strrchr(descr, '/');
-    task->descr            = descr_base+1;
+    //task->descr            = descr_base+1;
+    strncpy(task->descr, descr_base+1, DART_TASK_DESCR_LENGTH);
+    task->descr[DART_TASK_DESCR_LENGTH-1] = '\0';
   } else {
-    task->descr = descr;
+    //task->descr = descr;
+    strncpy(task->descr, descr, DART_TASK_DESCR_LENGTH);
+    task->descr[DART_TASK_DESCR_LENGTH-1] = '\0';
   }
 
 #ifdef DART_DEBUG
@@ -732,7 +736,7 @@ dart_task_t * create_task(
   UNLOCK_TASK(task->parent);
   task->children = NULL;
 #endif // DART_DEBUG
-  dart__tasking__instrument_task_create(task, prio, descr);
+  dart__tasking__instrument_task_create(task, prio, task->descr);
 
   return task;
 }
