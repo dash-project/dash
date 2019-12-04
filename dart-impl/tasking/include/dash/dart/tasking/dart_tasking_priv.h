@@ -295,6 +295,9 @@ void dart__tasking__utility_thread(
   void  *data
 ) DART_INTERNAL;
 
+char *
+dart__tasking__get_current_task_descr() DART_INTERNAL;
+
 
 #define CLOCK_TIME_USEC(ts) \
   (((uint64_t)(ts).tv_sec)*1000*1000 + (ts).tv_nsec/1000)

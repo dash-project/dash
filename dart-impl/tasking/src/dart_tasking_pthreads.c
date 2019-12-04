@@ -177,9 +177,6 @@ dart_task_t * get_current_task();
 static inline
 dart_thread_t * get_current_thread();
 
-static inline
-char * get_current_task_descr();
-
 static
 dart_task_t * next_task(dart_thread_t *thread);
 
@@ -527,8 +524,7 @@ dart_task_t * get_current_task()
   return get_current_thread()->current_task;
 }
 
-static inline
-char * get_current_task_descr()
+char * dart__tasking__get_current_task_descr()
 {
   return get_current_thread()->current_task->descr;
 }

@@ -280,6 +280,9 @@ dart_task_phase_current();
 dart_ret_t
 dart_task_phase_resync(dart_team_t team);
 
+char *
+dart_task_current_task_descr();
+
 
 #ifdef __cplusplus
 }
