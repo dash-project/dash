@@ -67,32 +67,9 @@ void dart__tasking__instrument_local_dep(
     dart_task_t *task1,
     dart_task_t *task2,
     uint64_t memaddr_raw,
-    uint64_t orig_memaddr_raw,
     int32_t task1_unitid,
     int32_t task2_unitid,
     int edge_type) DART_INTERNAL;
-/**
- * Instrumentation point of two tasks in the same local task graph share a
- * write-after-write dependency.
-*/
-// void dart__tasking__instrument_local_dep_waw(
-//     dart_task_t *task1,
-//     dart_task_t *task2,
-//     uint64_t memaddr_waw,
-//     uint64_t orig_memaddr_waw,
-//     int32_t task1_unitid,
-//     int32_t task2_unitid) DART_INTERNAL;
-// /**
-//  * Instrumentation point of two tasks in the same local task graph share a
-//  * write-after-read (anti-)dependency.
-// */    
-// void dart__tasking__instrument_local_dep_war(
-//     dart_task_t *task1,
-//     dart_task_t *task2,
-//     uint64_t memaddr_war,
-//     uint64_t orig_memaddr_war,
-//     int32_t task1_unitid,
-//     int32_t task2_unitid) DART_INTERNAL;
 /**
  * Instrumentation point of a task beeing added into the task queue.
  * Called right before inserting the task into the queue.
@@ -101,26 +78,6 @@ void dart__tasking__instrument_task_add_to_queue(
     dart_task_t *task,
     dart_thread_t *thread) DART_INTERNAL;
     
-/**
- * Instrumentation point of a dummy dependency added into the task graph
- * replacing an input dependency, which cannot be matched yet.
- */
-void dart__tasking__instrument_dummy_dep_create(
-    dart_task_t *task,
-    uint64_t dummy_dep,
-    uint64_t in_dep,
-    dart_task_dep_t out_dep,
-    int32_t task_unitid) DART_INTERNAL;
-/**
- * Instrumentation point of a dummy dependency captured, meaning
- * a matching dependency was now found, the dummy dependency is
- * not needed anymore.
-*/
-void dart__tasking__instrument_dummy_dep_capture (
-    dart_task_t *task,
-    uint64_t dummy_dep,
-    uint64_t remote_dep,
-    int32_t task_unitid) DART_INTERNAL;
 
 /**
  * Instrumentation point of a remote input dependency matched with a
@@ -133,7 +90,6 @@ void dart__tasking__instrument_remote_dep(
     int local_dep_type,
     int remote_dep_type,
     uint64_t memaddr,
-    uint64_t orig_memaddr,
     int32_t local_unitid,
     int32_t remote_unitid,
     int edge_type) DART_INTERNAL;

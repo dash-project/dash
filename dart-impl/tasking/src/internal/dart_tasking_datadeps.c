@@ -799,7 +799,7 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
               //if local->task.local is NULL, the dependency is not longer existing
               //rdep->origin.id
               if (local->dep.type == DART_DEP_OUT && rdep->dep.type == DART_DEP_IN) {
-                dart__tasking__instrument_remote_dep((uint64_t) rdep->task.local, (uint64_t) local->task.local, rdep->dep.type, local->dep.type, rdep->dep.gptr.addr_or_offs.offset, local->dep.gptr.addr_or_offs.offset, rdep->origin.id, myguid.id, DART_EDGE_REMOTE_IN);  
+                dart__tasking__instrument_remote_dep((uint64_t) rdep->task.local, (uint64_t) local->task.local, rdep->dep.type, local->dep.type, rdep->dep.gptr.addr_or_offs.offset, rdep->origin.id, myguid.id, DART_EDGE_REMOTE_IN);  
               }
               
             } 
@@ -909,7 +909,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
         if (local->dep.phase <= phase) {
           // 'tis the one
             if (local->task.local != NULL && rdep->task.local != NULL) {
-                dart__tasking__instrument_remote_dep((uint64_t) rdep->task.local, (uint64_t) local->task.local, rdep->dep.type, local->dep.type, rdep->dep.gptr.addr_or_offs.offset, local->dep.gptr.addr_or_offs.offset, rdep->origin.id, myguid.id, DART_EDGE_REMOTE_OUT);
+                dart__tasking__instrument_remote_dep((uint64_t) rdep->task.local, (uint64_t) local->task.local, rdep->dep.type, local->dep.type, local->dep.gptr.addr_or_offs.offset, rdep->origin.id, myguid.id, DART_EDGE_REMOTE_OUT);
               
             }
           break;
@@ -960,7 +960,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
         for (dummy_elem = dummy_task->dep_list; dummy_elem != NULL; dummy_prev = dummy_elem, dummy_elem=dummy_elem->next) {
             if (dummy_elem->dep.type == DART_DEP_IN) {
                 if(dummy_elem->task.local != NULL && rdep->task.local != NULL) {
-                  dart__tasking__instrument_remote_dep((uint64_t) dummy_elem->task.local, (uint64_t) rdep->task.local, dummy_elem->dep.type, rdep->dep.type, dummy_elem->dep.gptr.addr_or_offs.offset, rdep->dep.gptr.addr_or_offs.offset, myguid.id, rdep->origin.id, DART_EDGE_DUMMY);
+                  dart__tasking__instrument_remote_dep((uint64_t) dummy_elem->task.local, (uint64_t) rdep->task.local, dummy_elem->dep.type, rdep->dep.type, rdep->dep.gptr.addr_or_offs.offset, myguid.id, rdep->origin.id, DART_EDGE_DUMMY);
                 }
             }
         }
@@ -1168,7 +1168,7 @@ dart_tasking_datadeps_handle_copyin(
             //new_elem is remote task, elem is local task
             //check if tasks are still existing
             if (new_elem->task.local != NULL && elem->task.local != NULL) {
-              dart__tasking__instrument_remote_dep((uint64_t )new_elem->task.local, (uint64_t) elem->task.local, new_elem->dep.type, elem->dep.type,new_elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset, elem->origin.id, myguid.id, DART_EDGE_COPYIN);
+              dart__tasking__instrument_remote_dep((uint64_t )new_elem->task.local, (uint64_t) elem->task.local, new_elem->dep.type, elem->dep.type, elem->dep.gptr.addr_or_offs.offset, elem->origin.id, myguid.id, DART_EDGE_COPYIN);
             }
             DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
             register_at_out_dep_nolock(elem, new_elem);
@@ -1239,10 +1239,10 @@ dart_tasking_datadeps_match_local_dependency(
         if (elem->task.local != NULL) {
           if ((elem->dep.type == DART_DEP_OUT) && (dep->type == DART_DEP_IN)) {
             //printf("RAW depedendency from task %llu to task %llu\n", (uint64_t) elem->task.local, task);
-            dart__tasking__instrument_local_dep(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset, myguid.id, myguid.id, DART_EDGE_LOCAL_RAW);
+            dart__tasking__instrument_local_dep(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, myguid.id, myguid.id, DART_EDGE_LOCAL_RAW);
           } else if ((elem->dep.type == DART_DEP_OUT) && (dep->type == DART_DEP_OUT)) {
             //printf("WAW depedendency from task %llu to task %llu\n", (uint64_t) elem->task.local, task);
-            dart__tasking__instrument_local_dep(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset, myguid.id, myguid.id, DART_EDGE_LOCAL_WAW);
+            dart__tasking__instrument_local_dep(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, myguid.id, myguid.id, DART_EDGE_LOCAL_WAW);
           }  
         }
       break;
@@ -1306,7 +1306,7 @@ dart_tasking_datadeps_match_local_dependency(
         //printf("elem->task.local: %llu, elem->type %le output dependency serving this input dependency may then
           if (elem->dep.type == DART_DEP_IN && elem->task.local != NULL) {
           //printf("WAR depedendency from task %s to task %s\n", elem->task.local->descr, task->descr);
-          dart__tasking__instrument_local_dep(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, elem->dep.gptr.addr_or_offs.offset, myguid.id, myguid.id, DART_EDGE_LOCAL_WAR);
+          dart__tasking__instrument_local_dep(elem->task.local, task, elem->dep.gptr.addr_or_offs.offset, myguid.id, myguid.id, DART_EDGE_LOCAL_WAR);
         }
       }
       // check if we already have an input dependency on that task and remove it
