@@ -56,7 +56,6 @@ dart_tasking_copyin_create_delayed_tasks() DART_INTERNAL;
 dart_ret_t
 dart_tasking_copyin_create_task(
   const dart_task_dep_t * dep,
-        dart_gptr_t       dest_gptr,
         taskref           local_task) DART_INTERNAL;
 
 #endif // DART_TASKING_DART_TASKING_COPYIN_H_

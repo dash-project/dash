@@ -259,53 +259,93 @@ TEST_F(TaskingTest, RemoteDepsDoubleBufferStencil)
 TEST_F(TaskingTest, Taskloop)
 {
   size_t nelem = 1000;
+  size_t nreps = 100;
   std::vector<uint64_t> vals(nelem);
   std::fill(vals.begin(), vals.end(), 0);
 
-  dash::tasks::taskloop(vals.begin(), vals.end(),
-    [&](auto begin, auto end){
-      for (auto iter = begin; iter != end; iter++) {
-        *iter *= 2;
-      }
-    },
-    [&](auto begin, auto end, auto deps){
-      deps = dash::tasks::out(*begin);
-    });
+  for (int i = 0; i < nreps; ++i) {
 
-  dash::tasks::taskloop(vals.begin(), vals.end(),
-    [&](auto begin, auto end){
-      std::for_each(begin, end,
-                  [](uint64_t elem){ ASSERT_EQ_U(elem, 0); });
-    },
-    [&](auto begin, auto end, auto deps){
-      deps = dash::tasks::in(*begin);
-    });
+    dash::tasks::taskloop(vals.begin(), vals.end(),
+      [&](auto begin, auto end){
+        for (auto iter = begin; iter != end; iter++) {
+          *iter *= 2;
+        }
+      },
+      [&](auto begin, auto end, auto deps){
+        deps = dash::tasks::out(*begin);
+      });
 
-  dash::tasks::taskloop(vals.begin(), vals.end(),
-    [&](auto begin, auto end){
-      for (auto iter = begin; iter != end; iter++) {
-        *iter += 1;
-      }
-    },
-    [&](auto begin, auto end, auto deps){
-      deps = dash::tasks::out(*begin);
-    });
+    dash::tasks::taskloop(vals.begin(), vals.end(),
+      [&](auto begin, auto end){
+        std::for_each(begin, end,
+                    [](uint64_t elem){ ASSERT_EQ_U(elem, 0); });
+      },
+      [&](auto begin, auto end, auto deps){
+        deps = dash::tasks::in(*begin);
+      });
 
-  dash::tasks::taskloop(vals.begin(), vals.end(),
-    [&](auto begin, auto end){
-      for (auto iter = begin; iter != end; iter++) {
-        *iter -= 1;
-      }
-    },
-    [&](auto begin, auto end, auto deps){
-      deps = dash::tasks::out(*begin);
-    });
+    dash::tasks::taskloop(vals.begin(), vals.end(),
+      [&](auto begin, auto end){
+        for (auto iter = begin; iter != end; iter++) {
+          *iter += 1;
+        }
+      },
+      [&](auto begin, auto end, auto deps){
+        deps = dash::tasks::out(*begin);
+      });
 
-  dash::tasks::complete();
+    dash::tasks::taskloop(vals.begin(), vals.end(),
+      [&](auto begin, auto end){
+        for (auto iter = begin; iter != end; iter++) {
+          *iter -= 1;
+        }
+      },
+      [&](auto begin, auto end, auto deps){
+        deps = dash::tasks::out(*begin);
+      });
 
+
+  }
+    dash::tasks::complete();
   std::for_each(vals.begin(), vals.end(),
                [](uint64_t elem){ ASSERT_EQ_U(elem, 0); });
 
 }
+
+
+TEST_F(TaskingTest, Copyin)
+{
+  int num_iter = 10;
+  int num_elem_per_unit = 100;
+  dash::Array<int> array(dash::size()*num_elem_per_unit);
+  dash::fill(array.begin(), array.end(), 0);
+  dash::barrier();
+
+  // fill local part in a task
+  dash::tasks::async(
+    [&](){
+      std::fill(array.lbegin(), array.lend(), dash::myid());
+    }, dash::tasks::out(*array.lbegin()));
+
+  dash::tasks::async_fence();
+
+  if (dash::myid() == 0) {
+    for (int i = 0; i < dash::size(); i++) {
+      dash::tasks::async(
+        [&](int *buf){
+          ASSERT_NE_U(buf, array.lbegin());
+          ASSERT_EQ_U(buf[0], i);
+        },
+        // copyin into a buffer allocated by the runtime
+        dash::tasks::copyin(array[i*num_elem_per_unit], num_elem_per_unit);
+    }
+  }
+
+  dash::tasks::complete();
+
+  ASSERT_EQ_U(num_iter, array.local[0]);
+}
+
+
 
 #endif // DASH_TEST_TASKSUPPORT

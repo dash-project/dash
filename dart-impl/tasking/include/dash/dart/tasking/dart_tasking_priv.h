@@ -14,6 +14,8 @@
 #include <dash/dart/tasking/dart_tasking_envstr.h>
 #include <dash/dart/tasking/dart_tasking_tasklock.h>
 
+#define DART_TASK_STRUCT_SIZE 256
+
 // forward declaration, defined in dart_tasking_datadeps.c
 typedef struct dart_dephash_elem dart_dephash_elem_t;
 typedef struct dart_dephash_head dart_dephash_head_t;
@@ -54,10 +56,11 @@ typedef
 struct dart_wait_handle_s dart_wait_handle_t;
 
 enum dart_taskflags_t {
-  DART_TASK_HAS_REF        = 1 << 0,
-  DART_TASK_DATA_ALLOCATED = 1 << 1,
-  DART_TASK_IS_INLINED     = 1 << 2,
-  DART_TASK_IS_COMMTASK    = 1 << 3
+  DART_TASK_HAS_REF          = 1 << 0,
+  DART_TASK_DATA_ALLOCATED   = 1 << 1,
+  DART_TASK_IS_INLINED       = 1 << 2,
+  DART_TASK_IS_COMMTASK      = 1 << 3,
+  DART_TASK_COPYIN_ALLOCATED = 1 << 4
 };
 
 #define DART_TASK_SET_FLAG(_task, _flag)    (_task)->flags |=  (_flag)
@@ -78,55 +81,68 @@ typedef struct dart_thread dart_thread_t;
 
 struct dart_task_data {
   union {
-    // atomic list used for free elements
-    DART_STACK_MEMBER_DEF;
-    // double linked list used in lists/queues
+    // the size of the struct
+    char _buf[DART_TASK_STRUCT_SIZE];
+    // the actual payload
     struct {
-      struct dart_task_data     *next;        // next entry in a task list/queue
-      struct dart_task_data     *prev;        // previous entry in a task list/queue
+      union {
+        // atomic list used for free elements
+        DART_STACK_MEMBER_DEF;
+        // double linked list used in lists/queues
+        struct {
+          struct dart_task_data     *next;        // next entry in a task list/queue
+          struct dart_task_data     *prev;        // previous entry in a task list/queue
+        };
+      };
+      int                        prio;
+      uint16_t                   flags;
+      int8_t                     state;           // one of dart_task_state_t, single byte sufficient
+      dart_tasklock_t            lock;
+      struct task_list          *successor;       // the list of tasks that depend on this task
+      dart_dephash_elem_t       *remote_successor;// the list of dependencies from remote tasks directly dependending on this task
+      struct dart_task_data     *parent;          // the task that created this task
+      // TODO: pack using pahole, move all execution-specific fields into context
+      context_t                 *taskctx;         // context to start/resume task
+      void                      *numaptr;         // ptr used to determine the NUMA node
+      union {
+        // only relevant before execution, both will be zero when the task starts execution
+        struct {
+          int32_t                    unresolved_deps; // the number of unresolved task dependencies
+          int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
+        };
+        // only relevant during execution
+        dart_dephash_head_t      *local_deps;      // hashmap containing dependencies of child tasks
+      };
+      union {
+        // used for dummy tasks
+        struct {
+          void*                  remote_task;     // the remote task (do not deref!)
+          dart_global_unit_t     origin;          // the remote unit
+        };
+        // used for regular tasks
+        struct {
+          dart_task_action_t     fn;              // the action to be invoked
+          void                  *data;            // the data to be passed to the action
+        };
+      };
+      dart_dephash_elem_t       *deps_owned;      // list of dependencies owned by this task
+      dart_wait_handle_t        *wait_handle;
+      const char                *descr;           // the description of the task
+      dart_taskphase_t           phase;
+      int                        num_children;
+      int16_t                    owner;           // the thread owning the task object memory
+      uint8_t                    num_copyin_ptr;  // number of copyin pointer, max 256
+
+    #ifdef DART_DEBUG
+      task_list_t              * children;  // list of child tasks
+    #endif //DART_DEBUG
+
+      // will point past the space used for task data
+      void                   *** copyin_ptr;      // will point to beginning of overflow space
+
+      //unsigned char              inline_data[DART_TASKING_INLINE_DATA_SIZE]; // inline data passed to the action
     };
   };
-  int                        prio;
-  uint16_t                   flags;
-  int8_t                     state;           // one of dart_task_state_t, single byte sufficient
-  dart_tasklock_t            lock;
-  struct task_list          *successor;       // the list of tasks that depend on this task
-  dart_dephash_elem_t       *remote_successor;// the list of dependencies from remote tasks directly dependending on this task
-  struct dart_task_data     *parent;          // the task that created this task
-  // TODO: pack using pahole, move all execution-specific fields into context
-  context_t                 *taskctx;         // context to start/resume task
-  void                      *numaptr;         // ptr used to determine the NUMA node
-  union {
-    // only relevant before execution, both will be zero when the task starts execution
-    struct {
-      int32_t                    unresolved_deps; // the number of unresolved task dependencies
-      int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
-    };
-    // only relevant during execution
-    dart_dephash_head_t      *local_deps;      // hashmap containing dependencies of child tasks
-  };
-  union {
-    // used for dummy tasks
-    struct {
-      void*                  remote_task;     // the remote task (do not deref!)
-      dart_global_unit_t     origin;          // the remote unit
-    };
-    // used for regular tasks
-    struct {
-      dart_task_action_t     fn;              // the action to be invoked
-      void                  *data;            // the data to be passed to the action
-    };
-  };
-  dart_dephash_elem_t       *deps_owned;      // list of dependencies owned by this task
-  dart_wait_handle_t        *wait_handle;
-  const char                *descr;           // the description of the task
-  dart_taskphase_t           phase;
-  int                        num_children;
-  int16_t                    owner;           // the thread owning the task object memory
-#ifdef DART_DEBUG
-  task_list_t              * children;  // list of child tasks
-#endif //DART_DEBUG
-  unsigned char              inline_data[DART_TASKING_INLINE_DATA_SIZE]; // inline data passed to the action
 };
 
 #define DART_STACK_PUSH(_head, _elem) \
@@ -212,7 +228,7 @@ dart__tasking__create_task(
         void             (*fn) (void *),
         void              *data,
         size_t             data_size,
-  const dart_task_dep_t   *deps,
+        dart_task_dep_t   *deps,
         size_t             ndeps,
         dart_task_prio_t   prio,
   const char              *descr,
@@ -244,12 +260,6 @@ dart__tasking__release_detached(dart_taskref_t task) DART_INTERNAL;
 
 void
 dart__tasking__handle_task(dart_task_t *task) DART_INTERNAL;
-
-//void
-//dart__base__tasking_print_taskgraph();
-//
-//dart_ret_t
-//dart__base__tasking_sync_taskgraph();
 
 dart_ret_t
 dart__tasking__fini() DART_INTERNAL;

@@ -8,6 +8,9 @@
 
 #include <dash/tasks/internal/DependencyContainer.h>
 #include <dash/tasks/internal/TaskHandle.h>
+#include <dash/tasks/internal/LambdaTraits.h>
+
+#include <utility>
 
 // Enable for debugging to directly invoke the tasks, ignoring any dependencies
 // NOTE: this won't enqueue any tasks so all but the main thread stay idle
@@ -136,12 +139,37 @@ namespace internal {
     std::shared_ptr<ReturnT> result = NULL;
   };
 
-
-  template<typename T, typename ... DepTypes>
-  typename std::enable_if<!std::is_same<T, void>::value, void>::type
-  invoke_task_action_impl(TaskData<T>& data)
+  template<typename FuncT, typename TupleT, std::size_t... I>
+  void
+  invoke_function_with_params(FuncT& func, TupleT, std::index_sequence<I...>)
   {
-    task_action_t<T>& func = data.func;
+    int i = 0;
+    auto task = dart_task_current_task();
+    func( (typename std::tuple_element<I, TupleT>::type::value_type*)dart_task_depinfo(task, i++)...);
+  }
+
+  template <bool, typename>
+  struct pick;
+
+  template <typename T>
+  struct pick<true, T> { using type = std::tuple<T>; };
+
+  template <typename T>
+  struct pick<false, T> { using type = std::tuple<>; };
+
+  template<typename ...DepTypes>
+  struct copyin_tuple_filter
+  {
+    using tuple_type = decltype(
+                        std::tuple_cat(
+                          typename pick<DepTypes::is_copyin, DepTypes>::type{}...));
+  };
+
+  template<typename ReturnT, typename ... DepTypes>
+  typename std::enable_if<!std::is_same<ReturnT, void>::value, void>::type
+  invoke_task_action_impl(TaskData<ReturnT>& data)
+  {
+    task_action_t<ReturnT>& func = data.func;
     assert(data.result != NULL);
     if (data.result != NULL) {
       *data.result = func();
@@ -150,59 +178,18 @@ namespace internal {
     }
   }
 
-
-  template<typename T>
-  T& ptr_to_ref(T* v)
-  {
-    return *v;
-  }
-
-  template<typename T>
-  T& ptr_to_ref(T& v)
-  {
-    return v;
-  }
-
-  template<int I, typename TupleT, typename T, typename ...DepTypes>
-  void
-  extract_depinfo(dart_taskref_t task, TupleT &tuple) {
-    std::get<I>(tuple) = static_cast<T*>(dart_task_depinfo(task, I));
-    extract_depinfo<I+1, TupleT, DepTypes...>(task, tuple);
-  }
-
-  template<int I, typename TupleT>
-  void
-  extract_depinfo(dart_taskref_t, TupleT &)
-  { }
-
-  template<int ...>
-  struct seq { };
-
-  template<int N, int ...S>
-  struct gens : gens<N-1, N-1, S...> { };
-
-  template<int ...S>
-  struct gens<0, S...> {
-    typedef seq<S...> type;
-  };
-
-  template<typename FuncT, typename TupleT, int ...S>
-  void
-  invoke_function_with_params(FuncT& func, TupleT &params, seq<S...>)
-  {
-    func(ptr_to_ref(std::get<S>(params))...);
-  }
-
   template<typename T, typename ... DepTypes>
   typename std::enable_if<std::is_same<T, void>::value, void>::type
   invoke_task_action_impl(TaskData<T>& data)
   {
     task_action_t<T>& func = data.func;
-    std::tuple<DepTypes*...> deps;
-    extract_depinfo<0, decltype(deps), DepTypes...>(dart_task_current_task(), deps);
-    invoke_function_with_params(func, deps, typename gens<sizeof...(DepTypes)>::type());
+    using tuple_type = typename copyin_tuple_filter<DepTypes...>::tuple_type;
+    constexpr const int tuple_size = std::tuple_size<tuple_type>::value;
+    //tuple_type deps;
+    //std::tuple<typename DepTypes::value_type*...> deps;
+    //extract_depinfo<0, decltype(deps), DepTypes...>(dart_task_current_task(), deps);
+    invoke_function_with_params(func, tuple_type{}, std::make_index_sequence<tuple_size>{});
   }
-
 
   template<typename T=void, typename ... DepTypes>
   void
@@ -227,13 +214,18 @@ namespace internal {
   invoke_task_action_void(void *data)
   {
     try{
-      FuncT& f = *static_cast<FuncT*>(data);
+      FuncT& func = *static_cast<FuncT*>(data);
       // at the end we have to call the destructor on the function object,
       // the memory will be free'd by the runtime
-      auto _ = internal::finally([&](){f.~FuncT();});
-      std::tuple<DepTypes*...> deps;
-      extract_depinfo<0, decltype(deps), DepTypes...>(dart_task_current_task(), deps);
-      invoke_function_with_params(f, deps, typename gens<sizeof...(DepTypes)>::type());
+      auto _ = internal::finally([&](){func.~FuncT();});
+      using tuple_type = typename copyin_tuple_filter<DepTypes...>::tuple_type;
+      constexpr const int tuple_size = std::tuple_size<tuple_type>::value;
+      constexpr const int num_args = std::min(tuple_size, lambda_traits<FuncT>::num_args);
+      //tuple_type deps;
+      //extract_depinfo<0, decltype(deps), DepTypes...>(dart_task_current_task(), deps);
+      //invoke_function_with_params(f, deps, typename gens<std::tuple_size<tuple_type>::value>::type());
+
+      invoke_function_with_params(func, tuple_type{}, std::make_index_sequence<tuple_size>{});
     } catch (const BaseCancellationSignal& cs) {
       // nothing to be done, the cancellation is triggered by the d'tor
     } catch (...) {
@@ -249,13 +241,14 @@ namespace internal {
   invoke_task_action_void_delete(void *data)
   {
     try{
-      FuncT& f = *static_cast<FuncT*>(data);
+      FuncT& func = *static_cast<FuncT*>(data);
       // at the end we have to call the destructor on the function object and
       // free its memory explicitely
-      auto _ = internal::finally([&](){delete &f;});
-      std::tuple<DepTypes*...> deps;
-      extract_depinfo<0, decltype(deps), DepTypes...>(dart_task_current_task(), deps);
-      invoke_function_with_params(f, deps, typename gens<sizeof...(DepTypes)>::type());
+      auto _ = internal::finally([&](){delete &func;});
+      using tuple_type = typename copyin_tuple_filter<DepTypes...>::tuple_type;
+      constexpr const int tuple_size = std::tuple_size<tuple_type>::value;
+      //extract_depinfo<0, decltype(deps), DepTypes...>(dart_task_current_task(), deps);
+      invoke_function_with_params(func, tuple_type{}, std::make_index_sequence<tuple_size>{});
     } catch (const BaseCancellationSignal& cs) {
       // nothing to be done, the cancellation is triggered by the d'tor
     } catch (...) {
@@ -308,12 +301,12 @@ namespace internal {
   /**
    * A class representing a task dependency.
    */
-  template<typename ValueType, bool IsCopyin>
+  template<typename ValueType, bool IsCopyin = false>
   class TaskDependency {
   public:
 
     using value_type = ValueType;
-    using is_copyin  = IsCopyin;
+    static constexpr const bool is_copyin  = IsCopyin;
 
     /**
      * Create an empty dependency that will be ignored.
@@ -354,6 +347,7 @@ namespace internal {
       dart_gptr_t         gptr,
       size_t              num_bytes,
       void               *ptr,
+      dart_task_deptype_t type = DART_DEP_COPYIN,
       dart_taskphase_t    phase = DART_PHASE_TASK)
     {
       _dep.copyin.gptr = gptr;
@@ -461,11 +455,11 @@ namespace internal {
   copyin(
     GlobRefT&& globref,
     size_t     nelem,
-    ValueT   * target,
+    ValueT   * target = nullptr_t,
     int32_t    phase = DART_PHASE_TASK)
     -> decltype((void)(globref.dart_gptr()), TaskDependency<ValueT, true>()) {
     return TaskDependency<ValueT, true>(globref.dart_gptr(), nelem*sizeof(ValueT),
-                          target, phase);
+                          target, DART_DEP_COPYIN, phase);
   }
 
   /**
@@ -488,7 +482,7 @@ namespace internal {
   copyin(
     IterT&&   begin,
     IterT&&   end,
-    ValueT  * target,
+    ValueT  * target = nullptr_t,
     int32_t   phase = DART_PHASE_TASK)
     -> decltype((void)(begin.dart_gptr()), TaskDependency<typename IterT::value_type, true>()) {
 #if defined(DASH_DEBUG)
@@ -506,7 +500,34 @@ namespace internal {
     return TaskDependency<typename IterT::value_type, true>(
                           begin.dart_gptr(),
                           dash::distance(begin, end)*sizeof(ValueT),
-                          target, phase);
+                          target, DART_DEP_COPYIN, phase);
+  }
+
+
+  /**
+   * Create a copyin dependency using the global memory \c range.
+   *
+   * The data in \c range will be copied into \c target. Multiple tasks with
+   * similar copyin dependencies in the same phase will use the same copy.
+   * Only consecutive global memory ranges on a single unit can be used.
+   *
+   * \note currently, copyin dependencies are identified using their target. It
+   *       is thus erroneous to mix output and copyin dependencies on \c target.
+   * \note only  copyin dependencies in the same phase share a copy. If a
+   *       copy created in one phase is also valid in subsequent phases you
+   *       may explicitely specify the phase a copyin dependency refers to.
+   *
+   * \sa TaskDependency
+   */
+  template<typename RangeT, typename ValueT = typename IterT::value_type>
+  auto
+  copyin(
+    RangeT&&  range,
+    ValueT  * target = nullptr_t,
+    int32_t   phase = DART_PHASE_TASK)
+    -> decltype((void)(range.begin()), (void)(range.end()),
+                TaskDependency<typename IterT::value_type, true>()) {
+      return copyin(range.begin(), range.end(), target, phase);
   }
 
 
@@ -534,17 +555,13 @@ namespace internal {
   copyin_r(
     GlobRefT&& globref,
     size_t     nelem,
-    ValueT   * target,
+    ValueT   * target = nullptr_t,
     int32_t    phase = DART_PHASE_TASK)
     -> decltype((void)(globref.dart_gptr()),
                   TaskDependency<typename GlobRefT::value_type, true>()) {
-    if (globref.is_local()) {
-      return TaskDependency<typename GlobRefT::value_type, true>(
-                          globref.dart_gptr(), DART_DEP_IN, phase);
-    }
     return TaskDependency<typename GlobRefT::value_type, true>(
                           globref.dart_gptr(), nelem*sizeof(ValueT),
-                          target, phase);
+                          target, DART_DEP_COPYIN_R, phase);
   }
 
   /**
@@ -571,7 +588,7 @@ namespace internal {
   copyin_r(
     IterT&&   begin,
     IterT&&   end,
-    ValueT  * target,
+    ValueT  * target = nullptr_t,
     int32_t   phase = DART_PHASE_TASK)
     -> decltype((void)(begin.dart_gptr()), TaskDependency<typename IterT::value_type, true>()) {
 #if defined(DASH_DEBUG)
@@ -586,13 +603,40 @@ namespace internal {
                      u_begin, ", end ", u_end);
     }
 #endif // DASH_DEBUG
-    if (begin.is_local()) {
-      return TaskDependency<typename IterT::value_type, true>(begin.dart_gptr(), DART_DEP_IN, phase);
-    }
     return TaskDependency<typename IterT::value_type, true>(
                           begin.dart_gptr(),
                           dash::distance(begin, end)*sizeof(ValueT),
-                          target, phase);
+                          target, DART_DEP_COPYIN, phase);
+  }
+
+  /**
+   * Create a copyin dependency using the global memory \c range.
+   *
+   * The data in \c range will be copied into \c target if the range is remote.
+   * Multiple tasks with similar copyin dependencies in the same phase will use
+   * the same copy.
+   * Only consecutive global memory ranges on a single unit can be used.
+   *
+   * If the range is local, the dependency will be in input dependency. It is
+   * left to the user to handle the buffer correctly.
+   *
+   * \note currently, copyin dependencies are identified using their target. It
+   *       is thus erroneous to mix output and copyin dependencies on \c target.
+   * \note only  copyin dependencies in the same phase share a copy. If a
+   *       copy created in one phase is also valid in subsequent phases you
+   *       may explicitely specify the phase a copyin dependency refers to.
+   *
+   * \sa TaskDependency
+   */
+  template<typename RangeT, typename ValueT = typename IterT::value_type>
+  auto
+  copyin_r(
+    RangeT&&  range,
+    ValueT  * target = nullptr_t,
+    int32_t   phase = DART_PHASE_TASK)
+    -> decltype((void)(range.begin()), (void)(range.end()),
+                TaskDependency<typename IterT::value_type, true>()) {
+      return copyin_r(range.begin(), range.end(), target, phase);
   }
 
   /**
@@ -741,7 +785,7 @@ namespace internal{
         &f, sizeof(f), deps.data(), deps.size(), prio, name);
     } else {
       dart_task_create(
-        &dash::tasks::internal::invoke_task_action_void_delete<TaskFunc>,
+        &dash::tasks::internal::invoke_task_action_void_delete<TaskFunc, DepTypes...>,
         new TaskFunc(std::move(f)), 0,
                       deps.data(), deps.size(), prio, name);
     }
@@ -779,19 +823,19 @@ namespace internal{
    *
    * \note This function is a cancellation point.
    */
-  template<class TaskFunc, typename T, typename ... Args>
+  template<class TaskFunc, typename T, bool FirstIsCopyin, typename ... Args>
   void
   async(
     TaskFunc                f,
     dart_task_prio_t        prio,
-    TaskDependency<T>       dep,
-    Args&&...               args){
+    TaskDependency<T, FirstIsCopyin> dep,
+    Args&&...               args) {
     std::array<dart_task_dep_t, sizeof...(args)+1> deps(
     {{
       static_cast<dart_task_dep_t>(dep),
       static_cast<dart_task_dep_t>(args)...
     }});
-    internal::async<TaskFunc, decltype(deps), T, typename Args::value_type...>(f, prio, deps);
+    internal::async<TaskFunc, decltype(deps), decltype(dep), Args...>(f, prio, deps);
   }
 
 
@@ -848,20 +892,20 @@ namespace internal{
    *
    * \note This function is a cancellation point.
    */
-  template<class TaskFunc, typename T, typename ... Args>
+  template<class TaskFunc, typename T, bool FirstIsCopyin, typename ... Args>
   void
   async(
     const char*             name,
     TaskFunc                f,
     dart_task_prio_t        prio,
-    TaskDependency<T>       dep,
+    TaskDependency<T, FirstIsCopyin> dep,
     Args&&...               args){
     std::array<dart_task_dep_t, sizeof...(args)+1> deps(
     {{
       static_cast<dart_task_dep_t>(dep),
       static_cast<dart_task_dep_t>(args)...
     }});
-    internal::async<TaskFunc, decltype(deps), T, typename Args::value_type...>(f, prio, deps, name);
+    internal::async<TaskFunc, decltype(deps), decltype(dep), Args...>(f, prio, deps, name);
   }
 
 
