@@ -2,6 +2,7 @@
 #include <dash/dart/if/dart_communication.h>
 
 #include <dash/dart/base/env.h>
+#include <dash/dart/base/mutex.h>
 #include <dash/dart/tasking/dart_tasking_copyin.h>
 #include <dash/dart/tasking/dart_tasking_remote.h>
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
@@ -16,6 +17,88 @@
 #endif
 
 #define COPYIN_TASK_PRIO (INT_MAX-1)
+
+#define MEMPOOL_MAGIC_NUM 0xDEADBEEF
+
+typedef struct mem_pool mem_pool_t;
+typedef struct mem_pool_elem mem_pool_elem_t;
+struct mem_pool_elem{
+  DART_STACK_MEMBER_DEF;
+  void         *mem;
+  uint64_t      magic;
+  mem_pool_t   *mpool; // back reference to the memory pool
+};
+
+typedef struct mem_pool mem_pool_t;
+struct mem_pool{
+  mem_pool_t *next;
+  size_t      size;
+  dart_stack_t elems;
+};
+static mem_pool_t *mem_pool = NULL;
+static dart_mutex_t mpool_lock = DART_MUTEX_INITIALIZER;
+
+
+// we know that the stack member entry is the first element of the struct
+// so we can cast directly
+#define DART_MEMPOOL_ELEM_POP(__freelist) \
+  (mem_pool_elem_t*)((void*)dart__base__stack_pop(&__freelist))
+
+#define DART_MEMPOOL_ELEM_PUSH(__freelist, __elem) \
+  dart__base__stack_push(&__freelist, &DART_STACK_MEMBER_GET(__elem))
+
+static
+mem_pool_t *find_mem_pool(size_t size)
+{
+  mem_pool_t *mpool = mem_pool;
+  while (mpool != NULL) {
+    if (size == mpool->size) break;
+    mpool = mpool->next;
+  }
+  return mpool;
+}
+
+static
+void *allocate_from_mempool(size_t size)
+{
+  // search for an existing memory pool first
+  mem_pool_t *mpool = find_mem_pool(size);
+  if (NULL == mpool) {
+    // create a new mempool and add it to the list
+    // take the lock first
+    dart__base__mutex_lock(&mpool_lock);
+    mpool = find_mem_pool(size);
+    if (NULL == mpool) {
+      mpool = malloc(sizeof(*mpool));
+      DART_STACK_PUSH(mem_pool, mpool);
+    }
+    dart__base__mutex_unlock(&mpool_lock);
+  }
+
+  mem_pool_elem_t *elem = DART_MEMPOOL_ELEM_POP(mpool->elems);
+
+  if (NULL == elem) {
+    // allocate a new element
+    elem = malloc(sizeof(*elem) + size);
+    elem->magic = MEMPOOL_MAGIC_NUM;
+    elem->mpool = mpool;
+    elem->mem   = (void*)((intptr_t)elem + sizeof(*elem));
+  }
+
+  return elem->mem;
+}
+
+
+static
+void return_to_mempool(void *mem)
+{
+  mem_pool_elem_t *elem = (mem_pool_elem_t*) ((intptr_t)mem - offsetof(mem_pool_elem_t, mem));
+  DART_ASSERT_MSG(elem->magic == MEMPOOL_MAGIC_NUM,
+                  "Corrupt memory pool element detected: %p", mem);
+
+  DART_MEMPOOL_ELEM_PUSH(elem->mpool->elems, elem);
+}
+
 
 enum dart_copyin_t {
   COPYIN_IMPL_UNDEFINED,
@@ -55,7 +138,6 @@ static enum dart_copyin_wait_t wait_type = COPYIN_WAIT_UNDEFINED;
 
 struct copyin_taskdata {
   dart_gptr_t   src;         // the global pointer to send from/get from
-  void        * dst;         // the local pointer to recv into
   size_t        num_bytes;   // number of bytes
   dart_unit_t   unit;        // global unit ID to send to / recv from
   int           tag;         // a tag to use in case of send/recv
@@ -147,7 +229,6 @@ dart_tasking_copyin_create_task_sendrecv(
   // b) add the receive to the destination
 
   arg.tag       = tag;
-  arg.dst       = dep->copyin.dest;
   arg.num_bytes = dep->copyin.size;
   arg.unit      = send_unit.id;
 
@@ -227,7 +308,6 @@ dart_tasking_copyin_create_task_get(
   struct copyin_taskdata arg;
   arg.tag       = 0; // not needed
   arg.src       = dep->copyin.gptr;
-  arg.dst       = dep->copyin.dest;
   arg.num_bytes = dep->copyin.size;
   arg.unit      = 0; // not needed
 
@@ -287,7 +367,6 @@ dart_tasking_copyin_sendrequest(
 {
   struct copyin_task *ct = malloc(sizeof(*ct));
   ct->arg.src       = dart_tasking_datadeps_localize_gptr(src_gptr);
-  ct->arg.dst       = NULL;
   ct->arg.num_bytes = num_bytes;
   ct->arg.unit      = unit.id;
   ct->arg.tag       = tag;
@@ -342,18 +421,53 @@ dart_tasking_copyin_send_taskfn(void *data)
 }
 
 static void
+dart_tasking_copyin_release_mem(dart_dephash_elem_t *dephash)
+{
+  DART_ASSERT_MSG(dephash != NULL && dephash->dep.copyin.dest != NULL,
+                  "Invalid dephash element passed in destuctor: %p (dest %p)",
+                  dephash, dephash->dep.copyin.dest);
+  return_to_mempool(dephash->dep.copyin.dest);
+  dephash->dep.copyin.dest = NULL;
+}
+
+static
+dart_task_dep_t *
+dart_tasking_copyin_prepare_dep()
+{
+  // find the dependency in the task's dependency list
+  dart_task_t *task = dart__tasking__current_task();
+  dart_task_dep_t *dep = NULL;
+  dart_dephash_elem_t *elem;
+  for (elem = task->deps_owned; elem != NULL; elem = elem->next_in_task) {
+    if (DART_DEP_COPYIN_OUT == elem->dep.type) {
+      dep = &elem->dep;
+      break;
+    }
+  }
+
+  DART_ASSERT_MSG(dep != NULL, "Failed to find COPYIN dependency for copyin task %p", task);
+
+  if (NULL == dep->copyin.dest) {
+    dep->copyin.dest = allocate_from_mempool(dep->copyin.size);
+    elem->dtor = &dart_tasking_copyin_release_mem;
+  }
+
+  return dep;
+}
+
+static void
 dart_tasking_copyin_recv_taskfn(void *data)
 {
   struct copyin_taskdata *td = (struct copyin_taskdata*) data;
 
-  // TODO: allocate memory here if needed!
+  dart_task_dep_t *dep = dart_tasking_copyin_prepare_dep();
 
   if (DART_GPTR_ISNULL(td->src)) {
     DART_LOG_TRACE("Copyin: Posting recv from unit %d (tag %d, size %zu)",
                    td->unit, td->tag, td->num_bytes);
 
     dart_handle_t handle;
-    dart_recv_handle(td->dst, td->num_bytes, DART_TYPE_BYTE,
+    dart_recv_handle(dep->copyin.dest, td->num_bytes, DART_TYPE_BYTE,
                     td->tag, DART_GLOBAL_UNIT_ID(td->unit), &handle);
     wait_for_handle(&handle);
     if (wait_type != COPYIN_WAIT_DETACH && wait_type != COPYIN_WAIT_DETACH_INLINE) {
@@ -362,8 +476,8 @@ dart_tasking_copyin_recv_taskfn(void *data)
     }
   } else {
     DART_LOG_TRACE("Local memcpy of size %zu: %p -> %p",
-                   td->num_bytes, td->src.addr_or_offs.addr, td->dst);
-    memcpy(td->dst, td->src.addr_or_offs.addr, td->num_bytes);
+                   td->num_bytes, td->src.addr_or_offs.addr, dep->copyin.dest);
+    memcpy(dep->copyin.dest, td->src.addr_or_offs.addr, td->num_bytes);
   }
 
 }
@@ -374,12 +488,12 @@ dart_tasking_copyin_get_taskfn(void *data)
 {
   struct copyin_taskdata *td = (struct copyin_taskdata*) data;
 
-  // TODO: allocate memory here if needed!
+  dart_task_dep_t *dep = dart_tasking_copyin_prepare_dep();
 
   DART_LOG_TRACE("Copyin: Posting GET from unit %d (size %zu)",
                  td->unit, td->num_bytes);
   dart_handle_t handle;
-  dart_get_handle(td->dst, td->src, td->num_bytes,
+  dart_get_handle(dep->copyin.dest, dep->copyin.gptr, dep->copyin.size,
                   DART_TYPE_BYTE, DART_TYPE_BYTE, &handle);
   wait_for_handle(&handle);
   if (wait_type != COPYIN_WAIT_DETACH && wait_type != COPYIN_WAIT_DETACH_INLINE) {
