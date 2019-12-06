@@ -48,54 +48,6 @@
   dart__base__stack_push(&__freelist, &DART_STACK_MEMBER_GET(__elem))
 
 /**
- * Represents a dependency in the dependency hash table.
- */
-struct dart_dephash_elem {
-  union {
-    // atomic list used for free elements
-    DART_STACK_MEMBER_DEF;
-    // double linked list
-    struct {
-      dart_dephash_elem_t *next;
-      dart_dephash_elem_t *prev;
-    };
-  };
-  dart_dephash_elem_t      *next_in_task;   // list in the task struct
-  dart_task_dep_t           dep;            // IN or OUT dependency information
-  dart_dephash_elem_t      *dep_list;       // For OUT: start of list of assigned IN dependencies
-                                            // For IN:  back-pointer to OUT dependency
-  taskref                   task;           // task this dependency belongs to
-  /*
-   * TODO: this needs reconsideration, try to use atomics instead of locking
-   *       the bucket and only lock the bucket when removing an element.
-   * *Possible solution*
-   *
-   * When registering with an out dep:
-   * CAS num_consumers *and* use_cnt to increment both and abort if
-   * num_consumers is -1.
-   *
-   * When deregistering from an output dependency:
-   * decrement num_consumers and if 0 CAS use_cnt *and* num_consumers to signal
-   * ownership of the element (num_consumer=-1) and detect whether someone else
-   * has registered with the outdep in between (in which case we do not remove
-   * the object). Needs thorough testing!
-  union {
-    struct {
-      int32_t               num_consumers;  // For OUT: the number of consumers still not completed
-      int32_t               use_cnt;        // incremented everytime an input dependency is registered with an output dependency,
-                                            // needed to detect race conditions when freeing an output dependency
-    };
-    uint64_t                refcnt_value;   // value used for CAS operations on the above values
-  };
-  */
-  int32_t                   num_consumers;
-  dart_global_unit_t        origin;         // the unit owning the task
-  uint16_t                  owner_thread;   // the thread that owns the element
-  //dart_tasklock_t           lock;           // lock used for element-wise locking
-  bool                      is_dummy;       // whether an output dependency is not backed by a task
-};
-
-/**
  * Represents the head of a bucket in the dependency hash table.
  */
 struct dart_dephash_head {
@@ -394,6 +346,7 @@ dephash_allocate_elem(
   //TASKLOCK_INIT(elem);
   elem->next = elem->prev = NULL;
   elem->is_dummy = false;
+  elem->dtor = NULL;
 
   DART_LOG_TRACE("Allocated elem %p (task %p)", elem, task.local);
 
@@ -437,6 +390,9 @@ deregister_in_dep_nolock(
 static void dephash_recycle_elem(dart_dephash_elem_t *elem)
 {
   if (elem != NULL) {
+    if (NULL != elem->dtor) {
+      elem->dtor(elem);
+    }
     elem->next = NULL;
     elem->prev = NULL;
 #ifdef DART_TASKING_NOMEMPOOL
@@ -612,7 +568,9 @@ static void dephash_release_out_dependency(
       if (NULL == in_dep) break;
       DART_LOG_TRACE("  -> Releasing input dependency %p from out %p",
                     in_dep, elem);
-      DART_ASSERT_MSG(in_dep->dep.type == DART_DEP_IN || in_dep->dep.type == DART_DEP_COPYIN,
+      DART_ASSERT_MSG(in_dep->dep.type == DART_DEP_IN ||
+                      in_dep->dep.type == DART_DEP_COPYIN ||
+                      in_dep->dep.type == DART_DEP_COPYIN_R,
                       "Invalid dependency type %d in dependency %p",
                       in_dep->dep.type, in_dep);
       release_dependency(in_dep);
@@ -1213,7 +1171,7 @@ dart_tasking_datadeps_match_local_dependency(
     }
   }
 
-  if (dep->type == DART_DEP_IN) {
+  if (dep->type == DART_DEP_IN || dep->type == DART_DEP_COPYIN_R) {
     dart_dephash_elem_t *new_elem = dephash_allocate_elem(dep, TASKREF(task), myguid);
     DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
     if (elem == NULL) {
@@ -1437,24 +1395,40 @@ dart_tasking_datadeps_handle_copyin_deps(
   }
 
   for (size_t i = 0; i < ndeps; i++) {
-    if (deps[i].type == DART_DEP_COPYIN) {
-      dart_task_dep_t dep = deps[i];
-      // adjust the phase of the dependency if required
-      if (dep.phase == DART_PHASE_TASK) {
-        dep.phase = task->phase;
+    dart_task_dep_t *dep = &deps[i];
+    bool is_local = false;
+    if (dep->type == DART_DEP_COPYIN_R) {
+      dart_team_unit_t luid;
+      dart_team_myid(dep->copyin.gptr.teamid, &luid);
+      if (luid.id == dep->copyin.gptr.unitid) {
+        is_local = true;
       }
-      dart_tasking_datadeps_handle_copyin(&dep, task);
-      if (NULL != dep.copyin.dest) {
-        // register an input dependency on the provided destination buffer
-        dart_task_dep_t indep;
-        indep.phase = dep.phase;
-        indep.gptr.addr_or_offs.addr = dep.copyin.dest;
-        indep.gptr.segid = DART_SEGMENT_LOCAL;
-        indep.gptr.teamid = 0;
-        indep.gptr.unitid = myguid.id;
-        indep.gptr.flags  = 0;
-        indep.type = DART_DEP_IN;
-        deps[i] = indep;
+    }
+    if (dep->type == DART_DEP_COPYIN || dep->type == DART_DEP_COPYIN_R) {
+      // adjust the phase of the dependency if required
+      if (dep->phase == DART_PHASE_TASK) {
+        dep->phase = task->phase;
+      }
+      if (!is_local) {
+        dart_tasking_datadeps_handle_copyin(dep, task);
+        if (NULL != dep->copyin.dest) {
+          // register an input dependency on the provided destination buffer
+          dart_task_dep_t indep;
+          indep.phase = dep->phase;
+          indep.gptr.addr_or_offs.addr = dep->copyin.dest;
+          indep.gptr.segid = DART_SEGMENT_LOCAL;
+          indep.gptr.teamid = 0;
+          indep.gptr.unitid = myguid.id;
+          indep.gptr.flags  = 0;
+          indep.type = DART_DEP_IN;
+          deps[i] = indep;
+        }
+      } else {
+        // treat the dependency as a regular input dependency
+        dep->gptr = dart_tasking_datadeps_localize_gptr(dep->gptr);
+        dart_tasking_datadeps_match_local_dependency(dep, task);
+        // register the copyin ptr
+        task->copyin_ptr[task->num_copyin_ptr++] = &task->deps_owned->dep.copyin.gptr.addr_or_offs.addr;
       }
     }
   }
@@ -1484,30 +1458,6 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       continue;
     }
 
-#if 0
-    // check for duplicate dependencies
-    // TODO: this is now done inline!
-    if (dep.type == DART_DEP_IN) {
-      bool needs_skipping = false;
-      for (int j = 0; j < ndeps; ++j) {
-        if (deps[j].type == DART_DEP_OUT && DART_GPTR_EQUAL(deps[j].gptr, dep.gptr)){
-          // skip this dependency because there is an OUT dependency handling it
-          // we need to do this to avoid inserting a dummy for an input dependency
-          // first and then inserting the output dependency
-          // TODO: this is a O(n^2) check. Can we do better?
-          // TODO: see if we can detect that efficiently while inserting the OUT
-          //       dependency into the tree.
-          DART_LOG_TRACE("Skipping dependency %d due to conflicting "
-                         "input-output dependency on same task %p", i, task);
-          needs_skipping = true;
-          break;
-        }
-      }
-      // skip processing of this dependency
-      if (needs_skipping) continue;
-    }
-#endif // 0
-
     // adjust the phase of the dependency if required
     if (dep.phase == DART_PHASE_TASK) {
       dep.phase = task->phase;
@@ -1532,7 +1482,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
 
     if (dep.type == DART_DEP_DIRECT) {
       dart_tasking_datadeps_handle_local_direct(&dep, task);
-    } else if (dep.type == DART_DEP_COPYIN){
+    } else if (dep.type == DART_DEP_COPYIN || dep.type == DART_DEP_COPYIN_R){
       // set the numaptr
       if (task->numaptr == NULL) task->numaptr = dep.copyin.dest;
       // nothing to be done, handled above

@@ -347,6 +347,7 @@ namespace internal {
       dart_gptr_t         gptr,
       size_t              num_bytes,
       void               *ptr,
+      dart_task_deptype_t type = DART_DEP_COPYIN,
       dart_taskphase_t    phase = DART_PHASE_TASK)
     {
       _dep.copyin.gptr = gptr;
@@ -454,11 +455,11 @@ namespace internal {
   copyin(
     GlobRefT&& globref,
     size_t     nelem,
-    ValueT   * target,
+    ValueT   * target = nullptr_t,
     int32_t    phase = DART_PHASE_TASK)
     -> decltype((void)(globref.dart_gptr()), TaskDependency<ValueT, true>()) {
     return TaskDependency<ValueT, true>(globref.dart_gptr(), nelem*sizeof(ValueT),
-                          target, phase);
+                          target, DART_DEP_COPYIN, phase);
   }
 
   /**
@@ -481,7 +482,7 @@ namespace internal {
   copyin(
     IterT&&   begin,
     IterT&&   end,
-    ValueT  * target,
+    ValueT  * target = nullptr_t,
     int32_t   phase = DART_PHASE_TASK)
     -> decltype((void)(begin.dart_gptr()), TaskDependency<typename IterT::value_type, true>()) {
 #if defined(DASH_DEBUG)
@@ -499,7 +500,34 @@ namespace internal {
     return TaskDependency<typename IterT::value_type, true>(
                           begin.dart_gptr(),
                           dash::distance(begin, end)*sizeof(ValueT),
-                          target, phase);
+                          target, DART_DEP_COPYIN, phase);
+  }
+
+
+  /**
+   * Create a copyin dependency using the global memory \c range.
+   *
+   * The data in \c range will be copied into \c target. Multiple tasks with
+   * similar copyin dependencies in the same phase will use the same copy.
+   * Only consecutive global memory ranges on a single unit can be used.
+   *
+   * \note currently, copyin dependencies are identified using their target. It
+   *       is thus erroneous to mix output and copyin dependencies on \c target.
+   * \note only  copyin dependencies in the same phase share a copy. If a
+   *       copy created in one phase is also valid in subsequent phases you
+   *       may explicitely specify the phase a copyin dependency refers to.
+   *
+   * \sa TaskDependency
+   */
+  template<typename RangeT, typename ValueT = typename IterT::value_type>
+  auto
+  copyin(
+    RangeT&&  range,
+    ValueT  * target = nullptr_t,
+    int32_t   phase = DART_PHASE_TASK)
+    -> decltype((void)(range.begin()), (void)(range.end()),
+                TaskDependency<typename IterT::value_type, true>()) {
+      return copyin(range.begin(), range.end(), target, phase);
   }
 
 
@@ -527,17 +555,13 @@ namespace internal {
   copyin_r(
     GlobRefT&& globref,
     size_t     nelem,
-    ValueT   * target,
+    ValueT   * target = nullptr_t,
     int32_t    phase = DART_PHASE_TASK)
     -> decltype((void)(globref.dart_gptr()),
                   TaskDependency<typename GlobRefT::value_type, true>()) {
-    if (globref.is_local()) {
-      return TaskDependency<typename GlobRefT::value_type, true>(
-                          globref.dart_gptr(), DART_DEP_IN, phase);
-    }
     return TaskDependency<typename GlobRefT::value_type, true>(
                           globref.dart_gptr(), nelem*sizeof(ValueT),
-                          target, phase);
+                          target, DART_DEP_COPYIN_R, phase);
   }
 
   /**
@@ -564,7 +588,7 @@ namespace internal {
   copyin_r(
     IterT&&   begin,
     IterT&&   end,
-    ValueT  * target,
+    ValueT  * target = nullptr_t,
     int32_t   phase = DART_PHASE_TASK)
     -> decltype((void)(begin.dart_gptr()), TaskDependency<typename IterT::value_type, true>()) {
 #if defined(DASH_DEBUG)
@@ -579,13 +603,40 @@ namespace internal {
                      u_begin, ", end ", u_end);
     }
 #endif // DASH_DEBUG
-    if (begin.is_local()) {
-      return TaskDependency<typename IterT::value_type, true>(begin.dart_gptr(), DART_DEP_IN, phase);
-    }
     return TaskDependency<typename IterT::value_type, true>(
                           begin.dart_gptr(),
                           dash::distance(begin, end)*sizeof(ValueT),
-                          target, phase);
+                          target, DART_DEP_COPYIN, phase);
+  }
+
+  /**
+   * Create a copyin dependency using the global memory \c range.
+   *
+   * The data in \c range will be copied into \c target if the range is remote.
+   * Multiple tasks with similar copyin dependencies in the same phase will use
+   * the same copy.
+   * Only consecutive global memory ranges on a single unit can be used.
+   *
+   * If the range is local, the dependency will be in input dependency. It is
+   * left to the user to handle the buffer correctly.
+   *
+   * \note currently, copyin dependencies are identified using their target. It
+   *       is thus erroneous to mix output and copyin dependencies on \c target.
+   * \note only  copyin dependencies in the same phase share a copy. If a
+   *       copy created in one phase is also valid in subsequent phases you
+   *       may explicitely specify the phase a copyin dependency refers to.
+   *
+   * \sa TaskDependency
+   */
+  template<typename RangeT, typename ValueT = typename IterT::value_type>
+  auto
+  copyin_r(
+    RangeT&&  range,
+    ValueT  * target = nullptr_t,
+    int32_t   phase = DART_PHASE_TASK)
+    -> decltype((void)(range.begin()), (void)(range.end()),
+                TaskDependency<typename IterT::value_type, true>()) {
+      return copyin_r(range.begin(), range.end(), target, phase);
   }
 
   /**

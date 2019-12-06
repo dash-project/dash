@@ -49,6 +49,7 @@ typedef enum dart_task_deptype {
   DART_DEP_OUT,
   DART_DEP_INOUT,
   DART_DEP_COPYIN,
+  DART_DEP_COPYIN_R, // like copyin, only copies the data if the target is non-local
   DART_DEP_DIRECT,
   DART_DEP_IGNORE  // should always be the last
 } dart_task_deptype_t;
