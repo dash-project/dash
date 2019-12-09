@@ -348,13 +348,13 @@ namespace internal {
       dart_gptr_t         gptr,
       size_t              num_bytes,
       void               *ptr,
-      dart_task_deptype_t type = DART_DEP_COPYIN,
+      dart_task_deptype_t type,
       dart_taskphase_t    phase = DART_PHASE_TASK)
     {
       _dep.copyin.gptr = gptr;
       _dep.copyin.dest = ptr;
       _dep.copyin.size = num_bytes;
-      _dep.type  = DART_DEP_COPYIN;
+      _dep.type  = type;
       _dep.phase = phase;
     }
 
@@ -456,7 +456,7 @@ namespace internal {
   copyin(
     GlobRefT&& globref,
     size_t     nelem,
-    ValueT   * target = nullptr_t,
+    ValueT   * target = nullptr,
     int32_t    phase = DART_PHASE_TASK)
     -> decltype((void)(globref.dart_gptr()), TaskDependency<ValueT, true>()) {
     return TaskDependency<ValueT, true>(globref.dart_gptr(), nelem*sizeof(ValueT),
@@ -483,7 +483,7 @@ namespace internal {
   copyin(
     IterT&&   begin,
     IterT&&   end,
-    ValueT  * target = nullptr_t,
+    ValueT  * target = nullptr,
     int32_t   phase = DART_PHASE_TASK)
     -> decltype((void)(begin.dart_gptr()), TaskDependency<typename IterT::value_type, true>()) {
 #if defined(DASH_DEBUG)
@@ -520,14 +520,14 @@ namespace internal {
    *
    * \sa TaskDependency
    */
-  template<typename RangeT, typename ValueT = typename IterT::value_type>
+  template<typename RangeT, typename ValueT = typename RangeT::value_type>
   auto
   copyin(
     RangeT&&  range,
-    ValueT  * target = nullptr_t,
+    ValueT  * target = nullptr,
     int32_t   phase = DART_PHASE_TASK)
     -> decltype((void)(range.begin()), (void)(range.end()),
-                TaskDependency<typename IterT::value_type, true>()) {
+                TaskDependency<typename RangeT::value_type, true>()) {
       return copyin(range.begin(), range.end(), target, phase);
   }
 
@@ -556,7 +556,7 @@ namespace internal {
   copyin_r(
     GlobRefT&& globref,
     size_t     nelem,
-    ValueT   * target = nullptr_t,
+    ValueT   * target = nullptr,
     int32_t    phase = DART_PHASE_TASK)
     -> decltype((void)(globref.dart_gptr()),
                   TaskDependency<typename GlobRefT::value_type, true>()) {
@@ -589,7 +589,7 @@ namespace internal {
   copyin_r(
     IterT&&   begin,
     IterT&&   end,
-    ValueT  * target = nullptr_t,
+    ValueT  * target = nullptr,
     int32_t   phase = DART_PHASE_TASK)
     -> decltype((void)(begin.dart_gptr()), TaskDependency<typename IterT::value_type, true>()) {
 #if defined(DASH_DEBUG)
@@ -629,14 +629,14 @@ namespace internal {
    *
    * \sa TaskDependency
    */
-  template<typename RangeT, typename ValueT = typename IterT::value_type>
+  template<typename RangeT, typename ValueT = typename RangeT::value_type>
   auto
   copyin_r(
     RangeT&&  range,
-    ValueT  * target = nullptr_t,
+    ValueT  * target = nullptr,
     int32_t   phase = DART_PHASE_TASK)
     -> decltype((void)(range.begin()), (void)(range.end()),
-                TaskDependency<typename IterT::value_type, true>()) {
+                TaskDependency<typename RangeT::value_type, true>()) {
       return copyin_r(range.begin(), range.end(), target, phase);
   }
 
@@ -867,7 +867,7 @@ namespace internal{
   template<class TaskFunc, typename ... Args>
   void
   async(TaskFunc f, Args&&... args){
-    async<TaskFunc, Args...>(f, DART_PRIO_PARENT, std::forward<Args>(args)...);
+    async(f, DART_PRIO_PARENT, std::forward<Args>(args)...);
   }
 
 
@@ -962,7 +962,7 @@ namespace internal{
   async_handle(
     TaskFunc f,
     dart_task_prio_t prio,
-    const DepContainer& deps) -> TaskHandle<decltype(f())>
+    DepContainer& deps) -> TaskHandle<decltype(f())>
   {
     using return_t = decltype(f());
     if (dart_task_should_abort()) abort_task();

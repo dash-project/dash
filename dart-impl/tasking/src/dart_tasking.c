@@ -4,6 +4,7 @@
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_cancellation.h>
 #include <dash/dart/tasking/dart_tasking_wait.h>
+#include <dash/dart/tasking/dart_tasking_copyin.h>
 
 
 /**
@@ -219,8 +220,9 @@ dart_task_phase_current()
   return dart__tasking__phase_current();
 }
 
-dart_ret_t
-dart_task_phase_resync(dart_team_t team)
+
+void *
+dart_task_copyin_info(dart_taskref_t task, int depnum)
 {
-  return dart__tasking__phase_resync(team);
+  return dart__tasking__copyin_info(task, depnum);
 }

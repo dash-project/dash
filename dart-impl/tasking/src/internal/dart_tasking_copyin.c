@@ -8,6 +8,8 @@
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
 #include <dash/dart/tasking/dart_tasking_wait.h>
 
+#include <stddef.h>
+
 #define DART_TASK_BLOCKING_WAIT
 
 #ifdef DART_TASK_BLOCKING_WAIT
@@ -70,6 +72,8 @@ void *allocate_from_mempool(size_t size)
     mpool = find_mem_pool(size);
     if (NULL == mpool) {
       mpool = malloc(sizeof(*mpool));
+      dart__base__stack_init(&mpool->elems);
+      mpool->size = size;
       DART_STACK_PUSH(mem_pool, mpool);
     }
     dart__base__mutex_unlock(&mpool_lock);
@@ -92,9 +96,9 @@ void *allocate_from_mempool(size_t size)
 static
 void return_to_mempool(void *mem)
 {
-  mem_pool_elem_t *elem = (mem_pool_elem_t*) ((intptr_t)mem - offsetof(mem_pool_elem_t, mem));
+  mem_pool_elem_t *elem = (mem_pool_elem_t*) ((intptr_t)mem - sizeof(*elem));
   DART_ASSERT_MSG(elem->magic == MEMPOOL_MAGIC_NUM,
-                  "Corrupt memory pool element detected: %p", mem);
+                  "Corrupt memory pool element detected: %p %xu", mem, elem->magic);
 
   DART_MEMPOOL_ELEM_PUSH(elem->mpool->elems, elem);
 }

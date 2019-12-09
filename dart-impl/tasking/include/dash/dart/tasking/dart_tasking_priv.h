@@ -131,16 +131,12 @@ struct dart_task_data {
       dart_taskphase_t           phase;
       int                        num_children;
       int16_t                    owner;           // the thread owning the task object memory
-      uint8_t                    num_copyin_ptr;  // number of copyin pointer, max 256
 
     #ifdef DART_DEBUG
       task_list_t              * children;  // list of child tasks
     #endif //DART_DEBUG
 
-      // will point past the space used for task data
-      void                   *** copyin_ptr;      // will point to beginning of overflow space
-
-      //unsigned char              inline_data[DART_TASKING_INLINE_DATA_SIZE]; // inline data passed to the action
+      unsigned char              inline_data[]; // inline data passed to the action
     };
   };
 };

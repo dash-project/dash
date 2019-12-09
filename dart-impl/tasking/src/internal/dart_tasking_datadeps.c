@@ -31,7 +31,7 @@
  */
 
 #define IS_OUT_DEP(taskdep) \
-  (((taskdep).type == DART_DEP_OUT || (taskdep).type == DART_DEP_INOUT))
+  (((taskdep).type == DART_DEP_OUT || (taskdep).type == DART_DEP_INOUT || (taskdep).type == DART_DEP_COPYIN_OUT))
 
 #define DEP_ADDR(dep) \
   ((dep).gptr.addr_or_offs.addr)
@@ -1074,7 +1074,7 @@ dart_tasking_datadeps_handle_copyin(
       dart_dephash_elem_t *elem = NULL;
       for (elem = parent->local_deps[slot].head;
            elem != NULL; elem = elem->next) {
-        if (DART_DEP_COPYIN == elem->dep.type &&
+        if (DART_DEP_COPYIN_OUT == elem->dep.type &&
             DART_GPTR_EQUAL(dep->copyin.gptr, elem->dep.copyin.gptr)) {
           if (elem->dep.phase < dep->phase) {
             // phases are stored in decending order so we can stop here
@@ -1099,9 +1099,6 @@ dart_tasking_datadeps_handle_copyin(
             new_elem = dephash_allocate_elem(&in_dep, TASKREF(task), myguid);
             DART_STACK_PUSH_MEMB(task->deps_owned, new_elem, next_in_task);
             register_at_out_dep_nolock(elem, new_elem);
-
-            // let the task know where to find the buffer
-            task->copyin_ptr[task->num_copyin_ptr++] = &elem->dep.copyin.dest;
 
             dart_task_t *elem_task = elem->task.local;
             dart__unused(elem_task); // << maybe unused if logging is off
@@ -1371,29 +1368,12 @@ dart_tasking_datadeps_match_delayed_local_indep(
 }
 
 DART_INLINE
-size_t
-max_num_copyin_available(dart_task_t *task)
-{
-  return (DART_TASK_STRUCT_SIZE - ((intptr_t)task->copyin_ptr - (intptr_t)task))
-            / sizeof(*task->copyin_ptr);
-}
-
-DART_INLINE
 void
 dart_tasking_datadeps_handle_copyin_deps(
     dart_task_t           *task,
     dart_task_dep_t       *deps,
     size_t                 ndeps)
 {
-  // check how many copyin dependencies and if there is enough space available
-  size_t num_copyin = dart_tasking_datadeps_num_copyin(deps, ndeps);
-  if (num_copyin > max_num_copyin_available(task)) {
-    DART_LOG_WARN("Allocating extra space for %zu copyin dependencies, "
-                  "check DART_TASK_STRUCT_SIZE!", num_copyin);
-    task->copyin_ptr = malloc(num_copyin*sizeof(*task->copyin_ptr));
-    DART_TASK_SET_FLAG(task, DART_TASK_COPYIN_ALLOCATED);
-  }
-
   for (size_t i = 0; i < ndeps; i++) {
     dart_task_dep_t *dep = &deps[i];
     bool is_local = false;
@@ -1426,9 +1406,8 @@ dart_tasking_datadeps_handle_copyin_deps(
       } else {
         // treat the dependency as a regular input dependency
         dep->gptr = dart_tasking_datadeps_localize_gptr(dep->gptr);
+        dep->copyin.dest = dep->gptr.addr_or_offs.addr;
         dart_tasking_datadeps_match_local_dependency(dep, task);
-        // register the copyin ptr
-        task->copyin_ptr[task->num_copyin_ptr++] = &task->deps_owned->dep.copyin.gptr.addr_or_offs.addr;
       }
     }
   }
