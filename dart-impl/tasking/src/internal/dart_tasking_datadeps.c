@@ -394,6 +394,7 @@ dephash_allocate_elem(
   //TASKLOCK_INIT(elem);
   elem->next = elem->prev = NULL;
   elem->is_dummy = false;
+  elem->next_in_task = NULL;
 
   DART_LOG_TRACE("Allocated elem %p (task %p)", elem, task.local);
 
@@ -527,20 +528,23 @@ void dart__dephash__print_stats(const dart_task_t *task)
   uint32_t empty     = 0;
   uint32_t n = 0;
   double mean = 0.0, M2 = 0.0;
-  for (uint32_t i = 0; i < DART_DEPHASH_SIZE; ++i) {
-    uint32_t nb = task->local_deps[i].num_outdeps;
-    if (nb == 0) {
-      ++empty;
-    } else {
-      double delta, delta2;
-      n++;
-      delta  = nb - mean;
-      mean  += delta / n;
-      delta2 = nb - mean;
-      M2    += delta2*delta2;
-      if (nb > max_elems) max_elems = nb;
-      if (nb < min_elems) min_elems = nb;
-      sum_elems += nb;
+
+  if (task->local_deps != NULL) {
+    for (uint32_t i = 0; i < DART_DEPHASH_SIZE; ++i) {
+      uint32_t nb = task->local_deps[i].num_outdeps;
+      if (nb == 0) {
+        ++empty;
+      } else {
+        double delta, delta2;
+        n++;
+        delta  = nb - mean;
+        mean  += delta / n;
+        delta2 = nb - mean;
+        M2    += delta2*delta2;
+        if (nb > max_elems) max_elems = nb;
+        if (nb < min_elems) min_elems = nb;
+        sum_elems += nb;
+      }
     }
   }
   DART_LOG_INFO(
@@ -556,9 +560,10 @@ release_dependency(dart_dephash_elem_t *elem)
   if (elem->origin.id == myguid.id) {
     DART_LOG_TRACE("Releasing local %s dependency %p",
                    elem->dep.type == DART_DEP_IN ? "in" : "out", elem);
-    bool runnable = release_local_dep_counter(elem->task.local);
+    dart_task_t *task = elem->task.local;
+    bool runnable = release_local_dep_counter(task);
     if (runnable) {
-      dart__tasking__enqueue_runnable(elem->task.local);
+      dart__tasking__enqueue_runnable(task);
     }
   } else {
     // send remote output dependency release together with reference
@@ -621,17 +626,14 @@ static void dephash_release_out_dependency(
     } while (1);
   } else {
     //UNLOCK_TASK(elem);
-    // if there are no active input dependencies we can immediately release the next
+    // there are no active input dependencies so we can immediately release the next
     // output dependency
-    int32_t num_consumers = elem->num_consumers;
-    if (num_consumers == 0) {
-      DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep", elem);
-      dephash_release_next_out_dependency_nolock(elem);
-      // remove from hash table bucket
-      dephash_remove_dep_from_bucket_nolock(elem, local_deps, slot);
-      // recycle dephash element
-      dephash_recycle_elem(elem);
-    }
+    DART_LOG_TRACE("Dependency %p has no consumers left, releasing next dep", elem);
+    dephash_release_next_out_dependency_nolock(elem);
+    // remove from hash table bucket
+    dephash_remove_dep_from_bucket_nolock(elem, local_deps, slot);
+    // recycle dephash element
+    dephash_recycle_elem(elem);
     UNLOCK_TASK(&local_deps[slot]);
   }
 
@@ -858,6 +860,7 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
   return DART_OK;
 }
 
+static
 dart_ret_t
 dart_tasking_datadeps_handle_defered_remote_outdeps(
   dart_taskphase_t matching_phase)
@@ -1242,12 +1245,18 @@ dart_tasking_datadeps_match_local_dependency(
     } else {
       //LOCK_TASK(elem);
       if (elem->task.local != NULL) {
-        int32_t unresolved_deps = DART_INC_AND_FETCH32(
-                                      &task->unresolved_deps);
-        DART_LOG_TRACE("Making task %p a local successor of task %p "
-                      "(num_deps: %i, outdep: %p)",
-                      task, elem->task.local, unresolved_deps, elem);
-        register_at_out_dep_nolock(elem, new_elem);
+        if (elem->task.local == task && elem->origin.id == myguid.id) {
+          // don't register with an OUT dependency of the same task
+          DART_STACK_POP_MEMB(task->deps_owned, new_elem, next_in_task);
+          dephash_recycle_elem(new_elem);
+        } else {
+          int32_t unresolved_deps = DART_INC_AND_FETCH32(
+                                        &task->unresolved_deps);
+          DART_LOG_TRACE("Making task %p a local successor of task %p with indep %p"
+                         "(num_deps: %i, outdep: %p)",
+                         task, elem->task.local, new_elem, unresolved_deps, elem);
+          register_at_out_dep_nolock(elem, new_elem);
+        }
       } else {
         //DART_INC_AND_FETCH32(&elem->num_consumers);
         elem->num_consumers++;
@@ -1266,7 +1275,7 @@ dart_tasking_datadeps_match_local_dependency(
       // check if we already have an input dependency on that task and remove it
       dart_dephash_elem_t *prev = NULL;
       dart_dephash_elem_t *iter;
-      for (iter = task->deps_owned; iter != NULL; iter = iter->next_in_task) {
+      for (iter = task->deps_owned; iter != NULL; prev = iter, iter = iter->next_in_task) {
         // dep_list points to the output dependency the IN dep refers to
         if (iter->dep.type == DART_DEP_IN && iter->dep_list == elem) {
 
@@ -1275,17 +1284,17 @@ dart_tasking_datadeps_match_local_dependency(
                          iter, task, elem, elem->task.local);
           // found one, remove it from the task...
           if (prev == NULL) {
-            task->deps_owned = iter->next;
+            task->deps_owned = iter->next_in_task;
           } else {
-            prev->next = iter->next;
+            prev->next_in_task = iter->next_in_task;
           }
 
           dart_dephash_elem_t *prev = NULL;
           dart_dephash_elem_t *iter2;
           // ... and from the OUT dependency
-          for (iter2 = elem->dep_list; iter2 != NULL; iter2 = iter->next) {
+          for (iter2 = elem->dep_list; iter2 != NULL; prev = iter2, iter2 = iter2->next) {
             if (iter2 == iter) {
-              if (prev = NULL) {
+              if (prev == NULL) {
                 elem->dep_list = iter2->next;
               } else {
                 prev->next = iter2->next;
@@ -1293,7 +1302,6 @@ dart_tasking_datadeps_match_local_dependency(
               // done
               break;
             }
-            prev = iter2;
           }
 
           DART_ASSERT_MSG(elem->dep_list == NULL || iter2 != NULL,
@@ -1319,10 +1327,10 @@ dart_tasking_datadeps_match_local_dependency(
           // done
           break;
         }
-        prev = iter;
       }
 
       if (iter != NULL) {
+        iter->dep_list = NULL;
         dephash_recycle_elem(iter);
       }
 
@@ -1441,6 +1449,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       continue;
     }
 
+#if 0
     // check for duplicate dependencies
     if (dep.type == DART_DEP_IN) {
       bool needs_skipping = false;
@@ -1461,6 +1470,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       // skip processing of this dependency
       if (needs_skipping) continue;
     }
+#endif
 
     // adjust the phase of the dependency if required
     if (dep.phase == DART_PHASE_TASK) {

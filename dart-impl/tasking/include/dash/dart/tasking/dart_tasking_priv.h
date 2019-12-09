@@ -23,6 +23,12 @@ struct task_list;
 #define HAVE_RESCHEDULING_YIELD 1
 #endif // USE_UCONTEXT
 
+#define DO_NOT_TRACK
+
+#if defined(DART_DEBUG) && !defined(DO_NOT_TRACK)
+#define TRACK_CHILDREN
+#endif // DART_DEBUG
+
 // define to malloc/free all objects and not reuse them
 //#define DART_TASKING_NOMEMPOOL
 
@@ -120,12 +126,13 @@ struct dart_task_data {
   dart_dephash_elem_t       *deps_owned;      // list of dependencies owned by this task
   dart_wait_handle_t        *wait_handle;
   const char                *descr;           // the description of the task
+  uint64_t                   instance;        // the instance counter of this task object
   dart_taskphase_t           phase;
   int                        num_children;
   int16_t                    owner;           // the thread owning the task object memory
-#ifdef DART_DEBUG
+#ifdef TRACK_CHILDREN
   task_list_t              * children;  // list of child tasks
-#endif //DART_DEBUG
+#endif //TRACK_CHILDREN
   unsigned char              inline_data[DART_TASKING_INLINE_DATA_SIZE]; // inline data passed to the action
 };
 

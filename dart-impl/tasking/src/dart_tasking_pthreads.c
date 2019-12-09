@@ -129,7 +129,7 @@ static dart_task_t root_task = {
     .num_children     = 0,
     .state            = DART_TASK_ROOT,
     .descr            = "root_task"
-#ifdef DART_DEBUG
+#ifdef TRACK_CHILDREN
     , .children       = NULL
 #endif
 };
@@ -183,6 +183,7 @@ static int64_t acc_idle_time_us     = 0;
 static int64_t acc_post_time_us     = 0;
 _Thread_local static int64_t thread_acc_idle_time_us = 0;
 _Thread_local static int64_t thread_idle_start_ts    = 0;
+_Thread_local static int64_t thread_acc_post_time_us        = 0;
 
 dart_task_t *
 dart__tasking__root_task()
@@ -666,6 +667,9 @@ dart_task_t * create_task(
   task->wait_handle   = NULL;
   task->numaptr       = NULL;
 
+  // NOTE: never reset the instance counter of the task!
+  task->instance++;
+
   DART_LOG_TRACE("Task %p: data %p, data_size %zu, fn %p",
                  task, data, data_size, fn);
 
@@ -674,7 +678,6 @@ dart_task_t * create_task(
       DART_TASK_SET_FLAG(task, DART_TASK_DATA_ALLOCATED);
       task->data           = malloc(data_size);
     } else {
-      printf("Using internal task data buffer for task %s\n", descr);
       // use the task-internal buffer
       task->data = task->inline_data;
     }
@@ -712,12 +715,12 @@ dart_task_t * create_task(
     task->descr = descr;
   }
 
-#ifdef DART_DEBUG
+#ifdef TRACK_CHILDREN
   LOCK_TASK(task->parent);
   dart_tasking_tasklist_prepend(&task->parent->children, task);
   UNLOCK_TASK(task->parent);
   task->children = NULL;
-#endif // DART_DEBUG
+#endif // TRACK_CHILDREN
 
   return task;
 }
@@ -733,11 +736,11 @@ void dart__tasking__destroy_task(dart_task_t *task)
     dart__tasking__phase_take_task(task->phase);
   }
 
-#ifdef DART_DEBUG
+#ifdef TRACK_CHILDREN
   LOCK_TASK(task->parent);
   dart_tasking_tasklist_remove(&task->parent->children, task);
   UNLOCK_TASK(task->parent);
-#endif // DART_DEBUG
+#endif // TRACK_CHILDREN
 
   dart_tasking_datadeps_reset(task);
 
@@ -848,7 +851,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
           !dart__tasking__cancellation_requested()) {
         // Implicit wait for child tasks
         // TODO: really necessary? Can we transfer child ownership to parent->parent?
-        //dart__tasking__task_complete();
+        dart__tasking__task_complete(true);
       }
 
       bool has_ref;
@@ -858,6 +861,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 
       DART_ASSERT(task != &root_task);
 
+      // release dependencies
       dart_tasking_datadeps_release_local_task(task, thread);
 
       // we need to lock the task shortly here before releasing datadeps
@@ -890,8 +894,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     }
     // return to previous task
     set_current_task(current_task);
-    DART_FETCH_AND_ADD64(&acc_post_time_us,
-                         current_time_us() - postprocessing_start_ts);
+    acc_post_time_us += current_time_us() - postprocessing_start_ts;
   }
 }
 
@@ -920,8 +923,6 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
 
     task->fn(task->data);
 
-    // we're coming back into this task here
-
     DART_LOG_TRACE("Returned from inlined task (%p, %p)",
                    task, thread);
 
@@ -936,8 +937,7 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
     if (task->state == DART_TASK_DETACHED) {
       dart__task__wait_enqueue(task);
     } else {
-      // it is safe to release the task before marking it as finished
-      // as the task will be removed from the hashtable first
+      // release dependencies
       dart_tasking_datadeps_release_local_task(task, thread);
 
       // we need to lock the task shortly
@@ -1103,6 +1103,7 @@ void* thread_main(void *data)
   }
 
   DART_FETCH_AND_ADD64(&acc_idle_time_us, thread_acc_idle_time_us);
+  DART_FETCH_AND_ADD64(&acc_post_time_us, thread_acc_post_time_us);
 
   DART_ASSERT_MSG(
     thread == get_current_thread(), "Detected invalid thread return!");
@@ -1305,8 +1306,10 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
   bool queuable = false;
   if (task->state == DART_TASK_CREATED)
   {
+    uint64_t instance = task->instance;
     LOCK_TASK(task);
-    if (task->state == DART_TASK_CREATED &&
+    if (task->instance == instance &&
+        task->state == DART_TASK_CREATED &&
         dart_tasking_datadeps_is_runnable(task)) {
       task->state = DART_TASK_QUEUED;
       queuable = true;

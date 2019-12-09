@@ -144,6 +144,9 @@ dart_ret_t
 dart_amsg_sopnop5_init(dart_amsgq_impl_t *impl)   DART_INTERNAL;
 
 dart_ret_t
+dart_amsg_sopnop6_init(dart_amsgq_impl_t *impl)   DART_INTERNAL;
+
+dart_ret_t
 dart_amsg_singlewin_init(dart_amsgq_impl_t *impl) DART_INTERNAL;
 
 dart_ret_t
