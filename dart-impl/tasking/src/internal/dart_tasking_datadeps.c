@@ -91,16 +91,28 @@ static dart_stack_t dephash_elem_pool_list = DART_STACK_INITIALIZER;
   dart__base__stack_push(&__freelist, &DART_STACK_MEMBER_GET(__elem))
 
 /**
+ * Whether or not to use per-thread freelists.
+ * Note that using per-thread free-lists currently break testing because
+ * the testing framework is brain-dead and reinitializes the runtime, which
+ * breaks *any* static initialization.
+ */
+#define DART_DEPHASH_PERTHREAD_FREELIST
+
+/**
  * Per-thread free-list for dependency elements. The elements are never
  * deallocated but stored in the free list for later re-use.
  */
-_Thread_local static dart_stack_t dephash_elem_freelist = DART_STACK_INITIALIZER;
-
+#ifdef DART_DEPHASH_PERTHREAD_FREELIST
 /**
  * Array of pointers to the thread-local dephash_elem_freelist, needed to return
  * elements to the correct owner.
  */
 static dart_stack_t **dephash_elem_freelist_list;
+_Thread_local static dart_stack_t dephash_elem_freelist = DART_STACK_INITIALIZER;
+#else
+static dart_stack_t dephash_elem_freelist = DART_STACK_INITIALIZER;
+#endif // DART_DEPHASH_PERTHREAD_FREELIST
+
 
 // list of incoming remote dependency requests defered to matching step
 static dart_dephash_elem_t *unhandled_remote_indeps  = NULL;
@@ -189,8 +201,10 @@ dart_ret_t dart_tasking_datadeps_init()
   dart_myid(&myguid);
   dart_tasking_taskqueue_init(&local_deferred_tasks);
   int num_threads = dart__tasking__num_threads() + DART_TASKING_MAX_UTILITY_THREADS;
+#ifdef DART_DEPHASH_PERTHREAD_FREELIST
   dephash_elem_freelist_list = calloc(num_threads,
                                         sizeof(*dephash_elem_freelist_list));
+#endif // DART_DEPHASH_PERTHREAD_FREELIST
   return dart_tasking_remote_init();
 }
 
@@ -231,12 +245,28 @@ dart_ret_t dart_tasking_datadeps_reset(dart_task_t *task)
 dart_ret_t dart_tasking_datadeps_fini()
 {
   dart_tasking_datadeps_reset(dart__tasking__current_task());
+  // NOTE: the testing framework breaks thread-private initialization so we just
+  //       don't tear down properly for now.
+#if 0
   dart_dephash_elem_pool_t *pool;
   while (NULL != (pool = DART_DEPHASH_ELEM_POOL_POP(dephash_elem_pool_list))) {
     free(pool);
   }
+  // reset the freelist
+  dart__base__stack_finalize(&dephash_elem_freelist);
+#ifdef DART_DEPHASH_PERTHREAD_FREELIST
+  int num_threads = dart__tasking__num_threads() + DART_TASKING_MAX_UTILITY_THREADS;
+  for (int i = 0; i < num_threads; i++) {
+    if (dephash_elem_freelist_list[i] != NULL) {
+      // reset the thread-private free-list
+      dart__base__stack_finalize(dephash_elem_freelist_list[i]);
+      dephash_elem_freelist_list[i] = NULL;
+    }
+  }
   free(dephash_elem_freelist_list);
   dephash_elem_freelist_list = NULL;
+#endif // DART_DEPHASH_PERTHREAD_FREELIST
+#endif // 0
   dart_tasking_taskqueue_finalize(&local_deferred_tasks);
   return dart_tasking_remote_fini();
 }
@@ -330,12 +360,17 @@ dephash_allocate_elem(
       DART_DEPHASH_ELEM_POOL_PUSH(dephash_elem_pool_list, dephash_elem_pool);
       // upon first allocation, we also have to make sure that our freelist is
       // accessible from other threads
+#ifdef DART_DEPHASH_PERTHREAD_FREELIST
       if (dephash_elem_freelist_list[thread_id] == NULL) {
         dephash_elem_freelist_list[thread_id] = &dephash_elem_freelist;
       }
+#endif // DART_DEPHASH_PERTHREAD_FREELIST
     }
     elem = &dephash_elem_pool->elems[dephash_elem_pool->pos++];
     elem->owner_thread = thread_id;
+    DART_LOG_TRACE("Allocated elem %p (task %p)", elem, task.local);
+  } else {
+    DART_LOG_TRACE("Reusing elem %p (task %p)", elem, task.local);
   }
 
   elem->task    = task;
@@ -398,7 +433,11 @@ static void dephash_recycle_elem(dart_dephash_elem_t *elem)
 #ifdef DART_TASKING_NOMEMPOOL
     free(elem);
 #else // DART_TASKING_NOMEMPOOL
+#ifdef DART_DEPHASH_PERTHREAD_FREELIST
     dart_stack_t *lifo = dephash_elem_freelist_list[elem->owner_thread];
+#else
+    dart_stack_t *lifo = &dephash_elem_freelist;
+#endif
     DART_LOG_TRACE("Pushing elem %p (prev=%p, next=%p) to freelist (head %p, thread %d)",
                    elem, elem->prev, elem->next, lifo->head.node, elem->owner_thread);
     DART_DEPHASH_ELEM_PUSH(*lifo, elem);
