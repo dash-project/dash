@@ -80,7 +80,7 @@ typedef struct dart_task_dep {
  * allocation.
  * The size is chosen to minimize padding while guaranteeing at least 32B space.
  */
-#define DART_TASKING_INLINE_DATA_SIZE 38
+#define DART_TASKING_INLINE_DATA_SIZE 96
 
 /**
  * Returns the current thread's number.

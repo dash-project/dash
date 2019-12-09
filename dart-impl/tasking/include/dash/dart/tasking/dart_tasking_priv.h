@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <pthread.h>
+#include <stddef.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_tasking.h>
@@ -140,6 +141,11 @@ struct dart_task_data {
     };
   };
 };
+
+/* Make sure the max size we export to DASH is large enough */
+DART_STATIC_ASSERT(                                                         \
+  DART_TASKING_INLINE_DATA_SIZE <= (DART_TASK_STRUCT_SIZE                   \
+                                        - offsetof(dart_task_t, inline_data)));
 
 #define DART_STACK_PUSH(_head, _elem) \
   DART_STACK_PUSH_MEMB(_head, _elem, next)
