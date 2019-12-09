@@ -250,14 +250,8 @@ static inline
 dart_ret_t
 dart__base__stack_finalize(dart_stack_t *st)
 {
-  while(true) {
-    dart_stack_elem_t *elem = pop_cas(&st->head);
-    if (elem == NULL) {
-      break;
-    }
-    free(elem);
-  }
-
+  // simply reset the head node
+  st->head.node = NULL;
   return DART_OK;
 }
 
