@@ -389,7 +389,7 @@ namespace internal {
    */
   template<typename GlobRefT>
   auto
-  in(GlobRefT&& globref, int32_t phase = DART_PHASE_TASK)
+  in(const GlobRefT& globref, int32_t phase = DART_PHASE_TASK)
     -> decltype((void)(globref.dart_gptr()), TaskDependency<typename GlobRefT::value_type>()) {
     return TaskDependency<typename GlobRefT::value_type, false>(globref.dart_gptr(), DART_DEP_IN, phase);
   }
@@ -650,7 +650,7 @@ namespace internal {
    */
   template<typename GlobRefT>
   auto
-  out(GlobRefT&& globref, int32_t phase = DART_PHASE_TASK)
+  out(const GlobRefT& globref, int32_t phase = DART_PHASE_TASK)
     -> decltype((void)(globref.dart_gptr()), TaskDependency<typename GlobRefT::value_type>())  {
     return TaskDependency<typename GlobRefT::value_type>(globref.dart_gptr(), DART_DEP_OUT, phase);
   }
