@@ -136,7 +136,7 @@ namespace internal {
       std::shared_ptr<ReturnT> result) : func(func), result(result) { }
 
     task_action_t<ReturnT>   func;
-    std::shared_ptr<ReturnT> result = NULL;
+    std::shared_ptr<ReturnT> result = nullptr;
   };
 
   template<typename FuncT, typename TupleT, std::size_t... I>
@@ -610,7 +610,7 @@ namespace internal {
     return TaskDependency<typename IterT::value_type, true>(
                           begin.dart_gptr(),
                           dash::distance(begin, end)*sizeof(ValueT),
-                          target, DART_DEP_COPYIN, phase);
+                          target, DART_DEP_COPYIN_R, phase);
   }
 
   /**
