@@ -145,7 +145,8 @@ namespace internal {
   {
     int i = 0;
     auto task = dart_task_current_task();
-    func( (typename std::tuple_element<I, TupleT>::type::value_type*)dart_task_depinfo(task, i++)...);
+    func( (typename std::tuple_element<I, TupleT>::type::value_type*)
+                                          dart_task_copyin_info(task, i++)...);
   }
 
   template <bool, typename>

@@ -524,3 +524,30 @@ wait_for_handle(dart_handle_t *handle)
     task->prio = COPYIN_TASK_PRIO;
   }
 }
+
+
+void *
+dart__tasking__copyin_info(dart_task_t *task, int depnum)
+{
+  dart_dephash_elem_t *elem;
+  int i = 0;
+  for (elem = task->deps_owned; elem != NULL; elem = elem->next_in_task) {
+    if (elem->dep.type == DART_DEP_COPYIN || elem->dep.type == DART_DEP_COPYIN_R) {
+      if (i == depnum) {
+        break;
+      }
+      ++i;
+    }
+  }
+
+  DART_ASSERT_MSG(elem != NULL, "Failed to find copyin dep %d in task %p", depnum, task);
+  // look at the output dependency this copyin is attached to (either output or a copyin_out)
+  dart_dephash_elem_t *out_elem = elem->dep_list;
+  if (out_elem->dep.type == DART_DEP_COPYIN_OUT) {
+    // return the destination address of the dependency that copied it locally
+    return out_elem->dep.copyin.dest;
+  } else {
+    // return the address referenced in the last out dependency
+    return out_elem->dep.gptr.addr_or_offs.addr;
+  }
+}

@@ -268,7 +268,8 @@ dart_task_phase_current();
 dart_ret_t
 dart_task_phase_resync(dart_team_t team);
 
-void *dart_task_depinfo(dart_taskref_t task, int depnum);
+void *
+dart_task_copyin_info(dart_taskref_t task, int depnum);
 
 
 #ifdef __cplusplus

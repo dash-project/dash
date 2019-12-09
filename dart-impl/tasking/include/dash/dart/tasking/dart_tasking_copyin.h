@@ -58,4 +58,7 @@ dart_tasking_copyin_create_task(
   const dart_task_dep_t * dep,
         taskref           local_task) DART_INTERNAL;
 
+void *
+dart__tasking__copyin_info(dart_task_t *task, int depnum) DART_INTERNAL;
+
 #endif // DART_TASKING_DART_TASKING_COPYIN_H_
