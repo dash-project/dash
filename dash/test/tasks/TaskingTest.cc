@@ -315,7 +315,6 @@ TEST_F(TaskingTest, Taskloop)
 
 TEST_F(TaskingTest, Copyin)
 {
-  int num_iter = 10;
   int num_elem_per_unit = 100;
   dash::Array<int> array(dash::size()*num_elem_per_unit);
   dash::fill(array.begin(), array.end(), 0);
@@ -332,20 +331,87 @@ TEST_F(TaskingTest, Copyin)
   if (dash::myid() == 0) {
     for (int i = 0; i < dash::size(); i++) {
       dash::tasks::async(
-        [&](int *buf){
+        [i, &array](int *buf){
           ASSERT_NE_U(buf, array.lbegin());
           ASSERT_EQ_U(buf[0], i);
         },
         // copyin into a buffer allocated by the runtime
-        dash::tasks::copyin(array[i*num_elem_per_unit], num_elem_per_unit);
+        dash::tasks::copyin(array[i*num_elem_per_unit], num_elem_per_unit)
+      );
     }
   }
 
   dash::tasks::complete();
-
-  ASSERT_EQ_U(num_iter, array.local[0]);
 }
 
+
+TEST_F(TaskingTest, CopyinR)
+{
+  int num_elem_per_unit = 100;
+  dash::Array<int> array(dash::size()*num_elem_per_unit);
+  dash::fill(array.begin(), array.end(), 0);
+  dash::barrier();
+
+  // fill local part in a task
+  dash::tasks::async(
+    [&](){
+      std::fill(array.lbegin(), array.lend(), dash::myid());
+    }, dash::tasks::out(*array.lbegin()));
+
+  dash::tasks::async_fence();
+
+  if (dash::myid() == 0) {
+    for (int i = 0; i < dash::size(); i++) {
+      dash::tasks::async(
+        [i, &array](int *buf){
+          if (dash::myid() == i) {
+            ASSERT_EQ_U(buf, array.lbegin());
+          } else {
+            ASSERT_NE_U(buf, array.lbegin());
+          }
+          ASSERT_EQ_U(buf[0], i);
+        },
+        // copyin into a buffer allocated by the runtime
+        dash::tasks::copyin_r(array[i*num_elem_per_unit], num_elem_per_unit)
+      );
+    }
+  }
+
+  dash::tasks::complete();
+}
+
+
+TEST_F(TaskingTest, CopyinExplicitBuf)
+{
+  dash::Array<int> array(dash::size());
+  dash::fill(array.begin(), array.end(), 0);
+  dash::barrier();
+
+  // fill local part in a task
+  dash::tasks::async(
+    [&](){
+      std::fill(array.lbegin(), array.lend(), dash::myid());
+    }, dash::tasks::out(*array.lbegin()));
+
+  dash::tasks::async_fence();
+
+  if (dash::myid() == 0) {
+    for (int i = 0; i < dash::size(); i++) {
+      int *buffer = new int;
+      dash::tasks::async(
+        [i, buffer, &array](int *buf){
+          ASSERT_EQ_U(buf, buffer);
+          ASSERT_EQ_U(buf[0], i);
+          delete buf;
+        },
+        // copyin into a allocated buffer
+        dash::tasks::copyin(array[i], 1, buffer)
+      );
+    }
+  }
+
+  dash::tasks::complete();
+}
 
 
 #endif // DASH_TEST_TASKSUPPORT
