@@ -186,10 +186,12 @@ namespace internal {
     task_action_t<T>& func = data.func;
     using tuple_type = typename copyin_tuple_filter<DepTypes...>::tuple_type;
     constexpr const int tuple_size = std::tuple_size<tuple_type>::value;
+    constexpr const int num_args = std::min(tuple_size,
+                                            lambda_traits<decltype(func)>::num_args);
     //tuple_type deps;
     //std::tuple<typename DepTypes::value_type*...> deps;
     //extract_depinfo<0, decltype(deps), DepTypes...>(dart_task_current_task(), deps);
-    invoke_function_with_params(func, tuple_type{}, std::make_index_sequence<tuple_size>{});
+    invoke_function_with_params(func, tuple_type{}, std::make_index_sequence<num_args>{});
   }
 
   template<typename T=void, typename ... DepTypes>
@@ -226,7 +228,7 @@ namespace internal {
       //extract_depinfo<0, decltype(deps), DepTypes...>(dart_task_current_task(), deps);
       //invoke_function_with_params(f, deps, typename gens<std::tuple_size<tuple_type>::value>::type());
 
-      invoke_function_with_params(func, tuple_type{}, std::make_index_sequence<tuple_size>{});
+      invoke_function_with_params(func, tuple_type{}, std::make_index_sequence<num_args>{});
     } catch (const BaseCancellationSignal& cs) {
       // nothing to be done, the cancellation is triggered by the d'tor
     } catch (...) {
@@ -248,8 +250,9 @@ namespace internal {
       auto _ = internal::finally([&](){delete &func;});
       using tuple_type = typename copyin_tuple_filter<DepTypes...>::tuple_type;
       constexpr const int tuple_size = std::tuple_size<tuple_type>::value;
+      constexpr const int num_args = std::min(tuple_size, lambda_traits<FuncT>::num_args);
       //extract_depinfo<0, decltype(deps), DepTypes...>(dart_task_current_task(), deps);
-      invoke_function_with_params(func, tuple_type{}, std::make_index_sequence<tuple_size>{});
+      invoke_function_with_params(func, tuple_type{}, std::make_index_sequence<num_args>{});
     } catch (const BaseCancellationSignal& cs) {
       // nothing to be done, the cancellation is triggered by the d'tor
     } catch (...) {
