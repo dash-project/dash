@@ -53,17 +53,14 @@ typedef enum dart_task_deptype {
   DART_DEP_IGNORE  // should always be the last
 } dart_task_deptype_t;
 
-
-//new
 //used to define which kind of dependency edge we're occuring
 typedef enum dart_task_edgetype {
     DART_EDGE_LOCAL_RAW,
     DART_EDGE_LOCAL_WAW,
     DART_EDGE_LOCAL_WAR,
-    DART_EDGE_DUMMY,
     DART_EDGE_COPYIN,
     DART_EDGE_REMOTE_IN,
-    DART_EDGE_REMOTE_OUT
+    DART_EDGE_REMOTE_OUT,
 } dart_task_edgetype_t;
 
 typedef struct dart_task_dep {

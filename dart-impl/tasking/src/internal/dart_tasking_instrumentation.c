@@ -1,6 +1,5 @@
 #include <dash/dart/tasking/dart_tasking_instrumentation.h>
 #include <stdio.h>
-//#include <dash/dart/tasking/dart_tasking_priv.h>
 
 struct dart_tool_task_create_cb {
     dart_tool_task_create_cb_t cb;
@@ -58,18 +57,17 @@ typedef struct dart_tool_task_add_to_queue_cb dart_tool_task_add_to_queue_cb;
 typedef struct dart_tool_local_dep_cb dart_tool_local_dep_cb;
 
 /* data structures to save the function pointer and user data from the callback */
-struct dart_tool_task_create_cb dart_tool_task_create_cb_data;
-struct dart_tool_task_begin_cb dart_tool_task_begin_cb_data;
-struct dart_tool_task_end_cb dart_tool_task_end_cb_data;
-struct dart_tool_task_cancel_cb dart_tool_task_cancel_cb_data;
-struct dart_tool_task_yield_leave_cb dart_tool_task_yield_leave_cb_data;
-struct dart_tool_task_yield_resume_cb dart_tool_task_yield_resume_cb_data;
-struct dart_tool_task_finalize_cb dart_tool_task_finalize_cb_data;
-struct dart_tool_task_add_to_queue_cb dart_tool_task_add_to_queue_cb_data;
+static struct dart_tool_task_create_cb dart_tool_task_create_cb_data;
+static struct dart_tool_task_begin_cb dart_tool_task_begin_cb_data;
+static struct dart_tool_task_end_cb dart_tool_task_end_cb_data;
+static struct dart_tool_task_cancel_cb dart_tool_task_cancel_cb_data;
+static struct dart_tool_task_yield_leave_cb dart_tool_task_yield_leave_cb_data;
+static struct dart_tool_task_yield_resume_cb dart_tool_task_yield_resume_cb_data;
+static struct dart_tool_task_finalize_cb dart_tool_task_finalize_cb_data;
+static struct dart_tool_task_add_to_queue_cb dart_tool_task_add_to_queue_cb_data;
 
-struct dart_tool_local_dep_cb dart_tool_local_dep_cb_data;
-
-struct dart_tool_remote_dep_cb dart_tool_remote_dep_cb_data;
+static struct dart_tool_local_dep_cb dart_tool_local_dep_cb_data;
+static struct dart_tool_remote_dep_cb dart_tool_remote_dep_cb_data;
 
 /* implementation of the register function of the callback */
 int dart_tool_register_task_create (dart_tool_task_create_cb_t cb, void *userdata_task_create) {

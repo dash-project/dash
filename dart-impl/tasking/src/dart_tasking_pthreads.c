@@ -33,7 +33,6 @@
 #include <errno.h>
 #include <setjmp.h>
 #include <stddef.h>
-//testing
 #include <dlfcn.h>
 #define EVENT_ENTER(_ev) do {\
   EXTRAE_ENTER(_ev);         \
@@ -311,7 +310,7 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
       task->taskctx = dart__tasking__context_create(
                         (context_func_t*)&wrap_task, task);
     }
-   
+
     // update current task
     set_current_task(task);
     // store current thread's context and jump into new task
@@ -736,7 +735,7 @@ dart_task_t * create_task(
       strncpy(task->descr, descr, DART_TASK_DESCR_LENGTH);
       task->descr[DART_TASK_DESCR_LENGTH-1] = '\0';
     } else {
-      strncpy(task->descr,"<UnknownName>", DART_TASK_DESCR_LENGTH);;
+      strncpy(task->descr,"<UnknownName>", 13);
     }
   }
 
@@ -1303,19 +1302,17 @@ dart__tasking__init()
   */
   const char* var = dart__base__env__string(DART__TOOLS_TOOL_ENV_VAR_PATH);
   dart_myid(&myguid);
-  //printf("var = %s\n", var);
   if (!var) {
       //do nothing
       printf("Tool interface disabled on unit %d.\n", myguid.id);
   } else if (*var == '\0') {
-      DART_LOG_ERROR("Environment variable is an empty string!\n"); //not set
-      printf("var == 0\n");
+      DART_LOG_ERROR("Environment variable is an empty string!\n");
   } else {
       printf("DART_TOOL_PATH=%s\n", var);
       handle = dlopen(var, RTLD_LAZY);
       if (!handle) {
          /* failed to load the tool */
-          printf("Failed to load the tool\n");
+          printf("Failed to load the tool!\n");
           fprintf(stderr, "Error: %s\n", dlerror());
       }
       //printf("handle: %d\n", handle);
@@ -1592,7 +1589,6 @@ dart__tasking__task_complete(bool local_only)
     }
   } else {
     EXTRAE_EXIT(EVENT_TASK);
-    printf("extrae\n");
   }
 
   // 1) wake up all threads (might later be done earlier)

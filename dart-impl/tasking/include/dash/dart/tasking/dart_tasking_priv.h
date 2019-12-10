@@ -22,7 +22,8 @@ struct task_list;
 #ifdef USE_UCONTEXT
 #define HAVE_RESCHEDULING_YIELD 1
 #endif // USE_UCONTEXT
-
+//The length of the task descrption in characters.
+//The last byte is reserved for nullbyte
 #define DART_TASK_DESCR_LENGTH 16
 // define to malloc/free all objects and not reuse them
 //#define DART_TASKING_NOMEMPOOL

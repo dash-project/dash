@@ -3,7 +3,6 @@
 
 #include <dash/dart/base/macro.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
-//new
 #include <dash/dart/if/dart_tools.h>
 /**
  * Instrumentation point of a task creation event. Called as soon as a task is
@@ -20,7 +19,7 @@ void dart__tasking__instrument_task_create(
  */
 void dart__tasking__instrument_task_begin(
   dart_task_t   *task,
-  dart_thread_t *thread)  DART_INTERNAL;
+  dart_thread_t *thread) DART_INTERNAL;
 
 /**
  * Instrumentation point of a task end event. Called right after the execution
