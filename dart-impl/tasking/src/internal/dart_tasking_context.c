@@ -2,7 +2,7 @@
 // whether to use mmap to allocate stack
 //#define USE_MMAP 1
 // whether to protect the stack using mprotect
-#define USE_MPROTECT 1
+//#define USE_MPROTECT 1
 
 #if defined(USE_MPROTECT) || defined(USE_MMAP)
 #define _GNU_SOURCE
