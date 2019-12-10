@@ -1294,7 +1294,7 @@ dart__tasking__init()
   dart__tasking__install_signalhandler();
   /* Before finishing initialization, a tool library is loaded if needed */
   void *handle;
-  int (*toolinit)(int, int, int, int, int *);
+  int (*toolinit)(int, int, int);
   int toolhandle;
   /**
    * The name of the environment variable containing the path to the tool is stored in 
@@ -1303,54 +1303,32 @@ dart__tasking__init()
   const char* var = dart__base__env__string(DART__TOOLS_TOOL_ENV_VAR_PATH);
   dart_myid(&myguid);
   if (!var) {
-      //do nothing
-      printf("Tool interface disabled on unit %d.\n", myguid.id);
+    //do nothing
+    DART_LOG_WARN("Tool interface disabled on unit %d.\n", myguid.id);
   } else if (*var == '\0') {
-      DART_LOG_ERROR("Environment variable is an empty string!\n");
+      DART_LOG_ERROR("Environment variable is an empty string!");
   } else {
-      printf("DART_TOOL_PATH=%s\n", var);
+      DART_LOG_TRACE("DART_TOOL_PATH=%s", var);
       handle = dlopen(var, RTLD_LAZY);
       if (!handle) {
-         /* failed to load the tool */
-          printf("Failed to load the tool!\n");
-          fprintf(stderr, "Error: %s\n", dlerror());
+        /* failed to load the tool */
+        DART_LOG_TRACE("Failed to load the tool");
+        fprintf(stderr, "Error: %s\n", dlerror());
       }
-      //printf("handle: %d\n", handle);
       /**
        * The init function name has to be stored in DART__TOOLS_TOOL_INIT_FUNCTION_NAME
        * in dart_tools.h 
       */
       *(int **)(&toolinit) = dlsym(handle, DART__TOOLS_TOOL_INIT_FUNCTION_NAME);
       if (!toolinit) {
-          /* no such symbol */
-          fprintf(stderr, "Error: %s\n", dlerror());
-          dlclose(handle);
+        /* no such symbol */
+        fprintf(stderr, "Error: %s\n", dlerror());
+        dlclose(handle);
       }
-      /* Send the toolinit function the number of threads we're using */
       use_tool_interface = true; //to enable finalizing
-      int pid = getpid();
-      if (pid <= 1000) {
-        pid = pid + 1000;    
-      }
-      int sendarray[0];
-      sendarray[0] = pid;
-      int *rbuf;
-      if (myguid.id == 0) {
-        rbuf = (int *)malloc(num_units*sizeof(int));  
-      }
-      /* Create the dart_team_unit_t struct, then override team value to 0 (root).
-       * We need this in the dart_gather function to send everything to unit 0.
-       */ 
-      dart_team_unit_t rootTeam;
-      dart_team_myid(DART_TEAM_ALL, &rootTeam);
-      rootTeam.id = 0;
-
-      dart_ret_t gather = dart_gather(sendarray,rbuf, 1, DART_TYPE_INT,rootTeam, DART_TEAM_ALL);
-      if (gather == DART_OK) {
-        toolhandle = toolinit(dart__tasking__num_threads(), pid, num_units, myguid.id, rbuf);
-        if (toolhandle == 0) {
-            printf("Tool successfully initialized in unit %d!\n", myguid.id);
-        }
+      toolhandle = toolinit(dart__tasking__num_threads(), num_units, myguid.id);
+      if (toolhandle == 0) {
+        DART_LOG_TRACE("Tool successfully initialized in unit %d.", myguid.id);
       }
   }
   initialized = true;
