@@ -732,8 +732,12 @@ dart_task_t * create_task(
     task->descr[DART_TASK_DESCR_LENGTH-1] = '\0';
   } else {
     //task->descr = descr;
-    strncpy(task->descr, descr, DART_TASK_DESCR_LENGTH);
-    task->descr[DART_TASK_DESCR_LENGTH-1] = '\0';
+    if (descr) {
+      strncpy(task->descr, descr, DART_TASK_DESCR_LENGTH);
+      task->descr[DART_TASK_DESCR_LENGTH-1] = '\0';
+    } else {
+      strncpy(task->descr,"<UnknownName>", DART_TASK_DESCR_LENGTH);;
+    }
   }
 
 #ifdef DART_DEBUG
