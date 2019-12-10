@@ -486,7 +486,6 @@ dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
     free(amsgq->recv_bufs[i]);
     if (!amsgq->direct_send) {
       free(amsgq->send_bufs[i]);
-      free(amsgq->send_reqs[i]);
     }
   }
   if (!amsgq->direct_send) {
