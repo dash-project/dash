@@ -20,13 +20,6 @@
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_active_messages_priv.h>
 
-// DEBUG disable for now
-#undef DART_HAVE_MPI_EGREQ
-
-//typedef int (*MPIX_Request_complete_fn_t)(void *user_data, MPI_Request request);
-//OMPI_DECLSPEC  int MPIX_Request_on_completion(MPI_Request request, MPIX_Request_complete_fn_t *callback, void *callback_data);
-
-
 #ifdef DART_HAVE_MPI_EGREQ
 
 #ifdef OMPI_MAJOR_VERSION
@@ -507,10 +500,11 @@ int request_cb(void *data, MPI_Request request)
         state->flush_info->target, OFFSET_WRITECNT(state->queuenum),
         1, MPI_UINT64_T, MPI_SUM, state->amsgq->queue_win, &state->opreq);
 
-      MPIX_Request_on_completion(state->opreq, &request_cb, state);
-
       // that's it for this iteration
       state->state = DART_GREQUEST_REGISTER;
+
+      MPIX_Request_on_completion(state->opreq, &request_cb, state);
+
       return MPI_SUCCESS;
     }
     case DART_GREQUEST_REGISTER:
@@ -573,13 +567,6 @@ int request_cb(void *data, MPI_Request request)
     }
     case DART_GREQUEST_OFFSET:
     {
-      int flag;
-      MPI_Test(&state->opreq, &flag, MPI_STATUS_IGNORE);
-      if (0 == flag) {
-        // come back later
-        return MPI_SUCCESS;
-      }
-
       int target = state->flush_info->target;
       int64_t queuenum = state->queuenum;
       MPI_Win queue_win = state->amsgq->queue_win;
@@ -698,14 +685,15 @@ dart_amsg_sopnop_sendbuf_all(
     states[i].amsgq = amsgq;
     states[i].flush_info->status = 0;
 
-    // fetch queue number
-    initiate_queuenum_fetch(&states[i]);
     // hand the operation to MPI
     MPI_Grequest_start(
       grequest_query_fn, grequest_free_fn,
       grequest_cancel_fn,
       &states[i], &states[i].req);
     reqs[i] = states[i].req;
+
+    // initiate the queuenum fetch
+    initiate_queuenum_fetch(&states[i]);
   }
 
   MPI_Waitall(num_info, reqs, MPI_STATUSES_IGNORE);
