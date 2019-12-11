@@ -55,8 +55,7 @@ void dart__tasking__instrument_task_yield_resume(
 /** 
  * Instrumentation point of an all task ended (finalized) event.
 */
-void dart__tasking__instrument_task_finalize(
-  ) DART_INTERNAL;
+void dart__tasking__instrument_task_finalize() DART_INTERNAL;
   
 /**
  * Instrumentation point of two tasks in the same local task graph share a
