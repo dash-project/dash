@@ -10,7 +10,7 @@
 
 #define CPUID(INFO, LEAF, SUBLEAF) __cpuid_count(LEAF, SUBLEAF, INFO[0], INFO[1], INFO[2], INFO[3])
 
-static extern int osx_sched_getcpu() {                              
+static int osx_sched_getcpu() {                              
   uint32_t CPUInfo[4]; 
   int cpuid;                          
   CPUID(CPUInfo, 1, 0);                          
