@@ -101,8 +101,9 @@ static dart_taskqueue_t *task_queue;
 
 static size_t num_units;
 
-//testing
 static dart_global_unit_t myguid;
+//Variable is set to true of if tools interface is used
+//Needed to for the finalize event
 static bool use_tool_interface = false;
 
 
