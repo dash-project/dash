@@ -7,6 +7,7 @@
 
 #ifdef DART__PLATFORM__OSX
 #include <cpuid.h>
+#include <stdint.h>
 
 #define CPUID(INFO, LEAF, SUBLEAF) __cpuid_count(LEAF, SUBLEAF, INFO[0], INFO[1], INFO[2], INFO[3])
 
