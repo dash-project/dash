@@ -1,3 +1,28 @@
+
+Skip to content
+Pull requests
+Issues
+Marketplace
+Explore
+@patrick1f
+
+24
+117
+
+    37
+
+dash-project/dash
+Code
+Issues 77
+Pull requests 19
+Actions
+Projects 3
+Wiki
+Security
+Insights
+dash/dash/examples/bench.13.taskbench/main.cpp
+@devreal devreal Fix time computation in taskbench b1ab863 15 days ago
+319 lines (269 sloc) 7.61 KB
 /**
  * Measures the overhead of different tasking primitives:
  * create, yield, dependency handling.
@@ -53,12 +78,11 @@ benchmark_task_creation(size_t num_tasks)
   }
   //dart_task_complete();
   dash::tasks::complete();
+  auto elapsed = t.Elapsed();
   dash::barrier();
   if (PrintOutput && dash::myid() == 0) {
-    //std::cout << "avg task creation/execution: " << t.Elapsed() / num_tasks / 2
-    //          << "us with " << num_tasks << " tasks created" << std::endl;
-    std::cout << "Results:" << t.Elapsed() / num_tasks / 2 << ";";
-              //<< "us with " << num_tasks << " tasks created" << std::endl;
+    std::cout << "avg task creation/execution: " << elapsed / num_tasks
+              << "us" << std::endl;
   }
 }
 
@@ -202,13 +226,10 @@ benchmark_task_localdep_creation(size_t num_tasks, int num_deps)
 
   dash::tasks::complete();
   if (dash::myid() == 0) {
-    std::cout << t.Elapsed() / num_tasks << ";";
-/*
     std::cout << "localdeps:" << num_deps
               << ":"
               << t.Elapsed() / num_tasks
               << "us" << std::endl;
-*/
   }
   delete[] tmp;
 }
@@ -223,9 +244,8 @@ benchmark_task_yield(size_t num_yields)
   dart_task_complete(true);
   dash::barrier();
   if (dash::myid() == 0) {
-    std::cout << t.Elapsed() / num_yields << ";";
-    //std::cout << "avg task yield: " << t.Elapsed() / num_yields
-    //          << "us" << std::endl;
+    std::cout << "avg task yield: " << t.Elapsed() / num_yields / 2
+              << "us" << std::endl;
   }
 }
 
@@ -254,11 +274,11 @@ int main(int argc, char** argv)
   benchmark_task_creation<true>(params.num_create_tasks);
   benchmark_task_yield(params.num_yield_tasks);
 
-  //if (dash::size() > 1) {
+  if (dash::size() > 1) {
     for (int i = 1; i <= 32; i*=2) {
       benchmark_task_localdep_creation(params.num_create_tasks, i);
     }
-//  }
+  }
 
   if (dash::size() > 1) {
     for (int i = 1; i <= 32; i*=2) {
@@ -322,3 +342,18 @@ int main(int argc, char* argv[])
 }
 
 #endif // DASH_EXAMPLES_TASKSUPPORT
+
+    © 2019 GitHub, Inc.
+    Terms
+    Privacy
+    Security
+    Status
+    Help
+
+    Contact GitHub
+    Pricing
+    API
+    Training
+    Blog
+    About
+
