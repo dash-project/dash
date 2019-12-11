@@ -524,7 +524,7 @@ dart_task_t * get_current_task()
   return get_current_thread()->current_task;
 }
 
-char * dart__tasking__get_current_task_descr()
+const char * dart__tasking__get_current_task_descr()
 {
   return get_current_thread()->current_task->descr;
 }

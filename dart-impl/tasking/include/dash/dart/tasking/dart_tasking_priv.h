@@ -296,7 +296,7 @@ void dart__tasking__utility_thread(
   void  *data
 ) DART_INTERNAL;
 
-char *
+const char *
 dart__tasking__get_current_task_descr() DART_INTERNAL;
 
 void
