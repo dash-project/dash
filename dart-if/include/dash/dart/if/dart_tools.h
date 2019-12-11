@@ -37,8 +37,7 @@ typedef void (*dart_tool_task_add_to_queue_cb_t) (uint64_t task,
 typedef void (*dart_tool_local_dep_cb_t) (uint64_t task1,
                                           uint64_t task2,
                                           uint64_t memaddr,
-                                          int32_t task1_unitid,
-                                          int32_t task2_unitid,
+                                          int32_t unitid,
                                           int edge_type,
                                           void *userdata);
 

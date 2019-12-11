@@ -217,12 +217,11 @@ void dart__tasking__instrument_local_dep(
     dart_task_t *task1,
     dart_task_t *task2,
     uint64_t memaddr_raw,
-    int32_t task1_unitid,
-    int32_t task2_unitid,
+    int32_t unitid,
     int edge_type)
 {
     if (dart_tool_local_dep_cb_data.cb) {
-        dart_tool_local_dep_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_raw, task1_unitid, task2_unitid, edge_type, dart_tool_local_dep_cb_data.userdata);
+        dart_tool_local_dep_cb_data.cb((uint64_t) task1, (uint64_t) task2, memaddr_raw, unitid, edge_type, dart_tool_local_dep_cb_data.userdata);
     }
     
 }

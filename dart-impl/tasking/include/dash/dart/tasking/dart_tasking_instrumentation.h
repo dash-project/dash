@@ -66,8 +66,7 @@ void dart__tasking__instrument_local_dep(
     dart_task_t *task1,
     dart_task_t *task2,
     uint64_t memaddr_raw,
-    int32_t task1_unitid,
-    int32_t task2_unitid,
+    int32_t unitid,
     int edge_type) DART_INTERNAL;
 /**
  * Instrumentation point of a task beeing added into the task queue.
