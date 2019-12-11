@@ -7,7 +7,7 @@ set(DASH_DART_IMPL_TASKING_LIBRARY dart-tasking)
 set(TASKING_CC_FLAGS -pthread)
 
 # Include library for dlopen and dlsym (-ldl)
-set (DL dl)
+set (LIB_DL dl)
 
 set(DASH_DART_BASE_LIBRARY dart-base)
 set(DASH_DART_IMPL_MPI_LIBRARY dart-mpi)
