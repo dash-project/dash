@@ -11,12 +11,6 @@
 #include <cstring>
 #include <limits>
 
-#ifdef __APPLE__
-  #include <malloc/malloc.h>
-#else
-  #include <malloc.h>
-#endif
-
 #ifdef DASH_ENABLE_IPM
 #include <mpi.h>
 #endif
