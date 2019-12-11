@@ -46,16 +46,6 @@ struct dart_tool_remote_dep_cb {
     void *userdata;
 };
 
-typedef struct dart_tool_task_create_cb dart_tool_task_create_cb;
-typedef struct dart_tool_task_begin_cb dart_tool_task_begin_cb;
-typedef struct dart_tool_task_end_cb dart_tool_task_end_cb;
-typedef struct dart_tool_task_cancel_cb dart_tool_task_cancel_cb;
-typedef struct dart_tool_task_yield_leave_cb dart_task_yield_leave_cb;
-typedef struct dart_tool_task_yield_resume_cb dart_task_yield_resume_cb;
-typedef struct dart_tool_task_finalize_cb dart_tool_task_finalize_cb;
-typedef struct dart_tool_task_add_to_queue_cb dart_tool_task_add_to_queue_cb;
-typedef struct dart_tool_local_dep_cb dart_tool_local_dep_cb;
-
 /* data structures to save the function pointer and user data from the callback */
 static struct dart_tool_task_create_cb dart_tool_task_create_cb_data;
 static struct dart_tool_task_begin_cb dart_tool_task_begin_cb_data;
@@ -279,4 +269,45 @@ void dart__tasking__instrument_remote_dep(
                                         edge_type,
                                         dart_tool_remote_dep_cb_data.userdata);
     }
+}
+void dart__tasking__init_tools_interface(){
+  void *handle;
+  int (*toolinit)(int, int, int);
+  int toolhandle;
+  /**
+   * The name of the environment variable containing the path to the tool is stored in 
+   * DART__TOOLS_TOOL_ENV_VAR_PATH
+  */
+  const char* var = dart__base__env__string(DART__TOOLS_TOOL_ENV_VAR_PATH);
+  if (!var) {
+    //do nothing
+    DART_LOG_WARN("Tool interface disabled on unit %d.", myguid.id);
+  } else if (*var == '\0') {
+      DART_LOG_ERROR("Environment variable is an empty string!");
+  } else {
+      DART_LOG_TRACE("DART_TOOL_PATH=%s", var);
+      handle = dlopen(var, RTLD_LAZY);
+      if (!handle) {
+        /* failed to load the tool */
+        DART_LOG_TRACE("Failed to load the tool");
+        fprintf(stderr, "Error: %s\n", dlerror());
+      }
+      /**
+       * The init function name has to be stored in DART__TOOLS_TOOL_INIT_FUNCTION_NAME
+       * in dart_tools.h 
+      */
+      *(int **)(&toolinit) = dlsym(handle, DART__TOOLS_TOOL_INIT_FUNCTION_NAME);
+      if (!toolinit) {
+        /* no such symbol */
+        fprintf(stderr, "Error: %s\n", dlerror());
+        dlclose(handle);
+      }
+      //use_tool_interface = true; //to enable finalizing
+      dart_myid(&myguid);
+      dart_team_size(DART_TEAM_ALL, &num_units);
+      toolhandle = toolinit(dart__tasking__num_threads(), num_units, myguid.id);
+      if (toolhandle == 0) {
+        DART_LOG_TRACE("Tool successfully initialized in unit %d.", myguid.id);
+      }
+  }
 }
