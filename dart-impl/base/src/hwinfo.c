@@ -4,6 +4,28 @@
 #  define _GNU_SOURCE
 #  include <sched.h>
 #endif
+
+#ifdef DART__PLATFORM__OSX
+#include <cpuid.h>
+
+#define CPUID(INFO, LEAF, SUBLEAF) __cpuid_count(LEAF, SUBLEAF, INFO[0], INFO[1], INFO[2], INFO[3])
+
+static extern int osx_sched_getcpu() {                              
+  uint32_t CPUInfo[4]; 
+  int cpuid;                          
+  CPUID(CPUInfo, 1, 0);                          
+  /* CPUInfo[1] is EBX, bits 24-31 are APIC ID */ 
+  if ( (CPUInfo[3] & (1 << 9)) == 0) {           
+    cpuid = -1;  /* no APIC on chip */             
+  }                                              
+  else {                                         
+    cpuid = (unsigned)CPUInfo[1] >> 24;                    
+  }                                              
+  if (cpuid < 0) cpuid = 0;
+  return cpuid;                          
+}
+#endif
+
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/locality.h>
@@ -353,15 +375,17 @@ dart_ret_t dart_hwinfo(
   }
 #endif /* DART_ENABLE_PAPI */
 
-#ifdef DART__PLATFORM__LINUX
-  if (hw.cpu_id < 0) {
+if (hw.cpu_id < 0) {
+  #ifdef DART__PLATFORM__LINUX
     hw.cpu_id = sched_getcpu();
-  }
-#else
-//  DART_LOG_ERROR("dart_hwinfo: "
-//                 "HWLOC or PAPI required if not running on a Linux platform");
-//  return DART_ERR_OTHER;
-#endif
+  #elif defined(DART__PLATFORM__OSX)
+    hw.cpu_id = osx_sched_getcpu();
+  #else
+    DART_LOG_ERROR("dart_hwinfo: "
+                "HWLOC or PAPI required if not running on a Linux or OSX platform");
+    return DART_ERR_OTHER;
+  #endif
+}
 
 #ifdef DART__ARCH__IS_MIC
   /*
