@@ -358,9 +358,9 @@ dart_ret_t dart_hwinfo(
     hw.cpu_id = sched_getcpu();
   }
 #else
-  DART_LOG_ERROR("dart_hwinfo: "
-                 "HWLOC or PAPI required if not running on a Linux platform");
-  return DART_ERR_OTHER;
+//  DART_LOG_ERROR("dart_hwinfo: "
+//                 "HWLOC or PAPI required if not running on a Linux platform");
+//  return DART_ERR_OTHER;
 #endif
 
 #ifdef DART__ARCH__IS_MIC
