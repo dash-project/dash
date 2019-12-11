@@ -9,6 +9,16 @@
 extern "C" {
 #endif
 
+//used to define which kind of dependency edge we're occuring
+typedef enum dart_task_edgetype {
+    DART_EDGE_LOCAL_RAW,
+    DART_EDGE_LOCAL_WAW,
+    DART_EDGE_LOCAL_WAR,
+    DART_EDGE_COPYIN,
+    DART_EDGE_REMOTE_IN,
+    DART_EDGE_REMOTE_OUT,
+} dart_task_edgetype_t;
+
 typedef void (*dart_tool_task_create_cb_t) (
     uint64_t task,
     dart_task_prio_t prio,
