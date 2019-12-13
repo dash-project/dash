@@ -18,31 +18,30 @@ struct replace {
 }  // namespace internal
 
 // Forward declaration
-template <typename ElementT, typename PatternT, typename GlobMemT, typename StencilSpecT>
+template <typename HaloBlockT, typename StencilSpecT>
 class StencilOperator;
 
 /**
  * Proxy StencilOperator for inner elements only
  */
-template <typename ElementT, typename PatternT, typename GlobMemT, typename StencilSpecT>
+template <typename StencilOperatorT>
 class StencilOperatorInner {
 private:
-  static constexpr auto NumStencilPoints = StencilSpecT::num_stencil_points();
-  static constexpr auto NumDimensions    = PatternT::ndim();
 
-  using StencilOperator_t = StencilOperator<ElementT, PatternT, GlobMemT, StencilSpecT>;
-  using pattern_size_t    = typename StencilOperator_t::pattern_size_t;
+  static constexpr auto NumStencilPoints = StencilOperatorT::num_stencil_points();
+  static constexpr auto NumDimensions    = StencilOperatorT::ndim();
 
 public:
-  using ViewSpec_t      = typename StencilOperator_t::ViewSpec_t;
-  using ElementCoords_t = typename StencilOperator_t::ElementCoords_t;
-  using iterator        = typename StencilOperator_t::iterator_inner;
+  using Element_t = typename StencilOperatorT::Element_t;
+  using ViewSpec_t      = typename StencilOperatorT::ViewSpec_t;
+  using Coords_t = typename StencilOperatorT::Coords_t;
+  using iterator        = typename StencilOperatorT::iterator_inner;
   using const_iterator  = const iterator;
 
-  using StencilOffsets_t = typename iterator::StencilOffsets_t;
+  using StencilOffsets_t = typename StencilOperatorT::StencilOffsets_t;
 
 public:
-  StencilOperatorInner(StencilOperator_t* stencil_op)
+  StencilOperatorInner(StencilOperatorT* stencil_op)
   : _stencil_op(stencil_op) {}
 
   /**
@@ -82,9 +81,9 @@ public:
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: replace
    */
-  template <typename BinaryFunc = internal::replace<ElementT>>
-  void set_values_at(const ElementCoords_t& coords, ElementT value,
-                     ElementT   coefficient_center,
+  template <typename BinaryFunc = internal::replace<Element_t>>
+  void set_values_at(const Coords_t& coords, Element_t value,
+                     Element_t   coefficient_center,
                      BinaryFunc op = BinaryFunc()) {
     auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
 
@@ -109,12 +108,12 @@ public:
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: std::plus
    */
-  template <typename BinaryFunc = std::plus<ElementT>>
-  ElementT get_value_at(const ElementCoords_t& coords,
-                        ElementT               coefficient_center,
+  template <typename BinaryFunc = std::plus<Element_t>>
+  Element_t get_value_at(const Coords_t& coords,
+                        Element_t               coefficient_center,
                         BinaryFunc             op = BinaryFunc()) const {
     auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
-    ElementT value = *center * coefficient_center;
+    Element_t value = *center * coefficient_center;
 
     for(auto i = 0; i < NumStencilPoints; ++i) {
       auto& stencil_point_value = center[_stencil_op->_stencil_offsets[i]];
@@ -132,7 +131,7 @@ public:
    * \param operation User-definied operation for updating all inner elements
   */
   template <typename Op>
-  void update(ElementT* begin_dst, Op operation) {
+  void update(Element_t* begin_dst, Op operation) {
     update(begin(), end(), begin_dst, operation);
   }
 
@@ -146,7 +145,7 @@ public:
    * \param operation User-definied operation for updating all inner elements
   */
   template <typename Op>
-  void update(iterator begin, iterator end, ElementT* begin_dst, Op operation) {
+  void update(iterator begin, iterator end, Element_t* begin_dst, Op operation) {
     if(begin < this->begin() || end < this->begin() ||
        begin > this->end() || end > this->end()) {
 
@@ -272,7 +271,7 @@ public:
    * \param operation User-definied operation for updating all inner elements
   */
   template <typename Op>
-  void update_blocked(const ElementCoords_t& begin_coords, const ElementCoords_t& end_coords, ElementT* begin_dst, Op operation) {
+  void update_blocked(const Coords_t& begin_coords, const Coords_t& end_coords, Element_t* begin_dst, Op operation) {
     const auto& view = this->view();
     const auto& offsets_view = view.offsets();
     const auto& extents_view = view.extents();
@@ -355,9 +354,9 @@ private:
     template <typename OffsetT>
     constexpr void operator()(const StencilOffsets_t& stencil_offs,
                               const StencilOffsets_t& dim_offs,
-                              const ElementCoords_t&  begin,
-                              const ElementCoords_t& end, ElementT* center,
-                              ElementT* center_dst, OffsetT offset, Op op) {
+                              const Coords_t&  begin,
+                              const Coords_t& end, Element_t* center,
+                              Element_t* center_dst, OffsetT offset, Op op) {
       for(int i = begin[dim]; i <= end[dim]; ++i, center += dim_offs[dim],
               center_dst += dim_offs[dim], offset += dim_offs[dim]) {
         Loop<dim + 1, Op>()(stencil_offs, dim_offs, begin, end, center,
@@ -371,9 +370,9 @@ private:
     template <typename OffsetT>
     constexpr void operator()(const StencilOffsets_t& stencil_offs,
                               const StencilOffsets_t& dim_offs,
-                              const ElementCoords_t&  begin,
-                              const ElementCoords_t& end, ElementT* center,
-                              ElementT* center_dst, OffsetT offset, Op op) {
+                              const Coords_t&  begin,
+                              const Coords_t& end, Element_t* center,
+                              Element_t* center_dst, OffsetT offset, Op op) {
       for(int i = begin[NumDimensions - 1]; i <= end[NumDimensions - 1];
           ++i, ++center, ++center_dst, ++offset) {
         op(center, center_dst, offset, stencil_offs);
@@ -382,33 +381,34 @@ private:
   };
 
 private:
-  StencilOperator_t* _stencil_op;
+  StencilOperatorT* _stencil_op;
 };
 
 /**
  * Proxy StencilOperator for boundary elements only
  */
-template <typename ElementT, typename PatternT, typename GlobMemT, typename StencilSpecT>
+template <typename StencilOperatorT>
 class StencilOperatorBoundary {
 private:
-  static constexpr auto NumStencilPoints = StencilSpecT::num_stencil_points();
-  static constexpr auto NumDimensions    = PatternT::ndim();
 
-  using StencilOperator_t  = StencilOperator<ElementT, PatternT, GlobMemT, StencilSpecT>;
-  using pattern_size_t     = typename StencilOperator_t::pattern_size_t;
-  using StencilSpecViews_t = typename StencilOperator_t::StencilSpecViews_t;
+  static constexpr auto NumStencilPoints = StencilOperatorT::num_stencil_points();
+  static constexpr auto NumDimensions    = StencilOperatorT::ndim();
+
+  using StencilSpecViews_t = typename StencilOperatorT::StencilSpecViews_t;
 
 public:
-  using ViewSpec_t      = typename StencilOperator_t::ViewSpec_t;
-  using ElementCoords_t = typename StencilOperator_t::ElementCoords_t;
-  using iterator        = typename StencilOperator_t::iterator_bnd;
+  using Element_t = typename StencilOperatorT::Element_t;
+  using uindex_t  = typename StencilOperatorT::uindex_t;
+  using ViewSpec_t      = typename StencilOperatorT::ViewSpec_t;
+  using Coords_t        = typename StencilOperatorT::Coords_t;
+  using iterator        = typename StencilOperatorT::iterator_bnd;
   using const_iterator  = const iterator;
   using BoundaryViews_t = typename StencilSpecViews_t::BoundaryViews_t;
   using RegionCoords_t  = RegionCoords<NumDimensions>;
   using region_index_t  = typename RegionCoords_t::region_index_t;
 
 public:
-  StencilOperatorBoundary(const StencilOperator_t* stencil_op)
+  StencilOperatorBoundary(const StencilOperatorT* stencil_op)
   : _stencil_op(stencil_op) {}
 
   /**
@@ -444,7 +444,7 @@ public:
   /**
    * Returns the number of all boundary elements (no dublicates)
    */
-  pattern_size_t boundary_size() const {
+  uindex_t boundary_size() const {
     return _stencil_op->_spec_views.boundary_size();
   }
 
@@ -462,9 +462,9 @@ public:
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: replace
    */
-  template <typename BinaryFunc = internal::replace<ElementT>>
-  void set_values_at(const ElementCoords_t& coords, ElementT value,
-                     ElementT   coefficient_center,
+  template <typename BinaryFunc = internal::replace<Element_t>>
+  void set_values_at(const Coords_t& coords, Element_t value,
+                     Element_t   coefficient_center,
                      BinaryFunc op = BinaryFunc()) {
     auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
 
@@ -500,7 +500,7 @@ public:
   std::pair<iterator, iterator> iterator_at(dim_t dim, RegionPos pos) {
     DASH_ASSERT_LT(dim, NumDimensions, "Given dimension to great");
     const auto&    bnd_views = _stencil_op->_spec_views.boundary_views();
-    pattern_size_t offset    = 0;
+    uindex_t offset = 0;
     auto           it_views  = std::begin(bnd_views);
     for(dim_t d = 0; d < dim; ++d, ++it_views)
       offset += it_views->size() + (++it_views)->size();
@@ -518,8 +518,7 @@ public:
   std::pair<iterator, iterator> iterator_at(region_index_t index) {
     DASH_ASSERT_LT(index, RegionCoords_t::NumRegionsMax, "Given index out of range");
     const auto&    bnd_views = _stencil_op->_spec_views.boundary_views();
-    pattern_size_t offset    = 0;
-    auto           it_views  = std::begin(bnd_views);
+    uindex_t offset = 0;
     for(region_index_t r = 0; r < index; ++r) {
       offset += bnd_views[r].size();
     }
@@ -543,12 +542,12 @@ public:
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: std::plus
    */
-  template <typename BinaryFunc = std::plus<ElementT>>
-  ElementT get_value_at(const ElementCoords_t& coords,
-                        ElementT               coefficient_center,
+  template <typename BinaryFunc = std::plus<Element_t>>
+  Element_t get_value_at(const Coords_t& coords,
+                        Element_t               coefficient_center,
                         BinaryFunc             op = BinaryFunc()) const {
     auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
-    ElementT value        = *center * coefficient_center;
+    Element_t value        = *center * coefficient_center;
     auto&    stencil_spec = _stencil_op->_stencil_spec;
     for(auto i = 0; i < NumStencilPoints; ++i) {
       bool halo           = false;
@@ -586,7 +585,7 @@ public:
    * \param operation User-definied operation for updating all boundary elements
   */
   template <typename Op>
-  void update(ElementT* begin_dst, Op operation) {
+  void update(Element_t* begin_dst, Op operation) {
     update(begin(), end(), begin_dst, operation);
   }
 
@@ -601,7 +600,7 @@ public:
    * \param operation User-definied operation for updating all inner elements
   */
   template <typename Op>
-  void update(const iterator& begin, const iterator& end, ElementT* begin_out,
+  void update(const iterator& begin, const iterator& end, Element_t* begin_out,
               Op operation) {
     for(auto it = begin; it != end; ++it) {
       begin_out[it.lpos()] = operation(it);
@@ -609,7 +608,7 @@ public:
   }
 
 private:
-  const StencilOperator_t* _stencil_op;
+  const StencilOperatorT* _stencil_op;
 };
 
 /**
@@ -644,50 +643,56 @@ private:
  *      boundary region 3   boundary region 8
  *
  */
-template <typename ElementT, typename PatternT, typename GlobMemT, typename StencilSpecT>
+template <typename HaloBlockT, typename StencilSpecT>
 class StencilOperator {
 private:
+  using Self_t = StencilOperator<HaloBlockT, StencilSpecT>;
+  using Pattern_t = typename HaloBlockT::Pattern_t;
+
   static constexpr auto NumStencilPoints = StencilSpecT::num_stencil_points();
-  static constexpr auto NumDimensions    = PatternT::ndim();
-  static constexpr auto MemoryArrange    = PatternT::memory_order();
+  static constexpr auto NumDimensions    = Pattern_t::ndim();
+  static constexpr auto MemoryArrange    = Pattern_t::memory_order();
 
-  using pattern_size_t  = typename PatternT::size_type;
-  using pattern_index_t = typename PatternT::index_type;
 
-  template <typename _T, typename _P, typename _GM, typename _S>
+
+  template <typename _SO>
   friend class StencilOperatorInner;
 
-  template <typename _T, typename _P, typename _GM, typename _S>
+  template <typename _SO>
   friend class StencilOperatorBoundary;
 
 public:
-  using Inner_t = StencilOperatorInner<ElementT, PatternT, GlobMemT, StencilSpecT>;
-  using Bnd_t   = StencilOperatorBoundary<ElementT, PatternT, GlobMemT, StencilSpecT>;
+  using Inner_t = StencilOperatorInner<Self_t>;
+  using Bnd_t   = StencilOperatorBoundary<Self_t>;
 
-  using iterator =
-    StencilIterator<ElementT, PatternT, GlobMemT, StencilSpecT, StencilViewScope::ALL>;
-  using const_iterator = const iterator;
-  /*using iterator_inner =
-    StencilIterator<ElementT, PatternT, GlobMemT, StencilSpecT, StencilViewScope::INNER>;
-  using const_iterator_inner = const iterator;*/
-  using iterator_inner =
-    StencilIteratorTest<ElementT, PatternT, GlobMemT, StencilSpecT, StencilViewScope::INNER>;
-  using const_iterator_inner = const iterator;
-  using iterator_bnd         = StencilIteratorBound<ElementT, PatternT, GlobMemT, StencilSpecT,
-                                       StencilViewScope::BOUNDARY>;
-  using const_iterator_bnd   = const iterator;
 
-  using signed_pattern_size_t = typename iterator::signed_pattern_size_t;
-  using StencilOffsets_t      = typename iterator::StencilOffsets_t;
-  using HaloBlock_t           = HaloBlock<ElementT, PatternT, GlobMemT>;
+  using Element_t         = typename HaloBlockT::Element_t;
+  using index_t           = typename std::make_signed<typename Pattern_t::index_type>::type;
+  using uindex_t          = typename std::make_unsigned<index_t>::type;
+  using StencilOffsets_t      = std::array<index_t, NumStencilPoints>;
+  using HaloBlock_t           = HaloBlockT;
   using HaloMemory_t          = HaloMemory<HaloBlock_t>;
-  using ViewSpec_t            = ViewSpec<NumDimensions, pattern_index_t>;
-  using ElementCoords_t       = std::array<pattern_index_t, NumDimensions>;
+  using ViewSpec_t            = typename HaloBlockT::ViewSpec_t;
+  using Coords_t              = std::array<index_t, NumDimensions>;
+  using StencilSpec_t         = StencilSpecT;
 
   using StencilSpecViews_t = StencilSpecificViews<HaloBlock_t, StencilSpecT>;
 
   using region_index_t  = typename RegionSpec<NumDimensions>::region_index_t;
   using stencil_index_t = typename StencilSpecT::stencil_index_t;
+
+    using iterator =
+    StencilIterator<Element_t, Pattern_t, typename HaloBlockT::GlobMem_t, StencilSpecT, StencilViewScope::ALL>;
+  using const_iterator = const iterator;
+  /*using iterator_inner =
+    StencilIterator<ElementT, PatternT, GlobMemT, StencilSpecT, StencilViewScope::INNER>;
+  using const_iterator_inner = const iterator;*/
+  using CoordsIdxManagerInner_t = CoordsIdxManagerInner<Self_t>;
+  using iterator_inner = StencilIteratorTest<CoordsIdxManagerInner_t>;
+  using const_iterator_inner = const iterator;
+  using CoordsIdxManagerBoundary_t = CoordsIdxManagerBoundary<Self_t>;
+  using iterator_bnd         = StencilIteratorTest<CoordsIdxManagerBoundary_t>;
+  using const_iterator_bnd   = const iterator;
 
 public:
   /**
@@ -695,21 +700,18 @@ public:
    * a \ref StencilSpec and a local \ref ViewSpec
    */
   StencilOperator(
-      const HaloBlock_t*  haloblock,
+      const HaloBlockT*   haloblock,
+      Element_t*          local_memory,
       HaloMemory_t*       halomemory,
-      const StencilSpecT& stencil_spec,
-      const ViewSpec_t*   view_local)
+      const StencilSpecT& stencil_spec)
     : inner(this)
     , boundary(this)
     , _halo_block(haloblock)
+    , _local_memory(local_memory)
     , _halo_memory(halomemory)
     , _stencil_spec(stencil_spec)
-    , _view_local(view_local)
+    , _view_local(&haloblock->view_local())
     , _stencil_offsets(set_stencil_offsets())
-    , _local_memory(static_cast<ElementT *>(
-          const_cast<void *>(dash::local_begin(
-              _halo_block->globmem().begin(),
-              _halo_block->globmem().team().myid()))))
     , _spec_views(*_halo_block, _stencil_spec, _view_local)
     , _begin(
           _local_memory,
@@ -727,40 +729,19 @@ public:
           *_view_local,
           _spec_views.inner_with_boundaries(),
           _spec_views.inner_with_boundaries().size())
-    , _ibegin(
-          _local_memory,
-          _halo_memory,
-          &_stencil_spec,
-          &_stencil_offsets,
-          *_view_local,
-          _spec_views.inner(),
-          0)
-    , _iend(
-          _local_memory,
-          _halo_memory,
-          &_stencil_spec,
-          &_stencil_offsets,
-          *_view_local,
-          _spec_views.inner(),
-          _spec_views.inner().size())
-    , _bbegin(
-          _local_memory,
-          _halo_memory,
-          &_stencil_spec,
-          &_stencil_offsets,
-          *_view_local,
-          _spec_views.boundary_views(),
-          0)
-    , _bend(
-          _local_memory,
-          _halo_memory,
-          &_stencil_spec,
-          &_stencil_offsets,
-          *_view_local,
-          _spec_views.boundary_views(),
-          _spec_views.boundary_size())
-  {
+    , _ibegin(CoordsIdxManagerInner_t(*this))
+    , _iend(CoordsIdxManagerInner_t(*this,
+                _spec_views.inner().size()))
+    , _bbegin(CoordsIdxManagerBoundary_t(*this))
+    , _bend(CoordsIdxManagerBoundary_t(*this,
+                _spec_views.boundary_size())) {
   }
+
+  static constexpr decltype(auto) ndim() { return NumDimensions; }
+
+  static constexpr decltype(auto) memory_order() { return MemoryArrange; }
+
+  static constexpr decltype(auto) num_stencil_points() { return NumStencilPoints; }
 
   /**
    * Returns the begin iterator for all relevant elements (inner + boundary)
@@ -799,6 +780,11 @@ public:
    */
   HaloMemory_t& halo_memory() { return *_halo_memory; }
 
+    /**
+   * Returns the halo memory management object \ref HaloMemory
+   */
+  Element_t* local_memory() { return _local_memory; }
+
   /**
    * Returns the \ref StencilSpecificView
    */
@@ -822,15 +808,15 @@ public:
   /**
    * Returns the offset for specific stencil point.
    */
-  const signed_pattern_size_t stencil_offset_at(std::size_t pos) const {
+  const index_t stencil_offset_at(std::size_t pos) const {
     return _stencil_offsets[pos];
   }
 
   /**
    * Returns the local memory offset for a given coordinate
    */
-  pattern_index_t get_offset(const ElementCoords_t& coords) const {
-    pattern_index_t offset = 0;
+  index_t get_offset(const Coords_t& coords) const {
+    index_t offset = 0;
 
     if(MemoryArrange == ROW_MAJOR) {
       offset = coords[0];
@@ -850,8 +836,8 @@ public:
 private:
   StencilOffsets_t set_stencil_offsets() {
     StencilOffsets_t stencil_offs;
-    for(auto i = 0; i < NumStencilPoints; ++i) {
-      signed_pattern_size_t offset = 0;
+    for(auto i = 0u; i < NumStencilPoints; ++i) {
+      index_t offset = 0;
       if(MemoryArrange == ROW_MAJOR) {
         offset = _stencil_spec[i][0];
         for(auto d = 1; d < NumDimensions; ++d)
@@ -871,7 +857,7 @@ private:
 
   StencilOffsets_t set_dimension_offsets() {
     StencilOffsets_t      dim_offs;
-    signed_pattern_size_t offset = 0;
+    index_t offset = 0;
     if(MemoryArrange == ROW_MAJOR) {
       dim_offs[NumDimensions - 1] = 1;
       for(auto d = NumDimensions - 1; d > 0;) {
@@ -893,11 +879,11 @@ public:
 
 private:
   const HaloBlock_t* _halo_block;
+  Element_t*         _local_memory;
   HaloMemory_t*      _halo_memory;
   const StencilSpecT _stencil_spec;
   const ViewSpec_t*  _view_local;
   StencilOffsets_t   _stencil_offsets;
-  ElementT*          _local_memory;
   StencilSpecViews_t _spec_views;
 
   iterator       _begin;
