@@ -318,7 +318,7 @@ public:
    * Asserts whether the StencilSpec fits in the provided halo regions.
    */
   template <typename StencilSpecT>
-  StencilOperator<Element_t, Pattern_t, typename MatrixT::GlobMem_t, StencilSpecT> stencil_operator(
+  StencilOperator<HaloBlock_t, StencilSpecT> stencil_operator(
     const StencilSpecT& stencil_spec) {
     for(const auto& stencil : stencil_spec.specs()) {
       DASH_ASSERT_MSG(
@@ -327,8 +327,8 @@ public:
         "Stencil point extent higher than halo region extent.");
     }
 
-    return StencilOperator<Element_t, Pattern_t,  typename MatrixT::GlobMem_t, StencilSpecT>(
-      &_haloblock, &_halomemory, stencil_spec, &_view_local);
+    return StencilOperator<HaloBlock_t, StencilSpecT>(
+      &_haloblock, _matrix.lbegin(), &_halomemory, stencil_spec);
   }
 
 private:

@@ -1,11 +1,11 @@
 #ifndef DASH__HALO__HALO_H__
 #define DASH__HALO__HALO_H__
 
-#include <dash/iterator/GlobIter.h>
-
 #include <dash/internal/Logging.h>
 #include <dash/util/FunctionalExpr.h>
 #include <dash/Array.h>
+
+#include <dash/iterator/GlobViewIter.h>
 
 #include <functional>
 
@@ -239,7 +239,7 @@ public:
 
   /**
    * Returns the minimal and maximal distances of all stencil points for all
-   * dimensions.
+   * dimensions. (minimum (first) <= 0 and maximum (second) >= 0)
    */
   DistanceAll_t minmax_distances() const {
     DistanceAll_t max_dist{};
@@ -259,7 +259,7 @@ public:
 
   /**
    * Returns the minimal and maximal distances of all stencil points for the
-   * given dimension.
+   * given dimension. (minimum (first) <= 0 and maximum (second) >= 0)
    */
   DistanceDim_t minmax_distances(dim_t dim) const {
     DistanceDim_t max_dist{};
@@ -1046,7 +1046,7 @@ private:
     _num_elems = 0;
     auto center = RegionCoords_t::center_index();
     auto dist_dims = stencil_spec.minmax_distances();
-    for(auto r = 0;  r < RegionCoords_t::NumRegionsMax; ++r) {
+    for(auto r = 0u;  r < RegionCoords_t::NumRegionsMax; ++r) {
       auto reg_coords = RegionCoords_t::coords(r);
       if(r == center || !check_valid_region(reg_coords, r, dist_dims, halo_block)){
         continue;
@@ -1355,7 +1355,7 @@ public:
             std::max(_halo_extents_max[d].second, halo_extent);
           auto check_extent =
             view_offset + view_extent + _halo_extents_max[d].second;
-          if(check_extent > _pattern.extent(d)) {
+          if(static_cast<pattern_index_t>(check_extent) > _pattern.extent(d)) {
             border_region[d].second = true;
             border[d].second = true;
 
@@ -1456,7 +1456,7 @@ public:
   /**
    * The pattern instance that created the encapsulated block.
    */
-  const PatternT& pattern() const { return _pattern; }
+  const Pattern_t& pattern() const { return _pattern; }
 
   /**
    * The global memory instance that created the encapsulated block.
@@ -1563,7 +1563,7 @@ public:
   pattern_size_t boundary_size() const { return _size_bnd_elems; }
 
   /**
-   * Returns the index belonging to the given coordinates and \ref ViewSpec
+   * Returns the region index belonging to the given coordinates and \ref ViewSpec
    */
   region_index_t index_at(const ViewSpec_t&      view,
                           const ElementCoords_t& coords) const {
@@ -1605,7 +1605,7 @@ private:
         }
         auto check_extent_tmp =
           offsets[d_tmp] + extents[d_tmp] + halo_exts_max[d_tmp].second;
-        if(check_extent_tmp > _pattern.extent(d_tmp))
+        if(static_cast<pattern_index_t>(check_extent_tmp) > _pattern.extent(d_tmp))
           extents[d_tmp] -= halo_exts_max[d_tmp].second;
       }
 
@@ -1698,6 +1698,8 @@ private:
 
   using RegionCoords_t = RegionCoords<NumDimensions>;
   using Pattern_t      = typename HaloBlockT::Pattern_t;
+  using ViewSpec_t     = typename HaloBlockT::ViewSpec_t;
+  using extent_t       = typename ViewSpec_t::size_type;
 
   static constexpr auto NumRegionsMax      = RegionCoords_t::NumRegionsMax;
   static constexpr auto MemoryArrange = Pattern_t::memory_order();
@@ -1798,10 +1800,10 @@ public:
     for(auto d = 0; d < NumDimensions; ++d) {
       if(coords[d] < 0)
         coords[d] += extents[d];
-      else if(coords[d] >= _haloblock.view().extent(d))
+      else if(static_cast<extent_t>(coords[d]) >= _haloblock.view().extent(d))
         coords[d] -= _haloblock.view().extent(d);
 
-      if(coords[d] >= extents[d] || coords[d] < 0)
+      if(static_cast<extent_t>(coords[d]) >= extents[d] || coords[d] < 0)
         return false;
     }
 
@@ -1815,13 +1817,13 @@ public:
                           ElementCoords_t&     coords) const {
     const auto& extents =
       _haloblock.halo_region(region_index)->view().extents();
-    for(auto d = 0; d < NumDimensions; ++d) {
+    for(dim_t d = 0; d < NumDimensions; ++d) {
       if(coords[d] < 0) {
         coords[d] += extents[d];
         continue;
       }
 
-      if(coords[d] >= _haloblock.view().extent(d))
+      if(static_cast<extent_t>(coords[d]) >= _haloblock.view().extent(d))
         coords[d] -= _haloblock.view().extent(d);
     }
   }
@@ -2073,7 +2075,6 @@ private:
 
   pattern_size_t num_halo_elems() {
     const auto& halo_spec = _halo_block.halo_spec();
-    const auto& view_local = _halo_block.view_local();
     team_unit_t rank_0(0);
     auto max_local_extents = _halo_block.pattern().local_extents(rank_0);
 
