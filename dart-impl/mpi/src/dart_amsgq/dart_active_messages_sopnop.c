@@ -137,6 +137,7 @@ dart_amsg_sopnop_openq(
   MPI_Info_set(info, "same_size"          , "true");
   MPI_Info_set(info, "same_disp_unit"     , "true");
   MPI_Info_set(info, "accumulate_ops"     , "same_op_no_op");
+  MPI_Info_set(info, "acc_single_intrinsic", "true");
 
   /**
    * Allocate the queue

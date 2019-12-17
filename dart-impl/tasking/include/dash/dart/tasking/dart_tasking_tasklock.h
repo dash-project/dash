@@ -3,6 +3,11 @@
 
 //#define USE_DART_MUTEX
 
+// Set this to disable the use of atomic_flag_test_and_set
+//#define USE_CMP_SWAP
+
+#define USE_DART_MUTEX
+
 #ifdef USE_DART_MUTEX
 
 #include <dash/dart/base/mutex.h>
@@ -20,9 +25,30 @@ typedef dart_mutex_t dart_tasklock_t;
 
 #define UNLOCK_TASK(__task) dart__base__mutex_unlock(&(__task)->lock)
 
-# elif defined(__STDC_NO_ATOMICS__)
+# elif defined(__STDC_NO_ATOMICS__) && defined (USE_CMP_SWAP)
 
 #include <dash/dart/base/atomic.h>
+
+typedef volatile int32_t dart_tasklock_t;
+#define TASKLOCK_INITIALIZER ((int32_t)0)
+
+#define TASKLOCK_INIT(__task) do {  \
+  __task->lock = TASKLOCK_INITIALIZER;\
+} while (0)
+
+#define LOCK_TASK(__task) do {\
+  int cnt = 0; \
+  while ((__task)->lock || !DART_COMPARE_AND_SWAP32(&(__task)->lock, 0, 1)) \
+  { if (++cnt == 1000) { sched_yield(); cnt = 0; } } \
+} while(0)
+
+#define UNLOCK_TASK(__task) do {                          \
+  dart_tasklock_t lck = DART_FETCH_AND_DEC32(&(__task)->lock); \
+  dart__unused(lck);                                      \
+  DART_ASSERT(lck == 1);                                  \
+} while(0)
+
+#elif defined(USE_CMP_SWAP)
 
 typedef int32_t dart_tasklock_t;
 #define TASKLOCK_INITIALIZER ((int32_t)0)
@@ -33,15 +59,15 @@ typedef int32_t dart_tasklock_t;
 
 #define LOCK_TASK(__task) do {\
   int cnt = 0; \
-  while (!DART_COMPARE_AND_SWAP32(&(__task)->lock, 0, 1)) \
-  { if (++cnt == 1000) { sched_yield(); cnt = 0; } } \
+  dart_tasklock_t tmp = 0; \
+  while ((__task)->lock || !atomic_compare_exchange_weak_explicit(&(__task)->lock, &tmp, 1, memory_order_acquire, memory_order_relaxed)) \
+  { tmp = 0; if (++cnt == 1000) { sched_yield(); cnt = 0; } } \
 } while(0)
 
 #define UNLOCK_TASK(__task) do {                          \
-  dart_tasklock_t lck = DART_FETCH_AND_DEC32(&(__task)->lock); \
-  dart__unused(lck);                                      \
-  DART_ASSERT(lck == 1);                                  \
+  atomic_store_explicit(&(__task)->lock, 0, memory_order_release); \
 } while(0)
+
 
 #else // defined(__STDC_NO_ATOMICS__)
 

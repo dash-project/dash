@@ -53,9 +53,10 @@ benchmark_task_creation(size_t num_tasks)
   }
   //dart_task_complete();
   dash::tasks::complete();
+  auto elapsed = t.Elapsed();
   dash::barrier();
   if (PrintOutput && dash::myid() == 0) {
-    std::cout << "avg task creation/execution: " << t.Elapsed() / num_tasks / 2
+    std::cout << "avg task creation/execution: " << elapsed / num_tasks
               << "us" << std::endl;
   }
 }
@@ -218,7 +219,7 @@ benchmark_task_yield(size_t num_yields)
   dart_task_complete(true);
   dash::barrier();
   if (dash::myid() == 0) {
-    std::cout << "avg task yield: " << t.Elapsed() / num_yields
+    std::cout << "avg task yield: " << t.Elapsed() / num_yields / 2
               << "us" << std::endl;
   }
 }
