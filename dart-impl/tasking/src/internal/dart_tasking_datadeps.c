@@ -967,7 +967,6 @@ dart_tasking_datadeps_handle_defered_remote_outdeps(
         */
         DART_LOG_TRACE("Capturing dummy dependency %p for remote dependency %p",
                        dummy_task, rdep);
-        dart_dephash_elem_t *dummy_prev = NULL;
         dart_dephash_elem_t *dummy_elem = NULL;
         //capturing the dummy output depedendency without saving it first and then searching in the vector (RAW)
         for (dummy_elem = dummy_task->dep_list;
