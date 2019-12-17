@@ -68,7 +68,7 @@ int dart_tool_register_task_create (dart_tool_task_create_cb_t cb, void *userdat
    dart_tool_task_create_cb_data.cb = cb;
    dart_tool_task_create_cb_data.userdata = userdata_task_create;
    DART_LOG_TRACE("dart_tool_register_task_create was called\nPointer: %p and userdata %d",
-                  cb, *(int *) userdata_task_create);
+                  cb, userdata_task_create);
    return 0;
 } 
 
@@ -76,7 +76,7 @@ int dart_tool_register_task_begin(dart_tool_task_begin_cb_t cb, void *userdata_t
     dart_tool_task_begin_cb_data.cb = cb;
     dart_tool_task_begin_cb_data.userdata = userdata_task_begin;
     DART_LOG_TRACE("dart_tool_register_task_begin was called\nPointer: %p and userdata %d",
-           cb, *(int *) userdata_task_begin);
+           cb, userdata_task_begin);
     return 0;
 }
 
@@ -84,7 +84,7 @@ int dart_tool_register_task_end (dart_tool_task_end_cb_t cb, void *userdata_task
     dart_tool_task_end_cb_data.cb = cb;
     dart_tool_task_end_cb_data.userdata = userdata_task_end;
     DART_LOG_TRACE("dart_tool_register_task_end was called\nPointer: %p and userdata %d",
-                   cb, *(int *) userdata_task_end);
+                   cb, userdata_task_end);
     return 0;
 }
 
@@ -92,7 +92,7 @@ int dart_tool_register_task_finalize(dart_tool_task_finalize_cb_t cb, void *user
     dart_tool_task_finalize_cb_data.cb = cb;
     dart_tool_task_finalize_cb_data.userdata = userdata_task_all_end;
     DART_LOG_TRACE("dart_tool_register_task_finalize was called\nPointer: %p and userdata %d",
-                   cb, *(int*) userdata_task_all_end);
+                   cb, userdata_task_all_end);
     return 0;
 }
 
@@ -100,7 +100,7 @@ int dart_tool_register_task_cancel(dart_tool_task_cancel_cb_t cb, void *userdata
     dart_tool_task_cancel_cb_data.cb = cb;
     dart_tool_task_cancel_cb_data.userdata = userdata_task_cancel;
     DART_LOG_TRACE("dart_tool_register_task_cancel was called\nPointer: %p and userdata %d",
-                   cb, *(int*) userdata_task_cancel);
+                   cb, userdata_task_cancel);
     return 0;
 }
 
@@ -108,7 +108,7 @@ int dart_tool_register_task_yield_leave(dart_tool_task_yield_leave_cb_t cb, void
     dart_tool_task_yield_leave_cb_data.cb = cb;
     dart_tool_task_yield_leave_cb_data.userdata = userdata_task_yield_leave;
     DART_LOG_TRACE("dart_tool_register_task_yield_leave was called\nPointer: %p and userdata %d",
-                   cb, *(int*) userdata_task_yield_leave);
+                   cb, userdata_task_yield_leave);
     return 0;
 }
 
@@ -116,7 +116,7 @@ int dart_tool_register_task_yield_resume (dart_tool_task_yield_resume_cb_t cb, v
     dart_tool_task_yield_resume_cb_data.cb = cb;
     dart_tool_task_yield_resume_cb_data.userdata = userdata_task_yield_resume;
     DART_LOG_TRACE("dart_tool_register_task_yield_resume was called\nPointer: %p and userdata %d",
-                   cb, *(int*) userdata_task_yield_resume);    
+                   cb, userdata_task_yield_resume);    
     return 0;
 }
 
@@ -124,7 +124,7 @@ int dart_tool_register_task_add_to_queue (dart_tool_task_add_to_queue_cb_t cb, v
     dart_tool_task_add_to_queue_cb_data.cb = cb;
     dart_tool_task_add_to_queue_cb_data.userdata = userdata_queue;
     DART_LOG_TRACE("dart_tool_register_task_add_to_queue was called\nPointer: %p and userdata %d",
-                   cb, *(int*) userdata_queue);
+                   cb, userdata_queue);
     return 0;
 }
 
@@ -132,7 +132,7 @@ int dart_tool_register_local_dep (dart_tool_local_dep_cb_t cb, void *userdata_lo
     dart_tool_local_dep_cb_data.cb = cb;
     dart_tool_local_dep_cb_data.userdata = userdata_local_dep;
     DART_LOG_TRACE("dart_tool_register_local_dep was called\nPointer: %p and userdata %d",
-                   cb, *(int*) userdata_local_dep);
+                   cb, userdata_local_dep);
     return 0;
 }
 
@@ -140,7 +140,7 @@ int dart_tool_register_remote_dep (dart_tool_remote_dep_cb_t cb, void *userdata_
     dart_tool_remote_dep_cb_data.cb = cb;
     dart_tool_remote_dep_cb_data.userdata = userdata_remote_in_dep;
     DART_LOG_TRACE("dart_tool_register_remote_dep was called\nPointer: %p and userdata %d",
-                   cb, *(int*) userdata_remote_in_dep);
+                   cb, userdata_remote_in_dep);
     return 0;
 }
 
