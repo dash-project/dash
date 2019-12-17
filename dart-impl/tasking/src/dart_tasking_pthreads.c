@@ -740,7 +740,7 @@ dart_task_t * create_task(
   dart_tasking_tasklist_prepend(&task->parent->children, task);
   UNLOCK_TASK(task->parent);
   task->children = NULL;
-#endif // DART_DEBUG
+
   dart__tasking__instrument_task_create(task, prio, task->descr);
 #endif // TRACK_CHILDREN
 
