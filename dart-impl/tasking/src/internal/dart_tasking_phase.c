@@ -156,7 +156,7 @@ dart__tasking__phase_advance()
 
   ++creation_phase;
   wait_for_active_phases(num_tasks_prev_phase);
-
+  DART_FETCH_AND_INC32(&num_active_phases);
   DART_LOG_TRACE("Entering phase %d", creation_phase);
 }
 
@@ -205,7 +205,6 @@ dart__tasking__phase_add_task()
     int32_t val = DART_FETCH_AND_INC32(
                     &phase_task_counts[creation_phase%max_active_phases_mod]);
     if (val == 0) {
-      DART_FETCH_AND_INC32(&num_active_phases);
       DART_LOG_TRACE("Phase %d saw its first task!", creation_phase);
     }
   }
