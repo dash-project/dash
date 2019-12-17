@@ -50,7 +50,7 @@ file(GLOB_RECURSE DASH_LIBRARY_HEADERS
      "include/*.h")
 
 # Include library for dlopen and dlsym (-ldl)
-set (DL dl)
+set (LIB_DL dl)
 
 file(GLOB_RECURSE DASH_TEST_SOURCES
   "test/TestBase.h" "test/TestPrinter.h" "test/main.cc")
@@ -116,7 +116,7 @@ if (HWLOC_FOUND AND ENABLE_HWLOC)
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
        ${HWLOC_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
-       ${HWLOC_LIBRARIES} ${DL})
+       ${HWLOC_LIBRARIES} ${LIB_DL})
 endif()
 if (TCMALLOC_FOUND AND ENABLE_TCMALLOC)
   set (CONF_AVAIL_TCMALLOC "true")
