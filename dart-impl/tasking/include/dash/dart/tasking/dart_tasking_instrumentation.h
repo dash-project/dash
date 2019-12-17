@@ -7,9 +7,6 @@
 #include <dash/dart/if/dart_tools.h>
 #include <dlfcn.h>
 
-static dart_global_unit_t myguid;
-static size_t num_units;
-
 void
 dart__tasking__init_tools_interface() DART_INTERNAL;
 /**

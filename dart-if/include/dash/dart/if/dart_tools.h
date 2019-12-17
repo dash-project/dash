@@ -39,14 +39,17 @@ typedef void (*dart_tool_task_cancel_cb_t) (
     uint64_t task,
     uint64_t thread,
     void *userdata);
+
 typedef void (*dart_tool_task_yield_leave_cb_t) (
     uint64_t task,
     uint64_t thread,
     void *userdata);
+
 typedef void (*dart_tool_task_yield_resume_cb_t) (
     uint64_t task,
     uint64_t thread,
     void *userdata);
+
 typedef void (*dart_tool_task_finalize_cb_t) (void *userdata);
 
 typedef void (*dart_tool_task_add_to_queue_cb_t) (

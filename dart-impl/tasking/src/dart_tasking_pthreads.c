@@ -741,9 +741,8 @@ dart_task_t * create_task(
   UNLOCK_TASK(task->parent);
   task->children = NULL;
 
-  dart__tasking__instrument_task_create(task, prio, task->descr);
 #endif // TRACK_CHILDREN
-
+  dart__tasking__instrument_task_create(task, prio, task->descr);
   return task;
 }
 

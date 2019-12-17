@@ -1,6 +1,10 @@
 #include <dash/dart/tasking/dart_tasking_instrumentation.h>
 #include <stdio.h>
 
+
+static dart_global_unit_t myguid;
+static size_t num_units;
+
 struct dart_tool_task_create_cb {
     dart_tool_task_create_cb_t cb;
     void *userdata;
@@ -302,12 +306,12 @@ void dart__tasking__init_tools_interface(){
         fprintf(stderr, "Error: %s\n", dlerror());
         dlclose(handle);
       }
-      //use_tool_interface = true; //to enable finalizing
+
       dart_myid(&myguid);
       dart_team_size(DART_TEAM_ALL, &num_units);
       toolhandle = toolinit(dart__tasking__num_threads(), num_units, myguid.id);
       if (toolhandle == 0) {
-        DART_LOG_TRACE("Tool successfully initialized in unit %d.", myguid.id);
+        DART_LOG_TRACE("Tool successfully initialized in unit %d.\n", myguid.id);
       }
   }
 }
