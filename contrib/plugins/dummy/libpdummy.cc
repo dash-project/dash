@@ -59,7 +59,7 @@ void call_register_functions () {
 
 }
 
-extern "C" int init_ext_tool(int num_threads, int pid, int num_units, int32_t myguid, int *rbuf) {
+extern "C" int init_ext_tool(int num_threads, int num_units, int32_t myguid) {
   myglobalid = (unsigned long long) myguid;
   call_register_functions();
   return 0;
