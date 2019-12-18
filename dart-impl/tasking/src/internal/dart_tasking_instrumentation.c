@@ -269,9 +269,9 @@ void dart__tasking__instrument_remote_dep(
     }
 }
 void dart__tasking__init_tools_interface(){
-  void *handle;
-  int (*toolinit)(int, int, int);
-  int toolhandle;
+  void *handleInitFunction;
+  int (*toolInitFunction)(int, int, int);
+  int returnValueTool;
   /**
    * The name of the environment variable containing the path to the tool is stored in 
    * DART__TOOLS_TOOL_ENV_VAR_PATH
@@ -284,28 +284,30 @@ void dart__tasking__init_tools_interface(){
       DART_LOG_ERROR("Environment variable is an empty string!");
   } else {
       DART_LOG_TRACE("DART_TOOL_PATH=%s", var);
-      handle = dlopen(var, RTLD_LAZY);
-      if (!handle) {
+      handleInitFunction = dlopen(var, RTLD_LAZY);
+      if (!handleInitFunction) {
         /* failed to load the tool */
-        DART_LOG_TRACE("Failed to load the tool");
-        fprintf(stderr, "Error: %s\n", dlerror());
+        DART_LOG_ERROR("Failed to load the tool");
       }
       /**
        * The init function name has to be stored in DART__TOOLS_TOOL_INIT_FUNCTION_NAME
        * in dart_tools.h 
       */
-      *(int **)(&toolinit) = dlsym(handle, DART__TOOLS_TOOL_INIT_FUNCTION_NAME);
-      if (!toolinit) {
+      *(int **)(&toolInitFunction) = dlsym(handleInitFunction, 
+                                         DART__TOOLS_TOOL_INIT_FUNCTION_NAME);
+      if (!toolInitFunction) {
         /* no such symbol */
-        fprintf(stderr, "Error: %s\n", dlerror());
-        dlclose(handle);
+        DART_LOG_ERROR("No such symbol!");
+        dlclose(handleInitFunction);
       }
 
       dart_myid(&myguid);
       dart_team_size(DART_TEAM_ALL, &num_units);
-      toolhandle = toolinit(dart__tasking__num_threads(), num_units, myguid.id);
-      if (toolhandle == 0) {
-        DART_LOG_TRACE("Tool successfully initialized in unit %d.\n", myguid.id);
+      returnValueTool = toolInitFunction(dart__tasking__num_threads(), num_units, myguid.id);
+      if (returnValueTool == 0) {
+        DART_LOG_TRACE("Tool successfully initialized in unit %d.", myguid.id);
+      } else {
+        DART_LOG_ERROR("Tool was not successfully initialized in unit %d.", myguid.id);
       }
   }
 }
