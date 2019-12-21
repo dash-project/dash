@@ -50,7 +50,7 @@ private:
     Timestamp_t;
 #else
   // No PAPI, no POSIX
-  #pragma error "dash::util::Timer requires POSIX platform or PAPI"
+  #error "dash::util::Timer requires POSIX platform or PAPI"
 #endif
 
 public:
@@ -190,7 +190,7 @@ private:
     Timestamp_t;
 #else
   // No PAPI, no POSIX
-  #pragma error "dash::util::Timer requires POSIX platform or PAPI"
+  #error "dash::util::Timer requires POSIX platform or PAPI"
 #endif
 
 public:

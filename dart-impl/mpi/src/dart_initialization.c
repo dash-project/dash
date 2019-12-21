@@ -32,6 +32,10 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
   dart_localpool = dart_buddy_new(DART_LOCAL_ALLOC_SIZE);
   MPI_Win dart_sharedmem_win_local_alloc = MPI_WIN_NULL;
   char* *dart_sharedmem_local_baseptr_set = NULL;
+  MPI_Info win_info;
+  MPI_Info_create(&win_info);
+  MPI_Info_set(win_info, "same_size", "true");
+  MPI_Info_set(win_info, "same_disp_unit", "true");
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
@@ -42,8 +46,6 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
   if (sharedmem_comm != MPI_COMM_NULL) {
     DART_LOG_DEBUG("dart_init: MPI_Win_allocate_shared(nbytes:%d)",
                    DART_LOCAL_ALLOC_SIZE);
-    MPI_Info win_info;
-    MPI_Info_create(&win_info);
     MPI_Info_set(win_info, "alloc_shared_noncontig", "true");
     /* Reserve a free shared memory block for non-collective
      * global memory allocation. */
@@ -61,7 +63,6 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
       return DART_ERR_OTHER;
     }
 
-    MPI_Info_free(&win_info);
 
     DART_LOG_DEBUG("dart_init: MPI_Win_allocate_shared completed");
 
@@ -90,13 +91,6 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
       }
     }
   }
-#else
-  MPI_Alloc_mem(
-    DART_LOCAL_ALLOC_SIZE,
-    MPI_INFO_NULL,
-    &dart_mempool_localalloc);
-#endif
-
   /* Create a single global win object for dart local
    * allocation based on the above allocated shared memory.
    *
@@ -105,9 +99,18 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
     dart_mempool_localalloc,
     DART_LOCAL_ALLOC_SIZE,
     sizeof(char),
-    MPI_INFO_NULL,
+    win_info,
     DART_COMM_WORLD,
     &dart_win_local_alloc);
+#else
+  MPI_Win_allocate(
+    DART_LOCAL_ALLOC_SIZE, sizeof(char),
+    win_info, DART_COMM_WORLD,
+    &dart_mempool_localalloc,
+    &dart_win_local_alloc);
+#endif
+
+  MPI_Info_free(&win_info);
 
   /* Start an access epoch on dart_win_local_alloc, and later
    * on all the units can access the memory region allocated
@@ -130,9 +133,11 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
   segment->win         = dart_win_local_alloc;
   segment->shmwin      = dart_sharedmem_win_local_alloc;
   segment->selfbaseptr = dart_mempool_localalloc;
-  // addressing in this window is relative, no need to store displacements
+  // addressing in this window is relative, no need to exchange displacements
   segment->disp        = calloc(team_data->size, sizeof(MPI_Aint));
-  segment->is_dynamic       = false;
+  segment->is_dynamic  = false;
+
+  dart__mpi__check_memory_model(segment);
 
   return DART_OK;
 }
@@ -319,11 +324,6 @@ dart_ret_t dart_exit()
   /* Has MPI shared windows: */
   MPI_Win_free(&seginfo->shmwin);
   MPI_Comm_free(&(team_data->sharedmem_comm));
-#else
-  /* No MPI shared windows: */
-  if (dart_mempool_localalloc) {
-    MPI_Free_mem(dart_mempool_localalloc);
-  }
 #endif
   MPI_Win_free(&team_data->window);
 

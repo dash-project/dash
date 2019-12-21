@@ -21,6 +21,18 @@ TEST_F(ArrayTest, Declaration)
   dash::Array<int> arr;
 }
 
+
+TEST_F(ArrayTest, Empty)
+{
+  dash::Array<int> arr{0};
+
+  auto begin = arr.begin();
+  auto end   = arr.end();
+  auto gptr  = begin.dart_gptr();
+
+  ASSERT_EQ_U(begin, end);
+}
+
 TEST_F(ArrayTest, Initialization)
 {
   dash::Array<int> array_local(19 * dash::size(), dash::BLOCKED);
@@ -241,7 +253,7 @@ TEST_F(ArrayTest, MoveSemantics){
   using array_t = dash::Array<double>;
   // move construction
   {
-    array_t array_a(10);
+    array_t array_a(10*dash::size());
 
     *(array_a.lbegin()) = 5;
     dash::barrier();
@@ -253,9 +265,9 @@ TEST_F(ArrayTest, MoveSemantics){
   dash::barrier();
   //move assignment
   {
-    array_t array_a(10);
+    array_t array_a(10*dash::size());
     {
-      array_t array_b(8);
+      array_t array_b(8*dash::size());
 
       *(array_a.lbegin()) = 1;
       *(array_b.lbegin()) = 2;
@@ -267,8 +279,8 @@ TEST_F(ArrayTest, MoveSemantics){
   dash::barrier();
   // swap
   {
-    array_t array_a(10);
-    array_t array_b(8);
+    array_t array_a(10*dash::size());
+    array_t array_b(8*dash::size());
 
     *(array_a.lbegin()) = 1;
     *(array_b.lbegin()) = 2;

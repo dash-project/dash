@@ -33,16 +33,20 @@
  * Private Data                                                           *
  * ====================================================================== */
 
-#define DART__BASE__LOCALITY__MAX_TEAM_DOMAINS 32
+static dart_host_topology_t **
+dart__base__locality__host_topology_ = NULL;
 
-static dart_host_topology_t *
-dart__base__locality__host_topology_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
+static dart_unit_mapping_t **
+dart__base__locality__unit_mapping_  = NULL;
 
-static dart_unit_mapping_t *
-dart__base__locality__unit_mapping_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
+static dart_domain_locality_t **
+dart__base__locality__global_domain_ = NULL;
 
-static dart_domain_locality_t *
-dart__base__locality__global_domain_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
+/* dart_team_t is defined as int16_t */
+static const size_t max_num_teams = 1 << (sizeof(dart_team_t)*8 - 1);
+/* make sure the size of dart_team_t does not changed without us noticing */
+DART_STATIC_ASSERT_MSG(sizeof(dart_team_t) <= 2,
+                        "Size of dart_team_t larger than expected!");
 
 /* ====================================================================== *
  * Private Functions                                                      *
@@ -71,21 +75,52 @@ dart_ret_t dart__base__locality__group_subdomains(
 
 dart_ret_t dart__base__locality__init()
 {
-  for (int td = 0; td < DART__BASE__LOCALITY__MAX_TEAM_DOMAINS; ++td) {
-    dart__base__locality__global_domain_[td] = NULL;
-    dart__base__locality__host_topology_[td] = NULL;
-    dart__base__locality__unit_mapping_[td]  = NULL;
-  }
+  /* Make sure we don't initialize twice */
+  DART_ASSERT(dart__base__locality__global_domain_ == NULL &&
+              dart__base__locality__host_topology_ == NULL &&
+              dart__base__locality__unit_mapping_ == NULL);
+
+  /**
+   * TODO: come up with a more memory-friendly way. We could use realloc but
+   *       that would require additional locking. Alternatively, use a hash
+   *       table. On 64-bit systems, now this is 768k of which the majority
+   *       will never be touched...
+   */
+  dart__base__locality__global_domain_
+                      = calloc(sizeof(dart__base__locality__global_domain_[0]),
+                               max_num_teams);
+  dart__base__locality__host_topology_
+                      = calloc(sizeof(dart__base__locality__host_topology_[0]),
+                               max_num_teams);
+  dart__base__locality__unit_mapping_
+                      = calloc(sizeof(dart__base__locality__unit_mapping_[0]),
+                               max_num_teams);
+
   return dart__base__locality__create(DART_TEAM_ALL);
 }
 
 dart_ret_t dart__base__locality__finalize()
 {
-  for (dart_team_t t = 0; t < DART__BASE__LOCALITY__MAX_TEAM_DOMAINS; ++t) {
-    dart__base__locality__delete(t);
-  }
+  dart__base__locality__delete(DART_TEAM_ALL);
 
-  dart_barrier(DART_TEAM_ALL);
+#ifdef DART_ENABLE_ASSERTIONS
+  for (dart_team_t t = 0; t < max_num_teams; ++t) {
+    DART_ASSERT_MSG(dart__base__locality__global_domain_[t] == NULL,
+                    "Locality domain was not properly destroyed");
+    DART_ASSERT_MSG(dart__base__locality__host_topology_[t] == NULL,
+                    "Locality host topology was not properly destroyed");
+    DART_ASSERT_MSG(dart__base__locality__unit_mapping_[t] == NULL,
+                    "Locality unit mapping was not properly destroyed");
+  }
+#endif
+
+  free(dart__base__locality__global_domain_);
+  dart__base__locality__global_domain_ = NULL;
+  free(dart__base__locality__host_topology_);
+  dart__base__locality__host_topology_ = NULL;
+  free(dart__base__locality__unit_mapping_);
+  dart__base__locality__unit_mapping_  = NULL;
+
   return DART_OK;
 }
 
@@ -132,25 +167,19 @@ dart_ret_t dart__base__locality__create(
     "dash__base__locality__create(): "
     "locality data of team is already initialized");
 
-  dart_domain_locality_t * team_global_domain =
-    malloc(sizeof(dart_domain_locality_t));
+  dart_domain_locality_t * team_global_domain = NULL;
+  DART_ASSERT_RETURNS(dart__base__locality__create_domain(&team_global_domain), DART_OK);
   dart__base__locality__global_domain_[team] =
     team_global_domain;
 
   /* Initialize the global domain as the root entry in the locality
    * hierarchy:
    */
-  team_global_domain->scope          = DART_LOCALITY_SCOPE_GLOBAL;
-  team_global_domain->level          = 0;
-  team_global_domain->relative_index = 0;
-  team_global_domain->team           = team;
-  team_global_domain->parent         = NULL;
-  team_global_domain->num_domains    = 0;
-  team_global_domain->children       = NULL;
-  team_global_domain->num_units      = 0;
-  team_global_domain->host[0]        = '\0';
-  team_global_domain->domain_tag[0]  = '.';
-  team_global_domain->domain_tag[1]  = '\0';
+  team_global_domain->scope         = DART_LOCALITY_SCOPE_GLOBAL;
+  team_global_domain->team          = team;
+  team_global_domain->num_units     = 0;
+  team_global_domain->domain_tag[0] = '.';
+  team_global_domain->domain_tag[1] = '\0';
 
   size_t num_units = 0;
   DART_ASSERT_RETURNS(dart_team_size(team, &num_units), DART_OK);

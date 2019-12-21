@@ -53,8 +53,6 @@ option(ENABLE_DART_LOGGING
        "Specify whether messages from DART should be logged" off)
 option(ENABLE_ASSERTIONS
        "Specify whether runtime assertions should be checked" off)
-option(ENABLE_UNIFIED_MEMORY_MODEL
-       "Specify whether to assume unified memory model" on)
 option(ENABLE_SHARED_WINDOWS
        "Specify whether shared memory features are enabled" on)
 option(ENABLE_DYNAMIC_WINDOWS
@@ -259,8 +257,6 @@ message(INFO "DART log messages:        (ENABLE_DART_LOGGING)            "
         ${ENABLE_DART_LOGGING})
 message(INFO "Runtime assertions:       (ENABLE_ASSERTIONS)              "
         ${ENABLE_ASSERTIONS})
-message(INFO "Unified RMA memory model: (ENABLE_UNIFIED_MEMORY_MODEL)    "
-        ${ENABLE_UNIFIED_MEMORY_MODEL})
 message(INFO "MPI shared windows:       (ENABLE_SHARED_WINDOWS)          "
         ${ENABLE_SHARED_WINDOWS})
 message(INFO "MPI dynamic windows:      (ENABLE_DYNAMIC_WINDOWS)         "

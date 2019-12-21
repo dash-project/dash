@@ -49,10 +49,15 @@ void Log_Recursive(
   const char* context_tag,
   std::ostringstream & msg)
 {
-  std::istringstream ss(msg.str());
-  std::string item;
-  while (std::getline(ss, item)) {
-    Log_Line(level, file, line, context_tag, item);
+  std::string msg_str = msg.str();
+  if (msg_str.empty()) {
+    Log_Line(level, file, line, "", context_tag);
+  } else {
+    std::istringstream ss(msg_str);
+    std::string item;
+    while (std::getline(ss, item)) {
+      Log_Line(level, file, line, context_tag, item);
+    }
   }
   (DASH_LOG_OUTPUT_TARGET).flush();
 }

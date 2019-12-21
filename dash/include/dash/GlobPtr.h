@@ -98,7 +98,7 @@ public:
   /**
    * Constructor, specifies underlying global address.
    */
-  explicit constexpr GlobPtr(dart_gptr_t gptr)
+  explicit constexpr GlobPtr(dart_gptr_t gptr) DASH_NOEXCEPT
     : m_dart_pointer(gptr)
   {
   }
@@ -106,7 +106,7 @@ public:
   /**
    * Constructor for conversion of std::nullptr_t.
    */
-  explicit constexpr GlobPtr(std::nullptr_t)
+  explicit constexpr GlobPtr(std::nullptr_t) DASH_NOEXCEPT
     : m_dart_pointer(DART_GPTR_NULL)
   {
   }
@@ -143,7 +143,7 @@ public:
               typename dash::remove_atomic<value_type>::type>::value>
 
       ::type>
-  constexpr GlobPtr(const GlobPtr<From, GlobMemT> &other)
+  constexpr GlobPtr(const GlobPtr<From, GlobMemT> &other) DASH_NOEXCEPT
     : m_dart_pointer(other.m_dart_pointer)
   {
   }
@@ -151,19 +151,19 @@ public:
   /**
    * Move constructor.
    */
-  constexpr GlobPtr(self_t &&other) = default;
+  constexpr GlobPtr(self_t &&other) DASH_NOEXCEPT = default;
 
   /**
    * Move-assignment operator.
    */
-  self_t &operator=(self_t &&rhs) = default;
+  self_t &operator=(self_t &&rhs) DASH_NOEXCEPT = default;
 
   /**
    * Converts pointer to its referenced native pointer or
    * \c nullptr if the \c GlobPtr does not point to a local
    * address.
    */
-  explicit operator value_type *() const noexcept
+  explicit operator value_type *() const DASH_NOEXCEPT
   {
     return local();
   }
@@ -175,7 +175,7 @@ public:
    *           GlobPtr instance, or \c nullptr if the referenced element
    *           is not local to the calling unit.
    */
-  explicit operator value_type *() noexcept
+  explicit operator value_type *()
   {
     return local();
   }
@@ -183,7 +183,7 @@ public:
   /**
    * Converts pointer to its underlying global address.
    */
-  explicit constexpr operator dart_gptr_t() const noexcept
+  explicit constexpr operator dart_gptr_t() const DASH_NOEXCEPT
   {
     return m_dart_pointer;
   }
@@ -191,7 +191,7 @@ public:
   /**
    * The pointer's underlying global address.
    */
-  constexpr dart_gptr_t dart_gptr() const noexcept
+  constexpr dart_gptr_t dart_gptr() const DASH_NOEXCEPT
   {
     return m_dart_pointer;
   }
@@ -199,7 +199,7 @@ public:
   /**
    * Pointer offset difference operator.
    */
-  constexpr index_type operator-(const self_t &rhs) const noexcept
+  constexpr index_type operator-(const self_t &rhs) const DASH_NOEXCEPT
   {
     return dash::distance(rhs, *this);
   }
@@ -207,7 +207,7 @@ public:
   /**
    * Prefix increment operator.
    */
-  self_t &operator++()
+  self_t &operator++() DASH_NOEXCEPT
   {
     increment(1);
     return *this;
@@ -216,7 +216,7 @@ public:
   /**
    * Postfix increment operator.
    */
-  self_t operator++(int)
+  self_t operator++(int) DASH_NOEXCEPT
   {
     self_t res(*this);
     increment(1);
@@ -226,7 +226,7 @@ public:
   /**
    * Pointer increment operator.
    */
-  self_t operator+(index_type n) const
+  self_t operator+(index_type n) const DASH_NOEXCEPT
   {
     self_t res(*this);
     res += n;
@@ -236,7 +236,7 @@ public:
   /**
    * Pointer increment operator.
    */
-  self_t &operator+=(index_type n)
+  self_t &operator+=(index_type n) DASH_NOEXCEPT
   {
     if (n >= 0) {
       increment(n);
@@ -250,7 +250,7 @@ public:
   /**
    * Prefix decrement operator.
    */
-  self_t &operator--()
+  self_t &operator--() DASH_NOEXCEPT
   {
     decrement(1);
     return *this;
@@ -259,7 +259,7 @@ public:
   /**
    * Postfix decrement operator.
    */
-  self_t operator--(int)
+  self_t operator--(int) DASH_NOEXCEPT
   {
     self_t res(*this);
     decrement(1);
@@ -269,7 +269,7 @@ public:
   /**
    * Pointer decrement operator.
    */
-  self_t operator-(index_type n) const
+  self_t operator-(index_type n) const DASH_NOEXCEPT
   {
     self_t res(*this);
     res -= n;
@@ -279,7 +279,7 @@ public:
   /**
    * Pointer decrement operator.
    */
-  self_t &operator-=(index_type n)
+  self_t &operator-=(index_type n) DASH_NOEXCEPT
   {
     if (n >= 0) {
       decrement(n);
@@ -294,7 +294,7 @@ public:
    * Equality comparison operator.
    */
   // template <class GlobPtrT>
-  constexpr bool operator==(const GlobPtr &other) const noexcept
+  constexpr bool operator==(const GlobPtr &other) const DASH_NOEXCEPT
   {
     return DART_GPTR_EQUAL(
         static_cast<dart_gptr_t>(m_dart_pointer),
@@ -304,7 +304,7 @@ public:
   /**
    * Equality comparison operator.
    */
-  constexpr bool operator==(std::nullptr_t) const noexcept
+  constexpr bool operator==(std::nullptr_t) const DASH_NOEXCEPT
   {
     return DART_GPTR_ISNULL(static_cast<dart_gptr_t>(m_dart_pointer));
   }
@@ -313,7 +313,7 @@ public:
    * Inequality comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator!=(const GlobPtrT &other) const noexcept
+  constexpr bool operator!=(const GlobPtrT &other) const DASH_NOEXCEPT
   {
     return !(*this == other);
   }
@@ -322,7 +322,7 @@ public:
    * Less comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator<(const GlobPtrT &other) const noexcept
+  constexpr bool operator<(const GlobPtrT &other) const DASH_NOEXCEPT
   {
     return (other - *this) > 0;
   }
@@ -331,7 +331,7 @@ public:
    * Less-equal comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator<=(const GlobPtrT &other) const noexcept
+  constexpr bool operator<=(const GlobPtrT &other) const DASH_NOEXCEPT
   {
     return !(*this > other);
   }
@@ -340,7 +340,7 @@ public:
    * Greater comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator>(const GlobPtrT &other) const noexcept
+  constexpr bool operator>(const GlobPtrT &other) const DASH_NOEXCEPT
   {
     return (*this - other) > 0;
   }
@@ -349,7 +349,7 @@ public:
    * Greater-equal comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator>=(const GlobPtrT &other) const noexcept
+  constexpr bool operator>=(const GlobPtrT &other) const DASH_NOEXCEPT
   {
     return (*this - other) >= 0;
   }
@@ -357,7 +357,7 @@ public:
   /**
    * Subscript operator.
    */
-  constexpr GlobRef<const value_type> operator[](gptrdiff_t n) const
+  constexpr GlobRef<const value_type> operator[](gptrdiff_t n) const DASH_NOEXCEPT
   {
     return GlobRef<const value_type>(self_t((*this) + n));
   }
@@ -365,7 +365,7 @@ public:
   /**
    * Subscript assignment operator.
    */
-  GlobRef<value_type> operator[](gptrdiff_t n)
+  GlobRef<value_type> operator[](gptrdiff_t n) DASH_NOEXCEPT
   {
     return GlobRef<value_type>(self_t((*this) + n));
   }
@@ -373,7 +373,7 @@ public:
   /**
    * Dereference operator.
    */
-  GlobRef<value_type> operator*()
+  GlobRef<value_type> operator*() DASH_NOEXCEPT
   {
     return GlobRef<value_type>(*this);
   }
@@ -381,7 +381,7 @@ public:
   /**
    * Dereference operator.
    */
-  constexpr GlobRef<const value_type> operator*() const
+  constexpr GlobRef<const value_type> operator*() const DASH_NOEXCEPT
   {
     return GlobRef<const value_type>(*this);
   }
@@ -420,9 +420,13 @@ public:
   /**
    * Set the global pointer's associated unit.
    */
-  void set_unit(team_unit_t unit_id)
+  void set_unit(team_unit_t unit_id) DASH_NOEXCEPT
   {
     m_dart_pointer.unitid = unit_id.id;
+  }
+
+  constexpr auto get_unit() const DASH_NOEXCEPT {
+    return team_unit_t{m_dart_pointer.unitid};
   }
 
   /**
@@ -434,13 +438,13 @@ public:
     return dash::internal::is_local(m_dart_pointer);
   }
 
-  constexpr explicit operator bool() const noexcept
+  constexpr explicit operator bool() const DASH_NOEXCEPT
   {
     return !DART_GPTR_ISNULL(m_dart_pointer);
   }
 
 private:
-  void increment(size_type offs)
+  void increment(size_type offs) DASH_NOEXCEPT
   {
     if (offs == 0) {
       return;
@@ -467,7 +471,7 @@ private:
     m_dart_pointer = newPtr;
   }
 
-  void decrement(size_type offs)
+  void decrement(size_type offs) DASH_NOEXCEPT
   {
     if (offs == 0) {
       return;
@@ -578,7 +582,6 @@ DASH_CONSTEXPR inline typename std::enable_if<
         memory_space_contiguous>::value,
     T>::type *
 local_begin(GlobPtr<T, MemSpaceT> global_begin, dash::team_unit_t unit)
-    DASH_NOEXCEPT
 {
   // reset offset to 0
   auto dart_gptr                = static_cast<dart_gptr_t>(global_begin);

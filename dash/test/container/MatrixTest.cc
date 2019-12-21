@@ -15,6 +15,11 @@
 #include <iostream>
 #include <iomanip>
 
+TEST_F(MatrixTest, Declaration)
+{
+  dash::Matrix<int, 2> matrix;
+}
+
 
 TEST_F(MatrixTest, OddSize)
 {
@@ -482,7 +487,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
       auto l_coords   = pattern.local_coords(g_coords);
       auto unit_id    = pattern.unit_at(g_coords);
       auto local_idx  = pattern.local_at(l_coords);
-      auto global_idx = pattern.memory_layout().at(g_coords);
+      auto global_idx = pattern.global_at(g_coords);
       auto exp_value  = ((unit_id + 1) * 1000) + local_idx;
       bool is_local   = unit_id == pattern.team().myid();
       element_t value = column[row];
@@ -1086,8 +1091,8 @@ TEST_F(MatrixTest, UnderfilledBlockedPatternExtents)
   dash::TeamSpec<2> teamspec( numunits, 1 );
   teamspec.balance_extents();
 
-  extent_t w = 13;
-  extent_t h =  7;
+  extent_t w = 13*dash::size();
+  extent_t h =  7*dash::size();
 
   auto distspec = dash::DistributionSpec<2>(dash::BLOCKED, dash::BLOCKED);
 
@@ -1116,8 +1121,8 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
   dash::TeamSpec<2> teamspec( numunits, 1 );
   teamspec.balance_extents();
 
-  uint32_t w= 13;
-  uint32_t h= 7;
+  uint32_t w= 13*dash::size();
+  uint32_t h= 7*dash::size();
   auto distspec= dash::DistributionSpec<2>( dash::BLOCKED, dash::BLOCKED );
   dash::NArray<uint32_t, 2> narray( dash::SizeSpec<2>( h, w ),
       distspec, dash::Team::All(), teamspec );
@@ -1472,7 +1477,7 @@ TEST_F(MatrixTest, LocalMatrixRefs)
 
   uint myid = static_cast<uint>(dash::Team::GlobalUnitID().id);
 
-  const uint nelts = 40;
+  const uint nelts = 40*dash::size();
 
   dash::NArray<value_t, 2> mat(nelts, nelts);
 
@@ -1583,7 +1588,7 @@ TEST_F(MatrixTest, MoveSemantics){
   using matrix_t = dash::NArray<double, 2>;
   // move construction
   {
-    matrix_t matrix_a(10, 5);
+    matrix_t matrix_a(10*dash::size(), 5*dash::size());
 
     *(matrix_a.lbegin()) = 5;
     dash::barrier();
@@ -1595,9 +1600,9 @@ TEST_F(MatrixTest, MoveSemantics){
   dash::barrier();
   //move assignment
   {
-    matrix_t matrix_a(10, 5);
+    matrix_t matrix_a(10*dash::size(), 5*dash::size());
     {
-      matrix_t matrix_b(8, 5);
+      matrix_t matrix_b(8*dash::size(), 5*dash::size());
 
       *(matrix_a.lbegin()) = 1;
       *(matrix_b.lbegin()) = 2;
@@ -1609,8 +1614,8 @@ TEST_F(MatrixTest, MoveSemantics){
   dash::barrier();
   // swap
   {
-    matrix_t matrix_a(10, 5);
-    matrix_t matrix_b(8, 5);
+    matrix_t matrix_a(10*dash::size(), 5*dash::size());
+    matrix_t matrix_b(8*dash::size(), 5*dash::size());
 
     *(matrix_a.lbegin()) = 1;
     *(matrix_b.lbegin()) = 2;

@@ -8,6 +8,7 @@
 #include <dash/GlobRef.h>
 #include <dash/memory/MemorySpace.h>
 #include <dash/memory/UniquePtr.h>
+#include <dash/allocator/GlobalAllocator.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -181,7 +182,7 @@ public:
     // If our Shared has already a non-null pointer let us return it. The user
     // has first to deallocate it.
     if (m_glob_pointer) {
-      DASH_LOG_ERROR("Shared scalar is already initialized");
+      DASH_LOG_ERROR("dash::Shared::init", "Shared scalar is already initialized");
       return false;
     }
 

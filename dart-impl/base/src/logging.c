@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <time.h>
@@ -67,15 +68,15 @@ env_loglevel()
   if (!log_level_parsed) {
     const char *envstr = getenv(DART_LOGLEVEL_ENVSTR);
     if (envstr) {
-      if (strcmp(envstr, "ERROR") == 0) {
+      if (strcasecmp(envstr, "ERROR") == 0) {
         level = DART_LOGLEVEL_ERROR;
-      } else if (strcmp(envstr, "WARN") == 0) {
+      } else if (strcasecmp(envstr, "WARN") == 0) {
         level = DART_LOGLEVEL_WARN;
-      } else if (strcmp(envstr, "INFO") == 0) {
+      } else if (strcasecmp(envstr, "INFO") == 0) {
         level = DART_LOGLEVEL_INFO;
-      } else if (strcmp(envstr, "DEBUG") == 0) {
+      } else if (strcasecmp(envstr, "DEBUG") == 0) {
         level = DART_LOGLEVEL_DEBUG;
-      } else if (strcmp(envstr, "TRACE") == 0) {
+      } else if (strcasecmp(envstr, "TRACE") == 0) {
         level = DART_LOGLEVEL_TRACE;
       }
     }

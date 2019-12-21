@@ -381,7 +381,7 @@ public:
     const std::array<IndexType, NumDimensions> & coords,
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
-    return team_unit_t (((coords[0] + viewspec[0].offset) / _blocksize)
+    return team_unit_t (((coords[0] + viewspec.offset(0)) / _blocksize)
                         % _nunits);
   }
 
@@ -406,7 +406,7 @@ public:
     /// View to apply global position
     const ViewSpec_t & viewspec
   ) const {
-    return team_unit_t(((global_pos + viewspec[0].offset) / _blocksize)
+    return team_unit_t(((global_pos + viewspec.offset(0)) / _blocksize)
                        % _nunits);
   }
 
@@ -550,7 +550,7 @@ public:
     const std::array<IndexType, NumDimensions> & local_coords,
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
-    return local_coords[0] + viewspec[0].offset;
+    return local_coords[0] + viewspec.offset(0);
   }
 
   /**
@@ -688,6 +688,32 @@ public:
     return global(unit, l_coords)[0];
   }
 
+  /**
+   * Convert given global coordinates and viewspec to linear global offset
+   * (index).
+   *
+   * \see DashPatternConcept
+   */
+  constexpr IndexType global_at(
+    /// Point in local memory
+    const std::array<IndexType, NumDimensions> & global_coords,
+    /// View specification (offsets) to apply on \c coords
+    const ViewSpec_t & viewspec) const {
+    return global_coords[0] + viewspec.offset(0);
+  }
+
+  /**
+   * Convert given global coordinates to linear global offset (index).
+   *
+   * \see DashPatternConcept
+   */
+  constexpr IndexType global_at(
+    /// Point in local memory
+    const std::array<IndexType, NumDimensions> & global_coords) const {
+    return global_coords[0];
+  }
+
+
   ////////////////////////////////////////////////////////////////////////////
   /// at
   ////////////////////////////////////////////////////////////////////////////
@@ -717,7 +743,7 @@ public:
     const ViewSpec_t & viewspec) const {
     return local_coords(
              std::array<IndexType, 1> {{
-               g_coords[0] + viewspec[0].offset
+               g_coords[0] + viewspec.offset(0)
              }}
            )[0];
   }
@@ -1022,25 +1048,6 @@ public:
   }
 
   /**
-   * Cartesian index space representing the underlying memory model of the
-   * pattern.
-   *
-   * \see DashPatternConcept
-   */
-  constexpr const MemoryLayout_t & memory_layout() const {
-    return _memory_layout;
-  }
-
-  /**
-   * Cartesian index space representing the underlying local memory model
-   * of this pattern for the calling unit.
-   * Not part of DASH Pattern concept.
-   */
-  constexpr const LocalMemoryLayout_t & local_memory_layout() const {
-    return _local_memory_layout;
-  }
-
-  /**
    * Cartesian arrangement of the Team containing the units to which this
    * pattern's elements are mapped.
    *
@@ -1059,6 +1066,18 @@ public:
   constexpr std::array<IndexType, NumDimensions> coords(
     IndexType index) const {
     return std::array<IndexType, 1> {{ index }};
+  }
+
+  /**
+   * Convert given global linear offset (index) to global cartesian
+   * coordinates using viewspec.
+   *
+   * \see DashPatternConcept
+   */
+  constexpr std::array<IndexType, NumDimensions> coords(
+    IndexType          index,
+    const ViewSpec_t & viewspec) const {
+    return std::array<IndexType, 1> {{ index + viewspec.offset(0) }};
   }
 
   /**

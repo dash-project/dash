@@ -196,3 +196,107 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
 
 }
 
+
+TEST_F(TilePatternTest, Tile4Dim)
+{
+  using pattern_t = typename dash::TilePattern<4>;
+  using IndexType = typename pattern_t::index_type;
+  dash::TeamSpec<2> teamspec2d(dash::size(), 1);
+  teamspec2d.balance_extents();
+  // no distribution in the last two dimensions
+  dash::TeamSpec<4> teamspec4d(teamspec2d.extent(0), teamspec2d.extent(1), 1, 1);
+
+  // tile size: each tile has 2x2 elements
+  int    tile_size_0 = 2;
+  int    tile_size_1 = 2;
+
+  // super-block sizes (tiles of tiles): each super-block has 2x2 local tiles
+  int   sblock_size_0 = 2;
+  int   sblock_size_1 = 2;
+  // N^2 tiles
+  int   ntiles_0      = 4*dash::size();
+  int   ntiles_1      = 4*dash::size();
+  size_t block_size   = sblock_size_1 * sblock_size_0;
+
+  /*
+   * Build a pattern that looks like this (00 is tile 0 on unit 0,
+   * 13 is tile 3 on unit 1, etc):
+    +----------------------------------------+--+--+--+--+
+    |00|00 | 01|01 | 10|10 | 11|11 | 04|04|  |  |  |  |  |
+    +----------------------------------------------------+
+    |00|00 | 01|01 | 10|10 | 11|11 | 04|04|  |  |  |  |  |
+    +----------------------------------------------------+
+    |02|02 | 03|03 | 12|12 | 13|13 |   |  |  |  |  |  |  |
+    +----------------------------------------------------+
+    |02|02 | 03|03 | 12|12 | 13|13 |   |  |  |  |  |  |  |
+    +----------------------------------------------------+
+    |  |   |   |   |   |   |   |   |   |  |  |  |  |  |  |
+    +----------------------------------------------------+
+    [...]
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+   *
+   */
+  pattern_t pattern(
+      ntiles_0, ntiles_1,
+      dash::TILE(sblock_size_0),
+      dash::TILE(sblock_size_1),
+      tile_size_0, tile_size_1,
+      dash::TILE(tile_size_0),
+      dash::TILE(tile_size_1),
+      teamspec4d,
+      dash::Team::All());
+
+  for (int d = 0; d < 4; ++d) {
+    std::cout << "pattern.extents(" << d << "): " << pattern.extent(d) << std::endl;
+  }
+
+  ASSERT_EQ_U(pattern.extent(0)*pattern.extent(2), ntiles_0 * tile_size_0);
+  ASSERT_EQ_U(pattern.extent(1)*pattern.extent(3), ntiles_1 * tile_size_1);
+
+  /* check conversion between coords and global index */
+  for (IndexType i = 0; i < pattern.extent(0); ++i) {
+    for (IndexType j = 0; j < pattern.extent(1); ++j) {
+      for (IndexType k = 0; k < pattern.extent(2); ++k) {
+        for (IndexType l = 0; l < pattern.extent(3); ++l) {
+          std::array<IndexType, 4> global_coords{i, j, k, l};
+          auto gidx = pattern.global_at(global_coords);
+          auto pattern_coords = pattern.coords(gidx);
+          for (int d = 0; d < pattern_coords.size(); ++d) {
+            ASSERT_EQ_U(pattern_coords[d], global_coords[d]);
+          }
+        }
+      }
+    }
+  }
+
+  /* check a few distinct coordinates with known indeces */
+
+  // second element in the third block on the first row
+  ASSERT_EQ_U(pattern.global_at({0, 2, 0, 1}), 17);
+  // first element in the third row of tiles
+  ASSERT_EQ_U(pattern.global_at({2, 0, 0, 0}),
+              pattern.extent(1)*pattern.extent(2)*pattern.extent(3)*2);
+  // last element in the first super-block
+  ASSERT_EQ_U(pattern.global_at({1, 1, 1, 1}),
+              (tile_size_0*tile_size_1*sblock_size_0*sblock_size_1)-1);
+  // last element in the last super-block
+  ASSERT_EQ_U(pattern.global_at({ntiles_0-1, ntiles_1-1,
+                                  tile_size_0-1, tile_size_1-1}),
+              pattern.size()-1);
+
+  /* check conversion from global to local coordinates and back */
+  for (IndexType i = 0; i < pattern.extent(0); ++i) {
+    for (IndexType j = 0; j < pattern.extent(1); ++j) {
+      for (IndexType k = 0; k < pattern.extent(2); ++k) {
+        for (IndexType l = 0; l < pattern.extent(3); ++l) {
+          std::array<IndexType, 4> global_coords{i, j, k, l};
+          typename pattern_t::local_coords_t l_coords = pattern.local(global_coords);
+          auto pattern_coords = pattern.global(l_coords.unit, l_coords.coords);
+          for (int d = 0; d < pattern_coords.size(); ++d) {
+            ASSERT_EQ_U(pattern_coords[d], global_coords[d]);
+          }
+        }
+      }
+    }
+  }
+}
