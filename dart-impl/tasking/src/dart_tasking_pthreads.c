@@ -1304,20 +1304,20 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
   }
 
   bool queuable = false;
+  uint64_t instance = task->instance;
+  LOCK_TASK(task);
   if (task->state == DART_TASK_CREATED)
   {
-    uint64_t instance = task->instance;
-    LOCK_TASK(task);
     if (task->instance == instance &&
         task->state == DART_TASK_CREATED &&
         dart_tasking_datadeps_is_runnable(task)) {
       task->state = DART_TASK_QUEUED;
       queuable = true;
     }
-    UNLOCK_TASK(task);
   } else if (task->state == DART_TASK_SUSPENDED) {
     queuable = true;
   }
+  UNLOCK_TASK(task);
 
   // make sure we don't queue the task if we are not allowed to
   if (!queuable) {
