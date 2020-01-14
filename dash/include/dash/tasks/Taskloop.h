@@ -144,8 +144,8 @@ namespace internal {
                   internal::is_chunk_definition<ChunkType>::value>::type>
   void
   taskloop(
-    InputIter1  begin,
-    InputIter2  end,
+    InputIter1  begin_in,
+    InputIter2  end_in,
     ChunkType   chunking,
     RangeFunc   f,
     const char *name = nullptr)
@@ -153,6 +153,9 @@ namespace internal {
     // TODO: extend this to handle GlobIter!
 
     using iter_type = typename internal::common_type<InputIter1, InputIter2>::type;
+
+    iter_type begin{std::move(begin_in)};
+    iter_type end{std::move(end_in)};
 
     // skip empty ranges
     if (dash::distance(begin, end) == 0) {
@@ -213,8 +216,8 @@ namespace internal {
                   internal::is_chunk_definition<ChunkType>::value>::type>
   void
   taskloop(
-    InputIter1  begin,
-    InputIter2  end,
+    InputIter1  begin_in,
+    InputIter2  end_in,
     ChunkType   chunking,
     RangeFunc   f,
     DepGeneratorFunc depedency_generator,
@@ -223,6 +226,9 @@ namespace internal {
     // TODO: extend this to handle GlobIter!
 
     using iter_type = typename internal::common_type<InputIter1, InputIter2>::type;
+
+    iter_type begin{std::move(begin_in)};
+    iter_type end{std::move(end_in)};
 
     // skip empty ranges
     if (dash::distance(begin, end) == 0) {
