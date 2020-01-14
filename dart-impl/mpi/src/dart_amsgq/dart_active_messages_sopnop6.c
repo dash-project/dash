@@ -20,7 +20,7 @@
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_active_messages_priv.h>
 
-#ifdef DART_HAVE_MPI_EGREQ
+#if defined(DART_HAVE_MPI_EGREQ) && defined(DART_HAVE_MPI_ONCOMPLETE)
 
 #ifdef OMPI_MAJOR_VERSION
 // forward declaration, not needed once we figure out how this works in OMPI
