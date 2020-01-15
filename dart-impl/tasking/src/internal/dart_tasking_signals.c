@@ -4,10 +4,14 @@
 
 #include <execinfo.h>
 
+#include <dash/dart/base/env.h>
+
 #include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 
 #define BT_DEPTH 100
+
+static bool enable_stacktrace = false;
 
 static const char *
 signal_name(int signum)
@@ -21,6 +25,8 @@ signal_name(int signum)
 
 static void print_stacktrace()
 {
+  if (!enable_stacktrace) return;
+
   DART_LOG_ERROR("Gathering stacktrace...");
   void *buffer[BT_DEPTH];
   int nptrs = backtrace(buffer, BT_DEPTH);
@@ -60,4 +66,8 @@ void dart__tasking__install_signalhandler()
   sigemptyset(&s.sa_mask);
   sigaction(SIGSEGV, &s, 0);
   sigaction(SIGBUS, &s, 0);
+
+  enable_stacktrace = dart__base__env__bool(DART_TASK_PRINT_BACKTRACE_ENVSTR,
+                                            false);
+
 }

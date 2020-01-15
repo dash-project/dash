@@ -144,4 +144,13 @@
  */
 #define DART_THREAD_PLACE_NUMA_ENVSTR    "DART_TASK_SCHEDULE_NUMA"
 
+/**
+ * Name of the environment variable specifying whether the runtime should attempt
+ * to print a stack trace in case of a signal. This may lead to lockups under
+ * certain configurations.
+ *
+ * Type: Boolean value.
+ */
+#define DART_TASK_PRINT_BACKTRACE_ENVSTR    "DART_TASK_PRINT_BACKTRACE"
+
 #endif // DART__BASE__INTERNAL__TASKING_ENVSTR_H__
