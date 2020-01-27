@@ -696,7 +696,7 @@ int grequest_poll_fn(void *data, MPI_Status *status)
                     state->flush_info->size, target, second(state->fused_val), state->idx);
 
       state->state = DART_GREQUEST_COMPLETE;
-      state->flush_info->status = 1;
+      state->flush_info->completed = true;
       // we're done, mark the request as complete and return
       MPI_Grequest_complete(state->req);
       return MPI_SUCCESS;
@@ -761,7 +761,7 @@ dart_amsg_sopnop_sendbuf_all(
     state->state = DART_GREQUEST_QUEUENUM;
     state->flush_info = &flush_info[i];
     state->amsgq = amsgq;
-    state->flush_info->status = 0;
+    state->flush_info->completed = false;
 
     // fetch queue number
     initiate_queuenum_fetch(state);

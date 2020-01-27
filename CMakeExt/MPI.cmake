@@ -164,6 +164,9 @@ if (NOT DEFINED MPI_IMPL_ID)
   # check support for extended generalized requests
   check_mpi_link(${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_mpi_egreq.c HAVE_MPI_EGREQ)
 
+  # check support for MPIX_Request_on_completion (experimental extension)
+  check_mpi_link(${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_mpi_reqoncomplete.c HAVE_MPI_ONCOMPLETE)
+
   # restore state
   cmake_pop_check_state()
 
@@ -196,6 +199,13 @@ if (NOT DEFINED MPI_IMPL_ID)
   else()
     message(STATUS "Missing support for MPI extended generalized requests")
   endif(HAVE_MPI_EGREQ)
+
+  if (HAVE_MPI_ONCOMPLETE)
+    set(MPI_COMPILE_FLAGS "${MPI_COMPILE_FLAGS} -DDART_HAVE_MPI_ONCOMPLETE")
+    message(STATUS "Found support for MPI request completion callbacks")
+  else()
+    message(STATUS "Missing support for MPI request completion callbacks")
+  endif(HAVE_MPI_ONCOMPLETE)
 
   set (CMAKE_C_COMPILER ${CMAKE_C_COMPILER_SAFE})
   set (MPI_INCLUDE_PATH ${MPI_INCLUDE_PATH}   CACHE STRING "MPI include path")

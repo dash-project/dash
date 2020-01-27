@@ -64,8 +64,8 @@ struct dart_flush_info {
   size_t size;
   // the target of the write
   int    target;
-  // 0 if the flush failed, >0 if successful
-  int    status;
+  // whether the flush completed
+  bool   completed;
   // internal data structure for the implementation
   uint64_t _internal[2];
 };
