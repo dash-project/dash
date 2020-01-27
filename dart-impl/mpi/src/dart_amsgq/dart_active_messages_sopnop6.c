@@ -81,6 +81,8 @@ struct dart_amsgq_impl_data {
   dart_mutex_t      processing_mutex;
   int               comm_rank;
   int               prev_tailpos;
+  int               num_active_sendall; // number of still active sends in sendall
+  MPI_Request       greq;               // sendall-grequest
   bool              needs_flush;
 };
 
@@ -103,7 +105,6 @@ struct dart_grequest_state {
   int state;                      // where in the process we are
   struct dart_flush_info * flush_info;  // the flush information
   struct dart_amsgq_impl_data * amsgq;  // the amsgq to use
-  MPI_Request req;                // request to store the grequest in
   MPI_Request opreq;              // request that can be used by operations
 };
 
@@ -437,8 +438,7 @@ dart_amsg_sopnop_sendbuf(
 static
 int grequest_query_fn(void *data, MPI_Status *status)
 {
-  struct dart_grequest_state *state = (struct dart_grequest_state *)data;
-  //printf("query_fn: state %d\n", state->state);
+  // nothing to do here
 }
 
 static void initiate_queuenum_fetch(struct dart_grequest_state *state)
@@ -451,6 +451,15 @@ static void initiate_queuenum_fetch(struct dart_grequest_state *state)
 
   state->state = DART_GREQUEST_QUEUENUM;
   MPIX_Request_on_completion(state->opreq, &request_cb, state);
+}
+
+static void mark_complete(struct dart_amsgq_impl_data *amsgq)
+{
+  int num_active = DART_DEC_AND_FETCH32(&amsgq->num_active_sendall);
+  if (num_active == 0) {
+    // we're done, mark the grequest as complete
+    MPI_Grequest_complete(amsgq->greq);
+  }
 }
 
 static
@@ -503,9 +512,7 @@ int request_cb(void *data, MPI_Request request)
       // that's it for this iteration
       state->state = DART_GREQUEST_REGISTER;
 
-      MPIX_Request_on_completion(state->opreq, &request_cb, state);
-
-      return MPI_SUCCESS;
+      break;
     }
     case DART_GREQUEST_REGISTER:
     {
@@ -528,9 +535,7 @@ int request_cb(void *data, MPI_Request request)
 
         state->state = DART_GREQUEST_RETRY;
 
-        MPIX_Request_on_completion(state->opreq, &request_cb, state);
-
-        return MPI_SUCCESS;
+        break;
       }
 
       int64_t offset = second(state->fused_val);
@@ -546,7 +551,7 @@ int request_cb(void *data, MPI_Request request)
 
         // we throw our hands up and mark the request as completed
         state->state = DART_GREQUEST_FAILED;
-        MPI_Grequest_complete(state->req);
+        mark_complete(state->amsgq);
         return MPI_SUCCESS;
       }
 
@@ -561,9 +566,7 @@ int request_cb(void *data, MPI_Request request)
       // that's it for this iteration
       state->state = DART_GREQUEST_OFFSET;
 
-      MPIX_Request_on_completion(state->opreq, &request_cb, state);
-
-      return MPI_SUCCESS;
+      break;
     }
     case DART_GREQUEST_OFFSET:
     {
@@ -593,7 +596,7 @@ int request_cb(void *data, MPI_Request request)
 
         // we throw our hands up and mark the request as completed
         state->state = DART_GREQUEST_FAILED;
-        MPI_Grequest_complete(state->req);
+        mark_complete(state->amsgq);
         return MPI_SUCCESS;
       }
 
@@ -616,9 +619,7 @@ int request_cb(void *data, MPI_Request request)
 
       state->state = DART_GREQUEST_PUT;
 
-      MPIX_Request_on_completion(state->opreq, &request_cb, state);
-
-      return MPI_SUCCESS;
+      break;
     }
     case DART_GREQUEST_PUT:
     {
@@ -640,14 +641,18 @@ int request_cb(void *data, MPI_Request request)
 
       state->state = DART_GREQUEST_COMPLETE;
       state->flush_info->completed = true;
-      // we're done, mark the request as complete and return
-      MPI_Grequest_complete(state->req);
+      mark_complete(state->amsgq);
       return MPI_SUCCESS;
     }
     default:
       DART_ASSERT_MSG(state->state <= DART_GREQUEST_PUT,
-                      "Unexpected state request found in polling function!");
+                      "Unexpected state request found in callback function!");
   }
+
+  // register callback
+  MPIX_Request_on_completion(state->opreq, &request_cb, state);
+
+  return MPI_SUCCESS;
 
 }
 
@@ -672,12 +677,20 @@ dart_amsg_sopnop_sendbuf_all(
   struct dart_flush_info      * flush_info,
   int                           num_info)
 {
-  // no locks needed, MPI will take care of it
 
-  struct dart_grequest_state *states = malloc(num_info * sizeof(struct dart_grequest_state));
-  MPI_Request *reqs = malloc(num_info * sizeof(MPI_Request));
+  dart__base__mutex_lock(&amsgq->send_mutex);
+
+  struct dart_grequest_state *states = malloc(num_info * sizeof(*states));
+
+  amsgq->num_active_sendall = num_info;
 
   //printf("dart_amsg_sopnop_sendbuf_all\n");
+
+  // hand the operation to MPI
+  MPI_Grequest_start(
+    grequest_query_fn, grequest_free_fn,
+    grequest_cancel_fn,
+    NULL, &amsgq->greq);
 
   for (int i = 0; i < num_info; ++i) {
     states[i].state = DART_GREQUEST_QUEUENUM;
@@ -685,18 +698,11 @@ dart_amsg_sopnop_sendbuf_all(
     states[i].amsgq = amsgq;
     states[i].flush_info->completed = false;
 
-    // hand the operation to MPI
-    MPI_Grequest_start(
-      grequest_query_fn, grequest_free_fn,
-      grequest_cancel_fn,
-      &states[i], &states[i].req);
-    reqs[i] = states[i].req;
-
     // initiate the queuenum fetch
     initiate_queuenum_fetch(&states[i]);
   }
 
-  MPI_Waitall(num_info, reqs, MPI_STATUSES_IGNORE);
+  MPI_Wait(&amsgq->greq, MPI_STATUS_IGNORE);
 
   if (do_flush || amsgq->needs_flush) {
     MPI_Win_flush_all(amsgq->queue_win);
@@ -704,7 +710,8 @@ dart_amsg_sopnop_sendbuf_all(
   }
 
   free(states);
-  free(reqs);
+
+  dart__base__mutex_unlock(&amsgq->send_mutex);
 
   return DART_OK;
 }
