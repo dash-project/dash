@@ -425,48 +425,48 @@ flush_buffer_all(dart_amsgq_t amsgq, bool blocking)
     dart_ret_t ret;
     ret = amsgq_impl.trysend_all(amsgq->impl, flush_info, num_info);
 
-    int num_complete = 0;
+    int num_active = num_info;
     for (int i = 0; i < num_info; ++i) {
       message_cache_t *cache = amsgq->message_cache[flush_info[i].target];
-      if (flush_info[i].status != 0) {
-        ++num_complete;
+      if (flush_info[i].completed) {
+        --num_active;
         cache->pos = 0;
       }
-      // unlock the cache
+      // unlock the cache, processing below may cause writing to the cache!
       pthread_rwlock_unlock(&cache->mutex);
     }
 
-    if (num_info == num_complete) break;
+    if (num_active == 0) break;
 
     // progress incoming messages and try again
     amsgq_impl.process(amsgq->impl);
 
     for (int i = 0; i < num_info; ++i) {
-      if (flush_info[i].status == 0) {
+      if (!flush_info[i].completed) {
         message_cache_t *cache = amsgq->message_cache[flush_info[i].target];
         // retake lock on the cache
-        if (cache->pos > 0 || blocking) {
+        if (cache->pos > 0) {
           pthread_rwlock_wrlock(&cache->mutex);
 
           if (cache->pos == 0) {
             // mpf, someone else processed that cache already
             pthread_rwlock_unlock(&cache->mutex);
-            --num_info;
+            --num_active;
+            flush_info[i].completed = true;
             continue;
           }
         }
-        // move the entry to the front
+        // move the entry to the front if necessary
         for (int j = 0; j < i; ++j) {
-          if (flush_info[j].status != 0) {
+          if (flush_info[j].completed) {
             // this one is complete, so re-use its slot
             flush_info[j] = flush_info[i];
             break;
           }
         }
-      } else {
-        --num_info;
       }
     }
+    num_info = num_active;
     DART_ASSERT(num_info >= 0);
   }
 
