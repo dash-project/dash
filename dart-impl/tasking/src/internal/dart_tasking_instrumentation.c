@@ -73,8 +73,8 @@ int dart_tool_register_task_create (dart_tool_task_create_cb_t cb, void *userdat
 } 
 
 int dart_tool_register_task_begin(
-    dart_tool_task_begin_cb_t cb, 
-    void *userdata_task) 
+    dart_tool_task_begin_cb_t cb,
+    void *userdata_task_begin)
 {
     dart_tool_task_begin_cb_data.cb = cb;
     dart_tool_task_begin_cb_data.userdata = userdata_task_begin;
@@ -226,11 +226,11 @@ void dart__tasking__instrument_task_finalize()
 }
 
 void dart__tasking__instrument_local_dep(
-    dart_task_t *task1,
-    dart_task_t *task2,
-    uint64_t memaddr_raw,
-    int32_t unitid,
-    int edge_type)
+  dart_task_t *task1,
+  dart_task_t *task2,
+  uint64_t memaddr_raw,
+  int32_t unitid,
+  dart_task_edgetype_t edge_type)
 {
   if (dart_tool_local_dep_cb_data.cb) {
     dart_tool_local_dep_cb_data.cb(
@@ -241,8 +241,8 @@ void dart__tasking__instrument_local_dep(
 }
 
 void dart__tasking__instrument_task_add_to_queue(
-    dart_task_t *task,
-    dart_thread_t *thread)
+  dart_task_t *task,
+  dart_thread_t *thread)
 {
   if (dart_tool_task_add_to_queue_cb_data.cb) {
     dart_tool_task_add_to_queue_cb_data.cb(
