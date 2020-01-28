@@ -141,7 +141,7 @@ extern "C" int init_ext_tool(int num_threads, int num_units, int32_t myguid) {
   }
   std::string pid_string = std::to_string(pid);
   //Create an array, where the PID of the current unit is saved
-  int sendarray[0];
+  int sendarray[1];
   sendarray[0] = pid;
   int *rbuf;
   if (myguid == 0) {
