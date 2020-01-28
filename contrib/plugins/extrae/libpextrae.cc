@@ -24,14 +24,14 @@
 //Fixed number for the custom Extrae events
 static extrae_type_t et = 130000;
 
-int userdata = 42;
-unsigned long long myglobalid;
+static int userdata = 42;
+static unsigned long long myglobalid;
 
-std::shared_mutex mutex_;
-std::unordered_map<extrae_value_t, std::string> nameHash;
-std::unordered_map<uint64_t, size_t> idHash;
+static std::shared_mutex mutex_;
+static std::unordered_map<extrae_value_t, std::string> nameHash;
+static std::unordered_map<uint64_t, size_t> idHash;
 
-std::hash<std::string> hash_function;
+static std::hash<std::string> hash_function;
 
 /**
  * Function to manipulate the most significant 2 bytes of an usigned 64 bit integer
@@ -90,63 +90,59 @@ static void send_task_end_event() {
   Extrae_event(et, 0);
 }
 
-extern "C" void callback_on_task_create(uint64_t task, dart_task_prio_t prio, const char *name, void *userdata) {
+static void
+callback_on_task_create(uint64_t task, dart_task_prio_t prio, const char *name, void *userdata) {
   task = manipulateUnsignedInteger(task, myglobalid);
-  //printf("Hi, i'm the callback function for task_create.: task = %lu, name: %s, unit_id: %llu, userdata: %d\n", task, name, myglobalid,  *(int *)userdata);
   insertTaskIntoMap(task, name);
 }
 
-extern "C" void callback_on_task_begin(uint64_t task, uint64_t thread, void *userdata) {
+static void
+callback_on_task_begin(uint64_t task, uint64_t thread, void *userdata) {
   task = manipulateUnsignedInteger(task, myglobalid);
-  //printf("Hi, i'm the callback function for task_begin.: task = %lu, thread: %lu, unit_id: %llu, userdata: %d\n", task, thread, myglobalid, *(int*) userdata);
-  send_task_begin_event(task);
-  
-}
-
-extern "C" void callback_on_task_end(uint64_t task, uint64_t thread, void *userdata) {
-  task = manipulateUnsignedInteger(task, myglobalid);
-  //printf("Hi, i'm the callback function for task_end.: task = %lu, thread: %lu, unit_id: %llu, userdata: %d\n", task, thread, myglobalid, *(int*) userdata);
-  send_task_end_event();
-  
-}
-
-extern "C" void callback_on_task_cancel(uint64_t task, uint64_t thread, void *userdata) {
-  task = manipulateUnsignedInteger(task, myglobalid);
-  //printf("Hi, i'm the callback function for task_cancel.: task = %lu, thread: %lu, unit_id: %llu, userdata: %d\n", task, thread, myglobalid, *(int*) userdata);
-  send_task_end_event();
-}
-
-extern "C" void callback_on_task_yield_leave(uint64_t task, uint64_t thread,  void *userdata) {
-  task = manipulateUnsignedInteger(task, myglobalid);
-  //printf("Hi, i'm the callback function for tas(char *)k_yield_leave.: task = %lu, thread: %lu, unit_id: %llu, userdata: %d\n", task, thread, myglobalid, *(int*) userdata);    
-  send_task_end_event();
-}
-
-extern "C" void callback_on_task_yield_resume(uint64_t task, uint64_t thread,  void *userdata) {
-  task = manipulateUnsignedInteger(task, myglobalid);
-  //printf("Hi, i'm the callback function for task_yield_resume.: task = %lu, thread: %lu, unit_id: %llu, userdata: %d\n", task, thread, myglobalid, *(int*) userdata);   
   send_task_begin_event(task);
 }
 
-extern "C" void callback_on_task_finalize(void *userdata) {
-  //number_of_units_finished.operator++();
-  //printf("Hi, i'm the callback function for task_finalize.: userdata %d, unit_id %llu\n", *(int*) userdata, myglobalid);
+static void
+callback_on_task_end(uint64_t task, uint64_t thread, void *userdata) {
+  task = manipulateUnsignedInteger(task, myglobalid);
+  send_task_end_event();
+}
+
+static void
+callback_on_task_cancel(uint64_t task, uint64_t thread, void *userdata) {
+  task = manipulateUnsignedInteger(task, myglobalid);
+  send_task_end_event();
+}
+
+static void
+callback_on_task_yield_leave(uint64_t task, uint64_t thread,  void *userdata) {
+  task = manipulateUnsignedInteger(task, myglobalid);
+  send_task_end_event();
+}
+
+static void
+callback_on_task_yield_resume(uint64_t task, uint64_t thread,  void *userdata) {
+  task = manipulateUnsignedInteger(task, myglobalid);
+  send_task_begin_event(task);
+}
+
+static void
+callback_on_task_finalize(void *userdata) {
   sendDataToExtrae();
 }
 
-void call_register_functions () {
-  dart_tool_register_task_create (&callback_on_task_create, &userdata);
-  dart_tool_register_task_begin (&callback_on_task_begin, &userdata);
-  dart_tool_register_task_end (&callback_on_task_end, &userdata);
-  dart_tool_register_task_cancel (&callback_on_task_cancel, &userdata);
-  dart_tool_register_task_yield_leave (&callback_on_task_yield_leave, &userdata);
-  dart_tool_register_task_yield_resume (&callback_on_task_yield_resume, &userdata);
-  dart_tool_register_task_finalize (&callback_on_task_finalize, &userdata);
+static void call_register_functions () {
+  dart_tool_register_task_create(&callback_on_task_create, &userdata);
+  dart_tool_register_task_begin(&callback_on_task_begin, &userdata);
+  dart_tool_register_task_end(&callback_on_task_end, &userdata);
+  dart_tool_register_task_cancel(&callback_on_task_cancel, &userdata);
+  dart_tool_register_task_yield_leave(&callback_on_task_yield_leave, &userdata);
+  dart_tool_register_task_yield_resume(&callback_on_task_yield_resume, &userdata);
+  dart_tool_register_task_finalize(&callback_on_task_finalize, &userdata);
 
 }
 
 extern "C" int init_ext_tool(int num_threads, int num_units, int32_t myguid) {
-  //printf("Hi, i'm the init function. Running with %d threads and %d DASH units. Process id is %d, Unit id is %d\n", num_threads, num_units,pid, myguid);
   //set global id for the whole instance
   myglobalid = (unsigned long long) myguid;
   call_register_functions();

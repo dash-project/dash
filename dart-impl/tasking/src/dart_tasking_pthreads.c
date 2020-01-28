@@ -24,7 +24,6 @@
 #include <dash/dart/tasking/dart_tasking_extrae.h>
 #include <dash/dart/tasking/dart_tasking_craypat.h>
 #include <dash/dart/tasking/dart_tasking_instrumentation.h>
-#include <dash/dart/if/dart_communication.h>
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -33,6 +32,7 @@
 #include <errno.h>
 #include <setjmp.h>
 #include <stddef.h>
+
 #define EVENT_ENTER(_ev) do {\
   EXTRAE_ENTER(_ev);         \
   CRAYPAT_ENTER(_ev); \

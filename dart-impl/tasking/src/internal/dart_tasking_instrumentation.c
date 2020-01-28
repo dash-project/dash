@@ -217,10 +217,9 @@ void dart__tasking__instrument_task_yield_resume(
 
 void dart__tasking__instrument_task_finalize()
 {
-    
-    if (dart_tool_task_finalize_cb_data.cb) {
-        dart_tool_task_finalize_cb_data.cb(dart_tool_task_finalize_cb_data.userdata);
-    }
+  if (dart_tool_task_finalize_cb_data.cb) {
+    dart_tool_task_finalize_cb_data.cb(dart_tool_task_finalize_cb_data.userdata);
+  }
 }
 
 void dart__tasking__instrument_local_dep(
@@ -230,43 +229,43 @@ void dart__tasking__instrument_local_dep(
     int32_t unitid,
     int edge_type)
 {
-    if (dart_tool_local_dep_cb_data.cb) {
-        dart_tool_local_dep_cb_data.cb(
-            (uint64_t) task1, (uint64_t) task2,
-            memaddr_raw,unitid, edge_type,
-            dart_tool_local_dep_cb_data.userdata);
-    }
+  if (dart_tool_local_dep_cb_data.cb) {
+    dart_tool_local_dep_cb_data.cb(
+        (uint64_t) task1, (uint64_t) task2,
+        memaddr_raw,unitid, edge_type,
+        dart_tool_local_dep_cb_data.userdata);
+  }
 }
 
 void dart__tasking__instrument_task_add_to_queue(
     dart_task_t *task,
     dart_thread_t *thread)
 {
-    if (dart_tool_task_add_to_queue_cb_data.cb) {
-        dart_tool_task_add_to_queue_cb_data.cb(
-            (uint64_t) task, (uint64_t) thread,
-            dart_tool_task_add_to_queue_cb_data.userdata);
-    }
+  if (dart_tool_task_add_to_queue_cb_data.cb) {
+    dart_tool_task_add_to_queue_cb_data.cb(
+        (uint64_t) task, (uint64_t) thread,
+        dart_tool_task_add_to_queue_cb_data.userdata);
+  }
 }
 
 void dart__tasking__instrument_remote_dep(
-    uint64_t local_task,
-    uint64_t remote_task,
-    int local_dep_type,
-    int remote_dep_type,
-    uint64_t memaddr,
-    int32_t local_unitid,
-    int32_t remote_unitid,
-    int edge_type)
+  uint64_t             local_task,
+  uint64_t             remote_task,
+  dart_task_deptype_t  local_dep_type,
+  dart_task_deptype_t  remote_dep_type,
+  uint64_t             memaddr,
+  int32_t              local_unitid,
+  int32_t              remote_unitid,
+  dart_task_edgetype_t edge_type)
 {
-    if (dart_tool_remote_dep_cb_data.cb) {
-        dart_tool_remote_dep_cb_data.cb(
-            local_task,remote_task,
-            local_dep_type, remote_dep_type,
-            memaddr,local_unitid,
-            remote_unitid,edge_type,
-            dart_tool_remote_dep_cb_data.userdata);
-    }
+  if (dart_tool_remote_dep_cb_data.cb) {
+    dart_tool_remote_dep_cb_data.cb(
+        local_task,remote_task,
+        local_dep_type, remote_dep_type,
+        memaddr,local_unitid,
+        remote_unitid,edge_type,
+        dart_tool_remote_dep_cb_data.userdata);
+  }
 }
 void dart__tasking__init_tools_interface(){
   void *handleInitFunction;

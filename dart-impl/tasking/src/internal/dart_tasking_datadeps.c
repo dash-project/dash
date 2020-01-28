@@ -1266,10 +1266,10 @@ dart_tasking_datadeps_match_local_dependency(
                 myguid.id, DART_EDGE_LOCAL_RAW);
           } else if ((elem->dep.type == DART_DEP_OUT) &&
                      (dep->type == DART_DEP_OUT)) {
-                       //local WAW dependency
-                       dart__tasking__instrument_local_dep(elem->task.local,
-                           task, elem->dep.gptr.addr_or_offs.offset,
-                           myguid.id, DART_EDGE_LOCAL_WAW);
+            //local WAW dependency
+            dart__tasking__instrument_local_dep(elem->task.local,
+                task, elem->dep.gptr.addr_or_offs.offset,
+                myguid.id, DART_EDGE_LOCAL_WAW);
           }  
         }
       break;
@@ -1340,10 +1340,10 @@ dart_tasking_datadeps_match_local_dependency(
            elem = elem->next) {
           if (elem->dep.type == DART_DEP_IN &&
               elem->task.local != NULL) {
-                //local WAR dependency
-                dart__tasking__instrument_local_dep(elem->task.local,
-                    task,elem->dep.gptr.addr_or_offs.offset,
-                    myguid.id, DART_EDGE_LOCAL_WAR);
+            //local WAR dependency
+            dart__tasking__instrument_local_dep(elem->task.local,
+                task,elem->dep.gptr.addr_or_offs.offset,
+                myguid.id, DART_EDGE_LOCAL_WAR);
         }
       }
       // check if we already have an input dependency on that task and remove it

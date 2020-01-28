@@ -87,13 +87,13 @@ void dart__tasking__instrument_task_add_to_queue(
 */
     
 void dart__tasking__instrument_remote_dep(
-    uint64_t local_task,
-    uint64_t remote_task,
-    int local_dep_type,
-    int remote_dep_type,
-    uint64_t memaddr,
-    int32_t local_unitid,
-    int32_t remote_unitid,
-    int edge_type) DART_INTERNAL;
+    uint64_t             local_task,
+    uint64_t             remote_task,
+    dart_task_deptype_t  local_dep_type,
+    dart_task_deptype_t  remote_dep_type,
+    uint64_t             memaddr,
+    int32_t              local_unitid,
+    int32_t              remote_unitid,
+    dart_task_edgetype_t edge_type) DART_INTERNAL;
 
 #endif /* DART_TASKING_INSTRUMENTATION_H_ */
