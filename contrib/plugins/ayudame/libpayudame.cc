@@ -40,7 +40,6 @@ static uint64_t manipulateUnsignedInteger (uint64_t input, unsigned long long va
 extern "C" void callback_on_task_create(uint64_t task, dart_task_prio_t prio, const char *name, void *userdata) {
   task = manipulateUnsignedInteger(task, myglobalid);
   std::string s_name = name;
-  //std::string s_task = std::to_string(task);
   std::hash<std::string> hash_function;
   uint64_t hash_name = hash_function(s_name);
   if (set.count(name) == 0) {
