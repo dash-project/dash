@@ -11,8 +11,6 @@
 #include <cstring>
 #include <limits>
 
-#include <malloc.h>
-
 #ifdef DASH_ENABLE_IPM
 #include <mpi.h>
 #endif
@@ -21,6 +19,12 @@ using std::cout;
 using std::endl;
 using std::setw;
 using std::setprecision;
+
+static void *_aligned_malloc(size_t size, size_t alignment) {
+    void *buffer;
+    posix_memalign(&buffer, alignment, size);
+    return buffer;
+}
 
 typedef double  ElementType;
 typedef int64_t index_t;
@@ -319,7 +323,7 @@ measurement copy_block_to_local(
   ElementType * local_array = nullptr;
   if (myid == target_unit_id) {
     local_array = static_cast<ElementType *>(
-                    memalign(align_size, block_bytes));
+                    _aligned_malloc(block_bytes, align_size));
   }
 
   Array_t global_array;

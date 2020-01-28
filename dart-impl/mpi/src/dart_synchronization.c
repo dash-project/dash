@@ -23,8 +23,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <malloc.h>
-
 
 struct dart_lock_struct
 {

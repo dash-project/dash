@@ -157,6 +157,7 @@
 // OSX
 #if defined(__MACH__) && defined(__APPLE__)
 #  define DASH__PLATFORM__OSX
+#  define DASH__PLATFORM__POSIX
 #endif
 // UX
 #if (defined(__hpux) || defined(hpux)) || \
