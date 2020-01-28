@@ -53,7 +53,6 @@ extern "C" void callback_on_task_create(uint64_t task, dart_task_prio_t prio, co
 
 extern "C" void callback_on_task_begin(uint64_t task, uint64_t thread, void *userdata) {
   task = manipulateUnsignedInteger(task, myglobalid);
-  //printf("Hi, i'm the callback function for task_begin.: task = %lu, thread: %lu, unit_id: %llu, userdata: %d\n", task, thread, myglobalid, *(int*) userdata);
   ayu_event_preruntask(task, thread);
   ayu_event_runtask(task);
   
