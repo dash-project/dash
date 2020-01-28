@@ -72,7 +72,10 @@ int dart_tool_register_task_create (dart_tool_task_create_cb_t cb, void *userdat
    return 0;
 } 
 
-int dart_tool_register_task_begin(dart_tool_task_begin_cb_t cb, void *userdata_task_begin) {
+int dart_tool_register_task_begin(
+    dart_tool_task_begin_cb_t cb, 
+    void *userdata_task) 
+{
     dart_tool_task_begin_cb_data.cb = cb;
     dart_tool_task_begin_cb_data.userdata = userdata_task_begin;
     DART_LOG_TRACE("dart_tool_register_task_begin was called\nPointer: %p and userdata %d",
