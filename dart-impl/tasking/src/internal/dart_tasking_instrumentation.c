@@ -287,7 +287,8 @@ void dart__tasking__init_tools_interface(){
       handleInitFunction = dlopen(var, RTLD_LAZY);
       if (!handleInitFunction) {
         /* failed to load the tool */
-        DART_LOG_ERROR("Failed to load the tool");
+        DART_LOG_ERROR("Failed to load the tool %s specified in %s", var, DART__TOOLS_TOOL_ENV_VAR_PATH);
+        return;
       }
       /**
        * The init function name has to be stored in DART__TOOLS_TOOL_INIT_FUNCTION_NAME
@@ -297,8 +298,9 @@ void dart__tasking__init_tools_interface(){
                                          DART__TOOLS_TOOL_INIT_FUNCTION_NAME);
       if (!toolInitFunction) {
         /* no such symbol */
-        DART_LOG_ERROR("No such symbol!");
+        DART_LOG_ERROR("No such symbol: %s", DART__TOOLS_TOOL_INIT_FUNCTION_NAME);
         dlclose(handleInitFunction);
+        return;
       }
 
       dart_myid(&myguid);
