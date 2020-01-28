@@ -39,7 +39,6 @@ static uint64_t manipulateUnsignedInteger (uint64_t input, unsigned long long va
 
 extern "C" void callback_on_task_create(uint64_t task, dart_task_prio_t prio, const char *name, void *userdata) {
   task = manipulateUnsignedInteger(task, myglobalid);
-  //printf("Hi, i'm the callback function for task_create.: task = %lu, name: %s, unit_id: %llu, userdata: %d\n", task, name, myglobalid,  *(int *)userdata);
   std::string s_name = name;
   //std::string s_task = std::to_string(task);
   std::hash<std::string> hash_function;
