@@ -60,7 +60,6 @@ extern "C" void callback_on_task_begin(uint64_t task, uint64_t thread, void *use
 
 extern "C" void callback_on_task_end(uint64_t task, uint64_t thread, void *userdata) {
   task = manipulateUnsignedInteger(task, myglobalid);
-  //printf("Hi, i'm the callback function for task_end.: task = %lu, thread: %lu, unit_id: %llu, userdata: %d\n", task, thread, myglobalid, *(int*) userdata);
   ayu_event_postruntask(task);
   ayu_event_removetask(task); 
 }
