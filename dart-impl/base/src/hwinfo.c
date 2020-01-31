@@ -316,13 +316,21 @@ dart_ret_t dart_hwinfo(
   if(hw.system_memory_bytes < 0) {
     hwloc_obj_t obj;
     obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_MACHINE, 0);
+#if HWLOC_API_VERSION < 0x00020000
     hw.system_memory_bytes = obj->memory.total_memory / BYTES_PER_MB;
+#else
+    hw.system_memory_bytes = obj->total_memory / BYTES_PER_MB;
+#endif
   }
   if(hw.numa_memory_bytes < 0) {
     hwloc_obj_t obj;
     obj = hwloc_get_obj_by_type(topology, DART__HWLOC_OBJ_NUMANODE, 0);
     if(obj != NULL) {
+#if HWLOC_API_VERSION < 0x00020000
       hw.numa_memory_bytes = obj->memory.total_memory / BYTES_PER_MB;
+#else
+      hw.numa_memory_bytes = obj->total_memory / BYTES_PER_MB;
+#endif
     } else {
       /* No NUMA domain: */
       hw.numa_memory_bytes = hw.system_memory_bytes;
