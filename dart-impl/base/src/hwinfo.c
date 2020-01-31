@@ -289,7 +289,13 @@ dart_ret_t dart_hwinfo(
     }
   }
   if (hw.num_sockets < 0) {
-    int n_sockets = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_PACKAGE);
+    int n_sockets = hwloc_get_nbobjs_by_type(topology, 
+#if HWLOC_API_VERSION > 0x00011000
+                 HWLOC_OBJ_PACKAGE
+#else
+                 HWLOC_OBJ_SOCKET
+#endif
+    );
     if (n_sockets > 0) {
       hw.num_sockets = n_sockets;
     }
