@@ -363,7 +363,10 @@ dart_ret_t dart_hwinfo(
       hw.max_cpu_mhz = info->clock;
     }
     if (hw.num_numa < 0) {
-      hw.num_numa    = hw.num_sockets;
+      hw.num_numa    = likwid_getNumberOfNodes();
+    }
+    if (hw.num_sockets < 0) {
+      hw.num_sockets = topo->numSockets;
     }
     if (hw.num_cores < 0) {
       hw.num_cores   = topo->numCoresPerSocket * hw.num_sockets;
