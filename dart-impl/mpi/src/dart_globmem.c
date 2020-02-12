@@ -24,10 +24,14 @@
 
 #include <stdio.h>
 #include <mpi.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 /* For PRIu64, uint64_t in printf */
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
+
+#define DYNAMIC_MEM_USE_POSIX_MEMALIGN
 
 /**
  * TODO: add this window to the team_data for DART_TEAM_ALL as segment 0.
@@ -219,6 +223,13 @@ dart_team_memalloc_aligned_dynamic(
     dtype_size, nelem, nbytes);
 
 
+  /**
+   * Work around a bug in Open MPI where registrations are expected to be page
+   * aligned: https://github.com/open-mpi/ompi/issues/7384
+   */
+  size_t page_size = sysconf(_SC_PAGE_SIZE);
+  nbytes = (nbytes + ((page_size)-1)) & ~((page_size)-1);
+
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR(
@@ -234,7 +245,7 @@ dart_team_memalloc_aligned_dynamic(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
   char     ** baseptr_set = NULL;
-	/* Allocate shared memory on sharedmem_comm, and create the related
+  /* Allocate shared memory on sharedmem_comm, and create the related
    * sharedmem_win */
   /* NOTE:
    * Windows should definitely be optimized for the concrete value type i.e.
@@ -325,15 +336,23 @@ dart_team_memalloc_aligned_dynamic(
     } else {
       baseptr_set[i] = sub_mem;
     }
-	}
-#else
-	if (MPI_Alloc_mem(nbytes, MPI_INFO_NULL, &sub_mem) != MPI_SUCCESS) {
+  }
+#else // DART_MPI_DISABLE_SHARED_WINDOWS
+#ifdef DYNAMIC_MEM_USE_POSIX_MEMALIGN
+  if (0 != posix_memalign((void**)&sub_mem, page_size, nbytes)) {
+    DART_LOG_ERROR(
+      "dart_team_memalloc_aligned_dynamic: bytes:%lu posix_memalign failed",
+      nbytes);
+  }
+#else // DYNAMIC_MEM_USE_POSIX_MEMALIGN
+  if (MPI_Alloc_mem(nbytes, MPI_INFO_NULL, &sub_mem) != MPI_SUCCESS) {
     DART_LOG_ERROR(
       "dart_team_memalloc_aligned_dynamic: bytes:%lu MPI_Alloc_mem failed",
       nbytes);
     return DART_ERR_OTHER;
   }
-#endif
+#endif // DYNAMIC_MEM_USE_POSIX_MEMALIGN
+#endif // DART_MPI_DISABLE_SHARED_WINDOWS
 
   MPI_Aint disp;
   MPI_Win  win = team_data->window;
