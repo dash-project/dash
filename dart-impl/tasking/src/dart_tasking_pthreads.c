@@ -332,7 +332,7 @@ dart__tasking__yield(int delay)
     dart__tasking__abort_current_task(thread);
 
   // we cannot yield from inlined tasks
-  if (DART_TASK_HAS_FLAG(current_task, DART_TASK_IS_INLINED)) {
+  if (DART_TASK_HAS_FLAG(current_task, DART_TASK_INLINE)) {
     return DART_OK;
   }
 
@@ -700,7 +700,8 @@ dart_task_t * create_task(
       break;
     case DART_PRIO_INLINE:
       task->prio       = DART_PRIO_HIGH;
-      DART_TASK_SET_FLAG(task, DART_TASK_IS_INLINED);
+      DART_TASK_SET_FLAG(task, DART_TASK_INLINE);
+      DART_TASK_SET_FLAG(task, DART_TASK_IMMEDIATE);
       break;
     default:
       task->prio       = prio;
@@ -973,7 +974,7 @@ void
 dart__tasking__handle_task(dart_task_t *task)
 {
   dart_thread_t *thread = dart__tasking__current_thread();
-  if (DART_TASK_HAS_FLAG(task, DART_TASK_IS_INLINED)) {
+  if (DART_TASK_HAS_FLAG(task, DART_TASK_INLINE)) {
     handle_inline_task(task, thread);
   } else {
     handle_task(task, thread);
@@ -1355,8 +1356,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
 
   if (!enqueued){
 
-    // execute inlined task directly
-    if (DART_TASK_HAS_FLAG(task, DART_TASK_IS_INLINED)) {
+    // execute immediate tasks directly as inline tasks
+    if (DART_TASK_HAS_FLAG(task, DART_TASK_IMMEDIATE)) {
       handle_inline_task(task, get_current_thread());
       return;
     }

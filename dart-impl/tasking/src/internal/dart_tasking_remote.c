@@ -262,7 +262,7 @@ static void thread_progress_main(void *data)
       dart_task_t *ct;
       while (NULL != (ct = dart_tasking_taskqueue_pop(&comm_tasks))) {
         // mark as inlined, no need to allocate a context
-        DART_TASK_SET_FLAG(ct, DART_TASK_IS_INLINED);
+        DART_TASK_SET_FLAG(ct, DART_TASK_INLINE);
         dart__tasking__handle_task(ct);
       }
     }
