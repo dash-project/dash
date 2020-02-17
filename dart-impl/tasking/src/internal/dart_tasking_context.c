@@ -78,6 +78,12 @@ dart__tasking__context_adjust_size(size_t size)
   return (size + mask) & ~mask;
 }
 
+size_t
+dart__tasking__context_stack_size()
+{
+  return task_stack_size;
+}
+
 void dart__tasking__context_init()
 {
   page_size = dart__tasking__context_pagesize();
@@ -116,6 +122,7 @@ dart__tasking__context_entry(void)
 static context_list_t *
 dart__tasking__context_allocate()
 {
+  size_t task_stack_size = dart__tasking__context_stack_size();
   // align to page boundary: first page contains struct data and pointer to
   //                         second page, the start of the stack
   size_t meta_size = dart__tasking__context_adjust_size(sizeof(context_list_t));

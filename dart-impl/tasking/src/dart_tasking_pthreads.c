@@ -911,6 +911,7 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
 {
   if (task != NULL)
   {
+    DART_ASSERT_MSG(task->fn != NULL, "task %p has invalid function!", task);
     DART_LOG_DEBUG("Thread %i executing inlined task %p ('%s')",
                   thread->thread_id, task, task->descr);
 
@@ -1164,13 +1165,17 @@ start_threads(int num_threads)
                   thread_idle_method == DART_THREAD_IDLE_POLL ? "POLL" : "WAIT");
   }
 
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setstacksize(&attr, dart__tasking__context_stack_size());
+
   // start-up all worker threads
   for (int i = 1; i < num_threads; i++)
   {
     // will be free'd by the thread
     struct thread_init_data *tid = malloc(sizeof(*tid));
     tid->threadid = i;
-    int ret = pthread_create(&tid->pthread, NULL,
+    int ret = pthread_create(&tid->pthread, &attr,
                              &thread_main, tid);
     if (ret != 0) {
       DART_LOG_ERROR("Failed to create thread %i of %i!", i, num_threads);
