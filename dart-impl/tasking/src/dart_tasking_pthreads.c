@@ -178,6 +178,9 @@ void handle_task(dart_task_t *task, dart_thread_t *thread);
 static
 void remote_progress(dart_thread_t *thread, bool force);
 
+static inline void
+dart__tasking__handle_task_internal(dart_task_t *task, dart_thread_t *thread);
+
 static int64_t acc_matching_time_us = 0;
 static int64_t acc_idle_time_us     = 0;
 static int64_t acc_post_time_us     = 0;
@@ -362,7 +365,7 @@ dart__tasking__yield(int delay)
       DART_ASSERT(thread->thread_id == 0);
 
       // invoke the task directly
-      dart__tasking__handle_task(next);
+      dart__tasking__handle_task_internal(next, thread);
     } else {
       // mark task as suspended to avoid invoke_task to update the retctx
       // the next task should return to where the current task would have
@@ -969,16 +972,21 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
   }
 }
 
-
-void
-dart__tasking__handle_task(dart_task_t *task)
+static inline void
+dart__tasking__handle_task_internal(dart_task_t *task, dart_thread_t *thread)
 {
-  dart_thread_t *thread = dart__tasking__current_thread();
   if (DART_TASK_HAS_FLAG(task, DART_TASK_INLINE)) {
     handle_inline_task(task, thread);
   } else {
     handle_task(task, thread);
   }
+}
+
+void
+dart__tasking__handle_task(dart_task_t *task)
+{
+  dart_thread_t *thread = dart__tasking__current_thread();
+  dart__tasking__handle_task_internal(task, thread);
 }
 
 
@@ -1069,7 +1077,8 @@ void* thread_main(void *data)
     } else if (in_idle && task != NULL) {
       EVENT_EXIT(EVENT_IDLE);
     }
-    handle_task(task, thread);
+
+    dart__tasking__handle_task_internal(task, thread);
 
     //DART_LOG_TRACE("thread_main: finished processing task %p", task);
 
@@ -1541,7 +1550,7 @@ dart__tasking__task_complete(bool local_only)
     // b) check cancellation
     dart__tasking__check_cancellation(thread);
     // d) process our tasks
-    handle_task(next, thread);
+    dart__tasking__handle_task_internal(next, thread);
     // e) requery the thread as it might have changed
     thread = get_current_thread();
   }
@@ -1618,7 +1627,7 @@ dart__tasking__task_wait(dart_taskref_t *tr)
       remote_progress(thread, true);
       task = next_task(thread);
     }
-    handle_task(task, thread);
+    dart__tasking__handle_task_internal(task, thread);
 
     // lock the task for the check in the while header
     LOCK_TASK(reftask);
@@ -1657,7 +1666,7 @@ dart__tasking__task_test(dart_taskref_t *tr, int *flag)
     dart_task_t *task = next_task(thread);
     remote_progress(thread, task == NULL);
     if (task == NULL) task = next_task(thread);
-    handle_task(task, thread);
+    dart__tasking__handle_task_internal(task, thread);
 
     // check if this was our task
     LOCK_TASK(reftask);
