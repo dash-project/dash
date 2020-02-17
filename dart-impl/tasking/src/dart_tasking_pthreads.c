@@ -975,6 +975,7 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
 static inline void
 dart__tasking__handle_task_internal(dart_task_t *task, dart_thread_t *thread)
 {
+  if (NULL == task) return;
   if (DART_TASK_HAS_FLAG(task, DART_TASK_INLINE)) {
     handle_inline_task(task, thread);
   } else {
