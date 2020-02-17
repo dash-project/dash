@@ -22,6 +22,9 @@ struct task_list;
 #ifdef USE_UCONTEXT
 #define HAVE_RESCHEDULING_YIELD 1
 #endif // USE_UCONTEXT
+//The length of the task descrption in characters.
+//The last byte is reserved for nullbyte
+#define DART_TASK_DESCR_LENGTH 16
 
 #define DO_NOT_TRACK
 
@@ -125,7 +128,7 @@ struct dart_task_data {
   };
   dart_dephash_elem_t       *deps_owned;      // list of dependencies owned by this task
   dart_wait_handle_t        *wait_handle;
-  const char                *descr;           // the description of the task
+  char                       descr[DART_TASK_DESCR_LENGTH]; // the description of the task
   uint64_t                   instance;        // the instance counter of this task object
   dart_taskphase_t           phase;
   int                        num_children;
@@ -300,6 +303,9 @@ void dart__tasking__utility_thread(
   void (*fn) (void *),
   void  *data
 ) DART_INTERNAL;
+
+const char *
+dart__tasking__get_current_task_descr() DART_INTERNAL;
 
 
 #define CLOCK_TIME_USEC(ts) \

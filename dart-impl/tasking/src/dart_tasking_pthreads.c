@@ -518,6 +518,12 @@ dart_task_t * get_current_task()
   return get_current_thread()->current_task;
 }
 
+const char * dart__tasking__get_current_task_descr()
+{
+  return get_current_thread()->current_task->descr;
+}
+
+
 /**
  * Try to get a task from the thread-local queue.
  */
@@ -718,9 +724,15 @@ dart_task_t * create_task(
   // if descr is an absolute path (as with __FILE__) we only use the basename
   if (descr && descr[0] == '/') {
     const char *descr_base = strrchr(descr, '/');
-    task->descr            = descr_base+1;
+    strncpy(task->descr, descr_base+1, DART_TASK_DESCR_LENGTH);
+    task->descr[DART_TASK_DESCR_LENGTH-1] = '\0';
   } else {
-    task->descr = descr;
+    if (descr) {
+      strncpy(task->descr, descr, DART_TASK_DESCR_LENGTH);
+      task->descr[DART_TASK_DESCR_LENGTH-1] = '\0';
+    } else {
+      strncpy(task->descr,"<UnknownName>", DART_TASK_DESCR_LENGTH);
+    }
   }
 
 #ifdef TRACK_CHILDREN
@@ -728,10 +740,9 @@ dart_task_t * create_task(
   dart_tasking_tasklist_prepend(&task->parent->children, task);
   UNLOCK_TASK(task->parent);
   task->children = NULL;
+
 #endif // TRACK_CHILDREN
-
-  dart__tasking__instrument_task_create(task, prio, descr);
-
+  dart__tasking__instrument_task_create(task, prio, task->descr);
   return task;
 }
 
@@ -1275,7 +1286,8 @@ dart__tasking__init()
 
   // install signal handler
   dart__tasking__install_signalhandler();
-
+  // init tools interface
+  dart__tasking__init_tools_interface();
   initialized = true;
 
   return DART_OK;
@@ -1377,6 +1389,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     if (respect_numa && task->numaptr != NULL) {
       numa_node = dart__tasking__affinity_ptr_numa_node(task->numaptr);
     }
+    /* instrumentation for the task queue*/
+    dart__tasking__instrument_task_add_to_queue(task, thread);
     if (!thread->is_utility_thread) {
 
       if (numa_node == thread->numa_id) {
@@ -1813,6 +1827,8 @@ dart__tasking__fini()
   dart_tasking_tasklist_fini();
 
   dart__tasking__cancellation_fini();
+
+  dart__tasking__instrument_task_finalize();
 
   initialized = false;
   DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");

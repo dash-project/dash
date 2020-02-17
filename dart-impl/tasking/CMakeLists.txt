@@ -6,6 +6,9 @@ set(DASH_DART_IMPL_TASKING_LIBRARY dart-tasking)
 # Pass options to NVCC
 set(TASKING_CC_FLAGS -pthread)
 
+# Include library for dlopen and dlsym (-ldl)
+set (LIB_DL dl)
+
 set(DASH_DART_BASE_LIBRARY dart-base)
 set(DASH_DART_IMPL_MPI_LIBRARY dart-mpi)
 
@@ -35,7 +38,7 @@ if (HWLOC_FOUND AND ENABLE_HWLOC)
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
        ${HWLOC_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
-       ${HWLOC_LIBRARIES})
+       ${HWLOC_LIBRARIES} ${LIB_DL})
 endif()
 
 if (TCMALLOC_FOUND AND ENABLE_TCMALLOC)
