@@ -1400,6 +1400,7 @@ dart__tasking__create_task(
     const dart_task_dep_t *deps,
           size_t           ndeps,
           dart_task_prio_t prio,
+          int              flags,
     const char            *descr,
           dart_taskref_t  *ref)
 {
@@ -1421,6 +1422,10 @@ dart__tasking__create_task(
   if (ref != NULL) {
     DART_TASK_SET_FLAG(task, DART_TASK_HAS_REF);
     *ref = task;
+  }
+
+  if (flags & DART_TASK_NOYIELD) {
+    DART_TASK_SET_FLAG(task, DART_TASK_INLINE);
   }
 
   int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);

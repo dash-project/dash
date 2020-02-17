@@ -53,13 +53,14 @@ dart_task_create(
   const dart_task_dep_t *deps,
         size_t           ndeps,
         dart_task_prio_t prio,
+        int              flags,
   const char            *descr)
 {
   return dart__tasking__create_task(
                   fn, data,
                   data_size,
                   deps, ndeps,
-                  prio, descr, NULL);
+                  prio, flags, descr, NULL);
 }
 
 /**
@@ -77,13 +78,14 @@ dart_task_create_handle(
   const dart_task_dep_t *deps,
         size_t           ndeps,
         dart_task_prio_t prio,
+        int              flags,
         dart_taskref_t  *taskref)
 {
   return dart__tasking__create_task(
                  fn, data,
                  data_size,
                  deps, ndeps,
-                 prio, NULL, taskref);
+                 prio, flags, NULL, taskref);
 }
 
 

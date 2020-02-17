@@ -48,10 +48,8 @@ benchmark_task_creation(size_t num_tasks)
 {
   Timer t;
   for (size_t i = 0; i < num_tasks; ++i) {
-    //dart_task_create(&empty_task, NULL, 0, NULL, 0, DART_PRIO_LOW);
     dash::tasks::async([](){});
   }
-  //dart_task_complete();
   dash::tasks::complete();
   auto elapsed = t.Elapsed();
   dash::barrier();
@@ -60,6 +58,24 @@ benchmark_task_creation(size_t num_tasks)
               << "us" << std::endl;
   }
 }
+
+template<bool PrintOutput>
+void
+benchmark_tasklet_creation(size_t num_tasks)
+{
+  Timer t;
+  for (size_t i = 0; i < num_tasks; ++i) {
+    dash::tasks::tasklet([](){});
+  }
+  dash::tasks::complete();
+  auto elapsed = t.Elapsed();
+  dash::barrier();
+  if (PrintOutput && dash::myid() == 0) {
+    std::cout << "avg tasklet creation/execution: " << elapsed / num_tasks
+              << "us" << std::endl;
+  }
+}
+
 
 #if 0
 void
@@ -156,7 +172,7 @@ benchmark_task_spreadremotedep_creation(size_t num_tasks, int num_deps)
         for (int d = 0; d < num_deps; d++) {
           *inserter = dash::tasks::in(array[target*num_deps + d]);
 
-          t = (t+1) % dash::size(); 
+          t = (t+1) % dash::size();
           if (t == dash::myid()) t = (t+1) % dash::size();
         }
       }
@@ -213,8 +229,8 @@ benchmark_task_localdep_creation(size_t num_tasks, int num_deps)
 void
 benchmark_task_yield(size_t num_yields)
 {
-  dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW, NULL);
-  dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW, NULL);
+  dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW, 0, NULL);
+  dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW, 0, NULL);
   Timer t;
   dart_task_complete(true);
   dash::barrier();
@@ -248,6 +264,8 @@ int main(int argc, char** argv)
 
   benchmark_task_creation<true>(params.num_create_tasks);
   benchmark_task_yield(params.num_yield_tasks);
+
+  benchmark_tasklet_creation<true>(params.num_create_tasks);
 
   if (dash::size() > 1) {
     for (int i = 1; i <= 32; i*=2) {
