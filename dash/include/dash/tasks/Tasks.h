@@ -942,7 +942,7 @@ namespace internal{
     TaskFunc         f,
     dart_task_prio_t prio){
     std::array<dart_task_dep_t, 0> deps;
-    internal::async(f, prio, deps, name, DART_TASK_NOYIELD);
+    internal::async(f, prio, deps, DART_TASK_NOYIELD, name);
   }
 
   /**

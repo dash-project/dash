@@ -395,7 +395,7 @@ namespace internal {
     ChunkType   chunking,
     RangeFunc   f)
   {
-    internal::taskloop(begin, end, chunking, f, name);
+    internal::taskloop(begin, end, chunking, f, 0, name);
   }
 
   template<
