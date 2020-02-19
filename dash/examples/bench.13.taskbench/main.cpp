@@ -16,6 +16,54 @@ typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
         > Timer;
 
+#ifdef DASH_ENABLE_PAPI
+#include <papi.h>
+
+static int EventSet=PAPI_NULL;
+
+static void hwc_init()
+{
+  int retval = PAPI_library_init(PAPI_VER_CURRENT);
+  if (retval != PAPI_VER_CURRENT && retval > 0) {
+    throw ::std::runtime_error("PAPI version mismatch");
+  }
+  else if (retval < 0) {
+    throw ::std::runtime_error("PAPI init failed");
+  }
+  PAPI_create_eventset(&EventSet);
+  if (PAPI_add_event(EventSet, PAPI_TOT_INS) != PAPI_OK) {
+    std::cout << "Could not add PAPI_TOT_INS to event set!" << std::endl;
+  }
+  if (PAPI_start(EventSet) != PAPI_OK) {
+    std::cout << "Could not start event set!" << std::endl;
+  }
+}
+
+// return the current instruction counter value
+static long_long hwc_ins()
+{
+  long_long val;
+  PAPI_read(EventSet, &val);
+
+  std::cout << val << std::endl;
+
+  return val;
+}
+
+#else
+
+static void hwc_init()
+{
+  std::cout << "hwc_init: no hardware counters available!" << std::endl;
+}
+
+static uint64_t hwc_ins()
+{
+  return 0;
+}
+
+#endif // DASH_ENABLE_PAPI
+
 
 typedef struct benchmark_params_t {
   size_t num_create_tasks;
@@ -24,6 +72,7 @@ typedef struct benchmark_params_t {
 
 static
 benchmark_params parse_args(int argc, char * argv[]);
+
 
 static void
 empty_task(void *data) {
@@ -47,15 +96,18 @@ void
 benchmark_task_creation(size_t num_tasks)
 {
   Timer t;
+  auto start_ins = hwc_ins();
   for (size_t i = 0; i < num_tasks; ++i) {
     dash::tasks::async([](){});
   }
   dash::tasks::complete();
+  auto end_ins = hwc_ins();
   auto elapsed = t.Elapsed();
   dash::barrier();
   if (PrintOutput && dash::myid() == 0) {
     std::cout << "avg task creation/execution: " << elapsed / num_tasks
-              << "us" << std::endl;
+              << "us : " << (end_ins - start_ins) / num_tasks << " ins"
+              << std::endl;
   }
 }
 
@@ -64,15 +116,18 @@ void
 benchmark_tasklet_creation(size_t num_tasks)
 {
   Timer t;
+  auto start_ins = hwc_ins();
   for (size_t i = 0; i < num_tasks; ++i) {
     dash::tasks::tasklet([](){});
   }
   dash::tasks::complete();
+  auto end_ins = hwc_ins();
   auto elapsed = t.Elapsed();
   dash::barrier();
   if (PrintOutput && dash::myid() == 0) {
     std::cout << "avg tasklet creation/execution: " << elapsed / num_tasks
-              << "us" << std::endl;
+              << "us : " << (end_ins - start_ins) / num_tasks << " ins"
+              << std::endl;
   }
 }
 
@@ -118,7 +173,7 @@ benchmark_task_remotedep_creation(size_t num_tasks, int num_deps)
   dash::tasks::async_fence();
 
   if (!RootOnly || dash::myid() == 0) {
-    dash::tasks::taskloop(0UL, num_tasks, dash::tasks::chunk_size(1),
+    dash::tasks::taskletloop(0UL, num_tasks, dash::tasks::chunk_size(1),
       [](int from, int to){
         // nothing to do
         //std::cout << "task " << from << std::endl;
@@ -159,7 +214,7 @@ benchmark_task_spreadremotedep_creation(size_t num_tasks, int num_deps)
   dash::tasks::async_fence();
 
   if (!RootOnly || dash::myid() == 0) {
-    dash::tasks::taskloop(0UL, num_tasks, dash::tasks::chunk_size(1),
+    dash::tasks::taskletloop(0UL, num_tasks, dash::tasks::chunk_size(1),
       [](int from, int to){
         // nothing to do
         //std::cout << "task " << from << std::endl;
@@ -199,7 +254,7 @@ benchmark_task_localdep_creation(size_t num_tasks, int num_deps)
 
   Timer t;
   //for (size_t i = 1; i <= num_tasks; ++i) {
-    dash::tasks::taskloop(0UL, num_tasks, dash::tasks::chunk_size(1),
+    dash::tasks::taskletloop(0UL, num_tasks, dash::tasks::chunk_size(1),
       [](int from, int to){
         // nothing to do
         //std::cout << "task " << from << std::endl;
@@ -232,11 +287,13 @@ benchmark_task_yield(size_t num_yields)
   dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW, 0, NULL);
   dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW, 0, NULL);
   Timer t;
+  auto start_ins = hwc_ins();
   dart_task_complete(true);
-  dash::barrier();
+  auto end_ins = hwc_ins();
   if (dash::myid() == 0) {
     std::cout << "avg task yield: " << t.Elapsed() / num_yields / 2
-              << "us" << std::endl;
+              << "us : " << (end_ins - start_ins) / num_yields / 2 << " ins"
+              << std::endl;
   }
 }
 
@@ -249,6 +306,14 @@ int main(int argc, char** argv)
     dash::finalize();
     exit(-1);
   }
+
+  if (dash::tasks::numthreads() > 1) {
+    std::cout << "WARN: Found more than one (" << dash::tasks::numthreads()
+              << ") threads, results may be not be accurate!"
+              << std::endl;
+  }
+
+  hwc_init();
 
   dash::util::BenchmarkParams bench_params("bench.13.taskbench");
   bench_params.print_header();
@@ -267,10 +332,8 @@ int main(int argc, char** argv)
 
   benchmark_tasklet_creation<true>(params.num_create_tasks);
 
-  if (dash::size() > 1) {
-    for (int i = 1; i <= 32; i*=2) {
-      benchmark_task_localdep_creation(params.num_create_tasks, i);
-    }
+  for (int i = 1; i <= 32; i*=2) {
+    benchmark_task_localdep_creation(params.num_create_tasks, i);
   }
 
   if (dash::size() > 1) {

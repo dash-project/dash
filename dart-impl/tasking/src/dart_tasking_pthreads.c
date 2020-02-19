@@ -336,7 +336,7 @@ dart__tasking__yield(int delay)
 
   // we cannot yield from inlined tasks
   if (DART_TASK_HAS_FLAG(current_task, DART_TASK_INLINE)) {
-    return DART_OK;
+    return DART_ERR_INVAL;
   }
 
   // exit task if the task is blocked and return as soon as we get back here
