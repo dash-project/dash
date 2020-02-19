@@ -21,6 +21,8 @@ struct hwc_cnt {
   long long int cyc = 0; // cycles
 };
 
+static bool hwc_avail = true;
+
 #ifdef DASH_ENABLE_PAPI
 #include <papi.h>
 
@@ -38,13 +40,22 @@ static void hwc_init()
   PAPI_create_eventset(&EventSet);
   if (PAPI_add_event(EventSet, PAPI_TOT_INS) != PAPI_OK) {
     std::cout << "Could not add PAPI_TOT_INS to event set!" << std::endl;
+    hwc_avail = false;
   }
   if (PAPI_add_event(EventSet, PAPI_TOT_CYC) != PAPI_OK) {
     std::cout << "Could not add PAPI_TOT_INS to event set!" << std::endl;
+    hwc_avail = false;
   }
   if (PAPI_start(EventSet) != PAPI_OK) {
     std::cout << "Could not start event set!" << std::endl;
+    hwc_avail = false;
   }
+}
+
+static void hwc_fini()
+{
+  long_long values[2];
+  PAPI_stop(EventSet, values);
 }
 
 // return the current instruction counter value
@@ -64,6 +75,9 @@ static void hwc_init()
 {
   std::cout << "hwc_init: no hardware counters available!" << std::endl;
 }
+
+static void hwc_fini()
+{ }
 
 static hwc_cnt hwc_ins()
 {
@@ -113,10 +127,12 @@ benchmark_task_creation(size_t num_tasks)
   auto elapsed = t.Elapsed();
   dash::barrier();
   if (PrintOutput && dash::myid() == 0) {
-    std::cout << "avg task creation/execution: " << elapsed / num_tasks << "us : "
-              << (end_hwc.ins - start_hwc.ins) / num_tasks << " ins : "
-              << (end_hwc.cyc - start_hwc.cyc) / num_tasks << " cyc : "
-              << std::endl;
+    std::cout << "avg task creation/execution: " << elapsed / num_tasks << "us : ";
+    if (hwc_avail) {
+      std::cout << (end_hwc.ins - start_hwc.ins) / num_tasks << " ins : "
+                << (end_hwc.cyc - start_hwc.cyc) / num_tasks << " cyc : ";
+    }
+    std::cout << std::endl;
   }
 }
 
@@ -134,10 +150,12 @@ benchmark_tasklet_creation(size_t num_tasks)
   auto elapsed = t.Elapsed();
   dash::barrier();
   if (PrintOutput && dash::myid() == 0) {
-    std::cout << "avg tasklet creation/execution: " << elapsed / num_tasks << "us : "
-              << (end_hwc.ins - start_hwc.ins) / num_tasks << " ins : "
-              << (end_hwc.cyc - start_hwc.cyc) / num_tasks << " cyc : "
-              << std::endl;
+    std::cout << "avg tasklet creation/execution: " << elapsed / num_tasks << "us : ";
+    if (hwc_avail) {
+      std::cout << (end_hwc.ins - start_hwc.ins) / num_tasks << " ins : "
+                << (end_hwc.cyc - start_hwc.cyc) / num_tasks << " cyc : ";
+    }
+    std::cout << std::endl;
   }
 }
 
@@ -301,10 +319,12 @@ benchmark_task_yield(size_t num_yields)
   dart_task_complete(true);
   auto end_hwc = hwc_ins();
   if (dash::myid() == 0) {
-    std::cout << "avg task yield: " << t.Elapsed() / num_yields / 2 << "us : "
-              << (end_hwc.ins - start_hwc.ins) / num_yields / 2 << " ins : "
-              << (end_hwc.cyc - start_hwc.cyc) / num_yields / 2 << " cyc : "
-              << std::endl;
+    std::cout << "avg task yield: " << t.Elapsed() / num_yields / 2 << "us : ";
+    if (hwc_avail) {
+      std::cout << (end_hwc.ins - start_hwc.ins) / num_yields / 2 << " ins : "
+                << (end_hwc.cyc - start_hwc.cyc) / num_yields / 2 << " cyc : ";
+    }
+    std::cout << std::endl;
   }
 }
 
@@ -372,6 +392,7 @@ int main(int argc, char** argv)
     }
   }
 
+  hwc_fini();
 
   dash::finalize();
 }
