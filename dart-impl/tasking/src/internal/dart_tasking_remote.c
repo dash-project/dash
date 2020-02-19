@@ -530,6 +530,7 @@ dart_ret_t dart_tasking_remote_progress()
 {
   if (!progress_thread) {
     dart__task__wait_progress();
+    dart_amsg_flush_buffer(amsgq);
     return dart_amsg_process(amsgq);
   }
   return DART_OK;
