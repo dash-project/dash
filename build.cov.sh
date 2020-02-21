@@ -17,7 +17,7 @@ await_confirm() {
 
 exit_message() {
   echo "--------------------------------------------------------"
-  echo "Done. To run code coverage measurement, run make coverage in $BUILD_DIR"
+  echo "Done. To run code coverage measurement, run: make -C $BUILD_DIR coverage"
 }
 
 if [ "${PAPI_HOME}" = "" ]; then
