@@ -29,6 +29,12 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
+// make sure dynamic windows are enabled if shared windows are not disabled
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS) && \
+    !defined(DART_MPI_ENABLE_DYNAMIC_WINDOWS)
+#define DART_MPI_ENABLE_DYNAMIC_WINDOWS
+#endif
+
 /**
  * TODO: add this window to the team_data for DART_TEAM_ALL as segment 0.
  */

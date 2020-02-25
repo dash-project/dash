@@ -52,7 +52,7 @@ await_confirm() {
 
 exit_message() {
   echo "--------------------------------------------------------"
-  echo "Done. To install DASH, run    make install    in $BUILD_DIR"
+  echo "Done. To install DASH, run:   make -C $BUILD_DIR install"
 }
 
 if [ "${PAPI_HOME}" = "" ]; then
