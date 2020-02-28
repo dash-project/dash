@@ -37,6 +37,12 @@ typedef struct context_list_s context_list_t;
 void dart__tasking__context_init() DART_INTERNAL;
 
 /**
+ * Returns the stack size to be available for task execution.
+ */
+size_t
+dart__tasking__context_stack_size() DART_INTERNAL;
+
+/**
  * Create a new context for a task to execute.
  */
 context_t* dart__tasking__context_create(

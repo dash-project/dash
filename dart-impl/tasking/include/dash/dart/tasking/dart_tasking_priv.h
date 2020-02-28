@@ -62,8 +62,9 @@ struct dart_wait_handle_s dart_wait_handle_t;
 enum dart_taskflags_t {
   DART_TASK_HAS_REF        = 1 << 0,
   DART_TASK_DATA_ALLOCATED = 1 << 1,
-  DART_TASK_IS_INLINED     = 1 << 2,
-  DART_TASK_IS_COMMTASK    = 1 << 3
+  DART_TASK_IMMEDIATE      = 1 << 2,
+  DART_TASK_INLINE         = 1 << 3,
+  DART_TASK_IS_COMMTASK    = 1 << 4
 };
 
 #define DART_TASK_SET_FLAG(_task, _flag)    (_task)->flags |=  (_flag)
@@ -222,6 +223,7 @@ dart__tasking__create_task(
   const dart_task_dep_t   *deps,
         size_t             ndeps,
         dart_task_prio_t   prio,
+        int                flags,
   const char              *descr,
         dart_taskref_t    *taskref) DART_INTERNAL;
 

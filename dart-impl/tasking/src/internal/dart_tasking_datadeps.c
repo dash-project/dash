@@ -750,6 +750,7 @@ dart_tasking_datadeps_handle_defered_remote_indeps(
   dart_tasking_copyin_create_delayed_tasks();
 
   dart_task_t *root_task = dart__tasking__root_task();
+  dephash_require_alloc(root_task);
   dart_dephash_elem_t *next = unhandled_remote_indeps;
   unhandled_remote_indeps = NULL;
   while ((rdep = next) != NULL) {
