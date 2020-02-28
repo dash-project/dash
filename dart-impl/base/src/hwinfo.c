@@ -91,6 +91,7 @@ static const int BYTES_PER_MB = (1024 * 1024);
 dart_ret_t dart_hwinfo_init(
   dart_hwinfo_t * hw)
 {
+  hw->num_sockets         = -1;
   hw->num_numa            = -1;
   hw->numa_id             = -1;
   hw->num_cores           = -1;
@@ -149,36 +150,6 @@ dart_ret_t dart_hwinfo(
   if(gethostname(hw.host, DART_LOCALITY_HOST_MAX_SIZE) != 0) {
     hw.host[DART_LOCALITY_HOST_MAX_SIZE-1] = '\0';
   }
-
-#ifdef DART_ENABLE_LIKWID
-  DART_LOG_TRACE("dart_hwinfo: using likwid");
-  /*
-   * see likwid API documentation:
-   * https://rrze-hpc.github.io/likwid/Doxygen/C-likwidAPI-code.html
-   */
-  int likwid_ret = topology_init();
-  if (likwid_ret < 0) {
-    DART_LOG_ERROR("dart_hwinfo: "
-                   "likwid: topology_init failed, returned %d", likwid_ret);
-  } else {
-    CpuInfo_t     info = get_cpuInfo();
-    CpuTopology_t topo = get_cpuTopology();
-    if (hw.min_cpu_mhz < 0 || hw.max_cpu_mhz < 0) {
-      hw.min_cpu_mhz = info->clock;
-      hw.max_cpu_mhz = info->clock;
-    }
-    if (hw.num_numa < 0) {
-      hw.num_numa    = hw.num_sockets;
-    }
-    if (hw.num_cores < 0) {
-      hw.num_cores   = topo->numCoresPerSocket * hw.num_sockets;
-    }
-    topology_finalize();
-    DART_LOG_TRACE("dart_hwinfo: likwid: "
-                   "num_sockets: %d num_numa: %d num_cores: %d",
-                   hw.num_sockets, hw.num_numa, hw.num_cores);
-  }
-#endif /* DART_ENABLE_LIKWID */
 
 #ifdef DART_ENABLE_HWLOC
   DART_LOG_TRACE("dart_hwinfo: using hwloc");
@@ -317,6 +288,18 @@ dart_ret_t dart_hwinfo(
       hw.num_numa = n_numa_nodes;
     }
   }
+  if (hw.num_sockets < 0) {
+    int n_sockets = hwloc_get_nbobjs_by_type(topology, 
+#if HWLOC_API_VERSION > 0x00011000
+                 HWLOC_OBJ_PACKAGE
+#else
+                 HWLOC_OBJ_SOCKET
+#endif
+    );
+    if (n_sockets > 0) {
+      hw.num_sockets = n_sockets;
+    }
+	}
   if (hw.num_cores < 0) {
     int n_cores = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_CORE);
     if (n_cores > 0) {
@@ -333,13 +316,21 @@ dart_ret_t dart_hwinfo(
   if(hw.system_memory_bytes < 0) {
     hwloc_obj_t obj;
     obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_MACHINE, 0);
+#if HWLOC_API_VERSION < 0x00020000
     hw.system_memory_bytes = obj->memory.total_memory / BYTES_PER_MB;
+#else
+    hw.system_memory_bytes = obj->total_memory / BYTES_PER_MB;
+#endif
   }
   if(hw.numa_memory_bytes < 0) {
     hwloc_obj_t obj;
     obj = hwloc_get_obj_by_type(topology, DART__HWLOC_OBJ_NUMANODE, 0);
     if(obj != NULL) {
+#if HWLOC_API_VERSION < 0x00020000
       hw.numa_memory_bytes = obj->memory.total_memory / BYTES_PER_MB;
+#else
+      hw.numa_memory_bytes = obj->total_memory / BYTES_PER_MB;
+#endif
     } else {
       /* No NUMA domain: */
       hw.numa_memory_bytes = hw.system_memory_bytes;
@@ -353,6 +344,39 @@ dart_ret_t dart_hwinfo(
                  hw.num_numa, hw.numa_id,
                  hw.num_cores, hw.core_id, hw.cpu_id);
 #endif /* DART_ENABLE_HWLOC */
+
+#ifdef DART_ENABLE_LIKWID
+  DART_LOG_TRACE("dart_hwinfo: using likwid");
+  /*
+   * see likwid API documentation:
+   * https://rrze-hpc.github.io/likwid/Doxygen/C-likwidAPI-code.html
+   */
+  int likwid_ret = topology_init();
+  if (likwid_ret < 0) {
+    DART_LOG_ERROR("dart_hwinfo: "
+                   "likwid: topology_init failed, returned %d", likwid_ret);
+  } else {
+    CpuInfo_t     info = get_cpuInfo();
+    CpuTopology_t topo = get_cpuTopology();
+    if (hw.min_cpu_mhz < 0 || hw.max_cpu_mhz < 0) {
+      hw.min_cpu_mhz = info->clock;
+      hw.max_cpu_mhz = info->clock;
+    }
+    if (hw.num_numa < 0) {
+      hw.num_numa    = likwid_getNumberOfNodes();
+    }
+    if (hw.num_sockets < 0) {
+      hw.num_sockets = topo->numSockets;
+    }
+    if (hw.num_cores < 0) {
+      hw.num_cores   = topo->numCoresPerSocket * hw.num_sockets;
+    }
+    topology_finalize();
+    DART_LOG_TRACE("dart_hwinfo: likwid: "
+                   "num_sockets: %d num_numa: %d num_cores: %d",
+                   hw.num_sockets, hw.num_numa, hw.num_cores);
+  }
+#endif /* DART_ENABLE_LIKWID */
 
 #ifdef DART_ENABLE_PAPI
   DART_LOG_TRACE("dart_hwinfo: using PAPI");
