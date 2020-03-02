@@ -72,7 +72,7 @@ public:
    * locality domain of a specified team.
    */
   TeamLocality(
-    dash::Team       & team,
+    const dash::Team & team,
     Scope_t            scope      = Scope_t::Global,
     std::string        domain_tag = ".");
 
@@ -81,7 +81,7 @@ public:
    * a specified team and locality domain.
    */
   TeamLocality(
-    dash::Team       & team,
+    const dash::Team & team,
     LocalityDomain_t & domain);
 
   /**
@@ -190,7 +190,7 @@ public:
     return _domain.num_cores();
   }
 
-  inline dash::Team & team() const
+  inline const dash::Team & team() const
   {
     return (nullptr == _team) ? dash::Team::Null() : *_team;
   }
@@ -235,7 +235,7 @@ public:
   }
 
 private:
-  dash::Team                        * _team          = nullptr;
+  const dash::Team                  * _team          = nullptr;
   /// Parent scope of the team locality domain hierarchy.
   Scope_t                             _scope         = Scope_t::Undefined;
   /// Locality domain of the team.

@@ -997,7 +997,7 @@ public:
    * The Team containing the units to which this pattern's elements are
    * mapped.
    */
-  inline dash::Team & team() const
+  inline const dash::Team & team() const
   {
     return *_team;
   }
@@ -1292,11 +1292,11 @@ private:
   /// Distribution types of all dimensions.
   DistributionSpec_t          _distspec;
   /// Team containing the units to which the patterns element are mapped
-  dash::Team *                _team            = nullptr;
+  const dash::Team *          _team            = nullptr;
   /// The active unit's id.
   team_unit_t                 _myid;
   /// Cartesian arrangement of units within the team
-  TeamSpec_t                  _teamspec;
+  const TeamSpec_t            _teamspec;
   /// Total amount of units to which this pattern's elements are mapped
   SizeType                    _nunits          = 0;
   /// Actual number of local elements of the active unit.

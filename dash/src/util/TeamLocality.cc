@@ -14,7 +14,7 @@
 
 
 dash::util::TeamLocality::TeamLocality(
-  dash::Team                  & team,
+  const dash::Team            & team,
   dash::util::Locality::Scope   scope,
   std::string                   domain_tag)
 : _team(&team),
@@ -44,7 +44,7 @@ dash::util::TeamLocality::TeamLocality(
 }
 
 dash::util::TeamLocality::TeamLocality(
-  dash::Team                  & team,
+  const dash::Team            & team,
   dash::util::LocalityDomain  & domain)
 : _team(&team),
   _scope(domain.scope()),
