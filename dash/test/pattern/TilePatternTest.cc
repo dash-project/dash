@@ -300,3 +300,18 @@ TEST_F(TilePatternTest, Tile4Dim)
     }
   }
 }
+
+TEST_F(TilePatternTest, TileFunctionalCheck)
+{
+  const size_t dims = 1; 
+  using pattern_t = typename dash::TilePattern<dims, dash::ROW_MAJOR, long>;
+  using IndexType = typename pattern_t::index_type;
+
+  // create simple TilePattern 1D BLOCKED for functional checks, now the test just checks for issue 692, unfinished
+  size_t array_size = 100;
+  pattern_t pattern(array_size, dash::BLOCKED);
+
+  // tested local_blockspec()
+  const auto &lblockspec = pattern.local_blockspec();
+  ASSERT_EQ_U(dims, lblockspec.size());
+}
