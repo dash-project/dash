@@ -4,8 +4,6 @@
 #include <dash/pattern/TilePattern.h>
 #include <dash/TeamSpec.h>
 
-#include <libdash.h>
-
 #include <iomanip>
 #include <array>
 
@@ -316,17 +314,4 @@ TEST_F(TilePatternTest, TileFunctionalCheck)
   // tested local_blockspec()
   const auto &lblockspec = pattern.local_blockspec();
   ASSERT_EQ_U(dims, lblockspec.size());
-
-
-  // just to show how we correctly call StoreHDF::write and StoreHDF::read 
-  using dash::io::hdf5::hdf5_options;
-  using dash::io::hdf5::StoreHDF;
-  using view_t = typename dash::Matrix<double, 1, unsigned long>;
-  using container_t = typename dash::view_traits<view_t>::origin_type;
-
-  view_t *h5matrix = new view_t(dash::SizeSpec<1>(8));
-
-  StoreHDF::write<view_t>(*h5matrix, "testf.h5", "testg/testd1D");
-  StoreHDF::read<container_t>(*h5matrix, "testf.h5", "testg/testd1D");
-
 }
