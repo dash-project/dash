@@ -1295,7 +1295,7 @@ public:
   }
 
   /**
-   * Cartesian arrangement of pattern blocks.
+   * Cartesian arrangement of local pattern blocks.
    */
   constexpr const BlockSpec_t & local_blockspec() const
   {
