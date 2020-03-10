@@ -214,7 +214,11 @@ bool Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
     _team = &pattern.team();
   }
 
+#if !defined(SPEC)
   _glob_mem   = GlobMem_t{*_team};
+#else
+  _glob_mem.reset(*_team);
+#endif
   _allocator = allocator_type{&_glob_mem};
 
   // Copy sizes from pattern:

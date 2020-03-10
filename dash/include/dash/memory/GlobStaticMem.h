@@ -142,6 +142,14 @@ public:
 
   GlobStaticMem& operator=(GlobStaticMem&&) noexcept = default;
 
+#if defined(SPEC)
+  void reset(dash::Team const& team)
+  {
+    m_team = &team;
+    m_local_sizes.resize(std::max(team.size(), std::size_t(1)));
+  }
+#endif
+
   constexpr size_type capacity() const noexcept;
 
   constexpr size_type capacity(dash::team_unit_t uid) const noexcept

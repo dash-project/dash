@@ -1448,7 +1448,11 @@ private:
     m_data.reset();
 
     m_team      = &(m_pattern.team());
+#if !defined(SPEC)
     m_globmem   = memory_type{*m_team};
+#else
+    m_globmem.reset(*m_team);
+#endif
     m_allocator = allocator_type{&m_globmem};
 
     // Check requested capacity:
