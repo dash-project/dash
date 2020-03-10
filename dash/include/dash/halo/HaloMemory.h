@@ -521,4 +521,3 @@ private:
 }  // namespace dash
 
 #endif // DASH__HALO_HALOMEMORY_H
-

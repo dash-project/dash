@@ -797,7 +797,7 @@ public:
   }
 
   Self_t& operator-=(index_t n) {
-    auto index = _coords_mng.index();
+    index_t index = _coords_mng.index();
     if(index >= n)
       _coords_mng.set(index - n);
 
@@ -1241,7 +1241,7 @@ private:
           if(MemoryArrange == ROW_MAJOR) {
             for(dim_t d = NumDimensions; d > 0;) {
               --d;
-              if(_coords[d] < region.extent(d) + region.offset(d) - 1) {
+              if(_coords[d] < (long)(region.extent(d) + region.offset(d) - 1)) {
                 ++_coords[d];
                 break;
               } else {
@@ -1293,7 +1293,7 @@ private:
 
     // setup stencil point offsets
     if(Scope == StencilViewScope::INNER) {
-      for(auto i = 0; i < NumStencilPoints; ++i)
+      for(auto i = 0u; i < NumStencilPoints; ++i)
         _stencil_mem_ptr[i] = _current_lmemory_addr + (*_stencil_offsets)[i];
     } else {
       using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
@@ -1303,7 +1303,7 @@ private:
       for(auto d = 0; d < NumDimensions; ++d) {
         auto extent = _local_layout.extent(d);
 
-        for(auto i = 0; i < NumStencilPoints; ++i) {
+        for(auto i = 0u; i < NumStencilPoints; ++i) {
           auto& halo_coord = halo_coords[i][d];
           halo_coord       = _coords[d] + (*_stencil_spec)[i][d];
           if(halo_coord < 0) {
@@ -1322,7 +1322,7 @@ private:
         }
       }
 
-      for(auto i = 0; i < NumStencilPoints; ++i) {
+      for(auto i = 0u; i < NumStencilPoints; ++i) {
         if(is_halo[i])
           _stencil_mem_ptr[i] = value_halo_at(indexes[i], halo_coords[i]);
         else
@@ -1338,7 +1338,7 @@ private:
       auto local_idx = idx;
       for(const auto& region : _boundary_views) {
         _region_bound += region.size();
-        if(local_idx < region.size()) {
+        if(local_idx < (long)region.size()) {
           return _local_layout.coords(local_idx, region);
         }
         ++_region_number;
