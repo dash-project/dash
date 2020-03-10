@@ -20,6 +20,8 @@
 typedef int value_t;
 namespace dio = dash::io::hdf5;
 
+using dash::io::hdf5::StoreHDF;
+
 /**
  * Cantors pairing function to map n-tuple to single number
  */
@@ -512,6 +514,124 @@ TEST_F(HDF5MatrixTest, GroupTest) {
   verify_matrix(matrix_b, secret[1]);
   verify_matrix(matrix_c, secret[2]);
 }
+
+TEST_F(HDF5MatrixTest, ReadAndWriteDashMatrix1D) {
+  auto numunits = dash::Team::All().size();
+
+  // Add some randomness to the data
+  std::srand(time(NULL));
+  int local_secret = std::rand() % 1000;
+  int myid = dash::myid();
+
+  typedef dash::Matrix<value_t, 1> matrix_t;
+
+  int extend = 1000;  
+  auto size_spec = dash::SizeSpec<1>(extend);
+
+  DASH_LOG_DEBUG("Pattern", pattern1d);
+  {
+    matrix_t mat1(size_spec);
+    dash::barrier();
+    LOG_MESSAGE("Matrix created");
+
+    fill_matrix(mat1, local_secret);
+    dash::barrier();
+    DASH_LOG_DEBUG("BEGIN STORE HDF");
+
+    StoreHDF::write(mat1, _filename, _dataset);
+
+    DASH_LOG_DEBUG("END STORE HDF");
+    dash::barrier();
+  }
+
+  matrix_t mat1_verified(size_spec);
+  dash::barrier();
+  StoreHDF::read(mat1_verified, _filename, _dataset);
+  dash::barrier();
+
+  verify_matrix(mat1_verified, local_secret);
+}
+
+TEST_F(HDF5MatrixTest, ReadAndWriteDashMatrix2D) {
+  auto numunits = dash::Team::All().size();
+
+  // Add some randomness to the data
+  std::srand(time(NULL));
+  int local_secret = std::rand() % 1000;
+  int myid = dash::myid();
+
+  typedef dash::TilePattern<2, dash::ROW_MAJOR, long> pattern_t;
+  typedef dash::Matrix<value_t, 2, typename pattern_t::index_type, pattern_t> matrix_t;
+
+  typedef dash::TilePattern<2, dash::ROW_MAJOR, unsigned long> upattern_t;
+  typedef dash::Matrix<value_t, 2, typename upattern_t::index_type, upattern_t> umatrix_t;
+
+  //test default type
+  dash::TeamSpec<2, pattern_t::index_type> team_spec(numunits, 1);
+  team_spec.balance_extents();
+
+  auto extend_x = 2 * 2 * team_spec.extent(0);
+  auto extend_y = 2 * 5 * team_spec.extent(1);
+
+  pattern_t pattern(dash::SizeSpec<2, pattern_t::size_type>(extend_x, extend_y),
+                    dash::DistributionSpec<2>(dash::TILE(2), dash::TILE(5)),
+                    team_spec);
+
+  DASH_LOG_DEBUG("Pattern", pattern);
+  {
+    matrix_t mat1(pattern);
+    dash::barrier();
+    LOG_MESSAGE("Matrix created");
+
+    fill_matrix(mat1, local_secret);
+    dash::barrier();
+    DASH_LOG_DEBUG("BEGIN STORE HDF");
+
+    StoreHDF::write(mat1, _filename, _dataset);
+
+    DASH_LOG_DEBUG("END STORE HDF");
+    dash::barrier();
+  }
+
+  matrix_t mat1_verified(pattern);
+  dash::barrier();
+  StoreHDF::read(mat1_verified, _filename, _dataset);
+  dash::barrier();
+
+  verify_matrix(mat1_verified, local_secret);
+
+  //test unsigned type
+  dash::TeamSpec<2, upattern_t::index_type> uteam_spec(numunits, 1); //here signifies the inflexibity of type acceptance
+  uteam_spec.balance_extents();
+
+  upattern_t upattern(dash::SizeSpec<2, upattern_t::size_type>(extend_x, extend_y),
+                      dash::DistributionSpec<2>(dash::TILE(2), dash::TILE(5)),
+                      uteam_spec);
+
+  DASH_LOG_DEBUG("Pattern", upattern);
+  {
+    umatrix_t mat2(upattern);
+    dash::barrier();
+    LOG_MESSAGE("Matrix created");
+
+    fill_matrix(mat2, local_secret);
+    dash::barrier();
+    DASH_LOG_DEBUG("BEGIN STORE HDF");
+
+    StoreHDF::write(mat2, _filename, _dataset);
+
+    DASH_LOG_DEBUG("END STORE HDF");
+    dash::barrier();
+  }
+
+  umatrix_t mat2_verified(upattern);
+  dash::barrier();
+  StoreHDF::read(mat2_verified, _filename, _dataset);
+  dash::barrier();
+
+  verify_matrix(mat2_verified, local_secret);
+}
+
 
 #if 0
 TEST_F(HDF5MatrixTest, DashView)
