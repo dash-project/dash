@@ -1,7 +1,9 @@
 #include <dash/dart/base/config.h>
 #ifdef DART__PLATFORM__LINUX
+#if !defined(SPEC)
 /* _GNU_SOURCE required for sched_getcpu() */
 #  define _GNU_SOURCE
+#endif
 #  include <sched.h>
 #endif
 
@@ -400,17 +402,21 @@ dart_ret_t dart_hwinfo(
   }
 #endif /* DART_ENABLE_PAPI */
 
-if (hw.cpu_id < 0) {
-  #ifdef DART__PLATFORM__LINUX
+  if (hw.cpu_id < 0) {
+  #if defined(DART__PLATFORM__LINUX) && defined(__USE_GNU)
     hw.cpu_id = sched_getcpu();
   #elif defined(DART__PLATFORM__OSX)
     hw.cpu_id = osx_sched_getcpu();
   #else
+  #if !defined(SPEC)
     DART_LOG_ERROR("dart_hwinfo: "
                 "HWLOC or PAPI required if not running on a Linux or OSX platform");
     return DART_ERR_OTHER;
+  #else
+    hw.cpu_id = 0;
   #endif
-}
+  #endif
+  }
 
 #ifdef DART__ARCH__IS_MIC
   /*
