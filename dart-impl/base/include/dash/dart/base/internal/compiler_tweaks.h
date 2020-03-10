@@ -1,6 +1,14 @@
 #ifndef DART__BASE__INTERNAL__COMPILER_TWEAKS_H__
 #define DART__BASE__INTERNAL__COMPILER_TWEAKS_H__
 
+#ifdef SPEC
+
+#define PRAGMA__PUSH
+#define PRAGMA__IGNORE
+#define PRAGMA__POP
+
+#else
+
 #define STRINGIFY(x) #x
 #ifdef __GNUC__
 #ifdef __clang__
@@ -22,6 +30,8 @@
 #else
 #define PRAGMA__POP _Pragma(STRINGIFY(GCC diagnostic pop))
 #endif
+#endif
+
 #endif
 
 #endif
