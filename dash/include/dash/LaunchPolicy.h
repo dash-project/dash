@@ -5,7 +5,11 @@
 
 namespace dash {
 
-enum class launch : uint16_t {
+enum class launch
+#if !defined(SPEC)
+: uint16_t
+#endif
+{
 /// synchronous launch policy
 sync     = 0x1,
 /// async launch policy

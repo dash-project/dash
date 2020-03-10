@@ -13,7 +13,10 @@ namespace io {
  * \concept{DashIOConcept}
  *
  */
-enum class IOSBaseMode : uint32_t
+enum class IOSBaseMode
+#if !defined(SPEC)
+: uint32_t
+#endif
 {
     no_flags        = 0,
     /// Append: set the stream position to the end of the stream before

@@ -441,7 +441,11 @@ class StoreHDF {
   };
 
  private:
-  enum class Mode : uint16_t {
+  enum class Mode
+#if !defined(SPEC)
+  : uint16_t
+#endif
+  {
     READ = 0x1,
     WRITE = 0x2
   };
