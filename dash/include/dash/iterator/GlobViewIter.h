@@ -629,6 +629,26 @@ public:
     return _idx;
   }
 
+#if defined(SPEC)
+  /**
+   * Position of the iterator in global coordinates.
+   * Projects iterator position from its view spec to global coordinates.
+   */
+  inline std::array<IndexType, NumDimensions> gcoords() const
+  {
+    DASH_LOG_TRACE_VAR("GlobViewIter.gcoords()", _idx);
+    IndexType idx = _idx;
+    DASH_LOG_TRACE_VAR("GlobViewIter.gcoords", _max_idx);
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx = _max_idx;
+    }
+    return coords(idx);
+  }
+#endif
+
   /**
    * Position of the iterator in global index range.
    * Projects iterator position from its view spec to global index domain.
