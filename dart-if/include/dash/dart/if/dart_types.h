@@ -336,7 +336,7 @@ dart_locality_scope_t;
   #define DART_LOCALITY_HOST_MAX_SIZE     ((int)(256))
 #endif
 /** Maximum size of a domain tag string in \ref dart_hwinfo_t */
-#define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(32))
+#define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(132))
 /** Maximum number of domain scopes in \ref dart_hwinfo_t */
 #define DART_LOCALITY_MAX_DOMAIN_SCOPES   ((int)(12))
 /** Maximum size of a domain tag string in \ref dart_hwinfo_t
