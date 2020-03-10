@@ -243,7 +243,7 @@ int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
       return 0;
     case NODE_UNUSED:
       DART_LOG_ERROR("Invalid offset %lX in dart_buddy_free(alloc:%p)!",
-                    offset, self);
+                    offset, (void*)self);
       dart_abort(DART_EXIT_ABORT);
       dart__base__mutex_unlock(&self->mutex);
       return -1;

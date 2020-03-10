@@ -73,7 +73,7 @@ dart_ret_t dart_group_clone(
     if (gout != NULL) {
       *gout = NULL;
     }
-    DART_LOG_ERROR("Invalid group argument: %p (gin), %p (gout)", gin, gout);
+    DART_LOG_ERROR("Invalid group argument: %p (gin), %p (gout)", (void*)gin, (void*)gout);
     return DART_ERR_INVAL;
   }
 
@@ -104,7 +104,7 @@ dart_ret_t dart_group_union(
   *gout = NULL;
 
   if (g1 == NULL || g2 == NULL) {
-    DART_LOG_ERROR("Invalid group argument: %p and %p", g1, g2);
+    DART_LOG_ERROR("Invalid group argument: %p and %p", (void*)g1, (void*)g2);
     return DART_ERR_INVAL;
   }
 
@@ -167,7 +167,7 @@ dart_ret_t dart_group_intersect(
   *gout = NULL;
 
   if (g1 == NULL || g2 == NULL) {
-    DART_LOG_ERROR("Invalid group argument: %p and %p", g1, g2);
+    DART_LOG_ERROR("Invalid group argument: %p and %p", (void*)g1, (void*)g2);
     return DART_ERR_INVAL;
   }
 
@@ -193,7 +193,7 @@ dart_ret_t dart_group_addmember(
   MPI_Group     group_all;
 
   if (g == NULL) {
-    DART_LOG_ERROR("Invalid group argument: %p", g);
+    DART_LOG_ERROR("Invalid group argument: %p", (void*)g);
     return DART_ERR_INVAL;
   }
 
@@ -222,7 +222,7 @@ dart_ret_t dart_group_delmember(
   MPI_Group newgroup, group_all, resgroup;
 
   if (g == NULL) {
-    DART_LOG_ERROR("Invalid group argument: %p", g);
+    DART_LOG_ERROR("Invalid group argument: %p", (void*)g);
     return DART_ERR_INVAL;
   }
 
@@ -261,7 +261,7 @@ dart_ret_t dart_group_getmembers(
   MPI_Group group_all;
 
   if (g == NULL) {
-    DART_LOG_ERROR("Invalid group argument: %p", g);
+    DART_LOG_ERROR("Invalid group argument: %p", (void*)g);
     return DART_ERR_INVAL;
   }
 
@@ -290,7 +290,7 @@ dart_ret_t dart_group_split(
   int size, length, ranges[1][3];
 
   if (g == NULL) {
-    DART_LOG_ERROR("Invalid group argument: %p", g);
+    DART_LOG_ERROR("Invalid group argument: %p", (void*)g);
     return DART_ERR_INVAL;
   }
 
@@ -347,7 +347,7 @@ dart_ret_t dart_group_locality_split(
   dart_team_t team = domain->team;
 
   if (group == NULL) {
-    DART_LOG_ERROR("Invalid group argument: %p", group);
+    DART_LOG_ERROR("Invalid group argument: %p", (void*)group);
     return DART_ERR_INVAL;
   }
 
@@ -533,7 +533,7 @@ dart_ret_t dart_group_ismember(
 
   if (g == NULL) {
     *ismember = 0;
-    DART_LOG_ERROR("Invalid group argument: %p", g);
+    DART_LOG_ERROR("Invalid group argument: %p", (void*)g);
     return DART_ERR_INVAL;
   }
 
@@ -587,7 +587,7 @@ dart_ret_t dart_team_create(
   *newteam = DART_TEAM_NULL;
 
   if (group == NULL) {
-    DART_LOG_ERROR("Invalid group argument: %p", group);
+    DART_LOG_ERROR("Invalid group argument: %p", (void*)group);
     return DART_ERR_INVAL;
   }
 

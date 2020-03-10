@@ -63,7 +63,7 @@ dart_allocator_alloc(
   ssize_t     offset   = dart_buddy_alloc(allocator->buddy_allocator, nbytes);
   if (offset < 0) {
     DART_LOG_WARN("dart_allocator_alloc(%zu): allocator %p out of memory",
-                  nbytes, allocator);
+                  nbytes, (void*)allocator);
     *gptr = DART_GPTR_NULL;
     return DART_ERR_NOMEM;
   }

@@ -1064,7 +1064,7 @@ public:
     std::array<size_type, NumDimensions>  extents{};
 
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto num_blocks_d = _blockspec.extent(d);
+      IndexType num_blocks_d = _blockspec.extent(d);
       extents[d]        = _blocksize_spec.extent(d);
       if(block_coords[d] == (num_blocks_d - 1)){
         extents[d] -= underfilled_blocksize(d);

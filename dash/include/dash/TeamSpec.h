@@ -259,7 +259,7 @@ public:
          ++it) {
       DASH_LOG_TRACE("TeamSpec.balance_extents()",
                      "factor:", it->first, "x", it->second);
-      for (auto i = 1; i < it->second + 1; ++i) {
+      for (auto i = 1u; i < it->second + 1; ++i) {
         new_extents.insert(it->first * *new_extents.begin());
         new_extents.erase(new_extents.begin());
       }

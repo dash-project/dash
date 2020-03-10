@@ -110,7 +110,7 @@ dart__base__log_message(
   ...
 )
 {
-  if (level > env_loglevel() ||
+  if (level > (int)env_loglevel() ||
       level > DART_LOGLEVEL_TRACE) {
     return;
   }

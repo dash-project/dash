@@ -256,7 +256,11 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
     subdomain->relative_index = sd;
     subdomain->parent         = domain;
 
-    sprintf(subdomain->domain_tag, "%s.%d", domain->domain_tag, sd);
+    char new_domain_tag[sizeof(domain->domain_tag)];
+    snprintf(new_domain_tag, sizeof(new_domain_tag),
+             "%s.%d", domain->domain_tag, sd);
+    new_domain_tag[sizeof(new_domain_tag) - 1] = '\0';
+    memcpy(domain->domain_tag, new_domain_tag, sizeof(new_domain_tag));
 
     DART_LOG_TRACE("dart__base__locality__domain__update_subdomains --v");
     /* Recursively update subdomains: */
@@ -809,9 +813,13 @@ dart_ret_t dart__base__locality__domain__create_node_subdomains(
     module_domain->relative_index   = m;
     module_domain->parent           = node_domain;
     module_domain->team             = node_domain->team;
-    sprintf(module_domain->domain_tag, "%s.%d",
-            node_domain->domain_tag,
-            module_domain->relative_index);
+
+    char new_domain_tag[sizeof(module_domain->domain_tag)];
+    snprintf(new_domain_tag, sizeof(new_domain_tag),
+             "%s.%d", node_domain->domain_tag,
+             module_domain->relative_index);
+    new_domain_tag[sizeof(new_domain_tag) - 1] = '\0';
+    memcpy(module_domain->domain_tag, new_domain_tag, sizeof(module_domain->domain_tag));
 
     const char * module_hostname;
     DART_ASSERT_RETURNS(
@@ -1049,9 +1057,12 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
     subdomain->team             = module_domain->team;
 
     /* Set module subdomain tag: */
-    sprintf(subdomain->domain_tag, "%s.%d",
-            module_domain->domain_tag,
-            subdomain->relative_index);
+    char new_domain_tag[sizeof(subdomain->domain_tag)];
+    snprintf(new_domain_tag, sizeof(new_domain_tag),
+             "%s.%d", module_domain->domain_tag,
+             subdomain->relative_index);
+    new_domain_tag[sizeof(new_domain_tag) - 1] = '\0';
+    memcpy(subdomain->domain_tag, new_domain_tag, sizeof(subdomain->domain_tag));
 
     DART_LOG_TRACE("dart__base__locality__domain__create_module_subdomains: "
                    "-- module->domains[%d].domain_tag:%s",

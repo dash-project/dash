@@ -171,7 +171,7 @@ bool dart__mpi__datatype_isindexed(dart_datatype_t dart_type) {
 DART_INLINE
 int dart__mpi__datatype_sizeof(dart_datatype_t dart_type) {
   dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
-  return (dart__mpi__datatype_iscontiguous(dart_type)) ? dts->contiguous.size
+  return (dart__mpi__datatype_iscontiguous(dart_type)) ? (int)dts->contiguous.size
                                                        : -1;
 }
 
@@ -220,6 +220,8 @@ dart__mpi__datatype_convert_mpi(
   MPI_Datatype   * mpi_type,
   int            * mpi_num_elem)
 {
+  *mpi_type = MPI_DATATYPE_NULL;
+  *mpi_num_elem = 0;
   dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
   switch(dts->kind) {
     case DART_KIND_BASIC:  /* fall-through */

@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <string.h>
 #include <inttypes.h>
+#include <unistd.h>
 
 #include <dash/dart/base/macro.h>
 
