@@ -141,16 +141,16 @@ struct aligned_chunk<8> {
   long long x;
 };
 template <>
-struct aligned_chunk<16> {
-  __attribute__((aligned(16))) char x;
+struct alignas(16) aligned_chunk<16> {
+  char x;
 };
 template <>
-struct aligned_chunk<32> {
-  __attribute__((aligned(32))) char x;
+struct alignas(32) aligned_chunk<32> {
+  char x;
 };
 template <>
-struct aligned_chunk<64> {
-  __attribute__((aligned(64))) char x;
+struct alignas(64) aligned_chunk<64> {
+  char x;
 };
 
 // Adaptor to make a polymorphic allocator resource type from an STL allocator
