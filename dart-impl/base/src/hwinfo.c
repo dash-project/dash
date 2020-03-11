@@ -11,7 +11,7 @@
 
 #define CPUID(INFO, LEAF, SUBLEAF) __cpuid_count(LEAF, SUBLEAF, INFO[0], INFO[1], INFO[2], INFO[3])
 
-static int osx_sched_getcpu() {                              
+static int osx_sched_getcpu() {
   uint32_t CPUInfo[4]; 
   int cpuid;                          
   CPUID(CPUInfo, 1, 0);                          
@@ -400,17 +400,17 @@ dart_ret_t dart_hwinfo(
   }
 #endif /* DART_ENABLE_PAPI */
 
-if (hw.cpu_id < 0) {
-  #ifdef DART__PLATFORM__LINUX
+  if (hw.cpu_id < 0) {
+#ifdef DART__PLATFORM__LINUX
     hw.cpu_id = sched_getcpu();
-  #elif defined(DART__PLATFORM__OSX)
+#elif defined(DART__PLATFORM__OSX)
     hw.cpu_id = osx_sched_getcpu();
-  #else
+#else
     DART_LOG_ERROR("dart_hwinfo: "
-                "HWLOC or PAPI required if not running on a Linux or OSX platform");
+                   "HWLOC or PAPI required if not running on a Linux or OSX platform");
     return DART_ERR_OTHER;
-  #endif
-}
+#endif
+  }
 
 #ifdef DART__ARCH__IS_MIC
   /*
