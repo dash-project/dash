@@ -515,43 +515,6 @@ TEST_F(HDF5MatrixTest, GroupTest) {
   verify_matrix(matrix_c, secret[2]);
 }
 
-TEST_F(HDF5MatrixTest, ReadAndWriteDashMatrix1D) {
-  auto numunits = dash::Team::All().size();
-
-  // Add some randomness to the data
-  std::srand(time(NULL));
-  int local_secret = std::rand() % 1000;
-  int myid = dash::myid();
-
-  typedef dash::Matrix<value_t, 1> matrix_t;
-
-  int extend = 1000;  
-  auto size_spec = dash::SizeSpec<1>(extend);
-
-  DASH_LOG_DEBUG("Pattern", pattern1d);
-  {
-    matrix_t mat1(size_spec);
-    dash::barrier();
-    LOG_MESSAGE("Matrix created");
-
-    fill_matrix(mat1, local_secret);
-    dash::barrier();
-    DASH_LOG_DEBUG("BEGIN STORE HDF");
-
-    StoreHDF::write(mat1, _filename, _dataset);
-
-    DASH_LOG_DEBUG("END STORE HDF");
-    dash::barrier();
-  }
-
-  matrix_t mat1_verified(size_spec);
-  dash::barrier();
-  StoreHDF::read(mat1_verified, _filename, _dataset);
-  dash::barrier();
-
-  verify_matrix(mat1_verified, local_secret);
-}
-
 TEST_F(HDF5MatrixTest, ReadAndWriteDashMatrix2D) {
   auto numunits = dash::Team::All().size();
 
