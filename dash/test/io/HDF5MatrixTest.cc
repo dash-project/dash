@@ -563,9 +563,6 @@ TEST_F(HDF5MatrixTest, ReadAndWriteDashMatrix2D) {
   typedef dash::TilePattern<2, dash::ROW_MAJOR, long> pattern_t;
   typedef dash::Matrix<value_t, 2, typename pattern_t::index_type, pattern_t> matrix_t;
 
-  typedef dash::TilePattern<2, dash::ROW_MAJOR, unsigned long> upattern_t;
-  typedef dash::Matrix<value_t, 2, typename upattern_t::index_type, upattern_t> umatrix_t;
-
   //test default type
   dash::TeamSpec<2, pattern_t::index_type> team_spec(numunits, 1);
   team_spec.balance_extents();
@@ -599,10 +596,25 @@ TEST_F(HDF5MatrixTest, ReadAndWriteDashMatrix2D) {
   dash::barrier();
 
   verify_matrix(mat1_verified, local_secret);
+}
+
+TEST_F(HDF5MatrixTest, ReadAndWriteDashMatrix2DUnsigned) {
+  typedef dash::TilePattern<2, dash::ROW_MAJOR, unsigned long> upattern_t;
+  typedef dash::Matrix<value_t, 2, typename upattern_t::index_type, upattern_t> umatrix_t;
+
+  auto numunits = dash::Team::All().size();
+
+  // Add some randomness to the data
+  std::srand(time(NULL));
+  int local_secret = std::rand() % 1000;
+  int myid = dash::myid();
 
   //test unsigned type
   dash::TeamSpec<2, upattern_t::index_type> uteam_spec(numunits, 1); //here signifies the inflexibity of type acceptance
   uteam_spec.balance_extents();
+
+  auto extend_x = 2 * 2 * uteam_spec.extent(0);
+  auto extend_y = 2 * 5 * uteam_spec.extent(1);
 
   upattern_t upattern(dash::SizeSpec<2, upattern_t::size_type>(extend_x, extend_y),
                       dash::DistributionSpec<2>(dash::TILE(2), dash::TILE(5)),
