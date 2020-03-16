@@ -26,6 +26,12 @@ struct task_list;
 #define HAVE_RESCHEDULING_YIELD 1
 #endif // USE_UCONTEXT
 
+#define DO_NOT_TRACK
+
+#if defined(DART_DEBUG) && !defined(DO_NOT_TRACK)
+#define TRACK_CHILDREN
+#endif // DART_DEBUG
+
 // define to malloc/free all objects and not reuse them
 //#define DART_TASKING_NOMEMPOOL
 
@@ -59,9 +65,10 @@ struct dart_wait_handle_s dart_wait_handle_t;
 enum dart_taskflags_t {
   DART_TASK_HAS_REF          = 1 << 0,
   DART_TASK_DATA_ALLOCATED   = 1 << 1,
-  DART_TASK_IS_INLINED       = 1 << 2,
-  DART_TASK_IS_COMMTASK      = 1 << 3,
-  DART_TASK_COPYIN_ALLOCATED = 1 << 4
+  DART_TASK_IMMEDIATE        = 1 << 2,
+  DART_TASK_INLINE           = 1 << 3,
+  DART_TASK_IS_COMMTASK      = 1 << 4,
+  DART_TASK_COPYIN_ALLOCATED = 1 << 5
 };
 
 #define DART_TASK_SET_FLAG(_task, _flag)    (_task)->flags |=  (_flag)
@@ -95,6 +102,7 @@ struct dart_task_data {
           struct dart_task_data     *prev;        // previous entry in a task list/queue
         };
       };
+#if 0
       int                        prio;
       uint16_t                   flags;
       int8_t                     state;           // one of dart_task_state_t, single byte sufficient
@@ -140,6 +148,49 @@ struct dart_task_data {
       unsigned char              inline_data[]; // inline data passed to the action
     };
   };
+#endif // 0
+  int                        prio;
+  uint16_t                   flags;
+  int8_t                     state;           // one of dart_task_state_t, single byte sufficient
+  dart_tasklock_t            lock;
+  struct task_list          *successor;       // the list of tasks that depend on this task
+  dart_dephash_elem_t       *remote_successor;// the list of dependencies from remote tasks directly dependending on this task
+  struct dart_task_data     *parent;          // the task that created this task
+  // TODO: pack using pahole, move all execution-specific fields into context
+  context_t                 *taskctx;         // context to start/resume task
+  void                      *numaptr;         // ptr used to determine the NUMA node
+  union {
+    // only relevant before execution, both will be zero when the task starts execution
+    struct {
+      int32_t                    unresolved_deps; // the number of unresolved task dependencies
+      int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
+    };
+    // only relevant during execution
+    dart_dephash_head_t      *local_deps;      // hashmap containing dependencies of child tasks
+  };
+  union {
+    // used for dummy tasks
+    struct {
+      void*                  remote_task;     // the remote task (do not deref!)
+      dart_global_unit_t     origin;          // the remote unit
+    };
+    // used for regular tasks
+    struct {
+      dart_task_action_t     fn;              // the action to be invoked
+      void                  *data;            // the data to be passed to the action
+    };
+  };
+  dart_dephash_elem_t       *deps_owned;      // list of dependencies owned by this task
+  dart_wait_handle_t        *wait_handle;
+  const char                *descr;           // the description of the task
+  uint64_t                   instance;        // the instance counter of this task object
+  dart_taskphase_t           phase;
+  int                        num_children;
+  int16_t                    owner;           // the thread owning the task object memory
+#ifdef TRACK_CHILDREN
+  task_list_t              * children;  // list of child tasks
+#endif //TRACK_CHILDREN
+  unsigned char              inline_data[DART_TASKING_INLINE_DATA_SIZE]; // inline data passed to the action
 };
 
 /* Make sure the max size we export to DASH is large enough */
@@ -233,6 +284,7 @@ dart__tasking__create_task(
         dart_task_dep_t   *deps,
         size_t             ndeps,
         dart_task_prio_t   prio,
+        int                flags,
   const char              *descr,
         dart_taskref_t    *taskref) DART_INTERNAL;
 

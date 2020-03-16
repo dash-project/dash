@@ -12,6 +12,18 @@
 namespace dash{
 namespace tasks{
 
+namespace internal {
+
+  /*
+   * Simply selects the larger type (relevant for integer).
+   */
+  template<typename T,
+           typename S>
+  struct common_type {
+    using type = typename std::conditional<sizeof(T) >= sizeof(S), T, S>::type;
+  };
+} // namespace internal
+
   class num_chunks {
   public:
     explicit num_chunks(size_t nc) : n{nc}
@@ -124,20 +136,27 @@ namespace internal {
   };
 
   template<
-    class InputIter,
+    class InputIter1,
+    class InputIter2,
     class ChunkType,
     class RangeFunc,
     typename = typename std::enable_if<
                   internal::is_chunk_definition<ChunkType>::value>::type>
   void
   taskloop(
-    InputIter   begin,
-    InputIter   end,
+    InputIter1  begin_in,
+    InputIter2  end_in,
     ChunkType   chunking,
     RangeFunc   f,
+    int         flags = 0,
     const char *name = nullptr)
   {
     // TODO: extend this to handle GlobIter!
+
+    using iter_type = typename internal::common_type<InputIter1, InputIter2>::type;
+
+    iter_type begin{std::move(begin_in)};
+    iter_type end{std::move(end_in)};
 
     // skip empty ranges
     if (dash::distance(begin, end) == 0) {
@@ -145,9 +164,9 @@ namespace internal {
     }
 
     size_t chunk_size = chunking.get_chunk_size(begin, end);
-    InputIter from = begin;
+    iter_type from = begin;
     constexpr const bool is_mutable =
-                            !internal::is_const_callable<RangeFunc, InputIter, InputIter>::value;
+                            !internal::is_const_callable<RangeFunc, iter_type, iter_type>::value;
 
     using CountedFunctionT = CountedFunction<RangeFunc>;
     CountedFunctionT *f_ptr;
@@ -156,15 +175,16 @@ namespace internal {
       f_ptr = CountedFunctionT::create(std::move(f), num_chunks);
     }
 
+    std::array<dart_task_dep_t, 0> deps;
+
     while (from < end) {
-      InputIter to = from + chunk_size;
+      iter_type to = from + chunk_size;
       if (to > end) to = end;
 #if DASH_TASKS_INVOKE_DIRECT
       f(from, to);
 #else // DASH_TASKS_INVOKE_DIRECT
       if (!is_mutable) {
-        dash::tasks::async(
-          name,
+        dash::tasks::internal::async(
           // capture the counted ptr and the range
           [f_ptr, from, to](){
             // the d'tor will finally delete the object once all
@@ -172,15 +192,22 @@ namespace internal {
             auto _ = internal::finally([f_ptr](){ f_ptr->drop(); });
 
             f_ptr->get()(from, to);
-          }
+          },
+          DART_PRIO_PARENT,
+          deps,
+          flags,
+          name
         );
       } else {
-        dash::tasks::async(
-          name,
+        dash::tasks::internal::async(
           // capture the function object and the range
           [f, from, to](){
             f(from, to);
-          }
+          },
+          DART_PRIO_PARENT,
+          deps,
+          flags,
+          name
         );
       }
 #endif // DASH_TASKS_INVOKE_DIRECT
@@ -189,7 +216,8 @@ namespace internal {
   }
 
   template<
-    class InputIter,
+    class InputIter1,
+    class InputIter2,
     class ChunkType,
     class RangeFunc,
     class DepGeneratorFunc,
@@ -197,14 +225,20 @@ namespace internal {
                   internal::is_chunk_definition<ChunkType>::value>::type>
   void
   taskloop(
-    InputIter   begin,
-    InputIter   end,
+    InputIter1  begin_in,
+    InputIter2  end_in,
     ChunkType   chunking,
     RangeFunc   f,
     DepGeneratorFunc depedency_generator,
+    int         flags = 0,
     const char *name = nullptr)
   {
     // TODO: extend this to handle GlobIter!
+
+    using iter_type = typename internal::common_type<InputIter1, InputIter2>::type;
+
+    iter_type begin{std::move(begin_in)};
+    iter_type end{std::move(end_in)};
 
     // skip empty ranges
     if (dash::distance(begin, end) == 0) {
@@ -212,13 +246,13 @@ namespace internal {
     }
 
     size_t chunk_size = chunking.get_chunk_size(begin, end);
-    InputIter from = begin;
+    iter_type from = begin;
     constexpr const bool is_mutable =
-                            !internal::is_const_callable<RangeFunc, InputIter, InputIter>::value;
+                            !internal::is_const_callable<RangeFunc, iter_type, iter_type>::value;
 
 #if DASH_TASKS_INVOKE_DIRECT
     while (from < end) {
-      InputIter to = from + chunk_size;
+      iter_type to = from + chunk_size;
       if (to > end) to = end;
       f(from, to);
       from = to;
@@ -233,7 +267,7 @@ namespace internal {
 
     DependencyContainer deps;
     while (from < end) {
-      InputIter to = from + chunk_size;
+      iter_type to = from + chunk_size;
       if (to > end) to = end;
       auto dep_inserter = DependencyContainerInserter(deps, deps.begin());
       depedency_generator(from, to, dep_inserter);
@@ -247,7 +281,9 @@ namespace internal {
 
             f_ptr->get()(from, to);
           },
+          DART_PRIO_PARENT,
           deps,
+          flags,
           name
         );
       } else {
@@ -256,7 +292,9 @@ namespace internal {
           [f, from, to](){
             f(from, to);
           },
+          DART_PRIO_PARENT,
           deps,
+          flags,
           name
         );
       }
@@ -276,23 +314,25 @@ namespace internal {
    * TODO: Add launch policies here!
    */
   template<
-    class InputIter,
+    class InputIter1,
+    class InputIter2,
     class ChunkType,
     class RangeFunc,
     typename = typename std::enable_if<
                   internal::is_chunk_definition<ChunkType>::value>::type>
   void
   taskloop(
-    InputIter begin,
-    InputIter end,
-    ChunkType chunking,
-    RangeFunc f)
+    InputIter1 begin,
+    InputIter2 end,
+    ChunkType  chunking,
+    RangeFunc  f)
   {
     internal::taskloop(begin, end, chunking, f);
   }
 
   template<
-    class InputIter,
+    class InputIter1,
+    class InputIter2,
     class ChunkType,
     class RangeFunc,
     class DepGeneratorFunc,
@@ -300,33 +340,37 @@ namespace internal {
                   internal::is_chunk_definition<ChunkType>::value>::type>
   void
   taskloop(
-    InputIter begin,
-    InputIter end,
-    ChunkType chunking,
-    RangeFunc f,
+    InputIter1 begin,
+    InputIter2 end,
+    ChunkType  chunking,
+    RangeFunc  f,
     DepGeneratorFunc dependency_generator)
   {
     internal::taskloop(begin, end, chunking, f, dependency_generator);
   }
 
-  template<class InputIter, typename RangeFunc>
+  template<
+    class InputIter1,
+    class InputIter2,
+    typename RangeFunc>
   void
   taskloop(
-    InputIter begin,
-    InputIter end,
-    RangeFunc f)
+    InputIter1 begin,
+    InputIter2 end,
+    RangeFunc  f)
   {
     internal::taskloop(begin, end, dash::tasks::num_chunks{dash::tasks::numthreads()}, f);
   }
 
   template<
-    class InputIter,
+    class InputIter1,
+    class InputIter2,
     class RangeFunc,
     class DepGeneratorFunc>
   auto
   taskloop(
-    InputIter        begin,
-    InputIter        end,
+    InputIter1       begin,
+    InputIter2       end,
     RangeFunc        f,
     DepGeneratorFunc dependency_generator)
   ->  typename
@@ -337,7 +381,8 @@ namespace internal {
   }
 
   template<
-    class InputIter,
+    class InputIter1,
+    class InputIter2,
     class ChunkType,
     class RangeFunc,
     typename = typename std::enable_if<
@@ -345,16 +390,17 @@ namespace internal {
   void
   taskloop(
     const char *name,
-    InputIter   begin,
-    InputIter   end,
+    InputIter1  begin,
+    InputIter2  end,
     ChunkType   chunking,
     RangeFunc   f)
   {
-    internal::taskloop(begin, end, chunking, f, name);
+    internal::taskloop(begin, end, chunking, f, 0, name);
   }
 
   template<
-    class InputIter,
+    class InputIter1,
+    class InputIter2,
     class ChunkType,
     class RangeFunc,
     class DepGeneratorFunc,
@@ -363,37 +409,42 @@ namespace internal {
   void
   taskloop(
     const char *name,
-    InputIter   begin,
-    InputIter   end,
+    InputIter1  begin,
+    InputIter2  end,
     ChunkType   chunking,
     RangeFunc   f,
     DepGeneratorFunc dependency_generator)
   {
     internal::taskloop(begin, end, chunking,
-                       f, dependency_generator, name);
-  }
-
-  template<class InputIter, typename RangeFunc>
-  void
-  taskloop(
-    const char *name,
-    InputIter   begin,
-    InputIter   end,
-    RangeFunc   f)
-  {
-    internal::taskloop(begin, end,
-                       dash::tasks::num_chunks{dash::tasks::numthreads()}, f, name);
+                       f, dependency_generator, 0, name);
   }
 
   template<
-    class InputIter,
+    class InputIter1,
+    class InputIter2,
+    typename RangeFunc>
+  void
+  taskloop(
+    const char *name,
+    InputIter1  begin,
+    InputIter2  end,
+    RangeFunc   f)
+  {
+    internal::taskloop(begin, end,
+                       dash::tasks::num_chunks{dash::tasks::numthreads()},
+                       f, 0, name);
+  }
+
+  template<
+    class InputIter1,
+    class InputIter2,
     class RangeFunc,
     class DepGeneratorFunc>
   auto
   taskloop(
     const char      *name,
-    InputIter        begin,
-    InputIter        end,
+    InputIter1       begin,
+    InputIter2       end,
     RangeFunc        f,
     DepGeneratorFunc dependency_generator)
   ->  typename
@@ -401,13 +452,165 @@ namespace internal {
   {
     internal::taskloop(begin, end,
                        dash::tasks::num_chunks{dash::tasks::numthreads()},
-                       f, dependency_generator, name);
+                       f, dependency_generator, 0, name);
   }
-
 
 #define SLOC_(__file, __delim, __line) __file # __delim # __line
 #define SLOC(__file, __line)  SLOC_(__file, :, __line)
 #define TASKLOOP(...) taskloop(SLOC(__FILE__, __LINE__), __VA_ARGS__)
+
+
+  /**
+   * Create a bunch of tasks operating on the input range but do not wait
+   * for their completion.
+   * TODO: Add launch policies here!
+   */
+  template<
+    class InputIter1,
+    class InputIter2,
+    class ChunkType,
+    class RangeFunc,
+    typename = typename std::enable_if<
+                  internal::is_chunk_definition<ChunkType>::value>::type>
+  void
+  taskletloop(
+    InputIter1 begin,
+    InputIter2 end,
+    ChunkType  chunking,
+    RangeFunc  f)
+  {
+    internal::taskloop(begin, end, chunking, f, DART_TASK_NOYIELD);
+  }
+
+  template<
+    class InputIter1,
+    class InputIter2,
+    class ChunkType,
+    class RangeFunc,
+    class DepGeneratorFunc,
+    typename = typename std::enable_if<
+                  internal::is_chunk_definition<ChunkType>::value>::type>
+  void
+  taskletloop(
+    InputIter1 begin,
+    InputIter2 end,
+    ChunkType  chunking,
+    RangeFunc  f,
+    DepGeneratorFunc dependency_generator)
+  {
+    internal::taskloop(begin, end, chunking, f,
+                       dependency_generator, DART_TASK_NOYIELD);
+  }
+
+  template<
+    class InputIter1,
+    class InputIter2,
+    typename RangeFunc>
+  void
+  taskletloop(
+    InputIter1 begin,
+    InputIter2 end,
+    RangeFunc  f)
+  {
+    internal::taskloop(begin, end,
+                       dash::tasks::num_chunks{dash::tasks::numthreads()},
+                       f, DART_TASK_NOYIELD);
+  }
+
+  template<
+    class InputIter1,
+    class InputIter2,
+    class RangeFunc,
+    class DepGeneratorFunc>
+  auto
+  taskletloop(
+    InputIter1       begin,
+    InputIter2       end,
+    RangeFunc        f,
+    DepGeneratorFunc dependency_generator)
+  ->  typename
+      std::enable_if<!internal::is_chunk_definition<RangeFunc>::value, void>::type
+  {
+    internal::taskloop(begin, end, dash::tasks::num_chunks{dash::tasks::numthreads()},
+                       f, dependency_generator, DART_TASK_NOYIELD);
+  }
+
+  template<
+    class InputIter1,
+    class InputIter2,
+    class ChunkType,
+    class RangeFunc,
+    typename = typename std::enable_if<
+                  internal::is_chunk_definition<ChunkType>::value>::type>
+  void
+  taskletloop(
+    const char *name,
+    InputIter1  begin,
+    InputIter2  end,
+    ChunkType   chunking,
+    RangeFunc   f)
+  {
+    internal::taskloop(begin, end, chunking, f, DART_TASK_NOYIELD, name);
+  }
+
+  template<
+    class InputIter1,
+    class InputIter2,
+    class ChunkType,
+    class RangeFunc,
+    class DepGeneratorFunc,
+    typename = typename std::enable_if<
+                  internal::is_chunk_definition<ChunkType>::value>::type>
+  void
+  taskletloop(
+    const char *name,
+    InputIter1  begin,
+    InputIter2  end,
+    ChunkType   chunking,
+    RangeFunc   f,
+    DepGeneratorFunc dependency_generator)
+  {
+    internal::taskloop(begin, end, chunking,
+                       f, dependency_generator, DART_TASK_NOYIELD, name);
+  }
+
+  template<
+    class InputIter1,
+    class InputIter2,
+    typename RangeFunc>
+  void
+  taskletloop(
+    const char *name,
+    InputIter1  begin,
+    InputIter2  end,
+    RangeFunc   f)
+  {
+    internal::taskloop(begin, end,
+                       dash::tasks::num_chunks{dash::tasks::numthreads()},
+                       f, DART_TASK_NOYIELD, name);
+  }
+
+  template<
+    class InputIter1,
+    class InputIter2,
+    class RangeFunc,
+    class DepGeneratorFunc>
+  auto
+  taskletloop(
+    const char      *name,
+    InputIter1       begin,
+    InputIter2       end,
+    RangeFunc        f,
+    DepGeneratorFunc dependency_generator)
+  ->  typename
+      std::enable_if<!internal::is_chunk_definition<RangeFunc>::value, void>::type
+  {
+    internal::taskloop(begin, end,
+                       dash::tasks::num_chunks{dash::tasks::numthreads()},
+                       f, dependency_generator, DART_TASK_NOYIELD, name);
+  }
+
+#define TASKLETLOOP(...) taskletloop(SLOC(__FILE__, __LINE__), __VA_ARGS__)
 
 } // namespace tasks
 } // namespace dash

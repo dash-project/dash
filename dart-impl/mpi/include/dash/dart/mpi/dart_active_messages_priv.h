@@ -64,8 +64,8 @@ struct dart_flush_info {
   size_t size;
   // the target of the write
   int    target;
-  // 0 if the flush failed, >0 if successful
-  int    status;
+  // whether the flush completed
+  bool   completed;
   // internal data structure for the implementation
   uint64_t _internal[2];
 };
@@ -142,6 +142,9 @@ dart_amsg_sopnop4_init(dart_amsgq_impl_t *impl)   DART_INTERNAL;
 
 dart_ret_t
 dart_amsg_sopnop5_init(dart_amsgq_impl_t *impl)   DART_INTERNAL;
+
+dart_ret_t
+dart_amsg_sopnop6_init(dart_amsgq_impl_t *impl)   DART_INTERNAL;
 
 dart_ret_t
 dart_amsg_singlewin_init(dart_amsgq_impl_t *impl) DART_INTERNAL;

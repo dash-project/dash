@@ -129,7 +129,7 @@ static dart_task_t root_task = {
     .num_children     = 0,
     .state            = DART_TASK_ROOT,
     .descr            = "root_task"
-#ifdef DART_DEBUG
+#ifdef TRACK_CHILDREN
     , .children       = NULL
 #endif
 };
@@ -178,11 +178,15 @@ void handle_task(dart_task_t *task, dart_thread_t *thread);
 static
 void remote_progress(dart_thread_t *thread, bool force);
 
+static inline void
+dart__tasking__handle_task_internal(dart_task_t *task, dart_thread_t *thread);
+
 static int64_t acc_matching_time_us = 0;
 static int64_t acc_idle_time_us     = 0;
 static int64_t acc_post_time_us     = 0;
 _Thread_local static int64_t thread_acc_idle_time_us = 0;
 _Thread_local static int64_t thread_idle_start_ts    = 0;
+_Thread_local static int64_t thread_acc_post_time_us        = 0;
 
 dart_task_t *
 dart__tasking__root_task()
@@ -331,8 +335,8 @@ dart__tasking__yield(int delay)
     dart__tasking__abort_current_task(thread);
 
   // we cannot yield from inlined tasks
-  if (DART_TASK_HAS_FLAG(current_task, DART_TASK_IS_INLINED)) {
-    return DART_OK;
+  if (DART_TASK_HAS_FLAG(current_task, DART_TASK_INLINE)) {
+    return DART_ERR_INVAL;
   }
 
   // exit task if the task is blocked and return as soon as we get back here
@@ -361,7 +365,7 @@ dart__tasking__yield(int delay)
       DART_ASSERT(thread->thread_id == 0);
 
       // invoke the task directly
-      dart__tasking__handle_task(next);
+      dart__tasking__handle_task_internal(next, thread);
     } else {
       // mark task as suspended to avoid invoke_task to update the retctx
       // the next task should return to where the current task would have
@@ -666,6 +670,9 @@ dart_task_t * create_task(
   task->wait_handle   = NULL;
   task->numaptr       = NULL;
 
+  // NOTE: never reset the instance counter of the task!
+  task->instance++;
+
   DART_LOG_TRACE("Task %p: data %p, data_size %zu, fn %p",
                  task, data, data_size, fn);
 
@@ -675,7 +682,6 @@ dart_task_t * create_task(
       DART_TASK_SET_FLAG(task, DART_TASK_DATA_ALLOCATED);
       task->data           = malloc(data_size);
     } else {
-      printf("Using internal task data buffer for task %s\n", descr);
       // use the task-internal buffer
       task->data = (void*)((intptr_t)task + offsetof(dart_task_t, inline_data));
     }
@@ -698,7 +704,8 @@ dart_task_t * create_task(
       break;
     case DART_PRIO_INLINE:
       task->prio       = DART_PRIO_HIGH;
-      DART_TASK_SET_FLAG(task, DART_TASK_IS_INLINED);
+      DART_TASK_SET_FLAG(task, DART_TASK_INLINE);
+      DART_TASK_SET_FLAG(task, DART_TASK_IMMEDIATE);
       break;
     default:
       task->prio       = prio;
@@ -713,12 +720,12 @@ dart_task_t * create_task(
     task->descr = descr;
   }
 
-#ifdef DART_DEBUG
+#ifdef TRACK_CHILDREN
   LOCK_TASK(task->parent);
   dart_tasking_tasklist_prepend(&task->parent->children, task);
   UNLOCK_TASK(task->parent);
   task->children = NULL;
-#endif // DART_DEBUG
+#endif // TRACK_CHILDREN
 
   return task;
 }
@@ -734,11 +741,11 @@ void dart__tasking__destroy_task(dart_task_t *task)
     dart__tasking__phase_take_task(task->phase);
   }
 
-#ifdef DART_DEBUG
+#ifdef TRACK_CHILDREN
   LOCK_TASK(task->parent);
   dart_tasking_tasklist_remove(&task->parent->children, task);
   UNLOCK_TASK(task->parent);
-#endif // DART_DEBUG
+#endif // TRACK_CHILDREN
 
   dart_tasking_datadeps_reset(task);
 
@@ -849,7 +856,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
           !dart__tasking__cancellation_requested()) {
         // Implicit wait for child tasks
         // TODO: really necessary? Can we transfer child ownership to parent->parent?
-        //dart__tasking__task_complete();
+        dart__tasking__task_complete(true);
       }
 
       bool has_ref;
@@ -859,6 +866,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 
       DART_ASSERT(task != &root_task);
 
+      // release dependencies
       dart_tasking_datadeps_release_local_task(task, thread);
 
       // we need to lock the task shortly here before releasing datadeps
@@ -891,8 +899,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     }
     // return to previous task
     set_current_task(current_task);
-    DART_FETCH_AND_ADD64(&acc_post_time_us,
-                         current_time_us() - postprocessing_start_ts);
+    acc_post_time_us += current_time_us() - postprocessing_start_ts;
   }
 }
 
@@ -905,6 +912,7 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
 {
   if (task != NULL)
   {
+    DART_ASSERT_MSG(task->fn != NULL, "task %p has invalid function!", task);
     DART_LOG_DEBUG("Thread %i executing inlined task %p ('%s')",
                   thread->thread_id, task, task->descr);
 
@@ -921,8 +929,6 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
 
     task->fn(task->data);
 
-    // we're coming back into this task here
-
     DART_LOG_TRACE("Returned from inlined task (%p, %p)",
                    task, thread);
 
@@ -937,8 +943,7 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
     if (task->state == DART_TASK_DETACHED) {
       dart__task__wait_enqueue(task);
     } else {
-      // it is safe to release the task before marking it as finished
-      // as the task will be removed from the hashtable first
+      // release dependencies
       dart_tasking_datadeps_release_local_task(task, thread);
 
       // we need to lock the task shortly
@@ -969,16 +974,22 @@ void handle_inline_task(dart_task_t *task, dart_thread_t *thread)
   }
 }
 
+static inline void
+dart__tasking__handle_task_internal(dart_task_t *task, dart_thread_t *thread)
+{
+  if (NULL == task) return;
+  if (DART_TASK_HAS_FLAG(task, DART_TASK_INLINE)) {
+    handle_inline_task(task, thread);
+  } else {
+    handle_task(task, thread);
+  }
+}
 
 void
 dart__tasking__handle_task(dart_task_t *task)
 {
   dart_thread_t *thread = dart__tasking__current_thread();
-  if (DART_TASK_HAS_FLAG(task, DART_TASK_IS_INLINED)) {
-    handle_inline_task(task, thread);
-  } else {
-    handle_task(task, thread);
-  }
+  dart__tasking__handle_task_internal(task, thread);
 }
 
 
@@ -1069,7 +1080,8 @@ void* thread_main(void *data)
     } else if (in_idle && task != NULL) {
       EVENT_EXIT(EVENT_IDLE);
     }
-    handle_task(task, thread);
+
+    dart__tasking__handle_task_internal(task, thread);
 
     //DART_LOG_TRACE("thread_main: finished processing task %p", task);
 
@@ -1104,6 +1116,7 @@ void* thread_main(void *data)
   }
 
   DART_FETCH_AND_ADD64(&acc_idle_time_us, thread_acc_idle_time_us);
+  DART_FETCH_AND_ADD64(&acc_post_time_us, thread_acc_post_time_us);
 
   DART_ASSERT_MSG(
     thread == get_current_thread(), "Detected invalid thread return!");
@@ -1153,13 +1166,17 @@ start_threads(int num_threads)
                   thread_idle_method == DART_THREAD_IDLE_POLL ? "POLL" : "WAIT");
   }
 
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setstacksize(&attr, dart__tasking__context_stack_size());
+
   // start-up all worker threads
   for (int i = 1; i < num_threads; i++)
   {
     // will be free'd by the thread
     struct thread_init_data *tid = malloc(sizeof(*tid));
     tid->threadid = i;
-    int ret = pthread_create(&tid->pthread, NULL,
+    int ret = pthread_create(&tid->pthread, &attr,
                              &thread_main, tid);
     if (ret != 0) {
       DART_LOG_ERROR("Failed to create thread %i of %i!", i, num_threads);
@@ -1304,18 +1321,20 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
   }
 
   bool queuable = false;
+  uint64_t instance = task->instance;
+  LOCK_TASK(task);
   if (task->state == DART_TASK_CREATED)
   {
-    LOCK_TASK(task);
-    if (task->state == DART_TASK_CREATED &&
+    if (task->instance == instance &&
+        task->state == DART_TASK_CREATED &&
         dart_tasking_datadeps_is_runnable(task)) {
       task->state = DART_TASK_QUEUED;
       queuable = true;
     }
-    UNLOCK_TASK(task);
   } else if (task->state == DART_TASK_SUSPENDED) {
     queuable = true;
   }
+  UNLOCK_TASK(task);
 
   // make sure we don't queue the task if we are not allowed to
   if (!queuable) {
@@ -1353,8 +1372,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
 
   if (!enqueued){
 
-    // execute inlined task directly
-    if (DART_TASK_HAS_FLAG(task, DART_TASK_IS_INLINED)) {
+    // execute immediate tasks directly as inline tasks
+    if (DART_TASK_HAS_FLAG(task, DART_TASK_IMMEDIATE)) {
       handle_inline_task(task, get_current_thread());
       return;
     }
@@ -1397,6 +1416,7 @@ dart__tasking__create_task(
           dart_task_dep_t *deps,
           size_t           ndeps,
           dart_task_prio_t prio,
+          int              flags,
     const char            *descr,
           dart_taskref_t  *ref)
 {
@@ -1418,6 +1438,10 @@ dart__tasking__create_task(
   if (ref != NULL) {
     DART_TASK_SET_FLAG(task, DART_TASK_HAS_REF);
     *ref = task;
+  }
+
+  if (flags & DART_TASK_NOYIELD) {
+    DART_TASK_SET_FLAG(task, DART_TASK_INLINE);
   }
 
   int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
@@ -1533,7 +1557,7 @@ dart__tasking__task_complete(bool local_only)
     // b) check cancellation
     dart__tasking__check_cancellation(thread);
     // d) process our tasks
-    handle_task(next, thread);
+    dart__tasking__handle_task_internal(next, thread);
     // e) requery the thread as it might have changed
     thread = get_current_thread();
   }
@@ -1610,7 +1634,7 @@ dart__tasking__task_wait(dart_taskref_t *tr)
       remote_progress(thread, true);
       task = next_task(thread);
     }
-    handle_task(task, thread);
+    dart__tasking__handle_task_internal(task, thread);
 
     // lock the task for the check in the while header
     LOCK_TASK(reftask);
@@ -1649,7 +1673,7 @@ dart__tasking__task_test(dart_taskref_t *tr, int *flag)
     dart_task_t *task = next_task(thread);
     remote_progress(thread, task == NULL);
     if (task == NULL) task = next_task(thread);
-    handle_task(task, thread);
+    dart__tasking__handle_task_internal(task, thread);
 
     // check if this was our task
     LOCK_TASK(reftask);

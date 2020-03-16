@@ -97,6 +97,15 @@ int ompi_grequestx_start(
  */
 #define DART_AMSGQ_SOPNOP_FETCHOP_ENVSTR  "DART_AMSGQ_SOPNOP_FETCHOP"
 
+/**
+ * Name of the environment variable controling the limit on the number of
+ * interleaved send operations.
+ *
+ * Type: integer
+ * Default: 16
+ */
+#define DART_AMSGQ_SOPNOP_PARLIMIT_ENVSTR  "DART_AMSGQ_SOPNOP_PARLIMIT"
+
 struct dart_amsgq_impl_data {
   MPI_Win           queue_win;
   int64_t          *queue_ptr;
@@ -152,7 +161,7 @@ static       uint64_t dereg_value;
 static bool do_flush = true;
 static bool use_fetchop = false;
 
-static int pipeline_depth = 4;
+static int pipeline_depth = 16;
 
 #define NUM_QUEUES                      2
 #define OFFSET_QUEUENUM                 0
@@ -258,6 +267,9 @@ dart_amsg_sopnop_openq(
     do_flush    = dart__base__env__bool(DART_AMSGQ_SOPNOP_FLUSH_ENVSTR, true);
     use_fetchop = dart__base__env__bool(DART_AMSGQ_SOPNOP_FETCHOP_ENVSTR, false);
 
+    pipeline_depth = dart__base__env__number(DART_AMSGQ_SOPNOP_PARLIMIT_ENVSTR,
+                                             pipeline_depth);
+
     dereg_value = fuse(-1, 0);
   }
 
@@ -302,8 +314,11 @@ dart_amsg_sopnop_openq(
   memset(res->queue_ptr, 0, win_size);
 
   res->states = malloc(pipeline_depth * sizeof(struct dart_grequest_state));
-  res->reqs   = malloc(pipeline_depth * sizeof(MPI_Request));
   res->outidx = malloc(pipeline_depth * sizeof(*res->outidx));
+  res->reqs   = malloc(pipeline_depth * sizeof(MPI_Request));
+  for (int i = 0; i < pipeline_depth; ++i) {
+    res->reqs[i] = MPI_REQUEST_NULL;
+  }
 
   // properly initialize the writecnt of the second queue
   *(int64_t*)(((intptr_t)res->queue_ptr) + OFFSET_WRITECNT(1)) = fuse(PROCESSING_SIGNAL, 0);
@@ -473,6 +488,8 @@ int grequest_query_fn(void *data, MPI_Status *status)
 
 static void initiate_queuenum_fetch(struct dart_grequest_state *state)
 {
+  DART_LOG_TRACE("Initializing queuenum fetch from %d (state id %d)",
+                 state->flush_info->target, state->idx);
   MPI_Rget_accumulate(
     &tmp, 1, MPI_UINT64_T,
     &state->queuenum, 1, MPI_UINT64_T,
@@ -626,8 +643,8 @@ int grequest_poll_fn(void *data, MPI_Status *status)
       if (!(offset >= 0 && (offset + msg_size) <= state->amsgq->queue_size)) {
 
         // the queue is full, reset the offset
-        DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld)",
-                      queuenum, target, offset);
+        DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld) (state id %d)",
+                      queuenum, target, offset, state->idx);
         state->fused_op = fuse(-1, -msg_size);
         // deregister as a writer
         update_value(&state->fused_op, target, OFFSET_WRITECNT(queuenum), queue_win);
@@ -642,8 +659,8 @@ int grequest_poll_fn(void *data, MPI_Status *status)
 
       // advance to next step
 
-      DART_LOG_TRACE("Writing %ld into queue %ld at offset %ld at unit %i",
-                    msg_size, queuenum, offset, target);
+      DART_LOG_TRACE("Writing %ld into queue %ld at offset %ld at unit %i (state id %d)",
+                    msg_size, queuenum, offset, target, state->idx);
 
       // Write our payload
       MPI_Put(
@@ -675,17 +692,17 @@ int grequest_poll_fn(void *data, MPI_Status *status)
       update_value(&dereg_value, target, OFFSET_WRITECNT(queuenum), queue_win);
 
       DART_LOG_TRACE("Sent message of size %zu to unit "
-                    "%d starting at offset %ld",
-                    state->flush_info->size, target, second(state->fused_val));
+                    "%d starting at offset %ld (state id %d)",
+                    state->flush_info->size, target, second(state->fused_val), state->idx);
 
       state->state = DART_GREQUEST_COMPLETE;
-      state->flush_info->status = 1;
+      state->flush_info->completed = true;
       // we're done, mark the request as complete and return
       MPI_Grequest_complete(state->req);
       return MPI_SUCCESS;
     }
     default:
-      DART_ASSERT_MSG(state->state <= DART_GREQUEST_PUT,
+      DART_ASSERT_MSG(state->state < DART_GREQUEST_COMPLETE,
                       "Unexpected state request found in polling function!");
   }
 
@@ -716,35 +733,35 @@ dart_amsg_sopnop_sendbuf_all(
 
 
   // put all elements into a lifo
-  struct dart_grequest_state *state_lifo = NULL;
+  struct dart_grequest_state *state_free = NULL;
   for (int i = 0; i < pipeline_depth; ++i) {
     amsgq->states[i].idx = i;
-    DART_STACK_PUSH(state_lifo, &amsgq->states[i]);
+    amsgq->states[i].req = MPI_REQUEST_NULL;
+    DART_STACK_PUSH(state_free, &amsgq->states[i]);
   }
 
   //printf("dart_amsg_sopnop_sendbuf_all\n");
 
-  int num_active = 0;
+  struct dart_grequest_state *state = NULL;
 
   for (int i = 0; i < num_info; ++i) {
-    struct dart_grequest_state *state = NULL;
 
     do {
-      DART_STACK_POP(state_lifo, state);
+      DART_STACK_POP(state_free, state);
       if (NULL != state) break;
       // wait for some operations to complete
       int outcount;
-      MPI_Waitsome(num_active, amsgq->reqs, &outcount, amsgq->outidx, MPI_STATUSES_IGNORE);
-      num_active -= outcount;
+      MPI_Waitsome(pipeline_depth, amsgq->reqs, &outcount, amsgq->outidx, MPI_STATUSES_IGNORE);
       for (int i = 0; i < outcount; ++i) {
-        DART_STACK_PUSH(state_lifo, &amsgq->states[amsgq->outidx[i]]);
+        amsgq->states[amsgq->outidx[i]].req = MPI_REQUEST_NULL;
+        DART_STACK_PUSH(state_free, &amsgq->states[amsgq->outidx[i]]);
       }
     } while (true);
 
     state->state = DART_GREQUEST_QUEUENUM;
     state->flush_info = &flush_info[i];
     state->amsgq = amsgq;
-    state->flush_info->status = 0;
+    state->flush_info->completed = false;
 
     // fetch queue number
     initiate_queuenum_fetch(state);
@@ -753,12 +770,27 @@ dart_amsg_sopnop_sendbuf_all(
       grequest_query_fn, grequest_free_fn,
       grequest_cancel_fn, grequest_poll_fn,
       state, &state->req);
+
+    // store the request in case we need to wait for some operations to complete
     amsgq->reqs[state->idx] = state->req;
 
-    ++num_active;
   }
 
-  MPI_Waitall(num_info, amsgq->reqs, MPI_STATUSES_IGNORE);
+
+  // gather all active requests
+  int num_active = 0;
+  for (int i = 0; i < pipeline_depth; ++i) {
+    state = &amsgq->states[i];
+    if (state->req == MPI_REQUEST_NULL) continue;
+
+    amsgq->reqs[num_active] = state->req;
+    num_active++;
+
+  };
+
+  if (num_active > 0) {
+    MPI_Waitall(num_active, amsgq->reqs, MPI_STATUSES_IGNORE);
+  }
 
   if (do_flush || amsgq->needs_flush) {
     MPI_Win_flush_all(amsgq->queue_win);

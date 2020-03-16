@@ -54,6 +54,10 @@ typedef enum dart_task_deptype {
   DART_DEP_IGNORE  // should always be the last
 } dart_task_deptype_t;
 
+typedef enum dart_task_flags {
+  DART_TASK_NOYIELD = 1
+} dart_task_flags_t;
+
 typedef struct dart_task_dep {
   union {
     /// use for type INPUT, OUTPUT or INOUT dependencies
@@ -113,6 +117,7 @@ dart_task_create(
         dart_task_dep_t *deps,
         size_t           ndeps,
         dart_task_prio_t prio,
+        int              flags,
   const char            *descr);
 
 /**
@@ -141,6 +146,7 @@ dart_task_create_handle(
         dart_task_dep_t *deps,
         size_t           ndeps,
         dart_task_prio_t prio,
+        int              flags,
         dart_taskref_t  *taskref);
 
 

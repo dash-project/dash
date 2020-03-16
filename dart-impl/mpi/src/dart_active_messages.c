@@ -92,6 +92,7 @@ enum {
   DART_AMSGQ_SOPNOP3,
   DART_AMSGQ_SOPNOP4,
   DART_AMSGQ_SOPNOP5,
+  DART_AMSGQ_SOPNOP6,
   DART_AMSGQ_SENDRECV,
   DART_AMSGQ_DUALWIN
 };
@@ -102,7 +103,8 @@ static struct dart_env_str2int env_vals[] = {
   {"sopnop2",    DART_AMSGQ_SOPNOP2},
   {"sopnop3",    DART_AMSGQ_SOPNOP3},
   {"sopnop4",    DART_AMSGQ_SOPNOP4},
-  {"sopnop4",    DART_AMSGQ_SOPNOP5},
+  {"sopnop5",    DART_AMSGQ_SOPNOP5},
+  {"sopnop6",    DART_AMSGQ_SOPNOP6},
   {"sendrecv",  DART_AMSGQ_SENDRECV},
   {"dualwin",  DART_AMSGQ_DUALWIN},
   {NULL, 0}
@@ -123,7 +125,7 @@ dart_amsg_init()
   dart_ret_t res;
 
   int impl = dart__base__env__str2int(DART_AMSGQ_IMPL_ENVSTR,
-                                      env_vals, DART_AMSGQ_SENDRECV);
+                                      env_vals,  -1);
 
   switch(impl) {
     case DART_AMSGQ_SINGLEWIN:
@@ -150,6 +152,14 @@ dart_amsg_init()
       res = dart_amsg_sopnop5_init(&amsgq_impl);
       DART_LOG_TRACE("Using same-op-no-op single-window active message queue");
       break;
+    case DART_AMSGQ_SOPNOP6:
+      res = dart_amsg_sopnop6_init(&amsgq_impl);
+      DART_LOG_TRACE("Using same-op-no-op single-window active message queue");
+      break;
+    case -1:
+      DART_LOG_TRACE("Unknown active message queue: %s",
+                     dart__base__env__string(DART_AMSGQ_IMPL_ENVSTR));
+      /* fall-through */
     case DART_AMSGQ_SENDRECV:
       res = dart_amsg_sendrecv_init(&amsgq_impl);
       DART_LOG_TRACE("Using send/recv-based active message queue");
@@ -164,7 +174,12 @@ dart_amsg_init()
   }
 
   if (res != DART_OK) {
-    return res;
+    if (res == DART_ERR_INVAL) {
+      DART_LOG_WARN("Falling back to send/recv-based active message queue");
+      res = dart_amsg_sendrecv_init(&amsgq_impl);
+    } else {
+      return res;
+    }
   }
 
   msgq_size_override = dart__base__env__size(DART_AMSGQ_SIZE_ENVSTR, 0);
@@ -410,48 +425,48 @@ flush_buffer_all(dart_amsgq_t amsgq, bool blocking)
     dart_ret_t ret;
     ret = amsgq_impl.trysend_all(amsgq->impl, flush_info, num_info);
 
-    int num_complete = 0;
+    int num_active = num_info;
     for (int i = 0; i < num_info; ++i) {
       message_cache_t *cache = amsgq->message_cache[flush_info[i].target];
-      if (flush_info[i].status != 0) {
-        ++num_complete;
+      if (flush_info[i].completed) {
+        --num_active;
         cache->pos = 0;
       }
-      // unlock the cache
+      // unlock the cache, processing below may cause writing to the cache!
       pthread_rwlock_unlock(&cache->mutex);
     }
 
-    if (num_info == num_complete) break;
+    if (num_active == 0) break;
 
     // progress incoming messages and try again
     amsgq_impl.process(amsgq->impl);
 
     for (int i = 0; i < num_info; ++i) {
-      if (flush_info[i].status == 0) {
+      if (!flush_info[i].completed) {
         message_cache_t *cache = amsgq->message_cache[flush_info[i].target];
         // retake lock on the cache
-        if (cache->pos > 0 || blocking) {
+        if (cache->pos > 0) {
           pthread_rwlock_wrlock(&cache->mutex);
 
           if (cache->pos == 0) {
             // mpf, someone else processed that cache already
             pthread_rwlock_unlock(&cache->mutex);
-            --num_info;
+            --num_active;
+            flush_info[i].completed = true;
             continue;
           }
         }
-        // move the entry to the front
+        // move the entry to the front if necessary
         for (int j = 0; j < i; ++j) {
-          if (flush_info[j].status != 0) {
+          if (flush_info[j].completed) {
             // this one is complete, so re-use its slot
             flush_info[j] = flush_info[i];
             break;
           }
         }
-      } else {
-        --num_info;
       }
     }
+    num_info = num_active;
     DART_ASSERT(num_info >= 0);
   }
 

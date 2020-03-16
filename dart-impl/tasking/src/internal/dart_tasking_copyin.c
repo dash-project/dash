@@ -8,15 +8,7 @@
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
 #include <dash/dart/tasking/dart_tasking_wait.h>
 
-#include <stddef.h>
-
-#define DART_TASK_BLOCKING_WAIT
-
-#ifdef DART_TASK_BLOCKING_WAIT
-#define DEFAULT_WAIT_TYPE COPYIN_WAIT_BLOCK
-#else
-#define DEFAULT_WAIT_TYPE COPYIN_WAIT_YIELD
-#endif
+#define DEFAULT_WAIT_TYPE COPYIN_WAIT_DETACH_INLINE
 
 #define COPYIN_TASK_PRIO (INT_MAX-1)
 
@@ -260,13 +252,13 @@ dart_tasking_copyin_create_task_sendrecv(
   DART_LOG_TRACE("Copyin: creating task to recv from unit %d with tag %d in phase %d",
                  arg.unit, tag, dep->phase);
 
-  dart_task_prio_t prio = (wait_type == COPYIN_WAIT_DETACH_INLINE)
-                            ? DART_PRIO_INLINE : COPYIN_TASK_PRIO;
+  int flags = (wait_type == COPYIN_WAIT_DETACH_INLINE)
+              ? DART_TASK_NOYIELD : 0;
 
   dart_task_t *task;
   dart__tasking__create_task(
       &dart_tasking_copyin_recv_taskfn, &arg, sizeof(arg),
-      deps, ndeps, prio, "COPYIN (RECV)", &task);
+      deps, ndeps, COPYIN_TASK_PRIO, flags, "COPYIN (RECV)", &task);
 
   // set the communication flag
   DART_TASK_SET_FLAG(task, DART_TASK_IS_COMMTASK);
@@ -315,13 +307,13 @@ dart_tasking_copyin_create_task_get(
   arg.num_bytes = dep->copyin.size;
   arg.unit      = 0; // not needed
 
-  dart_task_prio_t prio = (wait_type == COPYIN_WAIT_DETACH_INLINE)
-                            ? DART_PRIO_INLINE : COPYIN_TASK_PRIO;
+  int flags = (wait_type == COPYIN_WAIT_DETACH_INLINE)
+              ? DART_TASK_NOYIELD : 0;
 
   dart_task_t *task;
   dart__tasking__create_task(
     &dart_tasking_copyin_get_taskfn, &arg, sizeof(arg),
-    deps, ndeps, prio, "COPYIN (GET)", &task);
+    deps, ndeps, COPYIN_TASK_PRIO, flags, "COPYIN (GET)", &task);
 
   // set the communication flag
   DART_TASK_SET_FLAG(task, DART_TASK_IS_COMMTASK);
@@ -396,11 +388,11 @@ dart_tasking_copyin_create_delayed_tasks()
     DART_STACK_POP(delayed_tasks, ct);
     DART_LOG_TRACE("Copyin: creating task to send to unit %d with tag %d",
                   ct->arg.unit, ct->arg.tag);
-    dart_task_prio_t prio = (wait_type == COPYIN_WAIT_DETACH_INLINE)
-                              ? DART_PRIO_INLINE : COPYIN_TASK_PRIO;
+    int flags = (wait_type == COPYIN_WAIT_DETACH_INLINE)
+                ? DART_TASK_NOYIELD : 0;
 
-    dart_task_create(&dart_tasking_copyin_send_taskfn, &ct->arg, sizeof(ct->arg),
-                     &ct->in_dep, 1, prio, "COPYIN (SEND)");
+    dart__tasking__create_task(&dart_tasking_copyin_send_taskfn, &ct->arg, sizeof(ct->arg),
+                               &ct->in_dep, 1, COPYIN_TASK_PRIO, flags, "COPYIN (SEND)", NULL);
     free(ct);
   }
   dart__base__mutex_unlock(&delayed_tasks_mtx);

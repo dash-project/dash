@@ -128,8 +128,9 @@ dart__task__wait_handle(
 
 #if defined(HAVE_RESCHEDULING_YIELD) && HAVE_RESCHEDULING_YIELD
   dart_task_t *current_task = dart_task_current_task();
-  if (dart__tasking__is_root_task(current_task)) {
-    // we cannot requeue the root task so we test-and-yield
+  if (dart__tasking__is_root_task(current_task) ||
+      DART_TASK_HAS_FLAG(current_task, DART_TASK_INLINE)) {
+    // we cannot requeue the root task or inlined tasks so we test-and-yield
     current_task->wait_handle = NULL;
     test_yield(handles, num_handles);
   } else {
@@ -165,6 +166,10 @@ dart__task__wait_handle(
 }
 
 #define NUM_CHUNK_HANDLE 64
+
+/* access to these arrays is protected through the taskqueue lock on handle_list */
+static dart_task_t  *tasks[NUM_CHUNK_HANDLE];
+static dart_handle_t handle[NUM_CHUNK_HANDLE];
 
 static void process_handle_chunk(
   dart_task_t   **tasks,
@@ -217,9 +222,7 @@ dart__task__wait_progress()
     dart_tasking_taskqueue_unlock(&handle_list);
     while (handle_list_processing.num_elem > 0) {
       // collect tasks and their handles to process as chunk
-      dart_task_t *tasks[NUM_CHUNK_HANDLE];
       int num_tasks = 0;
-      dart_handle_t handle[NUM_CHUNK_HANDLE];
       int num_handle = 0;
       while ((task = dart_tasking_taskqueue_pop_unsafe(&handle_list_processing)) != NULL) {
         if (task->wait_handle->num_handle > NUM_CHUNK_HANDLE) {

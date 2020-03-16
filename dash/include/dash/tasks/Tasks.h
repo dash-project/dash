@@ -774,6 +774,7 @@ namespace internal{
     TaskFunc            f,
     dart_task_prio_t    prio,
     DepContainer&       deps,
+    int                 flags = 0,
     const char         *name = nullptr) {
 #if DASH_TASKS_INVOKE_DIRECT
     f();
@@ -786,12 +787,12 @@ namespace internal{
       // allocate extra memory
       dart_task_create(
         &dash::tasks::internal::invoke_task_action_void<TaskFunc, DepTypes...>,
-        &f, sizeof(f), deps.data(), deps.size(), prio, name);
+        &f, sizeof(f), deps.data(), deps.size(), prio, flags, name);
     } else {
       dart_task_create(
         &dash::tasks::internal::invoke_task_action_void_delete<TaskFunc, DepTypes...>,
         new TaskFunc(std::move(f)), 0,
-                      deps.data(), deps.size(), prio, name);
+        deps.data(), deps.size(), prio, flags, name);
     }
 #endif // DASH_TASKS_INVOKE_DIRECT
   }
@@ -801,8 +802,9 @@ namespace internal{
   async(
     TaskFunc            f,
     DepContainer&&      deps,
+    int                 flags = 0,
     const char         *name = nullptr) {
-    internal::async(f, DART_PRIO_PARENT, std::forward<DepContainer>(deps), name);
+    internal::async(f, DART_PRIO_PARENT, std::forward<DepContainer>(deps), flags, name);
   }
 } // namespace internal
 
@@ -887,7 +889,7 @@ namespace internal{
     TaskFunc         f,
     dart_task_prio_t prio){
     std::array<dart_task_dep_t, 0> deps;
-    internal::async(f, prio, deps, name);
+    internal::async(f, prio, deps, 0, name);
   }
 
   /**
@@ -909,7 +911,7 @@ namespace internal{
       static_cast<dart_task_dep_t>(dep),
       static_cast<dart_task_dep_t>(args)...
     }});
-    internal::async<TaskFunc, decltype(deps), decltype(dep), Args...>(f, prio, deps, name);
+    internal::async<TaskFunc, decltype(deps), decltype(dep), Args...>(f, prio, deps, 0, name);
   }
 
 
@@ -929,7 +931,7 @@ namespace internal{
   {
     dash::tasks::internal::DependencyContainer deps;
     dependency_generator(std::inserter(deps, deps.begin()));
-    internal::async(f, prio, deps, name);
+    internal::async(f, prio, deps, 0, name);
   }
 
   /**
@@ -950,6 +952,171 @@ namespace internal{
 #define SLOC_(__file, __delim, __line) __file # __delim # __line
 #define SLOC(__file, __line)  SLOC_(__file, :, __line)
 #define ASYNC(...) async(SLOC(__FILE__, __LINE__), __VA_ARGS__)
+
+  /**
+   * Create an asynchronous task that will execute \c f with priority \c prio
+   * without any dependencies.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc>
+  void
+  tasklet(
+    TaskFunc         f,
+    dart_task_prio_t prio){
+    std::array<dart_task_dep_t, 0> deps;
+    internal::async(f, prio, deps, DART_TASK_NOYIELD);
+  }
+
+  /**
+   * Create an asynchronous tasklet that will execute \c f with priority \c prio
+   * after all specified dependencies have been satisfied.
+   *
+   * Tasklets are similar to tasks created using \sa async with the exception
+   * that yield has no effect.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc, typename ... Args>
+  void
+  tasklet(
+    TaskFunc                f,
+    dart_task_prio_t        prio,
+    TaskDependency          dep,
+    Args&&...               args){
+    std::array<dart_task_dep_t, sizeof...(args)+1> deps(
+    {{
+      static_cast<dart_task_dep_t>(dep),
+      static_cast<dart_task_dep_t>(args)...
+    }});
+    internal::async(f, prio, deps, DART_TASK_NOYIELD);
+  }
+
+
+  /**
+   * Create an asynchronous tasklet that will execute \c f with priority \c prio
+   * after all specified dependencies have been satisfied.
+   *
+   * Tasklets are similar to tasks created using \sa async with the exception
+   * that yield has no effect.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc, typename DependencyGeneratorFunc>
+  void
+  tasklet(
+    TaskFunc                  f,
+    dart_task_prio_t          prio,
+    DependencyGeneratorFunc   dependency_generator)
+  {
+    typename dash::tasks::internal::DependencyContainer deps;
+    dependency_generator(std::inserter(deps, deps.begin()));
+    internal::async(f, prio, deps, DART_TASK_NOYIELD);
+  }
+
+  /**
+   * Create an asynchronous tasklet that will execute \c f with normal priority
+   * after all dependencies specified in \c deps have been satisfied.
+   *
+   * Tasklets are similar to tasks created using \sa async with the exception
+   * that yield has no effect.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc, typename ... Args>
+  void
+  tasklet(TaskFunc f, Args&&... args){
+    tasklet(f, DART_PRIO_PARENT, std::forward<Args>(args)...);
+  }
+
+
+  /**
+   * Create an asynchronous tasklet that will execute \c f with priority \c prio
+   * without any dependencies.
+   *
+   * Tasklets are similar to tasks created using \sa async with the exception
+   * that yield has no effect.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc>
+  void
+  tasklet(
+    const char*      name,
+    TaskFunc         f,
+    dart_task_prio_t prio){
+    std::array<dart_task_dep_t, 0> deps;
+    internal::async(f, prio, deps, DART_TASK_NOYIELD, name);
+  }
+
+  /**
+   * Create an asynchronous tasklet that will execute \c f with priority \c prio
+   * after all specified dependencies have been satisfied.
+   *
+   * Tasklets are similar to tasks created using \sa async with the exception
+   * that yield has no effect.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc, typename ... Args>
+  void
+  tasklet(
+    const char*             name,
+    TaskFunc                f,
+    dart_task_prio_t        prio,
+    TaskDependency          dep,
+    Args&&...               args){
+    std::array<dart_task_dep_t, sizeof...(args)+1> deps(
+    {{
+      static_cast<dart_task_dep_t>(dep),
+      static_cast<dart_task_dep_t>(args)...
+    }});
+    internal::async(f, prio, deps, DART_TASK_NOYIELD, name);
+  }
+
+
+  /**
+   * Create an asynchronous tasklet that will execute \c f with priority \c prio
+   * after all specified dependencies have been satisfied.
+   *
+   * Tasklets are similar to tasks created using \sa async with the exception
+   * that yield has no effect.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc, typename DependencyGeneratorFunc>
+  void
+  tasklet(
+    const char*               name,
+    TaskFunc                  f,
+    dart_task_prio_t          prio,
+    DependencyGeneratorFunc   dependency_generator)
+  {
+    dash::tasks::internal::DependencyContainer deps;
+    dependency_generator(std::inserter(deps, deps.begin()));
+    internal::async(f, prio, deps, DART_TASK_NOYIELD, name);
+  }
+
+  /**
+   * Create an asynchronous tasklet that will execute \c f with normal priority
+   * after all dependencies specified in \c deps have been satisfied.
+   *
+   * Tasklets are similar to tasks created using \sa async with the exception
+   * that yield has no effect.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc, typename ... Args>
+  void
+  tasklet(
+    const char* name,
+    TaskFunc    f,
+    Args&&...   args){
+    tasklet(name, f, DART_PRIO_PARENT, std::forward<Args>(args)...);
+  }
+
+#define TASKLET(...) tasklet(SLOC(__FILE__, __LINE__), __VA_ARGS__)
+
 
   /**
    * Return a handle to an asynchronous task that will execute \c f with
@@ -975,7 +1142,7 @@ namespace internal{
       &dash::tasks::internal::invoke_task_action<return_t>,
       new dash::tasks::internal::TaskData<return_t>(
             dash::tasks::internal::task_action_t<return_t>(std::move(f)), retval),
-      0, deps.data(), deps.size(), prio, &handle);
+      0, deps.data(), deps.size(), prio, 0, &handle);
     return TaskHandle<return_t>(handle, retval);
   }
 
