@@ -342,10 +342,23 @@ dart_amsg_buffered_send(
     DART_FETCH_AND_ADD32(&cache->pos, -size_required);
     pthread_rwlock_unlock(&cache->mutex);
 
-    // if the implementation provides an efficient to flush the whole buffer
+    // if the implementation provides an efficient way to flush the whole buffer
     // we flush all buffers to avoid serializing flushes
     if (amsgq->flush_info != NULL) {
-      flush_buffer_all(amsgq, false);
+      if (DART_OK != flush_buffer_all(amsgq, false)) {
+        // either we or another thread is currently flushing -> send as single message
+        // NOTE: flush_buffer_all may call process() internally so this may be recursive
+        dart_ret_t ret;
+        DART_LOG_TRACE("Sending single message to %d", target.id);
+        ret = amsgq_impl.trysend(target, amsgq->impl, cache->buffer, cache->pos);
+        if (ret == DART_OK) {
+          DART_LOG_TRACE("Sent single message to %d!", target.id);
+          return DART_OK;
+        } else {
+          // try to process once, then retry to resend as buffered
+          amsgq_impl.process(amsgq->impl);
+        }
+      }
     } else {
       // try to get a writelock
       pthread_rwlock_wrlock(&cache->mutex);
@@ -396,7 +409,8 @@ flush_buffer_all(dart_amsgq_t amsgq, bool blocking)
   int comm_size = amsgq->team_size;
 
   // prevent other threads from interfering
-  dart__base__mutex_lock(&amsgq->mutex);
+  // don't block on the mutex though, might deadlock (due to processing)
+  if (DART_OK != dart__base__mutex_trylock(&amsgq->mutex)) return DART_PENDING;
 
   struct dart_flush_info *flush_info = amsgq->flush_info;
   int num_info = 0;
@@ -436,9 +450,12 @@ flush_buffer_all(dart_amsgq_t amsgq, bool blocking)
       pthread_rwlock_unlock(&cache->mutex);
     }
 
-    if (num_active == 0) break;
+    // stop if called in non-blocking mode or all is done
+    if (!blocking || num_active == 0) break;
 
     // progress incoming messages and try again
+    // NOTE: do not get rid of this process(), otherwise all processes may 
+    //       end up trying to flush!
     amsgq_impl.process(amsgq->impl);
 
     for (int i = 0; i < num_info; ++i) {
