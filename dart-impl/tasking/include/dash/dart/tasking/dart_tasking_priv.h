@@ -102,7 +102,6 @@ struct dart_task_data {
           struct dart_task_data     *prev;        // previous entry in a task list/queue
         };
       };
-#if 0
       int                        prio;
       uint16_t                   flags;
       int8_t                     state;           // one of dart_task_state_t, single byte sufficient
@@ -137,6 +136,7 @@ struct dart_task_data {
       dart_dephash_elem_t       *deps_owned;      // list of dependencies owned by this task
       dart_wait_handle_t        *wait_handle;
       const char                *descr;           // the description of the task
+      uint64_t                   instance;        // the instance counter of this task object
       dart_taskphase_t           phase;
       int                        num_children;
       int16_t                    owner;           // the thread owning the task object memory
@@ -148,7 +148,8 @@ struct dart_task_data {
       unsigned char              inline_data[]; // inline data passed to the action
     };
   };
-#endif // 0
+};
+#if 0
   int                        prio;
   uint16_t                   flags;
   int8_t                     state;           // one of dart_task_state_t, single byte sufficient
@@ -192,6 +193,7 @@ struct dart_task_data {
 #endif //TRACK_CHILDREN
   unsigned char              inline_data[DART_TASKING_INLINE_DATA_SIZE]; // inline data passed to the action
 };
+#endif // 0
 
 /* Make sure the max size we export to DASH is large enough */
 DART_STATIC_ASSERT(                                                         \
