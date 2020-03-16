@@ -350,7 +350,7 @@ dart_amsg_buffered_send(
         // NOTE: flush_buffer_all may call process() internally so this may be recursive
         dart_ret_t ret;
         DART_LOG_TRACE("Sending single message to %d", target.id);
-        ret = amsgq_impl.trysend(target, amsgq->impl, cache->buffer, cache->pos);
+        ret = dart_amsg_trysend(target, amsgq, fn, data, data_size);
         if (ret == DART_OK) {
           DART_LOG_TRACE("Sent single message to %d!", target.id);
           return DART_OK;
