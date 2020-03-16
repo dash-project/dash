@@ -89,12 +89,6 @@ private:
     BlockSpec_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     BlockSizeSpec_t;
-  typedef DistributionSpec<NumDimensions>
-    DistributionSpec_t;
-  typedef TeamSpec<NumDimensions, IndexType>
-    TeamSpec_t;
-  typedef SizeSpec<NumDimensions, SizeType>
-    SizeSpec_t;
   typedef ViewSpec<NumDimensions, IndexType>
     ViewSpec_t;
   typedef internal::PatternArguments<NumDimensions, IndexType>
@@ -113,17 +107,21 @@ public:
     std::array<index_type, NumDimensions> coords{};
   } local_coords_t;
 
+  typedef DistributionSpec<NumDimensions>     distribution_spec;
+  typedef TeamSpec<NumDimensions, IndexType>  team_spec;
+  typedef SizeSpec<NumDimensions, SizeType>   size_spec;
+
 private:
   /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
   /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
   /// dimensions
-  DistributionSpec_t          _distspec;
+  distribution_spec           _distspec;
   /// Team containing the units to which the patterns element are mapped
   dash::Team                * _team            = nullptr;
   /// The active unit's id.
   team_unit_t                 _myid;
   /// Cartesian arrangement of units within the team
-  TeamSpec_t                  _teamspec;
+  team_spec                   _teamspec;
   /// The global layout of the pattern's elements in memory respective to
   /// memory order. Also specifies the extents of the pattern space.
   MemoryLayout_t              _memory_layout;
@@ -232,12 +230,12 @@ public:
    */
   TilePattern(
       /// TilePattern size (extent, number of elements) in every dimension
-      const SizeSpec_t &sizespec,
+      const size_spec &sizespec,
       /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
       /// all dimensions.
-      DistributionSpec_t dist,
+      distribution_spec dist,
       /// Cartesian arrangement of units within the team
-      const TeamSpec_t &teamspec,
+      const team_spec &teamspec,
       /// Team containing units to which this pattern maps its elements
       dash::Team &team = dash::Team::All())
     : _distspec(std::move(dist))
@@ -293,11 +291,11 @@ public:
    */
   TilePattern(
       /// TilePattern size (extent, number of elements) in every dimension
-      const SizeSpec_t &sizespec,
+      const size_spec &sizespec,
       /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
       /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
       /// dimensions
-      DistributionSpec_t dist = DistributionSpec_t(),
+      distribution_spec dist = distribution_spec(),
       /// Team containing units to which this pattern maps its elements
       Team &team = dash::Team::All())
     : _distspec(std::move(dist))
@@ -1395,7 +1393,7 @@ public:
   /**
    * Distribution specification of this pattern.
    */
-  constexpr const DistributionSpec_t & distspec() const {
+  constexpr const distribution_spec & distspec() const {
     return _distspec;
   }
 
@@ -1404,8 +1402,8 @@ public:
    *
    * \see DashPatternConcept
    */
-  constexpr SizeSpec_t sizespec() const {
-    return SizeSpec_t(_memory_layout.extents());
+  constexpr size_spec sizespec() const {
+    return size_spec(_memory_layout.extents());
   }
 
   /**
@@ -1423,7 +1421,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  constexpr const TeamSpec_t & teamspec() const {
+  constexpr const team_spec & teamspec() const {
     return _teamspec;
   }
 
@@ -1516,9 +1514,9 @@ private:
    * distribution spec.
    */
   BlockSizeSpec_t initialize_blocksizespec(
-    const SizeSpec_t         & sizespec,
-    const DistributionSpec_t & distspec,
-    const TeamSpec_t         & teamspec) const {
+    const size_spec          & sizespec,
+    const distribution_spec  & distspec,
+    const team_spec          & teamspec) const {
     DASH_LOG_TRACE("TilePattern.init_blocksizespec()",
                    "sizespec:", sizespec.extents(),
                    "distspec:", distspec.values(),
@@ -1559,9 +1557,9 @@ private:
    * spec.
    */
   BlockSpec_t initialize_blockspec(
-    const SizeSpec_t         & sizespec,
+    const size_spec          & sizespec,
     const BlockSizeSpec_t    & blocksizespec,
-    const TeamSpec_t         & teamspec) const
+    const team_spec          & teamspec) const
   {
     DASH_LOG_TRACE("TilePattern.init_blockspec()",
                    "pattern size:", sizespec.extents(),
@@ -1594,7 +1592,7 @@ private:
   BlockSpec_t initialize_local_blockspec(
     const BlockSpec_t     & blockspec,
     const BlockSizeSpec_t & blocksizespec,
-    const TeamSpec_t      & teamspec,
+    const team_spec       & teamspec,
     team_unit_t              unit_id = UNDEFINED_TEAM_UNIT_ID) const
   {
     DASH_LOG_TRACE_VAR("TilePattern.init_local_blockspec()",

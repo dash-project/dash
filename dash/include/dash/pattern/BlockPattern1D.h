@@ -77,12 +77,6 @@ private:
     LocalMemoryLayout_t;
   typedef CartesianSpace<NumDimensions, SizeType>
     BlockSpec_t;
-  typedef DistributionSpec<NumDimensions>
-    DistributionSpec_t;
-  typedef TeamSpec<NumDimensions, IndexType>
-    TeamSpec_t;
-  typedef SizeSpec<NumDimensions, SizeType>
-    SizeSpec_t;
   typedef ViewSpec<NumDimensions, IndexType>
     ViewSpec_t;
   typedef internal::PatternArguments<NumDimensions, IndexType>
@@ -101,6 +95,10 @@ public:
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
+  typedef DistributionSpec<NumDimensions>     distribution_spec;
+  typedef TeamSpec<NumDimensions, IndexType>  team_spec;
+  typedef SizeSpec<NumDimensions, SizeType>   size_spec;
+
 private:
   /// Extent of the linear pattern.
   SizeType                    _size            = 0;
@@ -108,11 +106,11 @@ private:
   MemoryLayout_t              _memory_layout;
   /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE) of
   /// all dimensions. Defaults to BLOCKED.
-  DistributionSpec_t          _distspec;
+  distribution_spec           _distspec;
   /// Team containing the units to which the patterns element are mapped
   dash::Team *                _team            = nullptr;
   /// Cartesian arrangement of units within the team
-  TeamSpec_t                  _teamspec;
+  team_spec                   _teamspec;
   /// Total amount of units to which this pattern's elements are mapped
   SizeType                    _nunits          = 0;
   /// Maximum extents of a block in this pattern
@@ -194,11 +192,11 @@ public:
    */
   BlockPattern(
     /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         sizespec,
+    const size_spec          sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE).
-    const DistributionSpec_t dist,
+    const distribution_spec  dist,
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t         teamspec,
+    const team_spec          teamspec,
     /// Team containing units to which this pattern maps its elements
     dash::Team &             team     = dash::Team::All())
   : _size(sizespec.size()),
@@ -255,10 +253,10 @@ public:
    */
   BlockPattern(
     /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         sizespec,
+    const size_spec         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE).
     /// Defaults to BLOCKED.
-    const DistributionSpec_t dist = DistributionSpec_t(),
+    const distribution_spec dist = distribution_spec(),
     /// Team containing units to which this pattern maps its elements
     Team &                   team = dash::Team::All())
   : _size(sizespec.size()),
@@ -1025,7 +1023,7 @@ public:
   /**
    * Distribution specification of this pattern.
    */
-  constexpr const DistributionSpec_t & distspec() const noexcept {
+  constexpr const distribution_spec & distspec() const noexcept {
     return _distspec;
   }
 
@@ -1034,8 +1032,8 @@ public:
    *
    * \see DashPatternConcept
    */
-  constexpr SizeSpec_t sizespec() const {
-    return SizeSpec_t(std::array<SizeType, 1> {{ _size }});
+  constexpr size_spec sizespec() const {
+    return size_spec(std::array<SizeType, 1> {{ _size }});
   }
 
   /**
@@ -1053,7 +1051,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  constexpr const TeamSpec_t & teamspec() const {
+  constexpr const team_spec & teamspec() const {
     return _teamspec;
   }
 
@@ -1141,7 +1139,7 @@ private:
    */
   SizeType initialize_blocksize(
     SizeType                   size,
-    const DistributionSpec_t & distspec,
+    const distribution_spec  & distspec,
     SizeType                   nunits) const {
     DASH_LOG_TRACE_VAR("BlockPattern<1>.init_blocksize", nunits);
     if (nunits == 0) {
