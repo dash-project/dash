@@ -977,13 +977,13 @@ namespace internal{
    *
    * \note This function is a cancellation point.
    */
-  template<class TaskFunc, typename ... Args>
+  template<class TaskFunc, typename T, bool FirstIsCopyin, typename ... Args>
   void
   tasklet(
-    TaskFunc                f,
-    dart_task_prio_t        prio,
-    TaskDependency          dep,
-    Args&&...               args){
+    TaskFunc                         f,
+    dart_task_prio_t                 prio,
+    TaskDependency<T, FirstIsCopyin> dep,
+    Args&&...                        args){
     std::array<dart_task_dep_t, sizeof...(args)+1> deps(
     {{
       static_cast<dart_task_dep_t>(dep),
@@ -1058,14 +1058,14 @@ namespace internal{
    *
    * \note This function is a cancellation point.
    */
-  template<class TaskFunc, typename ... Args>
+  template<class TaskFunc, typename T, bool FirstIsCopyin, typename ... Args>
   void
   tasklet(
-    const char*             name,
-    TaskFunc                f,
-    dart_task_prio_t        prio,
-    TaskDependency          dep,
-    Args&&...               args){
+    const char*                      name,
+    TaskFunc                         f,
+    dart_task_prio_t                 prio,
+    TaskDependency<T, FirstIsCopyin> dep,
+    Args&&...                        args){
     std::array<dart_task_dep_t, sizeof...(args)+1> deps(
     {{
       static_cast<dart_task_dep_t>(dep),
