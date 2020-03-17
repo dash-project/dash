@@ -301,17 +301,60 @@ TEST_F(TilePatternTest, Tile4Dim)
   }
 }
 
-TEST_F(TilePatternTest, TileFunctionalCheck)
+template<dash::dim_t NumDimensions = 1, dash::MemArrange Arangement = dash::ROW_MAJOR, typename IndexType = dash::default_index_t, typename ... Args>
+void test_tile_pattern_constructors(typename std::make_unsigned<IndexType>::type array_size, Args &&... args) // array_size is first dim size 
 {
-  const size_t dims = 1; 
-  using pattern_t = typename dash::TilePattern<dims, dash::ROW_MAJOR, long>;
-  using IndexType = typename pattern_t::index_type;
+  typedef typename std::make_unsigned<IndexType>::type                     SizeType;
+  typedef typename dash::TilePattern<NumDimensions, Arangement, IndexType> pattern_t;
 
-  // create simple TilePattern 1D BLOCKED for functional checks, now the test just checks for issue 692, unfinished
-  size_t array_size = 100;
-  pattern_t pattern(array_size, dash::BLOCKED);
+  typedef typename dash::SizeSpec<NumDimensions, SizeType>                 SizeSpec_t;
+  typedef typename dash::DistributionSpec<NumDimensions>                   DistributionSpec_t;
+  typedef typename dash::TeamSpec<NumDimensions, IndexType>                TeamSpec_t;
 
-  // tested local_blockspec()
-  const auto &lblockspec = pattern.local_blockspec();
-  ASSERT_EQ_U(dims, lblockspec.size());
+  auto num_units = dash::Team::All().size();
+
+  // test constructors
+  pattern_t pattern1(array_size, args...); // check compiling, not check equality with other constructor due to the difference in DistributionSpec
+
+  pattern_t pattern2(SizeSpec_t(array_size, args...),
+                     DistributionSpec_t(dash::TILE(array_size / num_units), dash::TILE(args / num_units)...));
+  
+  pattern_t pattern3(SizeSpec_t(array_size, args...),
+                     DistributionSpec_t(dash::TILE(array_size / num_units), dash::TILE(args / num_units)...),
+                     TeamSpec_t(num_units, static_cast<int>((bool) args)...)); // a hack to input default 1 for higher dims depended on number of args
+
+  //copy constructor
+  pattern_t pattern4 = pattern3;
+
+  ASSERT_EQ_U(pattern2 == pattern3, true);
+  ASSERT_EQ_U(pattern3 == pattern4, true);
+  
+}
+
+TEST_F(TilePatternTest, TilePattern1DFunctionalCheck)
+{
+  auto num_units = dash::Team::All().size();
+
+  //series of default test
+  typedef std::make_unsigned<dash::default_index_t>::type size_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_tile_pattern_constructors(i);
+
+  // series of unsigned COLUMN MAJOR test
+  typedef unsigned long                                   index_t;
+  typedef std::make_unsigned<index_t>::type               usize_t;
+  for (usize_t i = num_units; i <= 1000 * num_units; i *= 10) test_tile_pattern_constructors<1, dash::COL_MAJOR, index_t>(i);
+}
+
+TEST_F(TilePatternTest, TilePatternFunctionalCheck)
+{
+  auto num_units = dash::Team::All().size();
+
+  //series of default 2D test
+  typedef std::make_unsigned<dash::default_index_t>::type size_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_tile_pattern_constructors<2>(i, i);
+
+  // series of unsigned COLUMN MAJOR 2D test
+  typedef unsigned long                                   index_t;
+  typedef std::make_unsigned<index_t>::type               usize_t;
+  for (usize_t i = num_units; i <= 1000 * num_units; i *= 10) test_tile_pattern_constructors<2, dash::COL_MAJOR, index_t>(i, i);
 }
