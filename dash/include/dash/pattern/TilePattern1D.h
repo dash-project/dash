@@ -507,10 +507,10 @@ public:
    */
   constexpr local_coords_t local(
     const std::array<IndexType, NumDimensions> & global_coords) const {
-    return local_coords_t {{
+    return local_coords_t {
              unit_at(global_coords),
              local_coords(global_coords)
-           }};
+           };
   }
 
   /**
