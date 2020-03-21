@@ -1,6 +1,5 @@
 
 #include "TilePatternTest.h"
-#include "PatternTest.h" 
 
 #include <dash/pattern/TilePattern.h>
 #include <dash/TeamSpec.h>
