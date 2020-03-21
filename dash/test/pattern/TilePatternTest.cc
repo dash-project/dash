@@ -1,5 +1,6 @@
 
 #include "TilePatternTest.h"
+#include "PatternTest.h" 
 
 #include <dash/pattern/TilePattern.h>
 #include <dash/TeamSpec.h>
@@ -301,97 +302,17 @@ TEST_F(TilePatternTest, Tile4Dim)
   }
 }
 
-template<dash::dim_t NumDimensions = 1, dash::MemArrange Arangement = dash::ROW_MAJOR, typename IndexType = dash::default_index_t, typename ... Args>
-void test_tile_pattern(typename std::make_unsigned<IndexType>::type array_size, Args &&... args) // array_size is first dim size 
-{
-  using namespace std;
-  typedef typename std::make_unsigned<IndexType>::type                     SizeType;
-  typedef typename dash::TilePattern<NumDimensions, Arangement, IndexType> pattern_t;
-
-  typedef typename dash::SizeSpec<NumDimensions, SizeType>                 SizeSpec_t;
-  typedef typename dash::DistributionSpec<NumDimensions>                   DistributionSpec_t;
-  typedef typename dash::TeamSpec<NumDimensions, IndexType>                TeamSpec_t;
-
-  typedef typename std::array<IndexType, NumDimensions>                    coords_t;
-
-  auto num_units = dash::Team::All().size();
-  auto unit_id   = dash::myid();
-
-  coords_t coord = {0, static_cast<IndexType>(!(bool) args)...};
-
-  // test constructors
-  pattern_t pattern1(array_size, args...); // check compiling, not check equality with other constructor due to the difference in DistributionSpec
-
-  pattern_t pattern2(SizeSpec_t(array_size, args...),
-                     DistributionSpec_t(dash::TILE(array_size / num_units), dash::TILE(args / num_units)...));
-  
-  pattern_t pattern3(SizeSpec_t(array_size, args...),
-                     DistributionSpec_t(dash::TILE(array_size / num_units), dash::TILE(args / num_units)...),
-                     TeamSpec_t(num_units, static_cast<int>((bool) args)...)); // a hack to input default 1 for higher dims depended on number of args
-
-  pattern_t pattern4 = pattern3;
-
-  ASSERT_EQ_U(pattern2 == pattern3, true);
-  ASSERT_EQ_U(pattern3 == pattern4, true);
-
-  //test .extents
-  ASSERT_EQ_U(pattern2.extent(0), array_size);
-
-  auto l_extents = pattern2.local_extents();
-  ASSERT_EQ_U(accumulate(begin(l_extents), end(l_extents), 1, multiplies<SizeType>()), pattern2.local_size());
-
-  auto g_extents = pattern2.extents();
-  ASSERT_EQ_U(accumulate(begin(g_extents), end(g_extents), 1, multiplies<SizeType>()), pattern2.size());
-
-  ASSERT_EQ_U(pattern2.local_size(), pattern2.local_capacity()); //assumed balanced extents
-  ASSERT_EQ_U(pattern2.size(), pattern2.capacity());
-
-  //test .at
-  ASSERT_EQ_U(pattern2.at(coord), 0);
-
-  //test .is_local
-  auto l_pos = pattern2.local(coord);
-  ASSERT_EQ_U(pattern2.is_local(pattern2.global_index(pattern2.unit_at(coord), l_pos.coords)), unit_id == 0);
-
-  //test BlockSpec, Local BlockSpec, .blocksize, .max_blocksize
-  auto block_spec = pattern2.blockspec();
-  auto l_block_spec = pattern2.local_blockspec();
-
-  int nblocks =  static_cast<int>(pow(num_units, NumDimensions));
-
-  ASSERT_EQ_U(block_spec.size(), nblocks);
-  ASSERT_EQ_U(l_block_spec.size(), nblocks / num_units); //assumed balanced extents
-
-  int blocksize = 1;
-  for (int dim = 0; dim < NumDimensions; dim++) 
-    blocksize *= pattern2.blocksize(dim);
-  ASSERT_EQ_U(blocksize, pattern2.max_blocksize());
-
-  //test .coords
-  IndexType idx = 0;
-  ASSERT_EQ_U(pattern2.coords(idx), coord);
-
-
-  //test .sizespec, .teamspec
-  auto size_spec = pattern2.sizespec();
-  auto team_spec = pattern2.teamspec();
-
-  ASSERT_EQ_U(size_spec.extent(0), array_size);
-  ASSERT_EQ_U(team_spec.size(), num_units);
-}
-
 TEST_F(TilePatternTest, TilePattern1DFunctionalCheck)
 {
   auto num_units = dash::Team::All().size();
 
   //series of default test
-  typedef std::make_unsigned<dash::default_index_t>::type size_t;
-  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_tile_pattern(i);
+  typedef dash::TilePattern<1> pattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<pattern_t>(i);
 
   // series of unsigned COLUMN MAJOR test
-  typedef unsigned long                                   index_t;
-  typedef std::make_unsigned<index_t>::type               usize_t;
-  for (usize_t i = num_units; i <= 1000 * num_units; i *= 10) test_tile_pattern<1, dash::COL_MAJOR, index_t>(i);
+  typedef dash::TilePattern<1, dash::COL_MAJOR, unsigned long> upattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<upattern_t>(i);
 }
 
 TEST_F(TilePatternTest, TilePatternFunctionalCheck)
@@ -399,11 +320,10 @@ TEST_F(TilePatternTest, TilePatternFunctionalCheck)
   auto num_units = dash::Team::All().size();
 
   //series of default 2D test
-  typedef std::make_unsigned<dash::default_index_t>::type size_t;
-  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_tile_pattern<2>(i, i);
+  typedef dash::TilePattern<2> pattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<pattern_t>(i, i);
 
   // series of unsigned COLUMN MAJOR 2D test
-  typedef unsigned long                                   index_t;
-  typedef std::make_unsigned<index_t>::type               usize_t;
-  for (usize_t i = num_units; i <= 1000 * num_units; i *= 10) test_tile_pattern<2, dash::COL_MAJOR, index_t>(i, i);
+  typedef dash::TilePattern<2, dash::COL_MAJOR, unsigned long> upattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<upattern_t>(i, i);
 }
