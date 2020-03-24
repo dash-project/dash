@@ -258,12 +258,6 @@ private:
     LocalMemoryLayout_t;
   typedef CartesianSpace<NumDimensions, SizeType>
     BlockSpec_t;
-  typedef DistributionSpec<NumDimensions>
-    DistributionSpec_t;
-  typedef TeamSpec<NumDimensions, IndexType>
-    TeamSpec_t;
-  typedef SizeSpec<NumDimensions, SizeType>
-    SizeSpec_t;
   typedef ViewSpec<NumDimensions, IndexType>
     ViewSpec_t;
   typedef internal::PatternArguments<NumDimensions, IndexType>
@@ -286,13 +280,17 @@ public:
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
+  typedef DistributionSpec<NumDimensions>     distribution_spec;
+  typedef TeamSpec<NumDimensions, IndexType>  team_spec;
+  typedef SizeSpec<NumDimensions, SizeType>   size_spec;
+
 public:
   /**
    * Constructor.
    */
   LoadBalancePattern(
     /// Size spec of the pattern.
-    const SizeSpec_t     & sizespec,
+    const size_spec      & sizespec,
     /// Locality hierarchy of the team.
     TeamLocality_t       & team_loc)
   : _size(sizespec.size()),
@@ -345,7 +343,7 @@ public:
    */
   LoadBalancePattern(
     /// Size spec of the pattern.
-    const SizeSpec_t     & sizespec,
+    const size_spec      & sizespec,
     /// Team containing units to which this pattern maps its elements.
     dash::Team           & team = dash::Team::All())
   : LoadBalancePattern(sizespec, TeamLocality_t(team))
@@ -1005,7 +1003,7 @@ public:
   /**
    * Distribution specification of this pattern.
    */
-  const DistributionSpec_t & distspec() const
+  const distribution_spec & distspec() const
   {
     return _distspec;
   }
@@ -1015,9 +1013,9 @@ public:
    *
    * \see DashPatternConcept
    */
-  SizeSpec_t sizespec() const
+  size_spec sizespec() const
   {
-    return SizeSpec_t(std::array<SizeType, 1> {{ _size }});
+    return size_spec(std::array<SizeType, 1> {{ _size }});
   }
 
   /**
@@ -1036,7 +1034,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const TeamSpec_t & teamspec() const
+  const team_spec & teamspec() const
   {
     return _teamspec;
   }
@@ -1290,13 +1288,13 @@ private:
   /// Number of blocks in all dimensions
   BlockSpec_t                 _blockspec;
   /// Distribution types of all dimensions.
-  DistributionSpec_t          _distspec;
+  distribution_spec           _distspec;
   /// Team containing the units to which the patterns element are mapped
   dash::Team *                _team            = nullptr;
   /// The active unit's id.
   team_unit_t                 _myid;
   /// Cartesian arrangement of units within the team
-  TeamSpec_t                  _teamspec;
+  team_spec                   _teamspec;
   /// Total amount of units to which this pattern's elements are mapped
   SizeType                    _nunits          = 0;
   /// Actual number of local elements of the active unit.
