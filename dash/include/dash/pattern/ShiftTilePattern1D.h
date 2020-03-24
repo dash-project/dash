@@ -510,10 +510,10 @@ public:
    * \see  DashPatternConcept
    */
   std::array<SizeType, NumDimensions> local_extents(
-      team_unit_t unit) const {
+      team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
     DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.local_extents()", unit);
     DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.local_extents >", _local_size);
-    return std::array<SizeType, 1> { _local_size };
+    return std::array<SizeType, 1> {{ _local_size }};
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -909,8 +909,7 @@ public:
    * Cartesian arrangement of pattern blocks.
    */
   BlockSpec_t blockspec() const {
-    BlockSpec_t bspec({{ dash::math::div_ceil(_size, _blocksize) }});
-    return bspec;
+    return BlockSpec_t({ _nblocks });
   }
 
   /**
@@ -1026,8 +1025,8 @@ public:
    *
    * \see DashPatternConcept
    */
-  const std::array<SizeType, NumDimensions> & extents() const {
-    return std::array<SizeType, 1> { _size };
+  const std::array<SizeType, NumDimensions> extents() const {
+    return std::array<SizeType, 1> {{ _size }};
   }
 
   /**

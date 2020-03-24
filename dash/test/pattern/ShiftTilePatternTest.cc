@@ -304,3 +304,29 @@ TEST_F(ShiftTilePatternTest, Tile2DimTeam1Dim)
     DASH_LOG_DEBUG_VAR("ShiftTilePatternTest.Tile2DimTeam1Dim", row_units);
   }
 }
+
+TEST_F(ShiftTilePatternTest, ShiftTilePattern1DFunctionalCheck)
+{
+  auto num_units = dash::Team::All().size();
+
+  //series of default test
+  typedef dash::ShiftTilePattern<1> pattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<pattern_t>(i);
+
+  // series of unsigned COLUMN MAJOR test
+  typedef dash::ShiftTilePattern<1, dash::COL_MAJOR, unsigned long> upattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<upattern_t>(i);
+}
+
+TEST_F(ShiftTilePatternTest, ShiftTilePatternFunctionalCheck)
+{
+  auto num_units = dash::Team::All().size();
+
+  //series of default 2D test
+  typedef dash::ShiftTilePattern<2> pattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<pattern_t>(i, i);
+
+  // series of unsigned COLUMN MAJOR 2D test
+  typedef dash::ShiftTilePattern<2, dash::COL_MAJOR, unsigned long> upattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<upattern_t>(i, i);
+}

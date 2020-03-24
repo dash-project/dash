@@ -28,7 +28,7 @@ void test_pattern(typename PatternType::size_type array_size, Args &&... args) /
   std::array<IndexType, dims> coord = {0, static_cast<IndexType>(!(bool) args)...}; // test coordinate {0, 0...}
 
   // test constructors
-  PatternType pattern1(array_size, args...); // check compiling, not check equality with other constructor due to the difference in DistributionSpec
+  //PatternType pattern1(array_size, args...); // check compiling, not check equality with other constructor due to the difference in DistributionSpec
 
   PatternType pattern2(SizeSpecType(array_size, args...),
                        DistributionSpecType(dash::TILE(array_size / num_units), dash::TILE(args / num_units)...));
@@ -72,10 +72,10 @@ void test_pattern(typename PatternType::size_type array_size, Args &&... args) /
 
   //test .block, .block_at, .local_block, .has_local_elements
   auto g_blockid = pattern2.block_at(coord);
-  auto l_blockid = pattern2.local_block_at(coord);
+  //auto l_blockid = pattern2.local_block_at(coord);
 
   auto g_view = pattern2.block(g_blockid);
-  auto l_view = pattern2.local_block(l_blockid.index);
+  //auto l_view = pattern2.local_block(l_blockid.index);
 
   // member function .includes_index is still currently TODO, it is not implemented yet in CartesianIndexSpace class
   //ASSERT_EQ_U(pattern2.has_local_elements(static_cast<dash::dim_t>(0), static_cast<IndexType>(0), unit_at_coord, g_view), unit_id == 0);
