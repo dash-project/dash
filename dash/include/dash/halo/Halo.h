@@ -161,6 +161,10 @@ std::ostream& operator<<(
   return os;
 }
 
+// forward declaration
+template <dim_t NumDimensions>
+class RegionCoords;
+
 /**
  * A collection of stencil points (\ref Stencil)
  * e.g. StencilSpec<dash::StencilPoint<2>, 2,2>({StencilPoint<2>(-1,0),
@@ -300,6 +304,65 @@ std::ostream& operator<<(
 
   return os;
 }
+
+template <typename StencilPointT>
+class StencilSpecFactory {
+private:
+  using stencil_dist_t = typename StencilPointT::point_value_t;
+  using StencilPerm_t  = std::vector<StencilPointT>;
+
+  static constexpr auto NumDimensions = StencilPointT::ndim();
+
+public:
+
+  static constexpr decltype(auto) full_stencil_spec(stencil_dist_t dist) {
+    using RegionCoords_t = RegionCoords<NumDimensions>;
+    using StencilSpec_t  = StencilSpec<StencilPointT, RegionCoords_t::NumRegionsMax-1>;
+    
+    using StencilArray_t = typename StencilSpec_t::StencilArray_t;
+
+    StencilPerm_t stencil_perms;
+    StencilArray_t points;
+    StencilPointT start_stencil;
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      start_stencil[d] = std::abs(dist);
+    }
+    permutate_stencil_points(0, start_stencil, stencil_perms, dist);
+    
+    size_t count = 0;
+    for(const auto& elem : stencil_perms) {
+      bool center = true;
+      for(dim_t d = 0; d < NumDimensions; ++d) {
+        if(elem[d] != 0 ) {
+          center = false;
+          break;
+        } 
+      }
+      if(!center) {
+        points[count] = elem;
+        ++count;
+      }
+    }
+
+    return StencilSpec_t(points);
+  }
+
+private:
+  static void permutate_stencil_points(dim_t dim_change, const StencilPointT& current_stencil, StencilPerm_t& perm_stencil, stencil_dist_t dist) {
+    perm_stencil.push_back(current_stencil);
+
+    for(dim_t d = dim_change; d < NumDimensions; ++d) {
+      if(current_stencil[d] != 0) {
+        auto new_stencil = current_stencil;
+        new_stencil[d] = 0;
+        permutate_stencil_points(d+1, new_stencil, perm_stencil, dist);
+        new_stencil[d] = -dist;
+        permutate_stencil_points(d+1, new_stencil, perm_stencil, dist);
+      }
+    }
+  }
+
+};
 
 /**
  * Global boundary Halo properties
@@ -523,7 +586,7 @@ public:
         index *= REGION_INDEX_BASE;
         continue;
       }
-      // in case a wrong region coordinate was set
+      
       if(stencil[d] > 0) {
         index = 2 + index * REGION_INDEX_BASE;
         continue;
@@ -816,7 +879,10 @@ public:
 
   template <typename StencilSpecT>
   HaloSpec(const StencilSpecT& stencil_spec) {
+    
     read_stencil_points(stencil_spec);
+
+    _num_regions = count_regions();
   }
 
   template <typename StencilSpecT, typename... Args>
@@ -830,8 +896,9 @@ public:
     std::array<RegionSpec_t, sizeof...(ARGS) + 1> tmp{ region_spec, args... };
     for(auto& spec : tmp) {
       _specs[spec.index()] = spec;
-      ++_num_regions;
     }
+    
+    _num_regions = count_regions();
   }
 
   HaloSpec(const Self_t& other) { _specs = other._specs; }
@@ -884,9 +951,6 @@ private:
   void set_region_spec(const StencilPointT& stencil) {
     auto index = RegionSpec_t::index(stencil);
 
-    if(_specs[index].extent() == 0)
-      ++_num_regions;
-
     auto max = stencil.max();
     if(max > _specs[index].extent())
       _specs[index] = RegionSpec_t(index, max);
@@ -910,6 +974,17 @@ private:
     }
 
     return false;
+  }
+
+  region_size_t count_regions() {
+    region_size_t size = 0;
+    for(const auto& spec : _specs) {
+      if(spec.extent() != 0) {
+        ++size;
+      }
+    }
+
+    return size;
   }
 
 private:
@@ -1416,7 +1491,7 @@ public:
         view_extent - _halo_extents_max[d].first - _halo_extents_max[d].second);
 
       auto safe_offset = global_offset;
-        auto safe_extent = view_extent;
+      auto safe_extent = view_extent;
       if(border[d].first && bound_spec[d] == BoundaryProp::NONE) {
         safe_offset = _halo_extents_max[d].first;
         safe_extent -= _halo_extents_max[d].first;
@@ -1541,14 +1616,14 @@ public:
   }
 
   /**
-   * Returns the inner view with global offsets depending on the used
+   * Returns the inner \ref ViewSpec with local offsets depending on the used
    * \ref HaloSpec.
    */
   const ViewSpec_t& view_inner() const { return _view_inner; }
 
   /**
    * Returns a set of local views that contains all boundary elements.
-   * No duplicates of elements included.
+   * No duplicated elements included.
    */
   const BoundaryViews_t& boundary_views() const { return _boundary_views; }
 

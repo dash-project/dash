@@ -6,9 +6,12 @@
 #include <dash/Matrix.h>
 #include <dash/Pattern.h>
 #include <dash/halo/StencilOperator.h>
+#include <dash/halo/CoordinateAccess.h>
 
 #include <type_traits>
 #include <vector>
+
+
 
 namespace dash {
 
@@ -64,6 +67,7 @@ public:
   using HaloPackBuffer_t = HaloPackBuffer<HaloBlock_t>;
   using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
   using region_index_t  = typename RegionCoords<NumDimensions>::region_index_t;
+  using stencil_dist_t  = typename StencilPoint<NumDimensions>::point_value_t;
 
 private:
   static constexpr auto MemoryArrange = Pattern_t::memory_order();
@@ -108,13 +112,27 @@ public:
   }
 
   /**
+   * Constructor that takes \ref Matrix and a stencil point distance 
+   * to create a \ref HaloMatrixWrapper with a full stencil with the 
+   * given width.
+   * The \ref GlobalBoundarySpec is set to default.
+   */
+  template <typename StencilPointT = StencilPoint<NumDimensions>>
+  HaloMatrixWrapper(MatrixT& matrix, stencil_dist_t dist, std::enable_if_t<std::is_integral<stencil_dist_t>::value, std::nullptr_t> = nullptr )
+  : HaloMatrixWrapper(matrix, GlobBoundSpec_t(), StencilSpecFactory<StencilPointT>::full_stencil_spec(dist)) {
+  }
+
+  /**
    * Constructor that takes \ref Matrix and a user
    * defined number of stencil specifications (\ref StencilSpec).
    * The \ref GlobalBoundarySpec is set to default.
    */
   template <typename... StencilSpecT>
-  HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT&... stencil_spec)
+  HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT&... stencil_spec, std::enable_if_t<std::is_integral<StencilSpecT...>::value, std::nullptr_t> = nullptr)
   : HaloMatrixWrapper(matrix, GlobBoundSpec_t(), stencil_spec...) {}
+
+  
+
 
   HaloMatrixWrapper() = delete;
 
@@ -329,6 +347,10 @@ public:
 
     return StencilOperator<HaloBlock_t, StencilSpecT>(
       &_haloblock, _matrix.lbegin(), &_halomemory, stencil_spec);
+  }
+
+  CoordinateAccess<HaloBlock_t> coordinate_access() {
+    return CoordinateAccess<HaloBlock_t>(&_haloblock, _matrix.lbegin(),&_halomemory);
   }
 
 private:
