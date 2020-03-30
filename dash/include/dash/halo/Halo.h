@@ -648,15 +648,7 @@ public:
     return dim;
   }
 
-  /**
-   * Returns the highest dimension with region values != 1
-   */
-  dim_t relevant_dim() { return relevant_dim(this->_values); }
-
-  /**
-   * returns the number of coordinates unequal to the center (1) for
-   * all dimensions
-   *
+  /**auto max = stencil.max();
    * level = 0 -> center (1,1)
    * level = 1 -> main regions (e.g. 2D: (0,1) (2,1) (1,0) (1,2)
    * level = 2 e.g. 2D corner regions or 3D edge regions
@@ -882,7 +874,7 @@ public:
     
     read_stencil_points(stencil_spec);
 
-    _num_regions = count_regions();
+    //_num_regions = count_regions();
   }
 
   template <typename StencilSpecT, typename... Args>
@@ -896,9 +888,10 @@ public:
     std::array<RegionSpec_t, sizeof...(ARGS) + 1> tmp{ region_spec, args... };
     for(auto& spec : tmp) {
       _specs[spec.index()] = spec;
+      ++_num_regions;
     }
     
-    _num_regions = count_regions();
+    //_num_regions = count_regions();
   }
 
   HaloSpec(const Self_t& other) { _specs = other._specs; }
@@ -950,8 +943,12 @@ private:
   template <typename StencilPointT>
   void set_region_spec(const StencilPointT& stencil) {
     auto index = RegionSpec_t::index(stencil);
-
+    
     auto max = stencil.max();
+    if(_specs[index].extent() == 0 && max > 0)
+      ++_num_regions;
+    
+    
     if(max > _specs[index].extent())
       _specs[index] = RegionSpec_t(index, max);
   }
