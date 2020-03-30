@@ -127,8 +127,18 @@ public:
    * defined number of stencil specifications (\ref StencilSpec).
    * The \ref GlobalBoundarySpec is set to default.
    */
-  template <typename... StencilSpecT>
-  HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT&... stencil_spec, std::enable_if_t<std::is_integral<StencilSpecT...>::value, std::nullptr_t> = nullptr)
+  template <typename StencilPointT, std::size_t NumStencilPoints>
+  HaloMatrixWrapper(MatrixT& matrix, const StencilSpec<StencilPointT,NumStencilPoints> stencil_spec)
+  : HaloMatrixWrapper(matrix, GlobBoundSpec_t(), stencil_spec) {}
+
+  /**
+   * Constructor that takes \ref Matrix and a user
+   * defined number of stencil specifications (\ref StencilSpec).
+   * The \ref GlobalBoundarySpec is set to default.
+   */
+  template <typename... StencilSpecT,
+          typename std::enable_if_t<sizeof...(StencilSpecT) >= 2, bool>>
+  HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT&... stencil_spec)
   : HaloMatrixWrapper(matrix, GlobBoundSpec_t(), stencil_spec...) {}
 
   
