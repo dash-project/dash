@@ -136,8 +136,7 @@ public:
    * defined number of stencil specifications (\ref StencilSpec).
    * The \ref GlobalBoundarySpec is set to default.
    */
-  template <typename... StencilSpecT,
-          typename std::enable_if_t<sizeof...(StencilSpecT) >= 2, bool>>
+  template <typename... StencilSpecT, typename std::enable_if_t<sizeof...(StencilSpecT) >= 2, bool>>
   HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT&... stencil_spec)
   : HaloMatrixWrapper(matrix, GlobBoundSpec_t(), stencil_spec...) {}
 
@@ -176,6 +175,7 @@ public:
   void update_at(region_index_t index) {
     auto it_find = _region_data.find(index);
     if(it_find != _region_data.end()) {
+      _halo_buffer.pack(index);
       update_halo_intern(it_find->second);
       dart_wait_local(&it_find->second.handle);
     }
@@ -198,6 +198,7 @@ public:
   void update_async_at(region_index_t index) {
     auto it_find = _region_data.find(index);
     if(it_find != _region_data.end()) {
+      _halo_buffer.pack(index);
       update_halo_intern(it_find->second);
     }
   }

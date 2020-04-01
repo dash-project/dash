@@ -873,8 +873,6 @@ public:
   HaloSpec(const StencilSpecT& stencil_spec) {
     
     read_stencil_points(stencil_spec);
-
-    //_num_regions = count_regions();
   }
 
   template <typename StencilSpecT, typename... Args>
@@ -887,11 +885,15 @@ public:
   HaloSpec(const RegionSpec_t& region_spec, const ARGS&... args) {
     std::array<RegionSpec_t, sizeof...(ARGS) + 1> tmp{ region_spec, args... };
     for(auto& spec : tmp) {
-      _specs[spec.index()] = spec;
-      ++_num_regions;
+      auto& current_spec = _specs[spec.index()];
+      if(current_spec.extent() == 0 && spec.extent() > 0) {
+        ++_num_regions;
+      }
+
+      if(current_spec.extent() < spec.extent()) {
+        current_spec = spec;
+      }
     }
-    
-    //_num_regions = count_regions();
   }
 
   HaloSpec(const Self_t& other) { _specs = other._specs; }
@@ -971,17 +973,6 @@ private:
     }
 
     return false;
-  }
-
-  region_size_t count_regions() {
-    region_size_t size = 0;
-    for(const auto& spec : _specs) {
-      if(spec.extent() != 0) {
-        ++size;
-      }
-    }
-
-    return size;
   }
 
 private:
@@ -2010,20 +2001,20 @@ public:
 
   void pack(region_index_t region_index) {
     const auto& update_data = _halo_update_data[region_index];
-    if(!update_data.needs_signal) {
+    if(!update_data.put_data.needs_signal) {
       return;
     }
 
-    if(update_data.needs_packing) {
-      auto buffer_offset = _halo_buffer.lbegin() + update_data.halo_offset;
-      for(auto& block : update_data.block_data) {
-        auto block_begin = _local_memory + block.offset;
-        std::copy(block_begin, block_begin + block.blength, buffer_offset);
-        buffer_offset += block.blength;
+    if(update_data.pack_data.needs_packing) {
+      auto buffer_offset = _halo_buffer.lbegin() + update_data.pack_data.buffer_offset;
+      for(auto& offset : update_data.pack_data.block_offs) {
+        auto block_begin = _local_memory + offset;
+        std::copy(block_begin, block_begin + update_data.pack_data.block_len, buffer_offset);
+        buffer_offset += update_data.pack_data.block_len;
       }
     }
 
-    dash::internal::put_blocking(update_data.neighbor_signal, &_signal, 1);
+    dash::internal::put_blocking(update_data.put_data.signal_gptr, &_signal, 1);
   }
 
   dart_gptr_t buffer_region(region_index_t region_index) {
