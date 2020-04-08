@@ -19,7 +19,7 @@ namespace internal {
 MemorySpaceRegistry& MemorySpaceRegistry::GetInstance()
 {
   std::call_once(
-      m_onceFlag, [] { m_instance.reset(new MemorySpaceRegistry); });
+      m_onceFlag, [](){ m_instance.reset(new MemorySpaceRegistry); });
   return *m_instance.get();
 }
 
