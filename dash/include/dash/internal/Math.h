@@ -121,7 +121,7 @@ std::map<Integer, unsigned> factorize(Integer n)
   }
   for (Integer i = 2, i_2 = 4 /* i^2 */;
        i_2 <= n;
-       i_2 += 2 * i + 1 /* next square */,
+       i_2 += 2 * i + 1 + (i & 1) * (2 * i + 3) /* next square */,
        i += 1 + (i & 1) /* next odd */) {
     while (n % i == 0) {
       n = n / i;
