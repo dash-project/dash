@@ -556,7 +556,15 @@ dart_ret_t dart_team_memfree(
     }
     /* Detach the window associated with sub-memory to be freed */
     if (sub_mem != NULL) {
+#if defined(SPEC)
+      MPI_Errhandler prev;
+      MPI_Win_get_errhandler(win, &prev);
+      MPI_Win_set_errhandler(win, MPI_ERRORS_RETURN);
+#endif
       MPI_Win_detach(win, sub_mem);
+#if defined(SPEC)
+      MPI_Win_set_errhandler(win, prev);
+#endif
     }
 
 	/* Free the window's associated sub-memory */
@@ -780,7 +788,15 @@ dart_team_memderegister(
     return DART_ERR_INVAL;
   }
 
+#if defined(SPEC)
+  MPI_Errhandler prev;
+  MPI_Win_get_errhandler(win, &prev);
+  MPI_Win_set_errhandler(win, MPI_ERRORS_RETURN);
+#endif
   MPI_Win_detach(win, sub_mem);
+#if defined(SPEC)
+  MPI_Win_set_errhandler(win, prev);
+#endif
   if (dart_segment_free(&team_data->segdata, segid) != DART_OK) {
     return DART_ERR_INVAL;
   }
