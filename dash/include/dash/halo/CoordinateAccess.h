@@ -1,11 +1,13 @@
 #ifndef DASH__HALO_HALOCOORDINATEACCESS_H
 #define DASH__HALO_HALOCOORDINATEACCESS_H
 
-#include <dash/halo/Halo.h>
+#include <dash/halo/Halo.h> 
 
 namespace dash {
 
 namespace halo {
+
+using namespace internal;
 
 // forward declaration
 template<typename HaloBlockT>
@@ -113,14 +115,12 @@ private:
   static constexpr auto MemoryArrange    = CoordinateAccessT::memory_order();
 
   using RegCoords_t = RegionCoords<NumDimensions>;
-  static constexpr auto RegIndexBase = RegCoords_t::REGION_INDEX_BASE;
   static constexpr auto RegIndexCenter = RegCoords_t::center_index();
 
 public:
   using Element_t = typename CoordinateAccessT::Element_t;
   using index_t = typename CoordinateAccessT::index_t;
   using Coords_t     = typename CoordinateAccessT::Coords_t;
-  using region_index_t = typename RegCoords_t::region_index_t;
 
 public:
 
@@ -132,7 +132,7 @@ public:
   std::enable_if_t<(_CurrentDimension != NumDimensions), DataAccess<CoordinateAccessT, CurrentDimension+1>>
   operator[](index_t pos) {
     _coords[CurrentDimension] = pos;
-    _reg_index *= RegIndexBase;
+    _reg_index *= REGION_INDEX_BASE;
     if(_halo || pos < 0 || pos >= static_cast<index_t>(_access->_view_local->extent(CurrentDimension))) {
       if(pos < 0) {
         return DataAccess<CoordinateAccessT, CurrentDimension+1>(_access, _mem + pos * _access->_offsets[CurrentDimension], _coords, _reg_index, true);
@@ -152,7 +152,7 @@ public:
   std::enable_if_t<(_CurrentDimension == NumDimensions), Element_t>&
   operator[](index_t pos) {
     if(_halo || pos < 0 || pos >= static_cast<index_t>(_access->_view_local->extent(CurrentDimension))) {
-      _reg_index *= RegIndexBase;
+      _reg_index *= REGION_INDEX_BASE;
       
       if(pos >= 0) {
         ++_reg_index;

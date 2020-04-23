@@ -66,8 +66,8 @@ public:
   using HaloMemory_t    = HaloMemory<HaloBlock_t>;
   using HaloPackBuffer_t = HaloPackBuffer<HaloBlock_t>;
   using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
-  using region_index_t  = typename RegionCoords<NumDimensions>::region_index_t;
-  using stencil_dist_t  = typename StencilPoint<NumDimensions>::point_value_t;
+  using region_index_t  = internal::region_index_t;
+  using stencil_dist_t  = internal::spoint_value_t;
 
 private:
   static constexpr auto MemoryArrange = Pattern_t::memory_order();

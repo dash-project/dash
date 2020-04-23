@@ -1,4 +1,3 @@
-
 #include "HaloTest.h"
 
 #include <dash/Matrix.h>
@@ -10,6 +9,8 @@
 using namespace dash;
 
 using namespace dash::halo;
+
+using namespace dash::halo::internal;
 
 TEST_F(HaloTest, GlobalBoundarySpec)
 {
@@ -74,6 +75,8 @@ TEST_F(HaloTest, HaloSpecStencils)
   using RCoords_t     = RegionCoords<3>;
   using StencilP_t    = StencilPoint<3>;
 
+  static constexpr auto RegionsMax = NumRegionsMax<3>;
+
   {
     using StencilSpec_t = StencilSpec<StencilP_t, 6>;
     StencilSpec_t stencil_spec(
@@ -107,7 +110,7 @@ TEST_F(HaloTest, HaloSpecStencils)
 
     EXPECT_EQ(halo_spec.spec(16).coords(), RCoords_t({1,2,1}));
     EXPECT_EQ((uint32_t)halo_spec.extent(16), 2);
-    for(auto i = 0; i < RCoords_t::NumRegionsMax; ++i) {
+    for(auto i = 0; i < RegionsMax; ++i) {
       if (i != 16) {
         EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
       }
@@ -125,7 +128,7 @@ TEST_F(HaloTest, HaloSpecStencils)
     EXPECT_EQ((uint32_t)halo_spec.extent(3), 2);
     EXPECT_EQ((uint32_t)halo_spec.extent(4), 2);
     EXPECT_EQ((uint32_t)halo_spec.extent(12), 1);
-    for(auto i = 0; i < RCoords_t::NumRegionsMax; ++i) {
+    for(auto i = 0; i < RegionsMax; ++i) {
       if(i != 3 && i != 4 && i != 12) {
         EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
       }
@@ -151,7 +154,7 @@ TEST_F(HaloTest, HaloSpecStencils)
     EXPECT_EQ((uint32_t)halo_spec.extent(9), 2);
     EXPECT_EQ((uint32_t)halo_spec.extent(10), 2);
     EXPECT_EQ((uint32_t)halo_spec.extent(12), 1);
-    for(auto i = 0; i < RCoords_t::NumRegionsMax; ++i) {
+    for(auto i = 0; i < RegionsMax; ++i) {
       if (i != 0 && i != 1 && i != 3 && i != 4 && i != 9 && i != 10 &&
           i != 12) {
         EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
@@ -178,7 +181,7 @@ TEST_F(HaloTest, HaloSpecStencils)
     EXPECT_EQ((uint32_t)halo_spec.extent(23), 3);
     EXPECT_EQ((uint32_t)halo_spec.extent(25), 3);
     EXPECT_EQ((uint32_t)halo_spec.extent(26), 3);
-    for(auto i = 0; i < RCoords_t::NumRegionsMax; ++i) {
+    for(auto i = 0; i < RegionsMax; ++i) {
       if (i != 14 && i != 16 && i != 17 && i != 22 && i != 23 && i != 25 &&
           i != 26) {
         EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
@@ -446,7 +449,7 @@ unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper, StencilOpT stencil_op, b
   halo_wrapper.wait();
 
   if(region_wise) {
-    for( auto r = 0; r < dash::halo::RegionCoords<3>::NumRegionsMax; ++r) {
+    for( auto r = 0; r < NumRegionsMax<3>; ++r) {
       auto it_bnd = stencil_op.boundary.iterator_at(r);
       if(it_bnd.first == it_bnd.second)
         continue;

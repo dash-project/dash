@@ -17,6 +17,8 @@ struct replace {
 
 }  // namespace internal
 
+using namespace internal;
+
 // Forward declaration
 template <typename HaloBlockT, typename StencilSpecT>
 class StencilOperator;
@@ -405,7 +407,6 @@ public:
   using const_iterator  = const iterator;
   using BoundaryViews_t = typename StencilSpecViews_t::BoundaryViews_t;
   using RegionCoords_t  = RegionCoords<NumDimensions>;
-  using region_index_t  = typename RegionCoords_t::region_index_t;
 
 public:
   StencilOperatorBoundary(const StencilOperatorT* stencil_op)
@@ -516,7 +517,7 @@ public:
   }
 
   std::pair<iterator, iterator> iterator_at(region_index_t index) {
-    DASH_ASSERT_LT(index, RegionCoords_t::NumRegionsMax, "Given index out of range");
+    DASH_ASSERT_LT(index, NumRegionsMax<NumDimensions>, "Given index out of range");
     const auto&    bnd_views = _stencil_op->_spec_views.boundary_views();
     uindex_t offset = 0;
     for(region_index_t r = 0; r < index; ++r) {
@@ -678,7 +679,6 @@ public:
 
   using StencilSpecViews_t = StencilSpecificViews<HaloBlock_t, StencilSpecT>;
 
-  using region_index_t  = typename RegionSpec<NumDimensions>::region_index_t;
   using stencil_index_t = typename StencilSpecT::stencil_index_t;
 
     using iterator =
