@@ -11,162 +11,7 @@ namespace dash {
 
 namespace halo {
 
-/**
- * View property of the StencilIterator
- */
-enum class StencilViewScope : std::uint8_t {
-  /// inner elements only
-  INNER,
-  /// Boundary elements only
-  BOUNDARY,
-  /// Inner and boundary elements
-  ALL
-};
-
-inline std::ostream& operator<<(std::ostream&           os,
-                                const StencilViewScope& scope) {
-  if(scope == StencilViewScope::INNER)
-    os << "INNER";
-  else if(scope == StencilViewScope::BOUNDARY)
-    os << "BOUNDARY";
-  else
-    os << "ALL";
-
-  return os;
-}
-
-/**
- * Adapts all views \ref HaloBlock provides to the given \ref StencilSpec.
- */
-template <typename HaloBlockT, typename StencilSpecT>
-class StencilSpecificViews {
-private:
-  static constexpr auto NumDimensions = HaloBlockT::ndim();
-
-  using Pattern_t = typename HaloBlockT::Pattern_t;
-
-public:
-  using HaloBlock_t     = HaloBlockT;
-  using ViewSpec_t      = typename HaloBlockT::ViewSpec_t;
-  using BoundaryViews_t = typename HaloBlockT::BoundaryViews_t;
-  using pattern_size_t  = typename Pattern_t::size_type;
-  using StencilSpec_t   = StencilSpecT;
-
-public:
-  StencilSpecificViews(const HaloBlockT&   halo_block,
-                       const StencilSpec_t& stencil_spec,
-                       const ViewSpec_t*   view_local)
-  : _stencil_spec(&stencil_spec), _view_local(view_local) {
-    auto minmax_dist = stencil_spec.minmax_distances();
-    for(auto& dist : minmax_dist)
-      dist.first = std::abs(dist.first);
-
-    auto inner_off       = halo_block.view_inner().offsets();
-    auto inner_ext       = halo_block.view_inner().extents();
-    auto inner_bound_off = halo_block.view_inner_with_boundaries().offsets();
-    auto inner_bound_ext = halo_block.view_inner_with_boundaries().extents();
-    for(auto d = 0; d < NumDimensions; ++d) {
-      resize_offset(inner_off[d], inner_ext[d], minmax_dist[d].first);
-      resize_extent(inner_off[d], inner_ext[d], _view_local->extent(d),
-                    minmax_dist[d].second);
-      resize_offset(inner_bound_off[d], inner_bound_ext[d],
-                    minmax_dist[d].first);
-      resize_extent(inner_bound_off[d], inner_bound_ext[d],
-                    _view_local->extent(d), minmax_dist[d].second);
-    }
-    _view_inner                 = ViewSpec_t(inner_off, inner_ext);
-    _view_inner_with_boundaries = ViewSpec_t(inner_bound_off, inner_bound_ext);
-
-    BoundaryRegionMapping<HaloBlockT> bound_mapping(stencil_spec, halo_block);
-
-    auto bound_regions = bound_mapping.views();
-    _size_bnd_elems = bound_mapping.num_elements();
-
-    for(auto r = 0u; r < bound_regions.size(); ++r ) {
-      _boundary_views.push_back(bound_regions[r]);
-    }
-
-    _boundary_views_dim = halo_block.boundary_views();
-  }
-
-  /**
-   * Returns \ref StencilSpec
-   */
-  const StencilSpec_t& stencil_spec() const { return *_stencil_spec; }
-
-  /**
-   * Returns \ref ViewSpec including all elements (locally)
-   */
-  const ViewSpec_t& view() const { return *_view_local; }
-
-  /**
-   * Returns \ref ViewSpec including all inner elements
-   */
-  const ViewSpec_t& inner() const { return _view_inner; }
-
-  /**
-   * Returns \ref ViewSpec including all inner and boundary elements
-   */
-  const ViewSpec_t& inner_with_boundaries() const {
-    return _view_inner_with_boundaries;
-  }
-
-  /**
-   * Returns all boundary views including all boundary elements (no dublicates)
-   */
-  const BoundaryViews_t& boundary_views() const { return _boundary_views; }
-
-  /**
-   * Returns all boundary views including all boundary elements (no dublicates)
-   */
-  const BoundaryViews_t& boundary_views_dim() const { return _boundary_views_dim; }
-
-  /**
-   * Returns the number of all boundary elements (no dublicates)
-   */
-  pattern_size_t boundary_size() const { return _size_bnd_elems; }
-
-private:
-
-  template <typename OffT, typename ExtT, typename MaxT>
-  void resize_offset(OffT& offset, ExtT& extent, MaxT max) {
-    if(offset > max) {
-      extent += offset - max;
-      offset = max;
-    }
-  }
-
-  template <typename OffT, typename ExtT, typename MinT>
-  void resize_extent(OffT& offset, ExtT& extent, ExtT extent_local, MinT max) {
-    auto diff_ext = extent_local - offset - extent;
-    if(diff_ext > static_cast<ExtT>(max))
-      extent += diff_ext - max;
-  }
-
-private:
-  const StencilSpec_t* _stencil_spec;
-  const ViewSpec_t*    _view_local;
-  ViewSpec_t           _view_inner;
-  ViewSpec_t           _view_inner_with_boundaries;
-  BoundaryViews_t      _boundary_views;
-  BoundaryViews_t      _boundary_views_dim;
-  pattern_size_t       _size_bnd_elems = 0;
-};
-
-template <typename HaloBlockT, typename StencilSpecT>
-std::ostream& operator<<(
-  std::ostream&                                         os,
-  const StencilSpecificViews<HaloBlockT, StencilSpecT>& stencil_views) {
-  std::ostringstream ss;
-  ss << "dash::halo::StencilSpecificViews"
-     << "(local: " << stencil_views.view()
-     << "; inner: " << stencil_views.inner()
-     << "; inner_bound: " << stencil_views.inner_with_boundaries()
-     << "; boundary_views: " << stencil_views.boundary_views()
-     << "; boundary elems: " << stencil_views.boundary_size() << ")";
-
-  return operator<<(os, ss.str());
-}
+using namespace internal;
 
 template<typename StencilOpT>
 class CoordsIdxManagerInner {
@@ -414,7 +259,6 @@ public:
   using stencil_index_t = typename StencilSpec_t::stencil_index_t;
 
   using RegionCoords_t        = RegionCoords<NumDimensions>;
-  using region_index_t  = typename RegionCoords_t::region_index_t;
 private:
   using BoundaryViews_t       = typename StencilSpecViews_t::BoundaryViews_t;
   using viewspec_index_t = typename ViewSpec_t::index_type;
@@ -603,22 +447,22 @@ public:
         for(dim_t d = 0; d < NumDimensions; ++d) {
           auto stencil_off = stencil[d];
           if(stencil_off == 0) {
-            index = 1 + index * RegionCoords_t::REGION_INDEX_BASE;
+            index = 1 + index * REGION_INDEX_BASE;
             continue;
           }
           coords[d] += stencil_off;
           if(coords[d] < 0) {
-            index *= RegionCoords_t::REGION_INDEX_BASE;
+            index *= REGION_INDEX_BASE;
             is_halo = true;
             continue;
           }
 
           if(static_cast<uindex_t>(coords[d]) < extents[d]) {
-            index = 1 + index * RegionCoords_t::REGION_INDEX_BASE;
+            index = 1 + index * REGION_INDEX_BASE;
             continue;
           }
 
-          index = 2 + index * RegionCoords_t::REGION_INDEX_BASE;
+          index = 2 + index * REGION_INDEX_BASE;
           is_halo = true;
         }
         if(is_halo) {
@@ -713,13 +557,13 @@ private:
       for(dim_t d = 0; d < NumDimensions; ++d) {
         auto stencil_off = specs[i][d];
         if(stencil_off == 0) {
-          spoint_halo.index = 1 + spoint_halo.index * RegionCoords_t::REGION_INDEX_BASE;
+          spoint_halo.index = 1 + spoint_halo.index * REGION_INDEX_BASE;
           continue;
         }
 
         halo_coord[d] += stencil_off;
         if(halo_coord[d] < 0) {
-          spoint_halo.index *= RegionCoords_t::REGION_INDEX_BASE;
+          spoint_halo.index *= REGION_INDEX_BASE;
           spoint_halo.possible = true;
           is_halo = true;
           if( halo_coord[d] > minmax[d].first) {
@@ -729,7 +573,7 @@ private:
         }
 
         if(static_cast<uindex_t>(halo_coord[d]) < extents[d]) {
-          spoint_halo.index = 1 + spoint_halo.index * RegionCoords_t::REGION_INDEX_BASE;
+          spoint_halo.index = 1 + spoint_halo.index * REGION_INDEX_BASE;
           if(_coords[d] < std::abs(minmax[d].first) ||
             (extents[d] - static_cast<uindex_t>(_coords[d])) <=  static_cast<uindex_t>(minmax[d].second)) {
             spoint_halo.always = false;
@@ -739,7 +583,7 @@ private:
           continue;
         }
 
-        spoint_halo.index = 2 + spoint_halo.index * RegionCoords_t::REGION_INDEX_BASE;
+        spoint_halo.index = 2 + spoint_halo.index * REGION_INDEX_BASE;
         spoint_halo.possible = true;
         is_halo = true;
         if(minmax[d].second != stencil_off) {
@@ -1047,7 +891,6 @@ public:
 
   using HaloMemory_t    = HaloMemory<HaloBlock_t>;
   using pattern_index_t = typename PatternT::index_type;
-  using region_index_t  = typename RegionCoords_t::region_index_t;
   using LocalLayout_t =
     CartesianIndexSpace<NumDimensions, MemoryArrange, pattern_index_t>;
   using StencilP_t            = StencilPoint<NumDimensions>;
@@ -1464,17 +1307,17 @@ private:
           auto& halo_coord = halo_coords[i][d];
           halo_coord       = _coords[d] + (*_stencil_spec)[i][d];
           if(halo_coord < 0) {
-            indexes[i] *= RegionCoords_t::REGION_INDEX_BASE;
+            indexes[i] *= REGION_INDEX_BASE;
             is_halo[i] = true;
             continue;
           }
 
           if(halo_coord < static_cast<signed_extent_t>(extent)) {
-            indexes[i] = 1 + indexes[i] * RegionCoords_t::REGION_INDEX_BASE;
+            indexes[i] = 1 + indexes[i] * REGION_INDEX_BASE;
             continue;
           }
 
-          indexes[i] = 2 + indexes[i] * RegionCoords_t::REGION_INDEX_BASE;
+          indexes[i] = 2 + indexes[i] * REGION_INDEX_BASE;
           is_halo[i] = true;
         }
       }
