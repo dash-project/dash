@@ -1,6 +1,8 @@
 #ifndef INCLUDED_CSTDDEF_DOT_H
 #define INCLUDED_CSTDDEF_DOT_H
 
+#include <cstddef>
+
 #if __cpp_lib_byte < 201603
 
 namespace std {
