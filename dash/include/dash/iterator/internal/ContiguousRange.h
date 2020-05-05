@@ -78,8 +78,27 @@ public:
 
 private:
 
+
+  template<typename IterT>
+  size_type check_iter(const IterT& t, size_type num_elems, dim_t fast_dim) const {
+
+    return num_elems;
+  }
+
+  template<typename ElementT, typename PatternT, typename GlobMemT, typename PointerT, typename ReferenceT>
+  size_type check_iter(const GlobViewIter<ElementT, PatternT, GlobMemT, PointerT, ReferenceT>& it,
+                       size_type num_elems, dim_t fast_dim) const {
+    auto view_it_extent = it.viewspec().extent(fast_dim);
+    if(num_elems > view_it_extent) {
+      num_elems = view_it_extent;
+    }
+
+    return num_elems;
+  }
+
   std::pair<IteratorT, size_type>
   next_range() const {
+
     auto cur_first = m_pos + m_num_copy_elems;
 
     if (cur_first == m_end) {
@@ -88,9 +107,9 @@ private:
 
     auto cur_last  = cur_first;
     size_type num_copy_elem = 0;
-    constexpr const int ndim = pattern_type::ndim();
+    constexpr const dim_t ndim = pattern_type::ndim();
     const auto& pattern = m_pos.pattern();
-    const int fast_dim = (pattern.memory_order() == dash::ROW_MAJOR) ? ndim - 1 : 0;
+    const dim_t fast_dim = (pattern.memory_order() == dash::ROW_MAJOR) ? ndim - 1 : 0;
 
 
     auto lpos = m_pos.lpos();
@@ -111,6 +130,7 @@ private:
 
       // the number of elements to copy is the blocksize minus the offset in the block
       size_type num_copy_block_elem = blocksize_d - phase_d;
+      num_copy_block_elem = check_iter(cur_last, num_copy_block_elem, fast_dim);
 
       // don't try to copy too many elements
       size_type elems_left = dash::distance(cur_last, m_end);

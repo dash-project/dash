@@ -322,6 +322,48 @@ TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
   delete[] local_copy;
 }
 
+TEST_F(CopyTest, Blocking2DimGlobalToLocalMasterOnlyAllRemote)
+{
+  using value_t  = double;
+  using Pattern_t = dash::Pattern<2>;
+  using Matrix_t  = dash::Matrix<value_t, 2, typename Pattern_t::index_type, Pattern_t>;
+
+  dash::global_unit_t myid = dash::myid();
+  size_t num_units = dash::Team::All().size();
+  size_t num_elems_unit  = 5;
+  size_t extent          = num_elems_unit * num_units;
+
+  dash::TeamSpec<2> teamspec{};
+  auto distspec = dash::DistributionSpec<2>(dash::BLOCKED, dash::NONE);
+  Pattern_t pattern(dash::SizeSpec<2>(extent, extent), distspec,
+                  teamspec, dash::Team::All());
+  Matrix_t matrix(pattern);
+
+  auto& local = matrix.local;   // local matrix
+  for (auto i = 0; i < local.extent(0); ++i) {
+      for (auto j = 0; j < local.extent(1); ++j) {
+          local.at(i,j) = i + j + dash::myid() / 100.0;
+      }
+  }
+  dash::barrier();
+
+  std::vector<value_t> copy_buffer(extent);
+
+  if (!myid) {
+    for (auto col_id = 0; col_id < matrix.extent(1); ++col_id) {
+
+      auto col_it = matrix.col(col_id);
+      dash::copy(col_it.begin(), col_it.end(), copy_buffer.data());
+      size_t count = 0;
+      for (auto it = col_it.begin(); it != col_it.end(); ++it, ++count) {
+        EXPECT_EQ_U(static_cast<value_t>(*it), copy_buffer[count]);
+      }
+    }
+  }
+
+  dash::barrier();
+}
+
 TEST_F(CopyTest, BlockingGlobalToLocalBarrierUnaligned)
 {
   dash::global_unit_t myid = dash::myid();
