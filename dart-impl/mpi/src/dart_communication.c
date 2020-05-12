@@ -2220,7 +2220,7 @@ dart_ret_t dart_alltoall(
     dart_datatype_t dtype,
     dart_team_t     teamid)
 {
-  DART_LOG_TRACE("dart_alltoall() team:%d nelem:%" PRIu64 "", teamid, nelem);
+  DART_LOG_TRACE("dart_alltoall < team:%d nelem:%" PRIu64 "", teamid, nelem);
 
   CHECK_IS_BASICTYPE(dtype);
 
@@ -2258,6 +2258,149 @@ dart_ret_t dart_alltoall(
       "MPI_Alltoall");
 
   DART_LOG_TRACE("dart_alltoall > team:%d nelem:%" PRIu64 "", teamid, nelem);
+  return DART_OK;
+}
+
+dart_ret_t dart_alltoallv(
+    const void *    sendbuf,
+    void *          recvbuf,
+    size_t const *        send_counts,
+    size_t const *        send_displ,
+    size_t const *        recv_counts,
+    size_t const *        recv_displ,
+    dart_datatype_t dtype,
+    dart_team_t     teamid)
+{
+  DART_LOG_TRACE("dart_alltoallv < team:%d", teamid);
+
+  CHECK_IS_BASICTYPE(dtype);
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_alltoallv ! unknown teamid %d", teamid);
+    return DART_ERR_INVAL;
+  }
+
+  if (sendbuf == recvbuf || NULL == sendbuf) {
+    sendbuf = MPI_IN_PLACE;
+  }
+
+  MPI_Comm comm = team_data->comm;
+
+  int comm_size;
+  CHECK_MPI_RET(MPI_Comm_size(comm, &comm_size), "MPI_Comm_size");
+
+  int *send_counts_int = ALLOC_TMP(comm_size * sizeof(int));
+  int *send_displ_int  = ALLOC_TMP(comm_size * sizeof(int));
+  int *recv_counts_int = ALLOC_TMP(comm_size * sizeof(int));
+  int *recv_displ_int  = ALLOC_TMP(comm_size * sizeof(int));
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  int found_error = 0;
+  for(int i = 0; i < comm_size; i++) {
+    if (dart__unlikely(send_counts[i] > INT_MAX)) {
+      DART_LOG_ERROR(
+          "dart_alltoallv ! failed: nelem (%zu) > INT_MAX", send_counts[i]);
+      found_error = 1;
+    }
+    if (dart__unlikely(send_displ[i] > INT_MAX)) {
+      DART_LOG_ERROR(
+          "dart_alltoallv ! failed: nelem (%zu) > INT_MAX", send_displ[i]);
+      found_error = 1;
+    }
+    if (dart__unlikely(recv_counts[i] > INT_MAX)) {
+      DART_LOG_ERROR(
+          "dart_alltoallv ! failed: nelem (%zu) > INT_MAX", recv_counts[i]);
+      found_error = 1;
+    }
+    if (dart__unlikely(recv_displ[i] > INT_MAX)) {
+      DART_LOG_ERROR(
+          "dart_alltoallv ! failed: nelem (%zu) > INT_MAX", recv_displ[i]);
+      found_error = 1;
+    }
+    if (dart__unlikely(found_error)) {
+      FREE_TMP(comm_size, send_counts_int);
+      FREE_TMP(comm_size, send_displ_int);
+      FREE_TMP(comm_size, recv_counts_int);
+      FREE_TMP(comm_size, recv_displ_int);
+      return DART_ERR_INVAL;
+    }
+
+    send_counts_int[i] = send_counts[i];
+    send_displ_int[i]  = send_displ[i];
+    recv_counts_int[i] = recv_counts[i];
+    recv_displ_int[i]  = recv_displ[i];
+  }
+
+  MPI_Datatype mpi_dtype =
+      dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
+
+  CHECK_MPI_RET(
+      MPI_Alltoallv(
+          sendbuf,
+          send_counts_int,
+          send_displ_int,
+          mpi_dtype,
+          recvbuf,
+          recv_counts_int,
+          recv_displ_int,
+          mpi_dtype,
+          comm),
+      "MPI_Alltoallv");
+
+  FREE_TMP(comm_size, send_counts_int);
+  FREE_TMP(comm_size, send_displ_int);
+  FREE_TMP(comm_size, recv_counts_int);
+  FREE_TMP(comm_size, recv_displ_int);
+
+  DART_LOG_TRACE("dart_alltoallv > team:%d", teamid);
+
+  return DART_OK;
+}
+
+dart_ret_t dart_exscan(
+  const void       * sendbuf,
+  void             * recvbuf,
+  size_t             nelem,
+  dart_datatype_t    dtype,
+  dart_operation_t   op,
+  dart_team_t        team)
+{
+  DART_LOG_TRACE("dart_exscan < team:%d nelem:%" PRIu64 "", team, nelem);
+
+  CHECK_IS_CONTIGUOUSTYPE(dtype);
+
+  MPI_Op       mpi_op    = dart__mpi__op(op, dtype);
+  MPI_Datatype mpi_dtype = dart__mpi__op_type(op, dtype);
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (dart__unlikely(nelem > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_exscan ! failed: nelem (%zu) > INT_MAX", nelem);
+    return DART_ERR_INVAL;
+  }
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_exscan ! unknown team %d", team);
+    return DART_ERR_INVAL;
+  }
+
+  MPI_Comm comm = team_data->comm;
+  CHECK_MPI_RET(
+    MPI_Exscan(
+           sendbuf,   // send buffer
+           recvbuf,   // receive buffer
+           nelem,     // buffer size
+           mpi_dtype, // datatype
+           mpi_op,    // reduce operation
+           comm),
+    "MPI_Exscan");
+
+  DART_LOG_TRACE("dart_exscan > team:%d nelem:%" PRIu64 "", team, nelem);
   return DART_OK;
 }
 
@@ -2426,8 +2569,37 @@ dart_ret_t dart_sendrecv(
     return DART_ERR_INVAL;
   }
 
-  CHECK_UNITID_RANGE(dest, team_data);
-  CHECK_UNITID_RANGE(src, team_data);
+  if (dart__unlikely(
+          src.id < DART_UNDEFINED_UNIT_ID || src.id > team_data->size)) {
+    DART_LOG_ERROR(
+        "%s ! failed: unitid out of range 0 <= %d < %d",
+        __func__,
+        src.id,
+        team_data->size);
+    return DART_ERR_INVAL;
+  }
+
+  if (dart__unlikely(
+          dest.id < DART_UNDEFINED_UNIT_ID || dest.id > team_data->size)) {
+    DART_LOG_ERROR(
+        "%s ! failed: unitid out of range 0 <= %d < %d",
+        __func__,
+        dest.id,
+        team_data->size);
+    return DART_ERR_INVAL;
+  }
+
+  int source = src.id;
+  int target = dest.id;
+
+  if (src.id == DART_UNDEFINED_UNIT_ID) {
+    source = MPI_PROC_NULL;
+  }
+
+  if (dest.id == DART_UNDEFINED_UNIT_ID) {
+    target = MPI_PROC_NULL;
+  }
+
 
   comm = team_data->comm;
   CHECK_MPI_RET(
@@ -2435,12 +2607,12 @@ dart_ret_t dart_sendrecv(
         sendbuf,
         send_nelem,
         mpi_send_dtype,
-        dest.id,
+        target,
         send_tag,
         recvbuf,
         recv_nelem,
         mpi_recv_dtype,
-        src.id,
+        source,
         recv_tag,
         comm,
         MPI_STATUS_IGNORE),

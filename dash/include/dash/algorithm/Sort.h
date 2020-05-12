@@ -1,27 +1,8 @@
 #ifndef DASH__ALGORITHM__SORT_H
 #define DASH__ALGORITHM__SORT_H
 
-#include <algorithm>
-#include <functional>
-#include <iterator>
-#include <type_traits>
-#include <vector>
-
-#include <dash/Array.h>
-#include <dash/Exception.h>
-#include <dash/Meta.h>
-#include <dash/dart/if/dart.h>
-
-#include <dash/algorithm/Copy.h>
-#include <dash/algorithm/LocalRange.h>
-
-#include <dash/internal/Logging.h>
-#include <dash/util/Trace.h>
-
-namespace dash {
-
 #ifdef DOXYGEN
-
+namespace dash {
 /**
  * Sorts the elements in the range, defined by \c [begin, end) in ascending
  * order. The order of equal elements is not guaranteed to be preserved.
@@ -77,58 +58,88 @@ void sort(GlobRandomIt begin, GlobRandomIt end);
  *
  * \ingroup  DashAlgorithms
  */
-template <class GlobRandomIt, class SortableHash>
-void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash hash);
+template <class GlobRandomIt, class Projection>
+void sort(GlobRandomIt begin, GlobRandomIt end, Projection projection);
+
+}  // namespace dash
 
 #else
 
-#define __DASH_SORT__FINAL_STEP_BY_MERGE (0)
-#define __DASH_SORT__FINAL_STEP_BY_SORT (1)
-#define __DASH_SORT__FINAL_STEP_STRATEGY (__DASH_SORT__FINAL_STEP_BY_MERGE)
+#include <algorithm>
+#include <functional>
+#include <future>
+#include <iterator>
+#include <type_traits>
+#include <vector>
 
-#include <dash/algorithm/internal/Sort-inl.h>
+#include <cpp17/monotonic_buffer.h>
 
-template <class GlobRandomIt, class SortableHash>
-void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
+#include <dash/Exception.h>
+#include <dash/Meta.h>
+#include <dash/algorithm/LocalRange.h>
+#include <dash/algorithm/sort/Communication.h>
+#include <dash/algorithm/sort/Histogram.h>
+#include <dash/algorithm/sort/NodeParallelismConfig.h>
+#include <dash/algorithm/sort/Partition.h>
+#include <dash/algorithm/sort/Sampling.h>
+#include <dash/algorithm/sort/Sort-inl.h>
+#include <dash/algorithm/sort/Types.h>
+#include <dash/dart/if/dart.h>
+#include <dash/internal/Logging.h>
+#include <dash/util/Trace.h>
+
+namespace dash {
+
+template <
+    class GlobRandomIt,
+    class Projection,
+    class MergeStrategy = impl::sort__final_strategy__merge>
+void sort(
+    GlobRandomIt  begin,
+    GlobRandomIt  end,
+    GlobRandomIt  out,
+    Projection    projection,
+    MergeStrategy strategy = MergeStrategy{})
 {
-  using iter_type    = GlobRandomIt;
-  using value_type   = typename iter_type::value_type;
+  using iter_type  = GlobRandomIt;
+  using value_type = typename iter_type::value_type;
   using mapped_type =
       typename std::decay<typename dash::functional::closure_traits<
-          SortableHash>::result_type>::type;
+          Projection>::result_type>::type;
 
   static_assert(
       std::is_arithmetic<mapped_type>::value,
       "Only arithmetic types are supported");
 
-  auto pattern = begin.pattern();
-
-  dash::util::Trace trace("Sort");
-
-  auto const sort_comp = [&sortable_hash](
-                             const value_type& a, const value_type& b) {
-    return sortable_hash(a) < sortable_hash(b);
-  };
-
-  if (pattern.team() == dash::Team::Null()) {
-    DASH_LOG_TRACE("dash::sort", "Sorting on dash::Team::Null()");
-    return;
-  }
-  if (pattern.team().size() == 1) {
-    DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
-    trace.enter_state("final_local_sort");
-    std::sort(begin.local(), end.local(), sort_comp);
-    trace.exit_state("final_local_sort");
-    return;
-  }
+  static_assert(
+      std::is_same<decltype(begin.pattern()), decltype(out.pattern())>::value,
+      "incompatible pattern types for input and output iterator");
 
   if (begin >= end) {
     DASH_LOG_TRACE("dash::sort", "empty range");
-    trace.enter_state("final_barrier");
-    pattern.team().barrier();
-    trace.exit_state("final_barrier");
+    begin.pattern().team().barrier();
     return;
   }
+
+  if (begin.pattern().team() == dash::Team::Null() ||
+      out.pattern().team() == dash::Team::Null()) {
+    DASH_LOG_TRACE("dash::sort", "Sorting on dash::Team::Null()");
+    return;
+  }
+
+  if (begin.pattern().team() != out.pattern().team()) {
+    DASH_LOG_ERROR("dash::sort", "incompatible teams");
+    return;
+  }
+
+  dash::util::Trace trace("Sort");
+
+  auto const sort_comp = [&projection](
+                             const value_type& a, const value_type& b) {
+    return projection(a) < projection(b);
+  };
+
+  auto pattern = begin.pattern();
 
   dash::Team& team   = pattern.team();
   auto const  nunits = team.size();
@@ -139,41 +150,80 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   // local distance
   auto const l_range = dash::local_index_range(begin, end);
 
+  // local pointer to input data
   auto* l_mem_begin = dash::local_begin(
       static_cast<typename GlobRandomIt::pointer>(begin), team.myid());
 
+  // local pointer to output data
+  auto* l_mem_target = dash::local_begin(
+      static_cast<typename GlobRandomIt::pointer>(out), team.myid());
+
   auto const n_l_elem = l_range.end - l_range.begin;
 
-  auto * lbegin = l_mem_begin + l_range.begin;
-  auto * lend   = l_mem_begin + l_range.end;
+  impl::LocalData<value_type> local_data{// input
+                                         l_mem_begin + l_range.begin,
+                                         // output
+                                         l_mem_target + l_range.begin};
+
+  // Request a thread pool based on locality information
+  dash::util::TeamLocality tloc{pattern.team()};
+  auto                     uloc = tloc.unit_locality(pattern.team().myid());
+  auto                     nthreads = uloc.num_domain_threads();
+
+  DASH_ASSERT_GE(nthreads, 0, "invalid number of threads");
+
+  dash::impl::NodeParallelismConfig nodeLevelConfig{
+      static_cast<uint32_t>(nthreads)};
+
+  DASH_LOG_TRACE(
+      "dash::sort",
+      "nthreads for local parallelism: ",
+      nodeLevelConfig.parallelism());
 
   // initial local_sort
   trace.enter_state("1:initial_local_sort");
-  std::sort(lbegin, lend, sort_comp);
+
+  impl::local_sort(
+      local_data.input,
+      local_data.input + n_l_elem,
+      sort_comp,
+      nodeLevelConfig.parallelism());
+
+  DASH_LOG_TRACE_RANGE(
+      "locally sorted array", local_data.input, local_data.input + n_l_elem);
+
   trace.exit_state("1:initial_local_sort");
 
-  trace.enter_state("2:init_temporary_global_data");
+  auto ptr_begin = static_cast<dart_gptr_t>(
+      static_cast<typename iter_type::pointer>(begin));
+  auto ptr_out =
+      static_cast<dart_gptr_t>(static_cast<typename iter_type::pointer>(out));
 
-  using array_t = dash::Array<std::size_t>;
+  auto in_place = ptr_begin.segid == ptr_out.segid;
 
-  std::size_t gsize = nunits * NLT_NLE_BLOCK * 2;
+  if (pattern.team().size() == 1) {
+    if (!in_place) {
+      std::copy(
+          local_data.input, local_data.input + n_l_elem, local_data.output);
+    }
+    DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
+    return;
+  }
 
-  // implicit barrier...
-  array_t g_partition_data(nunits * nunits * 3, dash::BLOCKED, team);
-  std::uninitialized_fill(
-      g_partition_data.lbegin(), g_partition_data.lend(), 0);
+  trace.enter_state("2:find_global_min_max");
 
-  trace.exit_state("2:init_temporary_global_data");
+  auto min_max = impl::minmax(
+      (n_l_elem > 0) ? std::make_pair(
+                           // local minimum
+                           projection(*local_data.input),
+                           // local maximum
+                           projection(*(local_data.input + n_l_elem - 1)))
+                     : std::make_pair(
+                           std::numeric_limits<mapped_type>::max(),
+                           std::numeric_limits<mapped_type>::min()),
+      team.dart_id());
 
-  trace.enter_state("3:find_global_min_max");
-
-  // Temporary local buffer (sorted);
-  std::vector<value_type> const lcopy(lbegin, lend);
-
-  auto const min_max = detail::find_global_min_max(
-      std::begin(lcopy), std::end(lcopy), team.dart_id(), sortable_hash);
-
-  trace.exit_state("3:find_global_min_max");
+  trace.exit_state("2:find_global_min_max");
 
   DASH_LOG_TRACE_VAR("global minimum in range", min_max.first);
   DASH_LOG_TRACE_VAR("global maximum in range", min_max.second);
@@ -184,494 +234,491 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     return;
   }
 
-  trace.enter_state("4:init_temporary_local_data");
+  trace.enter_state("3:init_temporary_local_data");
 
-  auto const p_unit_info =
-      detail::psort__find_partition_borders(pattern, begin, end);
+  // find the partition sizes within the global range
+  auto partition_sizes_psum = impl::psort__partition_sizes(begin, end);
 
-  auto const& acc_partition_count = p_unit_info.acc_partition_count;
-
-  auto const               nboundaries = nunits - 1;
-  std::vector<mapped_type> splitters(nboundaries, mapped_type{});
-
-  detail::PartitionBorder<mapped_type> p_borders(
+  auto const                  nboundaries = nunits - 1;
+  impl::Splitter<mapped_type> splitters(
       nboundaries, min_max.first, min_max.second);
 
-  detail::psort__init_partition_borders(p_unit_info, p_borders);
+  impl::psort__init_partition_borders(partition_sizes_psum, splitters);
 
-  DASH_LOG_TRACE_RANGE(
-      "locally sorted array", std::begin(lcopy), std::end(lcopy));
   DASH_LOG_TRACE_RANGE(
       "skipped splitters",
-      p_borders.is_skipped.cbegin(),
-      p_borders.is_skipped.cend());
-
-  bool done = false;
+      std::begin(splitters.is_skipped),
+      std::end(splitters.is_skipped));
 
   // collect all valid splitters in a temporary vector
-  std::vector<size_t> valid_partitions;
-
+  std::vector<size_t> valid_splitters;
+  valid_splitters.reserve(nunits);
   {
-    // make this as a separately scoped block to deallocate non-required
-    // temporary memory
-    std::vector<size_t> all_borders(splitters.size());
-    std::iota(all_borders.begin(), all_borders.end(), 0);
-
-    auto const& is_skipped = p_borders.is_skipped;
+    auto range = dash::meta::range(nboundaries);
 
     std::copy_if(
-        all_borders.begin(),
-        all_borders.end(),
-        std::back_inserter(valid_partitions),
-        [&is_skipped](size_t idx) { return is_skipped[idx] == false; });
+        std::begin(range),
+        std::end(range),
+        std::back_inserter(valid_splitters),
+        [& is_skipped = splitters.is_skipped](size_t idx) {
+          return is_skipped[idx] == false;
+        });
   }
 
   DASH_LOG_TRACE_RANGE(
       "valid partitions",
-      std::begin(valid_partitions),
-      std::end(valid_partitions));
+      std::begin(valid_splitters),
+      std::end(valid_splitters));
 
-  if (valid_partitions.empty()) {
+  if (valid_splitters.empty()) {
     // Edge case: We may have a team spanning at least 2 units, however the
     // global range is owned by  only 1 unit
     team.barrier();
     return;
   }
 
-  trace.exit_state("4:init_temporary_local_data");
+  trace.exit_state("3:init_temporary_local_data");
 
-  trace.enter_state("5:find_global_partition_borders");
+  {
+    trace.enter_state("4:find_global_partition_borders");
 
-  size_t iter = 0;
+    size_t iter = 0;
+    bool   done = false;
 
-  std::vector<size_t> global_histo(nunits * NLT_NLE_BLOCK, 0);
+    std::vector<size_t> global_histo(nunits * impl::lower_upper_block, 0);
 
-  do {
-    ++iter;
+    do {
+      ++iter;
 
-    detail::psort__calc_boundaries(p_borders, splitters);
+      impl::psort__calc_boundaries(splitters);
 
-    DASH_LOG_TRACE_VAR("finding partition borders", iter);
+      DASH_LOG_TRACE_VAR("finding partition borders", iter);
 
-    DASH_LOG_TRACE_RANGE(
-        "partition borders", std::begin(splitters), std::end(splitters));
+      DASH_LOG_TRACE_RANGE(
+          "splitters",
+          std::begin(splitters.threshold),
+          std::end(splitters.threshold));
 
-    auto const l_nlt_nle = detail::psort__local_histogram(
-        splitters,
-        valid_partitions,
-        p_borders,
-        std::begin(lcopy),
-        std::end(lcopy),
-        sortable_hash);
+      auto const l_nlt_nle = impl::psort__local_histogram(
+          splitters,
+          valid_splitters,
+          local_data.input,
+          local_data.input + n_l_elem,
+          projection);
 
-    detail::trace_local_histo("local histogram", l_nlt_nle);
+      DASH_LOG_TRACE_RANGE(
+          "local histogram ( < )",
+          impl::make_strided_iterator(std::begin(l_nlt_nle)),
+          impl::make_strided_iterator(std::begin(l_nlt_nle)) + nunits);
 
-    // allreduce with implicit barrier
-    detail::psort__global_histogram(
-        // first partition
-        std::begin(l_nlt_nle),
-        // iterator past last valid partition
-        std::next(
-            std::begin(l_nlt_nle),
-            (valid_partitions.back() + 1) * NLT_NLE_BLOCK),
-        std::begin(global_histo),
-        team.dart_id());
+      DASH_LOG_TRACE_RANGE(
+          "local histogram ( <= )",
+          impl::make_strided_iterator(std::begin(l_nlt_nle) + 1),
+          impl::make_strided_iterator(std::begin(l_nlt_nle) + 1) + nunits);
 
-    DASH_LOG_TRACE_RANGE(
-        "global histogram",
-        std::next(std::begin(global_histo), myid * NLT_NLE_BLOCK),
-        std::next(std::begin(global_histo), (myid + 1) * NLT_NLE_BLOCK));
+      // allreduce with implicit barrier
+      impl::psort__global_histogram(
+          // first partition
+          std::begin(l_nlt_nle),
+          // iterator past last valid partition
+          std::next(
+              std::begin(l_nlt_nle),
+              (valid_splitters.back() + 1) * impl::lower_upper_block),
+          std::begin(global_histo),
+          team.dart_id());
 
-    done = detail::psort__validate_partitions(
-        p_unit_info, splitters, valid_partitions, p_borders, global_histo);
-  } while (!done);
+      DASH_LOG_TRACE_RANGE(
+          "global histogram",
+          std::next(std::begin(global_histo), myid * impl::lower_upper_block),
+          std::next(std::begin(global_histo), (myid + 1) * impl::lower_upper_block));
 
-  trace.exit_state("5:find_global_partition_borders");
+      done = impl::psort__validate_partitions(
+          splitters, partition_sizes_psum, valid_splitters, global_histo);
+    } while (!done);
 
-  DASH_LOG_TRACE_VAR("partition borders found after N iterations", iter);
+    DASH_LOG_TRACE_VAR("partition borders found after N iterations", iter);
+    trace.exit_state("4:find_global_partition_borders");
 
-  trace.enter_state("6:final_local_histogram");
+    if (!myid) {
+      DASH_LOG_TRACE_RANGE(
+          "final global histogram",
+          std::begin(global_histo),
+          std::end(global_histo));
+      DASH_LOG_TRACE_RANGE(
+          "prefix sum capacities",
+          std::begin(partition_sizes_psum),
+          std::end(partition_sizes_psum));
+      DASH_LOG_WARN(
+          "dash::sort", "partition borders found after N iterations", iter);
+    }
+    DASH_LOG_TRACE(
+        "local min and max element", min_max.first, min_max.second);
+  }
+
+  /********************************************************************/
+  /****** Final Histogram *********************************************/
+  /********************************************************************/
+
+  trace.enter_state("5:final_local_histogram");
 
   /* How many elements are less than P
    * or less than equals P */
-  auto const histograms = detail::psort__local_histogram(
+  auto const histograms = impl::psort__local_histogram(
       splitters,
-      valid_partitions,
-      p_borders,
-      std::begin(lcopy),
-      std::end(lcopy),
-      sortable_hash);
-  trace.exit_state("6:final_local_histogram");
+      valid_splitters,
+      local_data.input,
+      local_data.input + n_l_elem,
+      projection);
 
-  DASH_LOG_TRACE_RANGE("final splitters", splitters.begin(), splitters.end());
-
-  detail::trace_local_histo("final histograms", histograms);
-
-  trace.enter_state("7:transpose_local_histograms (all-to-all)");
-
-  if (n_l_elem > 0) {
-    // TODO(kowalewski): minimize communication to copy only until the last
-    // valid border
-    /*
-     * Transpose (Shuffle) the final histograms to communicate
-     * the partition distribution
-     */
-
-    dash::team_unit_t transposed_unit{0};
-    for (auto it = std::begin(histograms); it != std::end(histograms);
-         it += NLT_NLE_BLOCK, ++transposed_unit) {
-      auto const& nlt_val = *it;
-      auto const& nle_val = *std::next(it);
-      if (transposed_unit != myid) {
-        auto const offset = transposed_unit * g_partition_data.lsize() + myid;
-        // We communicate only non-zero values
-        if (nlt_val > 0) {
-          g_partition_data.async[offset + IDX_DIST(nunits)].set(&(nlt_val));
-        }
-
-        if (nle_val > 0) {
-          g_partition_data.async[offset + IDX_SUPP(nunits)].set(&(nle_val));
-        }
-      }
-      else {
-        g_partition_data.local[myid + IDX_DIST(nunits)] = nlt_val;
-        g_partition_data.local[myid + IDX_SUPP(nunits)] = nle_val;
-      }
-    }
-    // complete outstanding requests...
-    g_partition_data.async.flush();
-  }
-  trace.exit_state("7:transpose_local_histograms (all-to-all)");
-
-  trace.enter_state("8:barrier");
-  team.barrier();
-  trace.exit_state("8:barrier");
+  trace.exit_state("5:final_local_histogram");
 
   DASH_LOG_TRACE_RANGE(
-      "initial partition distribution:",
-      std::next(g_partition_data.lbegin(), IDX_DIST(nunits)),
-      std::next(g_partition_data.lbegin(), IDX_DIST(nunits) + nunits));
+      "final splitters",
+      std::begin(splitters.threshold),
+      std::end(splitters.threshold));
 
   DASH_LOG_TRACE_RANGE(
-      "initial partition supply:",
-      std::next(g_partition_data.lbegin(), IDX_SUPP(nunits)),
-      std::next(g_partition_data.lbegin(), IDX_SUPP(nunits) + nunits));
+      "local histogram ( < )",
+      impl::make_strided_iterator(std::begin(histograms)),
+      impl::make_strided_iterator(std::begin(histograms)) + nunits);
 
-  /* Calculate final distribution per partition. Each unit calculates their
-   * local distribution independently.
-   * All accesses are only to local memory
+  DASH_LOG_TRACE_RANGE(
+      "local histogram ( <= )",
+      impl::make_strided_iterator(std::begin(histograms) + 1),
+      impl::make_strided_iterator(std::begin(histograms) + 1) + nunits);
+
+  /********************************************************************/
+  /****** Partition Distribution **************************************/
+  /********************************************************************/
+
+  /**
+   * Each unit 0 <= p < P-1  is responsible for a final refinement around the
+   * borders of bucket B_p.
+   *
+   * Parameters:
+   * - Lower bound ( < S_p): The number of elements which definitely belong to
+   *   Bucket p.
+   * - Bucket size: Local capacity of unit u_p
+   * - Uppoer bound ( <= S_p): The number of elements which eventually go into
+   *   Bucket p.
+   *
+   * We first calculate the deficit (Bucket size - lower bound). If the
+   * bucket is not fully exhausted (deficit > 0) we fill the space with
+   * elements from the upper bound until the bucket is full.
    */
 
-  trace.enter_state("9:calc_final_partition_dist");
+  trace.enter_state("6:transpose_local_histograms (all-to-all)");
 
-  detail::psort__calc_final_partition_dist(
-      acc_partition_count, g_partition_data.local);
+   std::vector<size_t> g_partition_data(nunits * 2);
+
+  DASH_ASSERT_RETURNS(
+      dart_alltoall(
+          // send buffer
+          histograms.data(),
+          // receive buffer
+          g_partition_data.data(),
+          // we send / receive 1 element to / from each process
+          impl::lower_upper_block,
+          // dtype
+          dash::dart_datatype<size_t>::value,
+          // teamid
+          team.dart_id()),
+      DART_OK);
+
+  DASH_LOG_TRACE_RANGE(
+      "initial partition distribution",
+      impl::make_strided_iterator(std::begin(g_partition_data)),
+      impl::make_strided_iterator(std::begin(g_partition_data)) + nunits);
+
+  DASH_LOG_TRACE_RANGE(
+      "initial partition supply",
+      impl::make_strided_iterator(std::begin(g_partition_data) + 1),
+      impl::make_strided_iterator(std::begin(g_partition_data) + 1) + nunits);
+
+  trace.exit_state("6:transpose_local_histograms (all-to-all)");
+
+  /* Calculate final distribution per partition. Each unit is responsible for
+   * its own bucket.
+   */
+
+  trace.enter_state("7:calc_final_partition_dist");
+
+  auto first_nlt = impl::make_strided_iterator(std::begin(g_partition_data));
+
+  auto first_nle =
+      impl::make_strided_iterator(std::next(std::begin(g_partition_data)));
+
+  impl::psort__calc_final_partition_dist(
+      first_nlt,
+      first_nlt + nunits,
+      first_nle,
+      partition_sizes_psum[myid + 1]);
+
+  // let us now collapse the data into a contiguous range with unit stride
+  std::move(
+      impl::make_strided_iterator(std::begin(g_partition_data)) + 1,
+      impl::make_strided_iterator(std::begin(g_partition_data)) + nunits,
+      std::next(std::begin(g_partition_data)));
 
   DASH_LOG_TRACE_RANGE(
       "final partition distribution",
-      std::next(g_partition_data.lbegin(), IDX_DIST(nunits)),
-      std::next(g_partition_data.lbegin(), IDX_DIST(nunits) + nunits));
+      std::begin(g_partition_data),
+      std::next(std::begin(g_partition_data), nunits));
 
-  // Reset local elements to 0 since the following matrix transpose
-  // communicates only non-zero values and writes to exactly these offsets.
-  std::fill(
-      &(g_partition_data.local[IDX_TARGET_COUNT(nunits)]),
-      &(g_partition_data.local[IDX_TARGET_COUNT(nunits) + nunits]),
-      0);
+  trace.exit_state("7:calc_final_partition_dist");
 
-  trace.exit_state("9:calc_final_partition_dist");
+  /********************************************************************/
+  /****** Source Displacements ****************************************/
+  /********************************************************************/
 
-  trace.enter_state("10:barrier");
-  team.barrier();
-  trace.exit_state("10:barrier");
-
-  trace.enter_state("11:transpose_final_partition_dist (all-to-all)");
-  /*
-   * Transpose the final distribution again to obtain the end offsets
-   */
-  dash::team_unit_t unit{0};
-  auto const        last = static_cast<dash::team_unit_t>(nunits);
-
-  for (; unit < last; ++unit) {
-    if (g_partition_data.local[IDX_DIST(nunits) + unit] == 0) {
-      continue;
-    }
-
-    if (unit != myid) {
-      // We communicate only non-zero values
-      auto const offset = unit * g_partition_data.lsize() + myid;
-      g_partition_data.async[offset + IDX_TARGET_COUNT(nunits)].set(
-          &(g_partition_data.local[IDX_DIST(nunits) + unit]));
-    }
-    else {
-      g_partition_data.local[IDX_TARGET_COUNT(nunits) + myid] =
-          g_partition_data.local[IDX_DIST(nunits) + unit];
-    }
-  }
-
-  g_partition_data.async.flush();
-
-  trace.exit_state("11:transpose_final_partition_dist (all-to-all)");
-
-  trace.enter_state("12:barrier");
-  team.barrier();
-  trace.exit_state("12:barrier");
-
-  DASH_LOG_TRACE_RANGE(
-      "final target count",
-      std::next(g_partition_data.lbegin(), IDX_TARGET_COUNT(nunits)),
-      std::next(
-          g_partition_data.lbegin(), IDX_TARGET_COUNT(nunits) + nunits));
-
-  trace.enter_state("13:calc_final_send_count");
-
-  std::vector<std::size_t> l_send_displs(nunits, 0);
-
-  if (n_l_elem > 0) {
-    auto const* l_target_count =
-        &(g_partition_data.local[IDX_TARGET_COUNT(nunits)]);
-    auto* l_send_count = &(g_partition_data.local[IDX_SEND_COUNT(nunits)]);
-
-    detail::psort__calc_send_count(
-        p_borders, valid_partitions, l_target_count, l_send_count);
-
-    // exclusive scan using partial sum
-    std::partial_sum(
-        l_send_count,
-        std::next(l_send_count, nunits - 1),
-        std::next(std::begin(l_send_displs)),
-        std::plus<size_t>());
-  }
-  else {
-    std::fill(
-        std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits)),
-        std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits) + nunits),
-        0);
-  }
-
-#if defined(DASH_ENABLE_ASSERTIONS) && defined(DASH_ENABLE_TRACE_LOGGING)
-  {
-    std::vector<size_t> chksum(nunits, 0);
-
-    DASH_ASSERT_RETURNS(
-        dart_allreduce(
-            std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits)),
-            chksum.data(),
-            nunits,
-            dart_datatype<size_t>::value,
-            DART_OP_SUM,
-            team.dart_id()),
-        DART_OK);
-
-    DASH_ASSERT_EQ(
-        chksum[myid.id],
-        n_l_elem,
-        "send count must match the capacity of the unit");
-  }
-#endif
-
-  DASH_LOG_TRACE_RANGE(
-      "send count",
-      std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits)),
-      std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits) + nunits));
-
-  DASH_LOG_TRACE_RANGE(
-      "send displs", l_send_displs.begin(), l_send_displs.end());
-
-  trace.exit_state("13:calc_final_send_count");
-
-  trace.enter_state("14:barrier");
-  team.barrier();
-  trace.exit_state("14:barrier");
-
-
-  trace.enter_state("15:calc_final_target_displs");
-
-  if (n_l_elem > 0) {
-    detail::psort__calc_target_displs(
-        p_borders, valid_partitions, g_partition_data);
-  }
-
-  trace.exit_state("15:calc_final_target_displs");
-
-  trace.enter_state("16:barrier");
-  team.barrier();
-  trace.exit_state("16:barrier");
-
-  DASH_LOG_TRACE_RANGE(
-      "target displs",
-      &(g_partition_data.local[IDX_TARGET_DISP(nunits)]),
-      &(g_partition_data.local[IDX_TARGET_DISP(nunits) + nunits]));
-
-  trace.enter_state("17:exchange_data (all-to-all)");
-
-  std::vector<dash::Future<iter_type> > async_copies{};
-  async_copies.reserve(p_unit_info.valid_remote_partitions.size());
-
-  auto const l_partition_data = g_partition_data.local;
-
-  auto const get_send_info = [l_partition_data, &l_send_displs, nunits](
-                                 dash::default_index_t const p_idx) {
-    auto const send_count = l_partition_data[p_idx + IDX_SEND_COUNT(nunits)];
-    auto const target_disp =
-        l_partition_data[p_idx + IDX_TARGET_DISP(nunits)];
-    auto const send_disp = l_send_displs[p_idx];
-    return std::make_tuple(send_count, send_disp, target_disp);
-  };
-
-  std::size_t send_count, send_disp, target_disp;
-
-  for (auto const& unit : p_unit_info.valid_remote_partitions) {
-    std::tie(send_count, send_disp, target_disp) = get_send_info(unit);
-
-    // Get a global iterator to the first local element of a unit within the
-    // range to be sorted [begin, end)
-    //
-    iter_type it_copy =
-        (unit == unit_at_begin)
-            ?
-            /* If we are the unit at the beginning of the global range simply
-               return begin */
-            begin
-            :
-            /* Otherwise construct an global iterator pointing the first local
-               element from the correspoding unit */
-            iter_type{&(begin.globmem()),
-                      pattern,
-                      pattern.global_index(
-                          static_cast<dash::team_unit_t>(unit), {})};
-
-    auto&& fut = dash::copy_async(
-        &(*(lcopy.begin() + send_disp)),
-        &(*(lcopy.begin() + send_disp + send_count)),
-        it_copy + target_disp);
-
-    async_copies.emplace_back(std::move(fut));
-  }
-
-  std::tie(send_count, send_disp, target_disp) = get_send_info(myid);
-
-  if (send_count) {
-    std::copy(
-        std::next(std::begin(lcopy), send_disp),
-        std::next(std::begin(lcopy), send_disp + send_count),
-        std::next(lbegin, target_disp));
-  }
-
-  std::for_each(
-      std::begin(async_copies),
-      std::end(async_copies),
-      [](dash::Future<iter_type>& fut) { fut.wait(); });
-
-  trace.exit_state("17:exchange_data (all-to-all)");
-
-  /* NOTE: While merging locally sorted sequences is faster than another
-   * heavy-weight sort it comes at a cost. std::inplace_merge allocates a
-   * temporary buffer internally which is also documented on cppreference. If
-   * the allocation of this buffer fails, a less efficient merge method is
-   * used. However, in Linux, the allocation nevers fails since the
-   * implementation simply allocates memory using malloc and the kernel follows
-   * the optimistic strategy. This is ugly and can lead to a segmentation fault
-   * later if no physical pages are available to map the allocated
-   * virtual memory.
+  /**
+   * Based on the distribution we have to know the source displacements
+   * (the offset where we have to read from in each unit). This is just a
+   * ring-communication where each unit shift its local distribution downwards
+   * to the succeeding neighbor.
    *
+   * Worst Case Communication Complexity: O(P)
+   * Memory Complexity: O(P)
    *
-   * std::sort does not suffer from this problem and may be a more safe
-   * variant, especially if the user wants to utilize the fully available
-   * memory capacity on its own.
+   * Only Units which contribute local elements participate in the
+   * communication
    */
 
-#if (__DASH_SORT__FINAL_STEP_STRATEGY == __DASH_SORT__FINAL_STEP_BY_SORT)
-  trace.enter_state("18:barrier");
-  team.barrier();
-  trace.exit_state("18:barrier");
+  trace.enter_state("8:comm_source_displs (sendrecv)");
 
-  trace.enter_state("19:final_local_sort");
-  std::sort(lbegin, lend);
-  trace.exit_state("19:final_local_sort");
-#else
-  trace.enter_state("18:calc_recv_count (all-to-all)");
+  std::vector<size_t> source_displs(nunits, 0);
 
-  std::vector<size_t> recv_count(nunits, 0);
+  auto neighbors =
+      impl::psort__get_neighbors(myid, n_l_elem, splitters, valid_splitters);
+
+  DASH_LOG_TRACE(
+      "dash::sort",
+      "shift partition dist",
+      "my_source",
+      neighbors.first,
+      "my_target",
+      neighbors.second);
+
+  dart_sendrecv(
+      g_partition_data.data(),
+      nunits,
+      dash::dart_datatype<size_t>::value,
+      impl::sort_sendrecv_tag,
+      // dest neighbor (right)
+      neighbors.second,
+      source_displs.data(),
+      nunits,
+      dash::dart_datatype<size_t>::value,
+      impl::sort_sendrecv_tag,
+      // source neighbor (left)
+      neighbors.first);
+
+  DASH_LOG_TRACE_RANGE(
+      "source displs", source_displs.begin(), source_displs.end());
+
+  trace.exit_state("8:comm_source_displs (sendrecv)");
+
+  /********************************************************************/
+  /****** Send Displacements (all-to-all) *****************************/
+  /********************************************************************/
+
+  /**
+   * Send displacements are needed for alltoallv at the data exchange part
+   *
+   * Worst Case Communication Complexity: O(P^2)
+   * Memory Complexity: O(P)
+   */
+  trace.enter_state("9:comm_send_displs (all-to-all)");
+  std::vector<size_t> send_displs(nunits, 0);
 
   DASH_ASSERT_RETURNS(
-  dart_alltoall(
-      // send buffer
-      std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits)),
-      // receive buffer
-      recv_count.data(),
-      // we send / receive 1 element to / from each process
-      1,
-      // dtype
-      dash::dart_datatype<size_t>::value,
-      // teamid
-      team.dart_id()), DART_OK);
+      dart_alltoall(
+          // send buffer
+          g_partition_data.data(),
+          // receive buffer
+          send_displs.data(),
+          // we send / receive 1 element to / from each process
+          1,
+          // dtype
+          dash::dart_datatype<size_t>::value,
+          // teamid
+          team.dart_id()),
+      DART_OK);
 
-  DASH_LOG_TRACE_RANGE(
-      "recv count", std::begin(recv_count), std::end(recv_count));
+  trace.exit_state("9:comm_send_displs (all-to-all)");
 
-  trace.exit_state("18:calc_recv_count (all-to-all)");
+  /********************************************************************/
+  /****** Send counts *************************************************/
+  /********************************************************************/
 
-  trace.enter_state("19:merge_local_sequences");
+  /**
+   * Based on the transposed partition data we can calculate the number of
+   * elements to send to each process. With that we can calculate the
+   * correct send displacements by summing up the send counts.
+   *
+   * Communication Complexity: 0
+   * Memory Complexity: O(P)
+   */
 
-  // merging sorted sequences
-  auto nsequences = nunits;
-  // number of merge steps in the tree
-  auto const depth = static_cast<size_t>(std::ceil(std::log2(nsequences)));
+  trace.enter_state("10:calc_send_counts");
 
-  // calculate the prefix sum among all receive counts to find the offsets for
-  // merging
-  std::vector<size_t> recv_count_psum;
-  recv_count_psum.reserve(nsequences + 1);
-  recv_count_psum.emplace_back(0);
+  std::vector<size_t> send_counts(nunits, 0);
+
+  impl::psort__calc_send_count(
+      splitters, valid_splitters, send_displs.begin(), send_counts.begin());
 
   std::partial_sum(
-      std::begin(recv_count),
-      std::end(recv_count),
-      std::back_inserter(recv_count_psum));
+      send_counts.begin(),
+      std::next(send_counts.begin(), nunits - 1),
+      std::next(send_displs.begin()),
+      std::plus<size_t>());
+  send_displs[0] = 0;
 
-  DASH_LOG_TRACE_RANGE(
-      "recv count prefix sum",
-      std::begin(recv_count_psum),
-      std::end(recv_count_psum));
+  DASH_LOG_TRACE_RANGE("send displs", send_displs.begin(), send_displs.end());
+  DASH_LOG_TRACE_RANGE("send counts", send_counts.begin(), send_counts.end());
 
-  for (std::size_t d = 0; d < depth; ++d) {
-    // distance between first and mid iterator while merging
-    auto const step = std::size_t(0x1) << d;
-    // distance between first and last iterator while merging
-    auto const dist = step << 1;
-    // number of merges
-    auto const nmerges = nsequences >> 1;
+  trace.exit_state("10:calc_send_counts");
 
-    // These merges are independent from each other and are candidates for
-    // shared memory parallelism
-    for (std::size_t m = 0; m < nmerges; ++m) {
-      auto first = std::next(lbegin, recv_count_psum[m * dist]);
-      auto mid   = std::next(lbegin, recv_count_psum[m * dist + step]);
-      // sometimes we have a lonely merge in the end, so we have to guarantee
-      // that we do not access out of bounds
-      auto last = std::next(
-          lbegin,
-          recv_count_psum[std::min(
-              m * dist + dist, recv_count_psum.size() - 1)]);
+  /********************************************************************/
+  /****** Target Counts ***********************************************/
+  /********************************************************************/
 
-      std::inplace_merge(first, mid, last);
+  /**
+   * Based on the distribution and the source displacements we can determine
+   * the number of elemens we have to copy from each unit (target count) to
+   * obtain the finally sorted sequence. This is just a mapping operation
+   * where we calculcate for all elements 0 <= i < P:
+   *
+   * target_count[i] = partition_dist[i+1] - source_displacements[i]
+   *
+   * Communication Complexity: 0
+   * Memory Complexity: O(P)
+   */
+  trace.enter_state("11:calc_target_offsets");
+
+  std::vector<size_t> target_counts(nunits, 0);
+
+  if (n_l_elem) {
+    if (myid) {
+      std::transform(
+          // in_first
+          g_partition_data.data(),
+          // in_last
+          std::next(g_partition_data.data(), nunits),
+          // in_second
+          std::begin(source_displs),
+          // out_first
+          std::begin(target_counts),
+          // operation
+          std::minus<size_t>());
     }
-
-    nsequences -= nmerges;
+    else {
+      std::copy(
+          g_partition_data.data(),
+          std::next(g_partition_data.data(), nunits),
+          std::begin(target_counts));
+    }
   }
 
-  trace.exit_state("19:merge_local_sequences");
-#endif
+  DASH_LOG_TRACE_RANGE(
+      "target counts", target_counts.begin(), target_counts.end());
 
-  DASH_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
+  /********************************************************************/
+  /****** Target Displs ***********************************************/
+  /********************************************************************/
 
-  trace.enter_state("20:final_barrier");
+  /**
+   * Based on the target count we calculate the target displace (the offset to
+   * which we have to copy remote data). This is just an exclusive scan with a
+   * plus opertion.
+   *
+   * Communication Complexity: 0
+   * Memory Complexity: O(P)
+   */
+  std::vector<size_t> target_displs(nunits + 1, 0);
+
+  std::partial_sum(
+      std::begin(target_counts),
+      std::prev(std::end(target_counts)),
+      std::begin(target_displs) + 1,
+      std::plus<size_t>());
+
+  target_displs.back() = n_l_elem;
+
+  DASH_LOG_TRACE_RANGE(
+      "target displs", target_displs.begin(), target_displs.end() - 1);
+
+  trace.exit_state("11:calc_target_offsets");
+
+  trace.enter_state("12:exchange_data (all-to-all)");
+
+  /********************************************************************/
+  /****** Exchange Data (All-To-All) **********************************/
+  /********************************************************************/
+
+  /**
+   * Based on the information calculate above we initiate the data exchange.
+   * Each process copies P chunks from each Process to the local portion.
+   * Assuming all local portions are of equal local size gives us the
+   * following complexity:
+   *
+   * Average Communication Traffic: O(N)
+   * Aerage Comunication Overhead: O(P^2)
+   */
+
+  // allocate a temporary buffer:
+  // we explcitly do not use std::make_unique because we do want to have any
+  // construction
+  local_data.buffer =
+      std::move(std::unique_ptr<value_type[]>{new value_type[n_l_elem]});
+
+  if (n_l_elem) {
+    // local copy
+    std::copy(
+        std::next(local_data.input, source_displs[myid]),
+        std::next(
+            local_data.input, source_displs[myid] + target_counts[myid]),
+        std::next(local_data.buffer.get(), target_displs[myid]));
+
+    impl::alltoallv(
+        local_data.input,
+        local_data.buffer.get(),
+        std::move(send_counts),
+        std::move(send_displs),
+        std::move(target_counts),
+        std::move(target_displs),
+        team.dart_id());
+  }
+
+  trace.exit_state("12:exchange_data (all-to-all)");
+
+  trace.enter_state("13:final_local_sort");
+  impl::local_sort(
+      local_data.buffer.get(),
+      local_data.buffer.get() + n_l_elem,
+      sort_comp,
+      nodeLevelConfig.parallelism());
+  trace.exit_state("13:final_local_sort");
+
+
+  trace.enter_state("14:final_local_copy");
+  std::copy(
+      local_data.buffer.get(),
+      local_data.buffer.get() + n_l_elem,
+      local_data.output);
+  trace.exit_state("14:final_local_copy");
+
+  DASH_LOG_TRACE_RANGE(
+      "finally sorted range",
+      local_data.output,
+      local_data.output + n_l_elem);
+
+  trace.enter_state("15:final_barrier");
   team.barrier();
-  trace.exit_state("20:final_barrier");
-}
+  trace.exit_state("15:final_barrier");
+}  // namespace dash
 
-namespace detail {
+namespace impl {
 template <typename T>
 struct identity_t : std::unary_function<T, T> {
   constexpr T&& operator()(T&& t) const noexcept
@@ -680,7 +727,21 @@ struct identity_t : std::unary_function<T, T> {
     return std::forward<T>(t);
   }
 };
-}  // namespace detail
+}  // namespace impl
+
+template <class GlobRandomIt>
+inline void sort(GlobRandomIt begin, GlobRandomIt end, GlobRandomIt out)
+{
+  using value_t = typename std::remove_cv<
+      typename dash::iterator_traits<GlobRandomIt>::value_type>::type;
+
+  dash::sort(
+      begin,
+      end,
+      out,
+      impl::identity_t<value_t const&>{},
+      impl::sort__final_strategy__merge{});
+}
 
 template <class GlobRandomIt>
 inline void sort(GlobRandomIt begin, GlobRandomIt end)
@@ -688,7 +749,12 @@ inline void sort(GlobRandomIt begin, GlobRandomIt end)
   using value_t = typename std::remove_cv<
       typename dash::iterator_traits<GlobRandomIt>::value_type>::type;
 
-  dash::sort(begin, end, detail::identity_t<value_t const&>());
+  dash::sort(
+      begin,
+      end,
+      begin,
+      impl::identity_t<value_t const&>{},
+      impl::sort__final_strategy__merge{});
 }
 
 #endif  // DOXYGEN
