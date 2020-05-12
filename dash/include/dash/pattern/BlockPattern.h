@@ -1204,9 +1204,9 @@ public:
   constexpr SizeType local_size(
     team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const noexcept
   {
-    return (unit == UNDEFINED_TEAM_UNIT_ID)
+    return (unit == UNDEFINED_TEAM_UNIT_ID || _team->myid() == unit)
            ? _local_memory_layout.size()
-           : initialize_local_extents(unit).size();
+           : LocalMemoryLayout_t(initialize_local_extents(unit)).size();
   }
 
   /**

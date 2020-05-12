@@ -224,7 +224,7 @@ public:
         _blocksize,
         _nunits)),
     _local_size(
-        initialize_local_extent(_team->myid())),
+        initialize_local_extents(_team->myid())),
     _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _nlblocks(initialize_num_local_blocks(
         _blocksize,
@@ -276,7 +276,7 @@ public:
     , _nunits(_team->size())
     , _blocksize(initialize_blocksize(_size, _distspec, _nunits))
     , _nblocks(initialize_num_blocks(_size, _blocksize, _nunits))
-    , _local_size(initialize_local_extent(_team->myid()))
+    , _local_size(initialize_local_extents(_team->myid()))
     , _local_memory_layout(std::array<SizeType, 1>{{_local_size}})
     , _nlblocks(initialize_num_local_blocks(_blocksize, _local_size))
     , _local_capacity(initialize_local_capacity())
@@ -919,7 +919,7 @@ public:
 
   /**
    * The actual number of elements in this pattern that are local to the
-   * calling unit in total.
+   * specified (or calling) unit in total.
    *
    * \see  blocksize()
    * \see  local_extent()
@@ -927,10 +927,14 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_size() const {
-    return _local_size;
+  SizeType local_size(team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
+    if (unit == DART_UNDEFINED_UNIT_ID || _team->myid() == unit) {
+      return _local_memory_layout.size();
+    }
+    // Non-local query, requires to construct local memory layout of
+    // remote unit:
+    return LocalMemoryLayout_t(initialize_local_extents(unit)).size();
   }
-
   /**
    * The number of units to which this pattern's elements are mapped.
    *
@@ -1055,7 +1059,7 @@ private:
         _blocksize,
         _nunits)),
     _local_size(
-        initialize_local_extent(_team->myid())),
+        initialize_local_extents(_team->myid())),
     _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _nlblocks(initialize_num_local_blocks(
         _blocksize,
@@ -1160,7 +1164,7 @@ private:
   /**
    * Resolve extents of local memory layout for a specified unit.
    */
-  SizeType initialize_local_extent(
+  SizeType initialize_local_extents(
     team_unit_t unit) const {
     DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_extent()", unit);
     DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_extent()", _nunits);

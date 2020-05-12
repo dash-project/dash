@@ -965,26 +965,11 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_size(team_unit_t unit) const
+  constexpr SizeType local_size(team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
   {
-    return (unit == _team->myid().id)
+    return (UNDEFINED_TEAM_UNIT_ID == unit || unit == _team->myid().id)
            ? _local_size
-           : initialize_local_extent(unit);
-  }
-
-  /**
-   * The actual number of elements in this pattern that are local to the
-   * calling unit in total.
-   *
-   * \see  blocksize()
-   * \see  local_extent()
-   * \see  local_capacity()
-   *
-   * \see  DashPatternConcept
-   */
-  constexpr SizeType local_size() const noexcept
-  {
-    return _local_size;
+           : LocalMemoryLayout_t(initialize_local_extent(unit)).size();
   }
 
   /**
