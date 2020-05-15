@@ -86,7 +86,7 @@ rm -Rf $BUILD_DIR/*
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                        ../ && \
- await_confirm && \
- make -j 4) && (cp $BUILD_DIR/compile_commands.json .) && \
+                        ../ &&
+ await_confirm &&
+ make -j 4) && (cp $BUILD_DIR/compile_commands.json .) &&
 exit_message

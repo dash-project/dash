@@ -131,9 +131,9 @@ mkdir -p $BUILD_DIR/$REPORT_DIR
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                        ../ && \
- await_confirm && \
- $BUILD_WRAPPER $SCANBUILD_OPTS make) && \
- (cp $BUILD_DIR/compile_commands.json .) && \
+                        ../ &&
+ await_confirm &&
+ $BUILD_WRAPPER $SCANBUILD_OPTS make) &&
+ (cp $BUILD_DIR/compile_commands.json .) &&
 exit_message
 

@@ -90,7 +90,7 @@ rm -Rf $BUILD_DIR/*
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
-                        ../ && \
- await_confirm && \
- make -j 4) && \
+                        ../ &&
+ await_confirm &&
+ make -j 4) &&
 exit_message
