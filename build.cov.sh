@@ -5,6 +5,7 @@ BUILD_DIR=./build.cov
 FORCE_BUILD=false
 if [ "$1" = "-f" ]; then
   FORCE_BUILD=true
+  shift
 fi
 
 await_confirm() {
@@ -90,6 +91,7 @@ rm -Rf $BUILD_DIR/*
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
+                        "$@" \
                         ../ &&
  await_confirm &&
  make -j 4) &&

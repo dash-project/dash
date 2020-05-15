@@ -5,6 +5,7 @@ BUILD_DIR=./build
 FORCE_BUILD=false
 if [ "$1" = "-f" ]; then
   FORCE_BUILD=true
+  shift
 fi
 
 await_confirm() {
@@ -94,6 +95,7 @@ rm -Rf $BUILD_DIR/*
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                        "$@" \
                         ../ &&
  await_confirm &&
  make -j 4) && (cp $BUILD_DIR/compile_commands.json .) &&

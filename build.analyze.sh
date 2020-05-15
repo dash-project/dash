@@ -40,6 +40,7 @@ which $BUILD_WRAPPER ||
 FORCE_BUILD=false
 if [ "$1" = "-f" ]; then
   FORCE_BUILD=true
+  shift
 fi
 
 await_confirm() {
@@ -131,6 +132,7 @@ mkdir -p $BUILD_DIR/$REPORT_DIR
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                        "$@" \
                         ../ &&
  await_confirm &&
  $BUILD_WRAPPER $SCANBUILD_OPTS make) &&

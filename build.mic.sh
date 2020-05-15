@@ -5,6 +5,7 @@ BUILD_DIR=./build.mic
 FORCE_BUILD=false
 if [ "$1" = "-f" ]; then
   FORCE_BUILD=true
+  shift
 fi
 
 await_confirm() {
@@ -80,6 +81,7 @@ rm -Rf $BUILD_DIR/*
                         \
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         -DIPM_PREFIX=${IPM_BASE} \
+                        "$@" \
                         ../ &&
  await_confirm &&
  make -j 5) &&
