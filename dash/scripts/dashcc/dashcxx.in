@@ -16,6 +16,7 @@
 argv0=${0##*/}
 
 DASH_HELP=false
+DASH_VERSION=false
 DASH_VERBOSE=false
 CXXFLAGS=()
 CXX="@DASHCC@"
@@ -96,10 +97,16 @@ if ${DASH_HELP} ; then
     echo
     echo "Options:"
     echo "  --dash:help       print this help message"
+    echo "  --dash:version    print the version of DASH"
     echo "  --dash:verbose    print compiler invocation"
     echo "  --dash:nocppflags do not pass DASH-related pre-processor macros"
     echo
     echo "Report bugs to: https://github.com/dash-project/dash/issues"
+    exit 0
+fi
+
+if ${DASH_VERSION} ; then
+    echo "DASH @DASH_VERSION@"
     exit 0
 fi
 
