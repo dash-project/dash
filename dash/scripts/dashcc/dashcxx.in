@@ -43,6 +43,22 @@ function PARSE_CPPFLAGS()
 }
 
 ##
+# set one of DASH_* flags to true
+##
+function SET_FLAG()
+{
+    local FLAG=${1^^}
+    local val=$(eval echo "\${DASH_${FLAG}}")
+    case "$val" in
+    true|false) : known ;;
+    *)
+        echo 2>&1 "Invalid wrapper argument: '$2'"
+        exit 127 ;;
+    esac
+    eval DASH_${FLAG}=true
+}
+
+##
 # parse wrapper arguments
 ##
 for arg in "$@" ; do
@@ -59,10 +75,10 @@ for arg in "$@" ; do
   esac
 
   case "$arg" in
-  "--dash:verbose" | "-dash:verbose")
-    DASH_VERBOSE=true ;;
-  "--dash:nocppflags" | "-dash:nocppflags")
-    DASH_NOCPPFLAGS=true;;
+  --dash:*)
+    SET_FLAG ${arg#--dash:} $arg ;;
+  -dash:*)
+    SET_FLAG ${arg#-dash:} $arg ;;
   *)
     COMPILER_ARGS+=("$arg")
   esac
