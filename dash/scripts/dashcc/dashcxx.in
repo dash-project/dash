@@ -13,6 +13,9 @@
 #                      pre-processor macros       #
 ###################################################
 
+argv0=${0##*/}
+
+DASH_HELP=false
 DASH_VERBOSE=false
 CXXFLAGS=()
 CXX="@DASHCC@"
@@ -83,6 +86,22 @@ for arg in "$@" ; do
     COMPILER_ARGS+=("$arg")
   esac
 done
+
+if ${DASH_HELP} ; then
+    echo "Usage: $argv0 [OPTIONS...] FILES..."
+    echo "Compiler wrapper for the DASH C++ PGAS framework."
+    echo
+    echo "The wrapper is used similar to \`mpicxx\` and the like to ensure that the"
+    echo "correct include paths and libraries are passed to the compiler."
+    echo
+    echo "Options:"
+    echo "  --dash:help       print this help message"
+    echo "  --dash:verbose    print compiler invocation"
+    echo "  --dash:nocppflags do not pass DASH-related pre-processor macros"
+    echo
+    echo "Report bugs to: https://github.com/dash-project/dash/issues"
+    exit 0
+fi
 
 ##
 # parse CMAKE_CXXFLAGS for macro definitions
