@@ -129,9 +129,6 @@ for( auto i=0; i<arr.local.size(); i++ ) [
  *                             information on the internal state of DART.
  *
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /*
    --- DART version and build date ---
@@ -177,10 +174,6 @@ extern "C" {
 */
 #include "dart_synchronization.h"
 
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
 
 #endif /* DART_DART_H_ */
 
