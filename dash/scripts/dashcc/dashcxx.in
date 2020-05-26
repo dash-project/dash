@@ -13,54 +13,102 @@
 #                      pre-processor macros       #
 ###################################################
 
+argv0=${0##*/}
+
+DASH_HELP=false
+DASH_VERSION=false
 DASH_VERBOSE=false
-CXXFLAGS=""
+CXXFLAGS=()
 CXX="@DASHCC@"
 INSTALL_PREFIX="@CMAKE_INSTALL_PREFIX@"
 COMPILE_ONLY=false
 LINK_ONLY=true
 DASH_NOCPPFLAGS=false
-COMPILER_ARGS=""
+COMPILER_ARGS=()
 
 function INVOKE_COMPILER()
 {
   if ${DASH_VERBOSE} ; then
-    echo $@
+    echo "$@"
   fi
 
-  exec $@
+  exec "$@"
 }
 
 function PARSE_CPPFLAGS()
 {
-  for flag in $@ ; do
-    if ! ${DASH_NOCPPFLAGS} && [[ $flag == -DDASH* ]] ; then
-      CXXFLAGS="$CXXFLAGS $flag"
-    fi
+  for flag in "$@" ; do
+    case ${DASH_NOCPPFLAGS},$flag in
+    false,-DDASH*)
+      CXXFLAGS+=("$flag")
+      ;;
+    esac
   done
+}
+
+##
+# set one of DASH_* flags to true
+##
+function SET_FLAG()
+{
+    local FLAG=${1^^}
+    local val=$(eval echo "\${DASH_${FLAG}}")
+    case "$val" in
+    true|false) : known ;;
+    *)
+        echo 2>&1 "Invalid wrapper argument: '$2'"
+        exit 127 ;;
+    esac
+    eval DASH_${FLAG}=true
 }
 
 ##
 # parse wrapper arguments
 ##
-for arg in $@ ; do
+for arg in "$@" ; do
   # check whether to linking is done
-  if [ "$arg" == "-c" ] ; then
+  if [ "$arg" = "-c" ] ; then
     COMPILE_ONLY=true
     LINK_ONLY=false
   fi
+
   # check for source files
-  if [[ $arg == *\.cc || $arg == *\.cpp ]] ; then
+  case "$arg" in
+  *.cc | *.cpp | *.C)
     LINK_ONLY=false
-  fi
-  if [ "$arg" == "--dash:verbose" -o "$arg" == "-dash:verbose" ] ; then
-    DASH_VERBOSE=true
-  elif [ "$arg" == "--dash:nocppflags" -o "$arg" == "-dash:nocppflags" ] ; then
-    DASH_NOCPPFLAGS=true
-  else
-    COMPILER_ARGS="$COMPILER_ARGS $arg"
-  fi
+  esac
+
+  case "$arg" in
+  --dash:*)
+    SET_FLAG ${arg#--dash:} $arg ;;
+  -dash:*)
+    SET_FLAG ${arg#-dash:} $arg ;;
+  *)
+    COMPILER_ARGS+=("$arg")
+  esac
 done
+
+if ${DASH_HELP} ; then
+    echo "Usage: $argv0 [OPTIONS...] FILES..."
+    echo "Compiler wrapper for the DASH C++ PGAS framework."
+    echo
+    echo "The wrapper is used similar to \`mpicxx\` and the like to ensure that the"
+    echo "correct include paths and libraries are passed to the compiler."
+    echo
+    echo "Options:"
+    echo "  --dash:help       print this help message"
+    echo "  --dash:version    print the version of DASH"
+    echo "  --dash:verbose    print compiler invocation"
+    echo "  --dash:nocppflags do not pass DASH-related pre-processor macros"
+    echo
+    echo "Report bugs to: https://github.com/dash-project/dash/issues"
+    exit 0
+fi
+
+if ${DASH_VERSION} ; then
+    echo "DASH @DASH_VERSION@"
+    exit 0
+fi
 
 ##
 # parse CMAKE_CXXFLAGS for macro definitions
@@ -69,30 +117,28 @@ done
 
 if ! ${LINK_ONLY} ; then
   CMAKE_BUILD_TYPE="@CMAKE_BUILD_TYPE@"
-  CMAKE_CXXFLAGS="@CXXFLAGS_WRAP@"
+  CMAKE_CXXFLAGS=(@CXXFLAGS_WRAP@)
   # only include flags that are needed
-  PARSE_CPPFLAGS ${CMAKE_CXXFLAGS}
+  PARSE_CPPFLAGS "${CMAKE_CXXFLAGS[@]}"
 
   # add include paths
-  CXXFLAGS="$CXXFLAGS -I${INSTALL_PREFIX}/include"
-  CXXFLAGS="$CXXFLAGS @ADDITIONAL_INCLUDES_WRAP@"
+  CXXFLAGS+=("-I${INSTALL_PREFIX}/include" @ADDITIONAL_INCLUDES_WRAP@)
 
   # add additional compiler flags
   PARSE_CPPFLAGS @ADDITIONAL_COMPILE_FLAGS_WRAP@
 
   # add C++ standard flag
-  CXXFLAGS="${CXXFLAGS} @CXX_STD_FLAG@"
+  CXXFLAGS+=(@CXX_STD_FLAG@)
 fi
 
 # assemble LDFLAGS only if linking is done
 
 if ! ${COMPILE_ONLY} ; then
 
-  LDFLAGS="@CMAKE_EXE_LINKER_FLAGS@ -L${INSTALL_PREFIX}/lib"
+  LDFLAGS=(@CMAKE_EXE_LINKER_FLAGS@ "-L${INSTALL_PREFIX}/lib")
   DART_IMPL="@DART_IMPLEMENTATION@"
 
-  LDFLAGS="${LDFLAGS} -ldash-${DART_IMPL} -ldart-${DART_IMPL} -ldart-base"
-  LDFLAGS="${LDFLAGS} @ADDITIONAL_LIBRARIES_WRAP@"
+  LDFLAGS+=(-ldash-${DART_IMPL} -ldart-${DART_IMPL} -ldart-base @ADDITIONAL_LIBRARIES_WRAP@)
 fi
 
-INVOKE_COMPILER $CXX $CXXFLAGS $COMPILER_ARGS $LDFLAGS
+INVOKE_COMPILER "$CXX" "${CXXFLAGS[@]}" "${COMPILER_ARGS[@]}" "${LDFLAGS[@]}"

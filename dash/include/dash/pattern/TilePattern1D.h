@@ -796,9 +796,15 @@ public:
    * Cartesian arrangement of pattern blocks.
    */
   constexpr BlockSpec_t blockspec() const {
-    return BlockSpec_t({ dash::math::div_ceil(_size, _blocksize) });
+    return BlockSpec_t({ _nblocks });
   }
 
+  /**
+   * Cartesian arrangement of local pattern blocks.
+   */
+  constexpr BlockSpec_t local_blockspec() const {
+    return BlockSpec_t({ _nlblocks });
+  }
   /**
    * Index of block at given global coordinates.
    *

@@ -916,9 +916,9 @@ public:
   }
 
   /**
-   * Cartesian arrangement of pattern blocks.
+   * Cartesian arrangement of local pattern blocks.
    */
-  const BlockSpec_t & local_blockspec() const
+  const BlockSpec_t local_blockspec() const
   {
     return BlockSpec_t(_nlblocks);
   }

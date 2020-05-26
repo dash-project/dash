@@ -376,6 +376,8 @@ typedef struct
 
     int   numa_id;
 
+    int   num_sockets;
+
     /** The unit's affine core, unique identifier within a processing
      *  module. */
     int   core_id;
