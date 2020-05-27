@@ -300,7 +300,7 @@ std::ostream& operator<<(
 template <typename StencilPointT>
 class StencilSpecFactory {
 private:
-  using stencil_dist_t = typename StencilPointT::point_value_t;
+  using stencil_dist_t = spoint_value_t;
   using StencilPerm_t  = std::vector<StencilPointT>;
 
   static constexpr auto NumDimensions = StencilPointT::ndim();
