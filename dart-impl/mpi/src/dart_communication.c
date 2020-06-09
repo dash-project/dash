@@ -391,11 +391,11 @@ dart__mpi__put_basic(
     CHECK_MPI_RET(
         dart__mpi__put(src_ptr,
           nchunks,
-          dart__mpi__datatype_struct(dtype)->contiguous.max_type,
+          dart__mpi__datatype_maxtype(dtype),
           team_unit_id.id,
           offset,
           nchunks,
-          dart__mpi__datatype_struct(dtype)->contiguous.max_type,
+          dart__mpi__datatype_maxtype(dtype),
           win,
           reqs, num_reqs),
         "MPI_Put");

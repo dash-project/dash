@@ -312,7 +312,7 @@ dart_type_create_custom(
   new_struct->contiguous.size     = num_bytes;
   new_struct->contiguous.mpi_type = new_mpi_dtype;
   // max_type will be created on-demand for custom types
-  new_struct->contiguous.max_type = DART_MPI_TYPE_UNDEFINED;
+  new_struct->contiguous.max_type = MPI_DATATYPE_NULL;
 
   *newtype = (dart_datatype_t)new_struct;
   DART_LOG_TRACE("Created new custom data type %p with %zu bytes`",
@@ -343,7 +343,7 @@ dart_type_destroy(dart_datatype_t *dart_type_ptr)
     MPI_Type_free(&dart_type->indexed.mpi_type);
   } else if (dart_type->kind == DART_KIND_CUSTOM) {
     MPI_Type_free(&dart_type->contiguous.mpi_type);
-    if (dart_type->contiguous.max_type != DART_MPI_TYPE_UNDEFINED) {
+    if (dart_type->contiguous.max_type != MPI_DATATYPE_NULL) {
       MPI_Type_free(&dart_type->contiguous.max_type);
     }
   }
@@ -357,7 +357,8 @@ dart_type_destroy(dart_datatype_t *dart_type_ptr)
 static void destroy_basic_type(dart_datatype_t dart_type_id)
 {
   dart_datatype_struct_t *dart_type = dart__mpi__datatype_struct(dart_type_id);
-  MPI_Type_free(&dart_type->contiguous.max_type);
+  if (dart_type->contiguous.max_type != MPI_DATATYPE_NULL)
+    MPI_Type_free(&dart_type->contiguous.max_type);
   dart_type->contiguous.max_type = MPI_DATATYPE_NULL;
 }
 
