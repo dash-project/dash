@@ -121,6 +121,15 @@ public:
    */
   self_t &operator=(const self_t &rhs) = default;
 
+  /**
+   * Assignment operator.
+   */
+  self_t &operator=(std::nullptr_t) {
+    m_dart_pointer = DART_GPTR_NULL;
+
+    return *this;
+  }
+
   //clang-format off
   /**
    * Implicit Converting Constructor, only allowed if one of the following
