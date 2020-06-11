@@ -122,7 +122,7 @@ public:
   self_t &operator=(const self_t &rhs) = default;
 
   /**
-   * Assignment operator.
+   * nullptr assignment operator.
    */
   self_t &operator=(std::nullptr_t) {
     m_dart_pointer = DART_GPTR_NULL;
