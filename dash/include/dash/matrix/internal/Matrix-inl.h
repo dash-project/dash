@@ -611,7 +611,8 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
-MatrixRef<const T, NumDim, NumDim-1, PatternT, LocalMemT>
+  typename std::enable_if<(NumDim==2),
+    MatrixRef<const T, NumDim, 1, PatternT, LocalMemT>>::type
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::col(
   size_type n) const
@@ -620,7 +621,8 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
-MatrixRef<T, NumDim, NumDim-1, PatternT, LocalMemT>
+  typename std::enable_if<(NumDim==2),
+    MatrixRef<T, NumDim, 1, PatternT, LocalMemT>>::type
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::col(
   size_type n)
@@ -629,7 +631,8 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
-MatrixRef<const T, NumDim, NumDim-1, PatternT, LocalMemT>
+  typename std::enable_if<(NumDim==2),
+    MatrixRef<const T, NumDim, 1, PatternT, LocalMemT>>::type
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::row(
   size_type n) const
@@ -638,7 +641,8 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
-MatrixRef<T, NumDim, NumDim-1, PatternT, LocalMemT>
+  typename std::enable_if<(NumDim==2),
+    MatrixRef<T, NumDim, 1, PatternT, LocalMemT>>::type
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::row(
   size_type n)
@@ -647,7 +651,8 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
-MatrixRef<T, NumDim, NumDim, PatternT, LocalMemT>
+  typename std::enable_if<(NumDim==2),
+    MatrixRef<T, NumDim, 2, PatternT, LocalMemT>>::type
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::rows(
   size_type offset,
@@ -657,7 +662,8 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
-MatrixRef<T, NumDim, NumDim, PatternT, LocalMemT>
+  typename std::enable_if<(NumDim==2),
+    MatrixRef<T, NumDim, 2, PatternT, LocalMemT>>::type
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::cols(
   size_type offset,

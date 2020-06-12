@@ -617,7 +617,8 @@ public:
    * \see  sub
    * \see  row
    */
-  const_view_type<NumDimensions-1> col(
+  typename std::enable_if<NumDimensions==2, const_view_type<1>>::type
+  col(
     size_type n       ///< Column offset.
   ) const;
 
@@ -630,7 +631,8 @@ public:
    * \see  sub
    * \see  row
    */
-  view_type<NumDimensions-1> col(
+  typename std::enable_if<NumDimensions==2, view_type<1>>::type
+  col(
     size_type n       ///< Column offset.
   );
 
@@ -643,7 +645,8 @@ public:
    * \see  sub
    * \see  col
    */
-  const_view_type<NumDimensions-1> row(
+  typename std::enable_if<NumDimensions==2, const_view_type<1>>::type
+  row(
     size_type n       ///< Row offset.
   ) const;
 
@@ -656,7 +659,8 @@ public:
    * \see  sub
    * \see  col
    */
-  view_type<NumDimensions-1> row(
+  typename std::enable_if<NumDimensions==2, view_type<1>>::type
+  row(
     size_type n       ///< Row offset.
   );
 
@@ -669,7 +673,8 @@ public:
    *
    * \see  sub
    */
-  view_type<NumDimensions> cols(
+  typename std::enable_if<NumDimensions==2, view_type<2>>::type
+  cols(
     size_type offset, ///< Offset of first column in range.
     size_type range   ///< Number of columns in the range.
   );
@@ -683,7 +688,8 @@ public:
    *
    * \see  sub
    */
-  view_type<NumDimensions> rows(
+  typename std::enable_if<NumDimensions==2, view_type<2>>::type
+  rows(
     size_type n,      ///< Offset of first row in range.
     size_type range   ///< Number of rows in the range.
   );
