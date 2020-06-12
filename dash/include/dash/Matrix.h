@@ -609,8 +609,8 @@ public:
   local_type sub_local() noexcept;
 
   /**
-   * Projection to given offset in first sub-dimension (column), same as
-   * \c sub<0>(n).
+   * Projection to given offset in second sub-dimension (column), same as
+   * \c sub<1>(n).
    *
    * \returns  A \ref MatrixRef object representing the nth column
    *
@@ -622,8 +622,8 @@ public:
   ) const;
 
   /**
-   * Projection to given offset in first sub-dimension (column), same as
-   * \c sub<0>(n).
+   * Projection to given offset in second sub-dimension (column), same as
+   * \c sub<1>(n).
    *
    * \returns  A \ref MatrixRef object representing the nth column
    *
@@ -635,8 +635,8 @@ public:
   );
 
   /**
-   * Projection to given offset in second sub-dimension (rows), same as
-   * \c sub<1>(n).
+   * Projection to given offset in first sub-dimension (rows), same as
+   * \c sub<0>(n).
    *
    * \returns  A \ref MatrixRef object representing the nth row
    *
@@ -648,8 +648,8 @@ public:
   ) const;
 
   /**
-   * Projection to given offset in second sub-dimension (rows), same as
-   * \c sub<1>(n).
+   * Projection to given offset in first sub-dimension (rows), same as
+   * \c sub<0>(n).
    *
    * \returns  A \ref MatrixRef object representing the nth row
    *
