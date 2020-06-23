@@ -3,6 +3,11 @@
 
 /// see https://en.cppreference.com/w/cpp/feature_test for recommended feature
 /// tests
+
+#if defined(SPEC) && defined(__NEC__) && !defined(__cpp_lib_is_swappable)
+#define __cpp_lib_is_swappable 201603
+#endif
+
 #if __cpp_lib_is_swappable < 201603
 #include <type_traits>
 /// C++17 is_nothrow_swappable as proposed in the following proposal:

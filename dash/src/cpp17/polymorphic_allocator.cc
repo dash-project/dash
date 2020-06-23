@@ -6,11 +6,10 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 
-#if __cpp_lib_memory_resource < 201603
-
 #include <cpp17/polymorphic_allocator.h>
 
-
+#ifdef __need_std_pmr_memory_resource
+#undef __need_std_pmr_memory_resource
 
 namespace std {
 

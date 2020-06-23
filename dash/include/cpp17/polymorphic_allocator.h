@@ -9,7 +9,12 @@
 #ifndef INCLUDED_POLYMORPHIC_ALLOCATOR_DOT_H
 #define INCLUDED_POLYMORPHIC_ALLOCATOR_DOT_H
 
+#if defined(SPEC) && defined(__NEC__) && !defined(__cpp_lib_memory_resource)
+#define __cpp_lib_memory_resource 201603
+#endif
+
 #if __cpp_lib_memory_resource < 201603
+#define __need_std_pmr_memory_resource 1
 
 #include <atomic>
 #include <cstddef>  // For max_align_t
