@@ -220,16 +220,6 @@ dart__mpi__get_basic(
 {
   if (num_reqs) *num_reqs = 0;
 
-  if (team_data->unitid == team_unit_id.id) {
-    // use direct memcpy if we are on the same unit
-    memcpy(dest, seginfo->selfbaseptr + offset,
-        nelem * dart__mpi__datatype_sizeof(dtype));
-    DART_LOG_DEBUG("dart_get: memcpy nelem:%zu "
-        "source (coll.): offset:%lu -> dest: %p",
-        nelem, offset, dest);
-    return DART_OK;
-  }
-
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get: shared windows enabled");
   if (seginfo->segid >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
@@ -352,16 +342,6 @@ dart__mpi__put_basic(
     bool                      * flush_required_ptr)
 {
   if (num_reqs) *num_reqs = 0;
-
-  /* copy data directly if we are on the same unit */
-  if (team_unit_id.id == team_data->unitid) {
-    if (flush_required_ptr) *flush_required_ptr = false;
-    memcpy(seginfo->selfbaseptr + offset, src,
-        nelem * dart__mpi__datatype_sizeof(dtype));
-    DART_LOG_DEBUG("dart_put: memcpy nelem:%zu (from global allocation)"
-        "offset: %"PRIu64"", nelem, offset);
-    return DART_OK;
-  }
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_put: shared windows enabled");
