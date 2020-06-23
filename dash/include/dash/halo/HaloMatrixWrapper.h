@@ -145,13 +145,6 @@ public:
 
   HaloMatrixWrapper() = delete;
 
-  ~HaloMatrixWrapper() {
-    for(auto& dart_type : _dart_types) {
-      dart_type_destroy(&dart_type);
-    }
-    _dart_types.clear();
-  }
-
   /**
    * Returns the underlying \ref HaloBlock
    */
@@ -405,7 +398,6 @@ private:
   HaloMemory_t                   _halomemory;
   HaloPackBuffer_t               _halo_buffer;
   std::map<region_index_t, Data> _region_data;
-  std::vector<dart_datatype_t>   _dart_types;
 };
 
 }  // namespace halo
