@@ -1240,6 +1240,7 @@ public:
                    "unit:",       unit,
                    "lblock_idx:", local_block_index,
                    "lblockspec:", _local_blockspec.extents());
+
     // Local block index to local block coords:
     auto l_block_coords = _local_blockspec.coords(local_block_index);
     auto unit_ts_coords = _teamspec.coords(unit);
@@ -1248,10 +1249,20 @@ public:
     std::array<size_type, NumDimensions>  extents{};
     for (auto d = 0; d < NumDimensions; ++d) {
       auto blocksize_d = _blocksize_spec.extent(d);
-      auto nunits_d    = _teamspec.extent(d);
+
       // Block offsets are lobal coordinates of first block element:
+      auto nunits_d    = _teamspec.extent(d);
       offsets[d] = ((l_block_coords[d] * nunits_d) + unit_ts_coords[d]) *
                    blocksize_d;
+      // checks if the local block is the last one in this dimension
+      auto num_blocks_d =_local_blockspec.extent(d);
+      if(l_block_coords[d] == (num_blocks_d - 1)){
+          size_type remaining = local_extent(d) % blocksize_d;
+          // if block is underfilled the extent will be decreased
+          if(remaining > 0) {
+            blocksize_d = remaining;
+          }
+      }
       extents[d] = blocksize_d;
     }
     ViewSpec_t block_vs(offsets, extents);
@@ -1484,6 +1495,26 @@ public:
     return NumDimensions;
   }
 
+    /**
+   * Number of elements missing in the overflow block of given dimension
+   * compared to the regular blocksize (\see blocksize(d)), with
+   * 0 <= \c underfilled_blocksize(d) < blocksize(d).
+   */
+  SizeType underfilled_blocksize(dim_t dimension) const
+  {
+    // Underflow blocksize = regular blocksize - overflow blocksize:
+    auto ovf_blocksize = _memory_layout.extent(dimension) %
+                         blocksize(dimension);
+
+    if (ovf_blocksize == 0) {
+      return 0;
+    }
+
+    DASH_LOG_DEBUG_VAR("TilePattern.underfilled_blocksize", ovf_blocksize);
+    auto reg_blocksize = blocksize(dimension);
+    return reg_blocksize - ovf_blocksize;
+  }
+
 private:
 
   TilePattern(const PatternArguments_t & arguments)
@@ -1543,11 +1574,7 @@ private:
                            extent_d, // size of range (extent)
                            units_d   // number of blocks (units)
                          );
-      DASH_ASSERT_EQ(0, extent_d % blocksize_d,
-                     "TilePattern requires balanced block sizes: " <<
-                     "extent "    << extent_d    << " is no multiple of " <<
-                     "block size" << blocksize_d << " in " <<
-                     "dimension " << d);
+
       s_blocks[d] = blocksize_d;
     }
     DASH_LOG_TRACE_VAR("TilePattern.init_blocksizespec >", s_blocks);
@@ -1628,6 +1655,7 @@ private:
       l_blocks[d] = num_l_blocks_d;
     }
     DASH_LOG_TRACE_VAR("TilePattern.init_local_blockspec >", l_blocks);
+    DASH_LOG_DEBUG_VAR("TilePattern.init_local_extents >", initialize_local_extents(unit_id));
     return BlockSpec_t(l_blocks);
   }
 
@@ -1698,9 +1726,25 @@ private:
       if (num_odd_blocks_d > unit_ts_coords[d]) {
         ++num_l_blocks_d;
       }
+      
+      // Coordinate of this unit id in teamspec in dimension:
+      auto unit_ts_coord      = unit_ts_coords[d];
       // Possibly there are more blocks than units in dimension and no
       // block left for this unit. Local extent in d then becomes 0.
       l_extents[d] = num_l_blocks_d * blocksize_d;
+      // Unit id assigned to the last block in dimension:
+      team_unit_t last_block_unit_d((num_blocks_d % num_units_d == 0)
+                                      ? num_units_d - 1
+                                      : (num_blocks_d % num_units_d) - 1);
+
+      if(unit_ts_coord == last_block_unit_d) {
+        // If the last block in the dimension is underfilled and
+        // assigned to the local unit, subtract the missing extent:
+        auto undfill_blocksize_d = underfilled_blocksize(d);
+        DASH_LOG_TRACE_VAR("TilePattern.init_local_extents",
+                           undfill_blocksize_d);
+        l_extents[d] -= undfill_blocksize_d;
+      }
     }
     DASH_LOG_DEBUG_VAR("TilePattern.init_local_extents >", l_extents);
     return l_extents;

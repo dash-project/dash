@@ -544,12 +544,13 @@ class StoreHDF {
   }
 
   /**
-   * Convert a dash pattern into a hdf5 pattern in form of a list of hdf5 slabs.
+   * Convert a dash pattern into a hdf5 pattern in form of a list of hdf5 slabs and 
+   * is used for Patterns supporting underfilled blocks
    */
-  template <dim_t ndim, MemArrange Arr, typename index_t>
-  const static inline std::vector<hdf5_hyperslab_spec<ndim>>
-      /// The dash pattern to convert to hdf5 slabs
-      _get_hdf_slabs(const dash::Pattern<ndim, Arr, index_t>& pattern) {
+  template <typename PatternT>
+  const static inline std::vector<hdf5_hyperslab_spec<PatternT::ndim()>>
+  _get_hdf_slabs_with_underfilled(const PatternT& pattern) {
+    static constexpr auto ndim = PatternT::ndim();
     std::vector<hdf5_hyperslab_spec<ndim>> specs_hyperslab;
     std::vector<dim_t> dimensions;
 
@@ -575,9 +576,37 @@ class StoreHDF {
     return specs_hyperslab;
   }
 
+   /**
+   * Convert a dash pattern into a hdf5 pattern in form of a list of hdf5 slabs.
+   * Spezialization for BlockPattern
+   */
+  template <dim_t ndim, MemArrange Arr, typename index_t>
+  const static inline std::vector<hdf5_hyperslab_spec<ndim>>
+  /// The dash pattern to convert to hdf5 slabs
+  _get_hdf_slabs(const dash::Pattern<ndim, Arr, index_t>& pattern) {
+
+    return _get_hdf_slabs_with_underfilled(pattern);
+  }
+
+  /**
+   * Convert a dash pattern into a hdf5 pattern in form of a list of hdf5 slabs.
+   * Spezialization for TilePattern
+   */
+  template <dim_t ndim, MemArrange Arr, typename index_t>
+  const static inline std::vector<hdf5_hyperslab_spec<ndim>>
+  /// The dash pattern to convert to hdf5 slabs
+  _get_hdf_slabs(const dash::TilePattern<ndim, Arr, index_t>& pattern) {
+
+    return _get_hdf_slabs_with_underfilled(pattern);
+  }
+
+  /**
+   * Convert a dash pattern into a hdf5 pattern in form of a list of hdf5 slabs.
+   */
   template <class pattern_t>
   const static inline std::vector<hdf5_hyperslab_spec<pattern_t::ndim()>>
   _get_hdf_slabs(const pattern_t& pattern) {
+
     return std::vector<hdf5_hyperslab_spec<pattern_t::ndim()>>(
         1, _get_hdf_slab_body(pattern, {}));
   }
