@@ -84,6 +84,7 @@ static void testfn_nested_deps(void *data) {
         dep,                 // dependency
         1,                   // number of dependencies
         DART_PRIO_LOW,
+        0,
         NULL)
     );
   }
@@ -182,6 +183,7 @@ TEST_F(DARTTaskingTest, BulkAtomicIncrement)
         NULL,                // dependency
         0,                    // number of dependencies
         DART_PRIO_LOW,
+        0,
         NULL)
     );
   }
@@ -212,6 +214,7 @@ TEST_F(DARTTaskingTest, Yield)
         NULL,                // dependency
         0,                    // number of dependencies
         DART_PRIO_LOW,
+        0,
         NULL)
     );
   }
@@ -253,6 +256,7 @@ TEST_F(DARTTaskingTest, LocalDirectDependency)
         &dep,                // dependency
         1,                   // number of dependencies
         DART_PRIO_LOW,
+        0,
         &task           // handle to be returned
         )
     );
@@ -297,6 +301,7 @@ TEST_F(DARTTaskingTest, LocalOutDependency)
         &dep,                // dependency
         1,                    // number of dependencies
         DART_PRIO_LOW,
+        0,
         NULL)
     );
   }
@@ -342,6 +347,7 @@ TEST_F(DARTTaskingTest, LocalInOutDependencies)
         dep,                // dependency
         2,                    // number of dependencies
         DART_PRIO_LOW,
+        0,
         NULL)
     );
   }
@@ -386,6 +392,7 @@ TEST_F(DARTTaskingTest, SameLocalInOutDependency)
         dep,                // dependency
         2,                    // number of dependencies
         DART_PRIO_LOW,
+        0,
         NULL)
     );
   }
@@ -425,6 +432,7 @@ TEST_F(DARTTaskingTest, InOutDependency)
         dep,                // dependency
         1,                    // number of dependencies
         DART_PRIO_LOW,
+        0,
         NULL)
     );
   }
@@ -445,7 +453,7 @@ TEST_F(DARTTaskingTest, NestedTaskDeps)
   for (int i = 0; i < dart_task_num_threads()*10; ++i) {
     ASSERT_EQ(
       DART_OK,
-      dart_task_create(&testfn_nested_deps, NULL, 0, NULL, 0, DART_PRIO_HIGH, NULL)
+      dart_task_create(&testfn_nested_deps, NULL, 0, NULL, 0, DART_PRIO_HIGH, 0, NULL)
     );
   }
 
@@ -484,6 +492,7 @@ TEST_F(DARTTaskingTest, CancelLocal)
         &dep,                // dependency
         1,                    // number of dependencies
         DART_PRIO_LOW,
+        0,
         NULL)
     );
   }
@@ -525,6 +534,7 @@ TEST_F(DARTTaskingTest, CancelBcast)
         &dep,                // dependency
         1,                    // number of dependencies
         DART_PRIO_LOW,
+        0,
         NULL)
     );
   }
@@ -590,6 +600,7 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
         dep,                 // dependency
         3,                   // number of dependencies
         DART_PRIO_LOW,
+        0,
         NULL)
     );
     dart_task_phase_advance();
@@ -661,6 +672,7 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDepRoot)
           dep,                 // dependency
           2,                   // number of dependencies
           DART_PRIO_LOW,
+          0,
           NULL)
       );
     }
