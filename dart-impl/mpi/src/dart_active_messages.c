@@ -406,6 +406,7 @@ static
 dart_ret_t
 flush_buffer_all(dart_amsgq_t amsgq, bool blocking)
 {
+  int ret = DART_OK;
   int comm_size = amsgq->team_size;
 
   // prevent other threads from interfering
@@ -436,7 +437,6 @@ flush_buffer_all(dart_amsgq_t amsgq, bool blocking)
   }
 
   while (num_info > 0) {
-    dart_ret_t ret;
     ret = amsgq_impl.trysend_all(amsgq->impl, flush_info, num_info);
 
     int num_active = num_info;
@@ -451,7 +451,12 @@ flush_buffer_all(dart_amsgq_t amsgq, bool blocking)
     }
 
     // stop if called in non-blocking mode or all is done
-    if (!blocking || num_active == 0) break;
+    if (!blocking || num_active == 0) {
+      if (num_active > 0) {
+        ret = DART_ERR_AGAIN;
+      }
+      break;
+    }
 
     // progress incoming messages and try again
     // NOTE: do not get rid of this process(), otherwise all processes may 
@@ -488,7 +493,7 @@ flush_buffer_all(dart_amsgq_t amsgq, bool blocking)
   }
 
   dart__base__mutex_unlock(&amsgq->mutex);
-  return DART_OK;
+  return ret;
 }
 
 
