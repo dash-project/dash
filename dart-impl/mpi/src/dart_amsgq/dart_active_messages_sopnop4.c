@@ -435,6 +435,7 @@ int grequest_query_fn(void *data, MPI_Status *status)
 {
   struct dart_grequest_state *state = (struct dart_grequest_state *)data;
   //printf("query_fn: state %d\n", state->state);
+  return MPI_SUCCESS;
 }
 
 static void initiate_queuenum_fetch(struct dart_grequest_state *state)
