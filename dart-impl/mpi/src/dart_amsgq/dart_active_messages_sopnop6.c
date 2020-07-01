@@ -20,25 +20,7 @@
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_active_messages_priv.h>
 
-#if defined(DART_HAVE_MPI_EGREQ) && defined(DART_HAVE_MPI_ONCOMPLETE)
-
-#ifdef OMPI_MAJOR_VERSION
-// forward declaration, not needed once we figure out how this works in OMPI
-typedef int (ompi_grequestx_poll_function)(void *, MPI_Status *);
-int ompi_grequestx_start(
-    MPI_Grequest_query_function *gquery_fn,
-    MPI_Grequest_free_function *gfree_fn,
-    MPI_Grequest_cancel_function *gcancel_fn,
-    ompi_grequestx_poll_function *gpoll_fn,
-    void* extra_state,
-    MPI_Request* request);
-#define MPIX_Grequest_start(query_fn,free_fn,cancel_fn,poll_fn,extra_state,request) \
-  ompi_grequestx_start(query_fn,free_fn,cancel_fn,poll_fn,extra_state,request)
-
-#elif defined (MPICH_VERSION)
-#define MPIX_Grequest_start(query_fn,free_fn,cancel_fn,poll_fn,extra_state,request) \
-  MPIX_Grequest_start(query_fn,free_fn,cancel_fn,poll_fn,NULL/*MPICH has an extra wait function*/,extra_state,request)
-#endif
+#if defined(DART_HAVE_MPI_CONTINUE)
 
 /* Setting the upper-most bit on the reader count signals processing */
 #define PROCESSING_SIGNAL (-((int32_t)1<<30))
@@ -83,6 +65,7 @@ struct dart_amsgq_impl_data {
   int               prev_tailpos;
   int               num_active_sendall; // number of still active sends in sendall
   MPI_Request       greq;               // sendall-grequest
+  MPI_Request       cont_req;           // continuation request
   bool              needs_flush;
 };
 
@@ -169,10 +152,7 @@ uint64_t unset_bit64(uint64_t value, int pos)
 
 
 static
-int grequest_poll_fn(void *data, MPI_Status *status);
-
-static
-int request_cb(void *data, MPI_Request request);
+void request_cb(void *data);
 
 static inline
 uint64_t fuse(int a, int b)
@@ -280,6 +260,8 @@ dart_amsg_sopnop_openq(
   *(int64_t*)(((intptr_t)res->queue_ptr) + OFFSET_WRITECNT(1)) = fuse(PROCESSING_SIGNAL, 0);
 
   MPI_Win_lock_all(0, res->queue_win);
+
+  MPI_Continue_init(&res->cont_req);
 
   MPI_Barrier(res->comm);
 
@@ -435,13 +417,7 @@ dart_amsg_sopnop_sendbuf(
   return DART_OK;
 }
 
-static
-int grequest_query_fn(void *data, MPI_Status *status)
-{
-  // nothing to do here
-}
-
-static void initiate_queuenum_fetch(struct dart_grequest_state *state)
+static void initiate_queuenum_fetch(struct dart_grequest_state *state, int *flag)
 {
   MPI_Rget_accumulate(
     &tmp, 1, MPI_UINT64_T,
@@ -450,210 +426,198 @@ static void initiate_queuenum_fetch(struct dart_grequest_state *state)
     state->amsgq->queue_win, &state->opreq);
 
   state->state = DART_GREQUEST_QUEUENUM;
-  MPIX_Request_on_completion(state->opreq, &request_cb, state);
-}
-
-static void mark_complete(struct dart_amsgq_impl_data *amsgq)
-{
-  int num_active = DART_DEC_AND_FETCH32(&amsgq->num_active_sendall);
-  if (num_active == 0) {
-    // we're done, mark the grequest as complete
-    MPI_Grequest_complete(amsgq->greq);
-  }
+  MPI_Continue(&state->opreq, flag, &request_cb, state, MPI_STATUS_IGNORE, state->amsgq->cont_req);
 }
 
 static
-int request_cb(void *data, MPI_Request request)
+void request_cb(void *data)
 {
+  int flag;
   struct dart_grequest_state *state = (struct dart_grequest_state *)data;
 
   //printf("poll_fn: state %d\n", state->state);
+  while (1) {
+   switch (state->state) {
+     case DART_GREQUEST_START:
+     {
+       initiate_queuenum_fetch(state, &flag);
 
-  // test the request to release the resource
-  {
-    int flag;
-    MPI_Test(&request, &flag, MPI_STATUS_IGNORE);
-    DART_ASSERT(flag);
+       if (!flag) return;
+       continue; // re-enter switch
+     }
+     case DART_GREQUEST_RETRY:
+     {
+       int64_t writecnt = first(state->fused_val);
+
+       if (writecnt < 0) {
+         initiate_queuenum_fetch(state, &flag);
+         if (!flag) return;
+       }
+
+       // we skipped one round so don't requery the queue number but try again to register
+
+       state->opreq = MPI_REQUEST_NULL;
+
+       /* fall through */
+     }
+     case DART_GREQUEST_QUEUENUM:
+     {
+       // kick off registration
+       state->fused_op = fuse(1, 0);
+
+       // register as a writer
+       MPI_Rget_accumulate(
+         &state->fused_op,  1, MPI_UINT64_T,
+         &state->fused_val, 1, MPI_UINT64_T,
+         state->flush_info->target, OFFSET_WRITECNT(state->queuenum),
+         1, MPI_UINT64_T, MPI_SUM, state->amsgq->queue_win, &state->opreq);
+
+       // that's it for this iteration
+       state->state = DART_GREQUEST_REGISTER;
+
+       break;
+     }
+     case DART_GREQUEST_REGISTER:
+     {
+       int64_t writecnt = first(state->fused_val);
+
+       int64_t queuenum = state->queuenum;
+       int target = state->flush_info->target;
+
+       if (writecnt < 0) {
+         // queue is processing, go back to start
+         DART_LOG_TRACE("Queue %ld at %d processing, retrying (writecnt %ld)",
+                       queuenum, target, writecnt);
+
+         // kick off deregistration
+         MPI_Rget_accumulate(
+           &dereg_value,      1, MPI_UINT64_T,
+           &state->fused_val, 1, MPI_UINT64_T,
+           target, OFFSET_WRITECNT(queuenum),
+           1, MPI_UINT64_T, MPI_SUM, state->amsgq->queue_win, &state->opreq);
+
+         state->state = DART_GREQUEST_RETRY;
+
+         break;
+       }
+
+       int64_t offset = second(state->fused_val);
+       if ((offset + state->flush_info->size) > state->amsgq->queue_size) {
+         // queue is full, come back later
+
+         // the queue is full, reset the offset
+         DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld)",
+                       queuenum, target, offset);
+         // deregister as a writer
+         update_value(&dereg_value, target, OFFSET_WRITECNT(queuenum),
+                      state->amsgq->queue_win);
+
+         // we throw our hands up and mark the request as completed
+         state->state = DART_GREQUEST_FAILED;
+         return;
+       }
+
+       // reserve a slot
+       state->fused_op = fuse(0, state->flush_info->size);
+       MPI_Rget_accumulate(
+         &state->fused_op, 1, MPI_UINT64_T,
+         &state->fused_val, 1, MPI_UINT64_T,
+         target, OFFSET_WRITECNT(queuenum),
+         1, MPI_UINT64_T, MPI_SUM, state->amsgq->queue_win, &state->opreq);
+
+       // that's it for this iteration
+       state->state = DART_GREQUEST_OFFSET;
+
+       break;
+     }
+     case DART_GREQUEST_OFFSET:
+     {
+       int target = state->flush_info->target;
+       int64_t queuenum = state->queuenum;
+       MPI_Win queue_win = state->amsgq->queue_win;
+
+       int64_t offset   = second(state->fused_val);
+       int64_t writecnt = first(state->fused_val);
+       int64_t msg_size = state->flush_info->size;
+
+       DART_LOG_TRACE("Queue %ld at %d: writecnt %ld, offset %ld (fused_val %lu)",
+                      queuenum, target, writecnt,
+                      offset, state->fused_val);
+
+       // if the message does not fit we have to wait for the queue to be processed
+       if (!(offset >= 0 && (offset + msg_size) <= state->amsgq->queue_size)) {
+
+         // the queue is full, reset the offset
+         DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld)",
+                       queuenum, target, offset);
+         state->fused_op = fuse(-1, -msg_size);
+         // deregister as a writer
+         update_value(&state->fused_op, target, OFFSET_WRITECNT(queuenum), queue_win);
+
+         state->amsgq->needs_flush = true;
+
+         // we throw our hands up and mark the request as completed
+         state->state = DART_GREQUEST_FAILED;
+         return;
+       }
+
+       // advance to next step
+
+       DART_LOG_TRACE("Writing %ld into queue %ld at offset %ld at unit %i",
+                     msg_size, queuenum, offset, target);
+
+       // Write our payload
+       MPI_Rput(
+         state->flush_info->data,
+         msg_size,
+         MPI_BYTE,
+         target,
+         OFFSET_DATA(queuenum, state->amsgq->queue_size) + offset,
+         msg_size,
+         MPI_BYTE,
+         queue_win,
+         &state->opreq);
+
+       state->state = DART_GREQUEST_PUT;
+
+       break;
+     }
+     case DART_GREQUEST_PUT:
+     {
+       int target = state->flush_info->target;
+       MPI_Win queue_win = state->amsgq->queue_win;
+       int64_t queuenum = state->queuenum;
+       // we have to flush here because MPI has no ordering guarantees
+       MPI_Win_flush(target, queue_win);
+
+       DART_LOG_TRACE("Unregistering as writer from queue %ld at unit %i",
+                     queuenum, target);
+
+       // deregister as a writer
+       update_value(&dereg_value, target, OFFSET_WRITECNT(queuenum), queue_win);
+
+       DART_LOG_TRACE("Sent message of size %zu to unit "
+                     "%d starting at offset %ld",
+                     state->flush_info->size, target, second(state->fused_val));
+
+       state->state = DART_GREQUEST_COMPLETE;
+       state->flush_info->completed = true;
+       return;
+     }
+     default:
+       DART_ASSERT_MSG(state->state <= DART_GREQUEST_PUT,
+                       "Unexpected state request found in callback function!");
+   }
+
+    // register callback
+    // MPIX_Request_on_completion(state->opreq, &request_cb, state);
+    MPI_Continue(&state->opreq, &flag, &request_cb, state, MPI_STATUS_IGNORE, state->amsgq->cont_req);
+    // break from while loop
+    if (!flag) break;
   }
-  switch (state->state) {
-    case DART_GREQUEST_START:
-    {
-      initiate_queuenum_fetch(state);
 
-      return MPI_SUCCESS;
-    }
-    case DART_GREQUEST_RETRY:
-    {
-      int64_t writecnt = first(state->fused_val);
 
-      if (writecnt < 0) {
-        initiate_queuenum_fetch(state);
-        return MPI_SUCCESS;
-      }
-
-      // we skipped one round so don't requery the queue number but try again to register
-
-      state->opreq = MPI_REQUEST_NULL;
-
-      /* fall through */
-    }
-    case DART_GREQUEST_QUEUENUM:
-    {
-      // kick off registration
-      state->fused_op = fuse(1, 0);
-
-      // register as a writer
-      MPI_Rget_accumulate(
-        &state->fused_op,  1, MPI_UINT64_T,
-        &state->fused_val, 1, MPI_UINT64_T,
-        state->flush_info->target, OFFSET_WRITECNT(state->queuenum),
-        1, MPI_UINT64_T, MPI_SUM, state->amsgq->queue_win, &state->opreq);
-
-      // that's it for this iteration
-      state->state = DART_GREQUEST_REGISTER;
-
-      break;
-    }
-    case DART_GREQUEST_REGISTER:
-    {
-      int64_t writecnt = first(state->fused_val);
-
-      int64_t queuenum = state->queuenum;
-      int target = state->flush_info->target;
-
-      if (writecnt < 0) {
-        // queue is processing, go back to start
-        DART_LOG_TRACE("Queue %ld at %d processing, retrying (writecnt %ld)",
-                      queuenum, target, writecnt);
-
-        // kick off deregistration
-        MPI_Rget_accumulate(
-          &dereg_value,      1, MPI_UINT64_T,
-          &state->fused_val, 1, MPI_UINT64_T,
-          target, OFFSET_WRITECNT(queuenum),
-          1, MPI_UINT64_T, MPI_SUM, state->amsgq->queue_win, &state->opreq);
-
-        state->state = DART_GREQUEST_RETRY;
-
-        break;
-      }
-
-      int64_t offset = second(state->fused_val);
-      if ((offset + state->flush_info->size) > state->amsgq->queue_size) {
-        // queue is full, come back later
-
-        // the queue is full, reset the offset
-        DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld)",
-                      queuenum, target, offset);
-        // deregister as a writer
-        update_value(&dereg_value, target, OFFSET_WRITECNT(queuenum),
-                     state->amsgq->queue_win);
-
-        // we throw our hands up and mark the request as completed
-        state->state = DART_GREQUEST_FAILED;
-        mark_complete(state->amsgq);
-        return MPI_SUCCESS;
-      }
-
-      // reserve a slot
-      state->fused_op = fuse(0, state->flush_info->size);
-      MPI_Rget_accumulate(
-        &state->fused_op, 1, MPI_UINT64_T,
-        &state->fused_val, 1, MPI_UINT64_T,
-        target, OFFSET_WRITECNT(queuenum),
-        1, MPI_UINT64_T, MPI_SUM, state->amsgq->queue_win, &state->opreq);
-
-      // that's it for this iteration
-      state->state = DART_GREQUEST_OFFSET;
-
-      break;
-    }
-    case DART_GREQUEST_OFFSET:
-    {
-      int target = state->flush_info->target;
-      int64_t queuenum = state->queuenum;
-      MPI_Win queue_win = state->amsgq->queue_win;
-
-      int64_t offset   = second(state->fused_val);
-      int64_t writecnt = first(state->fused_val);
-      int64_t msg_size = state->flush_info->size;
-
-      DART_LOG_TRACE("Queue %ld at %d: writecnt %ld, offset %ld (fused_val %lu)",
-                     queuenum, target, writecnt,
-                     offset, state->fused_val);
-
-      // if the message does not fit we have to wait for the queue to be processed
-      if (!(offset >= 0 && (offset + msg_size) <= state->amsgq->queue_size)) {
-
-        // the queue is full, reset the offset
-        DART_LOG_TRACE("Queue %ld at %d full (tailpos %ld)",
-                      queuenum, target, offset);
-        state->fused_op = fuse(-1, -msg_size);
-        // deregister as a writer
-        update_value(&state->fused_op, target, OFFSET_WRITECNT(queuenum), queue_win);
-
-        state->amsgq->needs_flush = true;
-
-        // we throw our hands up and mark the request as completed
-        state->state = DART_GREQUEST_FAILED;
-        mark_complete(state->amsgq);
-        return MPI_SUCCESS;
-      }
-
-      // advance to next step
-
-      DART_LOG_TRACE("Writing %ld into queue %ld at offset %ld at unit %i",
-                    msg_size, queuenum, offset, target);
-
-      // Write our payload
-      MPI_Rput(
-        state->flush_info->data,
-        msg_size,
-        MPI_BYTE,
-        target,
-        OFFSET_DATA(queuenum, state->amsgq->queue_size) + offset,
-        msg_size,
-        MPI_BYTE,
-        queue_win,
-        &state->opreq);
-
-      state->state = DART_GREQUEST_PUT;
-
-      break;
-    }
-    case DART_GREQUEST_PUT:
-    {
-      int target = state->flush_info->target;
-      MPI_Win queue_win = state->amsgq->queue_win;
-      int64_t queuenum = state->queuenum;
-      // we have to flush here because MPI has no ordering guarantees
-      MPI_Win_flush(target, queue_win);
-
-      DART_LOG_TRACE("Unregistering as writer from queue %ld at unit %i",
-                    queuenum, target);
-
-      // deregister as a writer
-      update_value(&dereg_value, target, OFFSET_WRITECNT(queuenum), queue_win);
-
-      DART_LOG_TRACE("Sent message of size %zu to unit "
-                    "%d starting at offset %ld",
-                    state->flush_info->size, target, second(state->fused_val));
-
-      state->state = DART_GREQUEST_COMPLETE;
-      state->flush_info->completed = true;
-      mark_complete(state->amsgq);
-      return MPI_SUCCESS;
-    }
-    default:
-      DART_ASSERT_MSG(state->state <= DART_GREQUEST_PUT,
-                      "Unexpected state request found in callback function!");
-  }
-
-  // register callback
-  MPIX_Request_on_completion(state->opreq, &request_cb, state);
-
-  return MPI_SUCCESS;
-
+  return;
 }
 
 static
@@ -687,22 +651,18 @@ dart_amsg_sopnop_sendbuf_all(
   //printf("dart_amsg_sopnop_sendbuf_all\n");
 
   // hand the operation to MPI
-  MPI_Grequest_start(
-    grequest_query_fn, grequest_free_fn,
-    grequest_cancel_fn,
-    NULL, &amsgq->greq);
-
   for (int i = 0; i < num_info; ++i) {
-    states[i].state = DART_GREQUEST_QUEUENUM;
+    states[i].state = DART_GREQUEST_START;
     states[i].flush_info = &flush_info[i];
     states[i].amsgq = amsgq;
     states[i].flush_info->completed = false;
 
     // initiate the queuenum fetch
-    initiate_queuenum_fetch(&states[i]);
+    //initiate_queuenum_fetch(&states[i]);
+    request_cb(&states[i]);
   }
 
-  MPI_Wait(&amsgq->greq, MPI_STATUS_IGNORE);
+  MPI_Wait(&amsgq->cont_req, MPI_STATUS_IGNORE);
 
   if (do_flush || amsgq->needs_flush) {
     MPI_Win_flush_all(amsgq->queue_win);
@@ -956,4 +916,4 @@ dart_amsg_sopnop6_init(dart_amsgq_impl_t* impl)
   return DART_ERR_INVAL;
 }
 
-#endif // DART_HAVE_MPI_EGREQ
+#endif // DART_HAVE_MPI_CONTINUE
