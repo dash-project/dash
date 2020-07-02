@@ -205,6 +205,31 @@ void dart__mpi__check_memory_model(dart_segment_info_t *segment)
   }
 }
 
+static size_t page_size;
+
+#ifndef SPEC_DART_MPI_DYNAMIC_MEM_NO_POSIX_MEMALIGN
+#define ALLOC_MEM(ptr, size) \
+  do { \
+    if (0 != posix_memalign((void**)&ptr, page_size, size)) { \
+      DART_LOG_ERROR( \
+        "dart_team_memalloc_aligned_dynamic: bytes:%lu posix_memalign failed", \
+        size); \
+      return DART_ERR_NOMEM; \
+    } \
+  } while (0)
+#else // !SPEC_DART_MPI_DYNAMIC_MEM_NO_POSIX_MEMALIGN
+#define ALLOC_MEM(ptr, size) \
+  do { \
+    if (MPI_Alloc_mem(size, MPI_INFO_NULL, &ptr) != MPI_SUCCESS) { \
+      DART_LOG_ERROR( \
+        "dart_team_memalloc_aligned_dynamic: bytes:%lu MPI_Alloc_mem failed", \
+        size); \
+      return DART_ERR_NOMEM; \
+    } \
+  } while (0)
+#endif // !SPEC_DART_MPI_DYNAMIC_MEM_NO_POSIX_MEMALIGN
+
+
 #ifdef DART_MPI_ENABLE_DYNAMIC_WINDOWS
 static dart_ret_t
 dart_team_memalloc_aligned_dynamic(
@@ -226,13 +251,10 @@ dart_team_memalloc_aligned_dynamic(
   DART_LOG_TRACE("dart_team_memalloc_aligned : dts:%i nelem:%zu nbytes:%zu",
     dtype_size, nelem, nbytes);
 
-
-
   /**
    * Work around a bug in Open MPI where registrations are expected to be page
    * aligned: https://github.com/open-mpi/ompi/issues/7384
    */
-  static size_t page_size;
   if (!page_size) page_size = sysconf(_SC_PAGE_SIZE);
   nbytes = (nbytes + ((page_size)-1)) & ~((page_size)-1);
 
@@ -344,20 +366,7 @@ dart_team_memalloc_aligned_dynamic(
     }
   }
 #else // DART_MPI_DISABLE_SHARED_WINDOWS
-#ifndef SPEC_DART_MPI_DYNAMIC_MEM_NO_POSIX_MEMALIGN
-  if (0 != posix_memalign((void**)&sub_mem, page_size, nbytes)) {
-    DART_LOG_ERROR(
-      "dart_team_memalloc_aligned_dynamic: bytes:%lu posix_memalign failed",
-      nbytes);
-  }
-#else // SPEC_DART_MPI_DYNAMIC_MEM_NO_POSIX_MEMALIGN
-  if (MPI_Alloc_mem(nbytes, MPI_INFO_NULL, &sub_mem) != MPI_SUCCESS) {
-    DART_LOG_ERROR(
-      "dart_team_memalloc_aligned_dynamic: bytes:%lu MPI_Alloc_mem failed",
-      nbytes);
-    return DART_ERR_OTHER;
-  }
-#endif // SPEC_DART_MPI_DYNAMIC_MEM_NO_POSIX_MEMALIGN
+  ALLOC_MEM(sub_mem, nbytes);
 #endif // DART_MPI_DISABLE_SHARED_WINDOWS
 
   MPI_Aint disp;
@@ -461,13 +470,19 @@ dart_team_memalloc_aligned_full(
   dart_segment_info_t *segment = dart_segment_alloc(
                                 &team_data->segdata, DART_SEGMENT_ALLOC);
 
+  if (!page_size) page_size = sysconf(_SC_PAGE_SIZE);
+  nbytes = (nbytes + ((page_size)-1)) & ~((page_size)-1);
+
+  ALLOC_MEM(baseptr, nbytes);
+
   MPI_Info win_info;
   MPI_Info_create(&win_info);
   MPI_Info_set(win_info, "same_disp_unit", "true");
-  if (MPI_Win_allocate(
-      nbytes, 1, win_info,
-      team_data->comm, &baseptr, &win) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_team_memalloc_aligned_full: MPI_Win_allocate failed");
+  if (MPI_Win_create(
+      baseptr, nbytes, 1, win_info,
+      team_data->comm, &win) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_team_memalloc_aligned_full: MPI_Win_create failed");
+    free(baseptr);
     MPI_Info_free(&win_info);
     return DART_ERR_OTHER;
   }

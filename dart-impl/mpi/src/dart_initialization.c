@@ -37,6 +37,8 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
   MPI_Info_set(win_info, "same_size", "true");
   MPI_Info_set(win_info, "same_disp_unit", "true");
 
+  MPI_Aint nbytes = DART_LOCAL_ALLOC_SIZE;
+
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
   DART_LOG_DEBUG("dart_init: Shared memory enabled");
@@ -91,24 +93,42 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
       }
     }
   }
-  /* Create a single global win object for dart local
-   * allocation based on the above allocated shared memory.
-   *
-   * Return in dart_win_local_alloc. */
-  MPI_Win_create(
-    dart_mempool_localalloc,
-    DART_LOCAL_ALLOC_SIZE,
-    sizeof(char),
-    win_info,
-    DART_COMM_WORLD,
-    &dart_win_local_alloc);
+
 #else
-  MPI_Win_allocate(
-    DART_LOCAL_ALLOC_SIZE, sizeof(char),
-    win_info, DART_COMM_WORLD,
-    &dart_mempool_localalloc,
-    &dart_win_local_alloc);
+
+#ifndef SPEC_DART_MPI_DYNAMIC_MEM_NO_POSIX_MEMALIGN
+  static size_t page_size;
+  if (!page_size) page_size = sysconf(_SC_PAGE_SIZE);
+  nbytes = (nbytes + ((page_size)-1)) & ~((page_size)-1);
+
+  if (0 != posix_memalign((void**)&dart_mempool_localalloc, page_size, nbytes)) {
+    DART_LOG_ERROR("dart_init: bytes:%lu posix_memalign failed", nbytes);
+    MPI_Info_free(&win_info);
+    return DART_ERR_NOMEM;
+  }
+#else // !SPEC_DART_MPI_DYNAMIC_MEM_NO_POSIX_MEMALIGN
+  if (MPI_Alloc_mem(nbytes, MPI_INFO_NULL, &dart_mempool_localalloc) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_init: bytes:%lu MPI_Alloc_mem failed", nbytes);
+    MPI_Info_free(&win_info);
+    return DART_ERR_NOMEM;
+  }
+#endif // !SPEC_DART_MPI_DYNAMIC_MEM_NO_POSIX_MEMALIGN
+
 #endif
+
+  if (MPI_Win_create(
+    dart_mempool_localalloc, nbytes, sizeof(char),
+    win_info, DART_COMM_WORLD,
+    &dart_win_local_alloc) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_init: bytes:%lu MPI_Win_create failed", nbytes);
+    MPI_Info_free(&win_info);
+#if defined(DART_MPI_ENABLE_SHARED_WINDOWS)
+    MPI_Free_mem(dart_mempool_localalloc);
+#else
+    free(dart_mempool_localalloc);
+#endif
+    return DART_ERR_NOTINIT;
+  }
 
   MPI_Info_free(&win_info);
 
