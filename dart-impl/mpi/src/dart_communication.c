@@ -1813,25 +1813,23 @@ dart_ret_t dart_handle_free(
 
 /* -- Dart collective operations -- */
 
-static int _dart_barrier_count = 0;
-
 dart_ret_t dart_barrier(
   dart_team_t teamid)
 {
-  DART_LOG_DEBUG("dart_barrier() barrier count: %d", _dart_barrier_count);
-
   if (dart__unlikely(teamid == DART_UNDEFINED_TEAM_ID)) {
     DART_LOG_ERROR("dart_barrier ! failed: team may not be DART_UNDEFINED_TEAM_ID");
     return DART_ERR_INVAL;
   }
-
-  _dart_barrier_count++;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
     DART_LOG_ERROR("dart_barrier ! failed: Unknown team: %d", teamid);
     return DART_ERR_INVAL;
   }
+
+  int barrier_count = team_data->barrier_count++;
+
+  DART_LOG_DEBUG("dart_barrier() barrier count: %d", barrier_count);
 
   /* Fetch proper communicator from teams. */
   CHECK_MPI_RET(

@@ -194,6 +194,8 @@ typedef struct dart_team_data {
 
   struct dart_lock_struct *allocated_locks;
 
+  int barrier_count;
+
 } dart_team_data_t;
 
 /* @brief Initiate the free-team-list and allocated-team-list.
