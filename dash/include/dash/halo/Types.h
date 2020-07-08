@@ -29,7 +29,11 @@ static constexpr region_index_t NumRegionsMax =
 /**
  * View property of the StencilIterator
  */
-enum class StencilViewScope : std::uint8_t {
+enum class StencilViewScope
+#if !defined(SPEC)
+: std::uint8_t
+#endif
+{
   /// inner elements only
   INNER,
   /// Boundary elements only
@@ -55,7 +59,11 @@ inline std::ostream& operator<<(std::ostream&           os,
 /**
  * Global boundary Halo properties
  */
-enum class BoundaryProp : uint8_t {
+enum class BoundaryProp
+#if !defined(SPEC)
+: uint8_t
+#endif
+{
   /// No global boundary Halos
   NONE,
   /// Global boundary Halos with values from the opposite boundary
@@ -78,7 +86,11 @@ inline std::ostream& operator<<(std::ostream& os, const BoundaryProp& prop) {
 /**
  * Position of a \ref Region in one dimension relating to the center
  */
-enum class RegionPos : bool {
+enum class RegionPos
+#if !defined(SPEC)
+: bool
+#endif
+{
   /// Region before center
   PRE,
   /// Region behind center
