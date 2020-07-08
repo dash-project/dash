@@ -222,7 +222,7 @@ dart__mpi__get_basic(
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get: shared windows enabled");
-  if (seginfo->segid >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
+  if (!reqs && !num_reqs && seginfo->segid >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
     return get_shared_mem(team_data, seginfo, dest, offset,
         team_unit_id, nelem, dtype);
   }
@@ -345,7 +345,7 @@ dart__mpi__put_basic(
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_put: shared windows enabled");
-  if (seginfo->segid >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
+  if (!reqs && !num_reqs && seginfo->segid >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
     if (flush_required_ptr) *flush_required_ptr = false;
     return put_shared_mem(team_data, seginfo, src, offset,
         team_unit_id, nelem, dtype);
