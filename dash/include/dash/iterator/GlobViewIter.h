@@ -262,13 +262,13 @@ public:
   constexpr GlobViewIter(
 //  GlobViewIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> && other)
     GlobViewIter<T_, P_, GM_, Ptr_, Ref_> && other)
-  : _globmem        (other._globmem)
-  , _pattern        (other._pattern)
-  , _viewspec       (other._viewspec)
-  , _idx            (other._idx)
-  , _view_idx_offset(other._view_idx_offset)
-  , _max_idx        (other._max_idx)
-  , _myid           (other._myid)
+  : _globmem        (std::move(other._globmem))
+  , _pattern        (std::move(other._pattern))
+  , _viewspec       (std::move(other._viewspec))
+  , _idx            (std::move(other._idx))
+  , _view_idx_offset(std::move(other._view_idx_offset))
+  , _max_idx        (std::move(other._max_idx))
+  , _myid           (std::move(other._myid))
   { }
 
   /**
@@ -290,6 +290,8 @@ public:
     _view_idx_offset = other._view_idx_offset;
     _max_idx         = other._max_idx;
     _myid            = other._myid;
+
+    return *this;
   }
 
   /**
@@ -304,13 +306,13 @@ public:
   self_t & operator=(
     GlobViewIter<T_, P_, GM_, Ptr_, Ref_ > && other)
   {
-    _globmem         = other._globmem;
-    _pattern         = other._pattern;
-    _viewspec        = other._viewspec;
-    _idx             = other._idx;
-    _view_idx_offset = other._view_idx_offset;
-    _max_idx         = other._max_idx;
-    _myid            = other._myid;
+    _globmem         = std::move(other._globmem);
+    _pattern         = std::move(other._pattern);
+    _viewspec        = std::move(other._viewspec);
+    _idx             = std::move(other._idx);
+    _view_idx_offset = std::move(other._view_idx_offset);
+    _max_idx         = std::move(other._max_idx);
+    _myid            = std::move(other._myid);
     // no ownership to transfer
     return *this;
   }
