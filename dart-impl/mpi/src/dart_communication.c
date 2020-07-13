@@ -149,14 +149,14 @@ static dart_ret_t put_shared_mem(
     size_t                      nelem,
     dart_datatype_t             dtype)
 {
-  DART_LOG_DEBUG("dart_get: using shared memory window in segment %d enabled",
+  DART_LOG_DEBUG("dart_put: using shared memory window in segment %d enabled",
       seginfo->segid);
   dart_team_unit_t luid    = team_data->sharedmem_tab[unitid.id];
   char *           baseptr = seginfo->baseptr[luid.id];
 
   baseptr += offset;
   DART_LOG_DEBUG(
-      "dart_get: memcpy %zu bytes", nelem * dart__mpi__datatype_sizeof(dtype));
+      "dart_put: memcpy %zu bytes", nelem * dart__mpi__datatype_sizeof(dtype));
   memcpy(baseptr, src, nelem * dart__mpi__datatype_sizeof(dtype));
   return DART_OK;
 }
