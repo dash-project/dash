@@ -829,11 +829,11 @@ public:
       index = 2;
     for(auto d = 1; d < NumDimensions; ++d) {
       if(coords[d] < offsets[d])
-        index *= RegionCoords_t::REGION_INDEX_BASE;
+        index *= REGION_INDEX_BASE;
       else if(coords[d] < static_cast<signed_extent_t>(extents[d]))
-        index = 1 + index * RegionCoords_t::REGION_INDEX_BASE;
+        index = 1 + index * REGION_INDEX_BASE;
       else
-        index = 2 + index * RegionCoords_t::REGION_INDEX_BASE;
+        index = 2 + index * REGION_INDEX_BASE;
     }
 
     return index;
