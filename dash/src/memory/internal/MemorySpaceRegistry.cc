@@ -10,16 +10,22 @@ std::unique_ptr<dash::internal::MemorySpaceRegistry>
 std::vector<dash::internal::MemorySpaceRegistry::element_t>
     dash::internal::MemorySpaceRegistry::m_segments;
 
-std::once_flag dash::internal::MemorySpaceRegistry::m_onceFlag;
+bool dash::internal::MemorySpaceRegistry::m_init = dash::internal::MemorySpaceRegistry::Init();
 
 std::ostream &operator<<(std::ostream &os, const dart_gptr_t &dartptr);
 
 namespace dash {
 namespace internal {
+
+bool MemorySpaceRegistry::Init()
+{
+  m_instance.reset(new MemorySpaceRegistry);
+
+  return true;
+}
+
 MemorySpaceRegistry& MemorySpaceRegistry::GetInstance()
 {
-  std::call_once(
-      m_onceFlag, [](){ m_instance.reset(new MemorySpaceRegistry); });
   return *m_instance.get();
 }
 

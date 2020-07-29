@@ -27,6 +27,7 @@ public:
   using element_t = std::pair<key_t, value_t>;
 
   ~MemorySpaceRegistry() = default;
+  static bool Init();
   static MemorySpaceRegistry& GetInstance();
 
   bool add(dart_gptr_t gptr, value_t mem_space);
@@ -46,7 +47,7 @@ public:
 private:
   static std::unique_ptr<MemorySpaceRegistry> m_instance;
   static std::vector<element_t>               m_segments;
-  static std::once_flag                       m_onceFlag;
+  static bool                                 m_init;
 
   MemorySpaceRegistry()                               = default;
   MemorySpaceRegistry(const MemorySpaceRegistry& src) = delete;
