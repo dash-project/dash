@@ -31,9 +31,9 @@ enum dart__base__term_color_code {
 extern "C" {
 #endif
 
-const int dart__base__term_colors[DART_LOG_TCOL_NUM_CODES];
+extern const int dart__base__term_colors[DART_LOG_TCOL_NUM_CODES];
 
-const int dart__base__unit_term_colors[DART_LOG_TCOL_NUM_CODES-1];
+extern const int dart__base__unit_term_colors[DART_LOG_TCOL_NUM_CODES-1];
 
 #ifdef __cplusplus
 } /* extern "C" */
