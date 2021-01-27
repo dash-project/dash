@@ -93,6 +93,25 @@ inline std::ostream& operator<<(std::ostream& os, const RegionPos& pos) {
 
   return os;
 }
+
+/**
+ * Switch to turn on halo update signaling in both directions
+ */
+enum class SignalReady : bool {
+  /// Region before center
+  ON,
+  /// Region behind center
+  OFF
+};
+
+inline std::ostream& operator<<(std::ostream& os, const SignalReady& pos) {
+  if(pos == SignalReady::ON)
+    os << "ON";
+  else
+    os << "OFF";
+
+  return os;
+}
   
 }  // namespace halo
 

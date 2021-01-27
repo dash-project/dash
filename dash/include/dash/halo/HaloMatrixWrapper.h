@@ -7,6 +7,7 @@
 #include <dash/Pattern.h>
 #include <dash/halo/StencilOperator.h>
 #include <dash/halo/CoordinateAccess.h>
+#include <dash/halo/Types.h>
 
 #include <type_traits>
 #include <vector>
@@ -48,7 +49,7 @@ namespace halo {
  *     halo region 3             '- halo region 7
  */
 
-template <typename MatrixT>
+template <typename MatrixT, SignalReady SigReady = SignalReady::OFF>
 class HaloMatrixWrapper {
 private:
   using Pattern_t       = typename MatrixT::pattern_type;
@@ -64,7 +65,7 @@ public:
   using GlobBoundSpec_t = GlobalBoundarySpec<NumDimensions>;
   using HaloBlock_t     = HaloBlock<Element_t, Pattern_t, GlobMem_t>;
   using HaloMemory_t    = HaloMemory<HaloBlock_t>;
-  using HaloPackBuffer_t = HaloPackBuffer<HaloBlock_t>;
+  using HaloUpdateEnv_t = HaloUpdateEnv<HaloBlock_t, SigReady>;
   using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
   using region_index_t  = internal::region_index_t;
   using stencil_dist_t  = internal::spoint_value_t;
@@ -82,19 +83,20 @@ public:
    * Constructor that takes \ref Matrix, a \ref GlobalBoundarySpec and a user
    * defined number of stencil specifications (\ref StencilSpec)
    */
-  template <typename... StencilSpecT>
+  template <size_t NumStencilPointsFirst, typename... StencilSpecRestT>
   HaloMatrixWrapper(MatrixT& matrix, const GlobBoundSpec_t& cycle_spec,
-                    const StencilSpecT&... stencil_spec)
+                    const StencilSpec<StencilPoint<NumDimensions>, NumStencilPointsFirst> stencil_spec_first, 
+                    const StencilSpecRestT&... stencil_spec)
   : _matrix(matrix), _cycle_spec(cycle_spec),
-    _halo_spec(stencil_spec...),
+    _halo_spec(stencil_spec_first, stencil_spec...),
     _view_global(matrix.local.offsets(), matrix.local.extents()),
     _haloblock(matrix.begin().globmem(), matrix.pattern(), _view_global,
                _halo_spec, cycle_spec),
     _view_local(_haloblock.view_local()),
-    _halomemory(_haloblock),
-    _halo_buffer(_haloblock, matrix.lbegin(), matrix.team()) {
+    //_halomemory(_haloblock),
+    _halo_env(_haloblock, matrix.lbegin(), matrix.team(), matrix.pattern().teamspec()) {
 
-    for(const auto& region : _haloblock.halo_regions()) {
+    /*for(const auto& region : _haloblock.halo_regions()) {
       if(region.size() == 0)
         continue;
 
@@ -108,7 +110,19 @@ public:
                                                     region_size, &handle);
                                   },
                                   DART_HANDLE_NULL }));
-    }
+    }*/
+  }
+
+  /**
+   * Constructor that takes \ref Matrix and a stencil point distance 
+   * to create a \ref HaloMatrixWrapper with a full stencil with the 
+   * given width.
+   * The \ref GlobalBoundarySpec is set to default.
+   */
+  template <typename StencilPointT = StencilPoint<NumDimensions>>
+  HaloMatrixWrapper(MatrixT& matrix, const GlobBoundSpec_t& cycle_spec, 
+                    stencil_dist_t dist, std::enable_if_t<std::is_integral<stencil_dist_t>::value, std::nullptr_t> = nullptr )
+  : HaloMatrixWrapper(matrix, cycle_spec, StencilSpecFactory<StencilPointT>::full_stencil_spec(dist)) {
   }
 
   /**
@@ -140,17 +154,7 @@ public:
   HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT&... stencil_spec)
   : HaloMatrixWrapper(matrix, GlobBoundSpec_t(), stencil_spec...) {}
 
-  
-
-
   HaloMatrixWrapper() = delete;
-
-  ~HaloMatrixWrapper() {
-    for(auto& dart_type : _dart_types) {
-      dart_type_destroy(&dart_type);
-    }
-    _dart_types.clear();
-  }
 
   /**
    * Returns the underlying \ref HaloBlock
@@ -161,11 +165,7 @@ public:
    * Initiates a blocking halo region update for all halo elements.
    */
   void update() {
-    _halo_buffer.pack();
-    for(auto& region : _region_data) {
-      update_halo_intern(region.second);
-    }
-    wait();
+    _halo_env.update();
   }
 
   /**
@@ -173,22 +173,14 @@ public:
    * the given region.
    */
   void update_at(region_index_t index) {
-    auto it_find = _region_data.find(index);
-    if(it_find != _region_data.end()) {
-      _halo_buffer.pack(index);
-      update_halo_intern(it_find->second);
-      dart_wait_local(&it_find->second.handle);
-    }
+    _halo_env.update_at(index);
   }
 
   /**
    * Initiates an asychronous halo region update for all halo elements.
    */
   void update_async() {
-    _halo_buffer.pack();
-    for(auto& region : _region_data) {
-      update_halo_intern(region.second);
-    }
+    _halo_env.update_async();
   }
 
   /**
@@ -196,11 +188,7 @@ public:
    * the given region.
    */
   void update_async_at(region_index_t index) {
-    auto it_find = _region_data.find(index);
-    if(it_find != _region_data.end()) {
-      _halo_buffer.pack(index);
-      update_halo_intern(it_find->second);
-    }
+    _halo_env.update_async_at(index);
   }
 
   /**
@@ -208,9 +196,7 @@ public:
    * halo updates.
    */
   void wait() {
-    for(auto& region : _region_data) {
-      dart_wait_local(&region.second.handle);
-    }
+    _halo_env.wait();
   }
 
   /**
@@ -218,12 +204,7 @@ public:
    * Only useful for asynchronous halo updates.
    */
   void wait(region_index_t index) {
-    auto it_find = _region_data.find(index);
-    if(it_find == _region_data.end()) {
-      return;
-    }
-
-    dart_wait_local(&it_find->second.handle);
+    _halo_env.wait(index);
   }
 
   /**
@@ -233,24 +214,14 @@ public:
   const ViewSpec_t& view_local() const { return _view_local; }
 
   /**
-   * Returns the halo memory management object \ref HaloMemory
+   * Returns the halo environment management object \ref HaloUpdateEnv
    */
-  HaloMemory_t& halo_memory() { return _halomemory; }
+  HaloUpdateEnv_t& halo_env() { return _halo_env; }
 
   /**
-   * Returns the halo memory management object \ref HaloMemory
+   * Returns the halo environment management object \ref HaloUpdateEnv
    */
-  const HaloMemory_t& halo_memory() const { return _halomemory; }
-
-  /**
-   * Returns the halo buffer management object \ref HaloPackBuffer
-   */
-  HaloPackBuffer_t& halo_buffer() { return _halo_buffer; }
-
-  /**
-   * Returns the halo buffer management object \ref HaloPackBuffer
-   */
-  const HaloPackBuffer_t& halo_buffer() const { return _halo_buffer; }
+  const HaloUpdateEnv_t& halo_env() const { return _halo_env; }
 
   /**
    * Returns the underlying NArray
@@ -301,7 +272,7 @@ public:
             coords_offset[d] = reg_ext[d];
         }
 
-        auto range_mem = _halomemory.range_at(region.index());
+        auto range_mem = _halo_env.halo_memory().range_at(region.index());
         auto it_mem = range_mem.first;
         auto it_reg_end  = region.end();
         DASH_ASSERT_MSG(
@@ -357,39 +328,27 @@ public:
     }
 
     return StencilOperator<HaloBlock_t, StencilSpecT>(
-      &_haloblock, _matrix.lbegin(), &_halomemory, stencil_spec);
+      &_haloblock, _matrix.lbegin(), &_halo_env.halo_memory(), stencil_spec);
   }
 
   CoordinateAccess<HaloBlock_t> coordinate_access() {
-    return CoordinateAccess<HaloBlock_t>(&_haloblock, _matrix.lbegin(),&_halomemory);
+    return CoordinateAccess<HaloBlock_t>(&_haloblock, _matrix.lbegin(),&_halo_env.halo_memory());
   }
 
-private:
-  struct Data {
-    const Region_t&                     region;
-    std::function<void(dart_handle_t&)> get_halos;
-    dart_handle_t                       handle{};
-  };
-
-  void update_halo_intern(Data& data) {
-    if(data.region.is_custom_region())
-      return;
-
-    _halo_buffer.update_ready(data.region.index());
-    data.get_halos(data.handle);
-  }
+private:  
 
   Element_t* halo_element_at(ElementCoords_t& coords) {
     auto        index     = _haloblock.index_at(_view_local, coords);
     const auto& spec      = _halo_spec.spec(index);
-    auto        range_mem = _halomemory.range_at(index);
+    auto& halo_memory     = _halo_env.halo_memory();
+    auto        range_mem = halo_memory.range_at(index);
     if(spec.level() == 0 || range_mem.first == range_mem.second)
       return nullptr;
 
-    if(!_halomemory.to_halo_mem_coords_check(index, coords))
+    if(!halo_memory.to_halo_mem_coords_check(index, coords))
       return nullptr;
 
-    return &*(range_mem.first + _halomemory.offset(index, coords));
+    return &*(range_mem.first + halo_memory.offset(index, coords));
   }
 
 private:
@@ -399,10 +358,7 @@ private:
   const ViewSpec_t               _view_global;
   const HaloBlock_t              _haloblock;
   const ViewSpec_t&              _view_local;
-  HaloMemory_t                   _halomemory;
-  HaloPackBuffer_t               _halo_buffer;
-  std::map<region_index_t, Data> _region_data;
-  std::vector<dart_datatype_t>   _dart_types;
+  HaloUpdateEnv_t                _halo_env;
 };
 
 }  // namespace halo

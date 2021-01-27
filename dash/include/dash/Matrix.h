@@ -116,11 +116,6 @@ template <
   typename LocalMemSpaceT>
 class LocalMatrixRef;
 
-namespace halo {
-  template<class _MatrixT>
-  class HaloMatrixWrapper;
-}
-
 /**
  * An n-dimensional array supporting subranges and sub-dimensional
  * projection.
@@ -167,8 +162,6 @@ private:
   typedef PatternT
     Pattern_t;
 
-  template<class MatrixT_>
-  friend class halo::HaloMatrixWrapper;
 public:
   typedef GlobStaticMem<LocalMemSpaceT>
     GlobMem_t;

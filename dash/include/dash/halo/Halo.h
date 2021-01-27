@@ -7,7 +7,7 @@
 #include <dash/halo/Types.h>
 #include <dash/halo/Region.h>
 #include <dash/halo/Stencil.h>
-#include <dash/halo/HaloMemory.h>
+//#include <dash/halo/HaloMemory.h>
 
 #include <functional>
 
@@ -111,6 +111,8 @@ public:
 
   HaloSpec(const Self_t& other) { _specs = other._specs; }
 
+  static constexpr dim_t ndim() { return NumDimensions; }
+
   /**
    * Matching \ref RegionSpec for a given region index
    */
@@ -192,6 +194,7 @@ private:
   Specs_t       _specs{};
   region_size_t _num_regions{ 0 };
 };  // HaloSpec
+
 
 template <dim_t NumDimensions>
 std::ostream& operator<<(std::ostream& os, const HaloSpec<NumDimensions>& hs) {
@@ -588,8 +591,9 @@ public:
               bnd_region_offsets[d]  = 0;
               bnd_region_extents[d]  = 0;
             } else {
-              if(bound_spec[d] == BoundaryProp::CUSTOM)
+              if(bound_spec[d] == BoundaryProp::CUSTOM) {
                 custom_region = true;
+              }
               halo_region_offsets[d] = _pattern.extent(d) - halo_extent;
               halo_region_extents[d] = halo_extent;
               bnd_region_extents[d]  = halo_extent;
@@ -615,8 +619,9 @@ public:
               bnd_region_offsets[d]  = 0;
               bnd_region_extents[d]  = 0;
             } else {
-              if(bound_spec[d] == BoundaryProp::CUSTOM)
+              if(bound_spec[d] == BoundaryProp::CUSTOM) {
                 custom_region = true;
+              }
               halo_region_offsets[d] = 0;
               halo_region_extents[d] = halo_extent;
               bnd_region_offsets[d] += view_extent - halo_extent;
@@ -829,11 +834,11 @@ public:
       index = 2;
     for(auto d = 1; d < NumDimensions; ++d) {
       if(coords[d] < offsets[d])
-        index *= RegionCoords_t::REGION_INDEX_BASE;
+        index *= REGION_INDEX_BASE;
       else if(coords[d] < static_cast<signed_extent_t>(extents[d]))
-        index = 1 + index * RegionCoords_t::REGION_INDEX_BASE;
+        index = 1 + index * REGION_INDEX_BASE;
       else
-        index = 2 + index * RegionCoords_t::REGION_INDEX_BASE;
+        index = 2 + index * REGION_INDEX_BASE;
     }
 
     return index;

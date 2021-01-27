@@ -4,6 +4,7 @@
 #include <dash/Types.h>
 
 #include <dash/halo/Halo.h>
+#include <dash/halo/HaloMemory.h>
 
 #include <vector>
 

@@ -2,8 +2,8 @@
 #define DASH__HALO_HALOMEMORY_H
 
 #include <dash/halo/Types.h>
-#include<dash/halo/Region.h>
-
+#include <dash/halo/Region.h>
+#include <dash/halo/Halo.h>
 #include <dash/Array.h>
 
 namespace dash {
@@ -181,228 +181,412 @@ private:
   std::array<iterator, RegionsMax> _halo_offsets{};
 };  // class HaloMemory
 
-template <typename HaloBlockT>
-class HaloPackBuffer {
-private:
+template<typename ExtentSizeT, dim_t NumDimensions>
+struct EnvironmentInfoMD {
+  // neighbor id for a region of this unit
+  // if id is DART_UNDEFINED_UNIT_ID, no neighbor is found
+  dart_unit_t                            neighbor_id_from{DART_UNDEFINED_UNIT_ID};
+
+  dart_unit_t                            neighbor_id_to{DART_UNDEFINED_UNIT_ID};
+  // expected neighbor halo extents 
+  std::array<ExtentSizeT, NumDimensions> extents{}; 
+};
+
+template<typename ExtentSizeT, dim_t NumDimensions>
+std::ostream& operator<<(std::ostream& os, const EnvironmentInfoMD<ExtentSizeT, NumDimensions>& env_md) {
+  os << "neighbor_id_from: " << env_md.neighbor_id_from << ";"
+     << "neighbor_id_to: " << env_md.neighbor_id_to << ";"
+     << "extents: [ ";
+     for(dim_t d = 0; d < NumDimensions; ++d) {
+       os << env_md.extents[d] << " ";
+     }
+  os << "]";
+
+  return os;
+}
+
+template<typename TeamSpec, typename HaloBlockT>
+class EnvironmentInfo {
   static constexpr auto NumDimensions = HaloBlockT::ndim();
   static constexpr auto RegionsMax = NumRegionsMax<NumDimensions>;
 
-  using RegionCoords_t = RegionCoords<NumDimensions>;
-  using Team_t         = dash::Team;
-  using Pattern_t      = typename HaloBlockT::Pattern_t;
-  using signed_pattern_size_t =
-    typename std::make_signed<typename Pattern_t::size_type>::type;
-  using ViewSpec_t     = typename Pattern_t::viewspec_type;
+  using ViewSpec_t     = typename HaloBlockT::ViewSpec_t;
+  using extent_size_t      = typename ViewSpec_t::size_type;
+public:
+  using EnvInfoMD_t = EnvironmentInfoMD<extent_size_t, NumDimensions>;
+  using EnvInfoMDs_t = std::array<EnvInfoMD_t, RegionsMax>;
+  using Neighbors_t = std::array<dart_unit_t, RegionsMax>; 
 
+public:
+  EnvironmentInfo(const TeamSpec& team_spec, const HaloBlockT& halo_block) {
+    using RegionCoords_t = RegionCoords<NumDimensions>;
 
+    const auto& glob_bound_spec = halo_block.global_boundary_spec();
+    const auto& halo_spec = halo_block.halo_spec();
+
+    const auto& view_glob = halo_block.view();
+    const auto& view_offset = view_glob.offsets();
+    const auto& view_extent = view_glob.extents();
+
+    // checks and sets whether the region has global borders 
+    std::pair<std::array<bool,NumDimensions>,std::array<bool,NumDimensions>> border{};
+    const auto& glob_extent = halo_block.pattern().extents();
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      if(view_offset[d] == 0) {
+        border.first[d] = true;
+      }
+      if(view_offset[d] + view_extent[d] == glob_extent[d]) {
+        border.second[d] = true;
+      }
+    }
+
+    for(const auto& spec : halo_spec.specs()) {
+      auto halo_extent = spec.extent();
+      if(!halo_extent) {
+        continue;
+      }
+      
+      auto remote_region_index = RegionsMax - 1 - spec.index();
+
+      auto& env_md = _env_mds[spec.index()];
+      std::array<int, NumDimensions> neighbor_coords_rem;
+      std::array<int, NumDimensions> neighbor_coords;
+      auto reg_coords = spec.coords();
+      auto reg_coords_rem = RegionCoords_t::coords(remote_region_index);
+      env_md.extents = halo_block.view_local().extents();
+      
+      auto border_side = &border.first;
+      if(spec.index() > RegionCoords<NumDimensions>::center_index()) {
+        border_side = &border.second;
+      } 
+
+      bool cyclic_from = true;
+      bool cyclic_to = true;
+      for(dim_t d = 0; d < NumDimensions; ++d) {
+        // region coords uses 1 for the center position, while \ref TeamSpec use 0 
+        neighbor_coords[d] = static_cast<int>(reg_coords[d]) - 1;
+        neighbor_coords_rem[d] = static_cast<int>(reg_coords_rem[d]) - 1;
+        
+        if(spec[d] == 1) {
+          continue;
+        }
+
+        env_md.extents[d] = halo_extent;
+
+        if(spec[d] < 1 && glob_bound_spec[d] != BoundaryProp::CYCLIC) {
+          if(border.first[d]) {
+            cyclic_from = false;
+          }
+
+          if(border.second[d]) {
+            cyclic_to = false;
+          }
+          continue;
+        }
+        
+        // in case spec[d] > 1
+        if(glob_bound_spec[d] != BoundaryProp::CYCLIC) {
+          if(border.second[d]) {
+            cyclic_from = false;
+          }
+
+          if(border.first[d]) {
+            cyclic_to = false;
+          }
+        }
+      }
+
+      env_md.neighbor_id_to = static_cast<dart_unit_t>(team_spec.neighbor(neighbor_coords_rem)); 
+      if(env_md.neighbor_id_to == -1 && cyclic_to) {
+        env_md.neighbor_id_to = static_cast<dart_unit_t>(team_spec.periodic_neighbor(neighbor_coords_rem));
+      }
+      env_md.neighbor_id_from = static_cast<dart_unit_t>(team_spec.neighbor(neighbor_coords));
+      if(env_md.neighbor_id_from == -1 && cyclic_from) {
+        env_md.neighbor_id_from = static_cast<dart_unit_t>(team_spec.periodic_neighbor(neighbor_coords));
+      }
+    }
+  }
+
+  const EnvInfoMD_t& environment_md(region_index_t region_index) const {
+    return _env_mds[region_index];
+  }
+
+  const EnvInfoMDs_t& environment_md() const {
+    return _env_mds;
+  }
+
+private:
+  EnvInfoMDs_t _env_mds;
+};
+
+template<typename TeamSpec, typename HaloBlockT>
+std::ostream& operator<<(std::ostream& os, const EnvironmentInfo<TeamSpec, HaloBlockT>& env_info) {
+  static constexpr auto NumDimensions = HaloBlockT::ndim();
+  static constexpr auto RegionsMax = NumRegionsMax<NumDimensions>;
+
+  const auto& env_mds = env_info.environment_md();
+  os << "dash::halo::EnvironmentInfo { ";
+  for(region_index_t r; r < RegionsMax; ++r) {
+    const auto& env_md = env_mds[r];
+    os << "region_index: " << r << ";"
+       << env_md << ")\n";
+  }
+  os << "}";
+
+  return os;
+}
+
+template<typename HaloBlockT>
+class SignalEnv {
+
+  struct SignalData {
+    bool        signal_used{false};
+    dart_gptr_t gptr{DART_GPTR_NULL};
+  };
+
+  static constexpr auto NumDimensions = HaloBlockT::ndim();
+  static constexpr auto RegionsMax = NumRegionsMax<NumDimensions>;
   
+  using signal_t           = bool;
+  using HaloSignalBuffer_t = dash::Array<signal_t>;
+  using SignalDataSet_t    = std::array<SignalData,RegionsMax>;
+  using SignalHandles_t    = std::vector<dart_handle_t>;
+  using EnvInfoMD_t        = EnvironmentInfo<TeamSpec<NumDimensions>,HaloBlockT>;
+
+public:
+  using Team_t = dash::Team;
+
+public:
+  SignalEnv(const HaloBlockT& halo_block, Team_t& team, const EnvInfoMD_t& env_info_md) 
+  : _signal_buffer(RegionsMax * team.size(), team),
+    _signal_ready_buffer(RegionsMax * team.size(), team) {
+
+    for(region_index_t r = 0; r < RegionsMax; ++r) {
+      _signal_buffer.local[r] = 0;
+      _signal_ready_buffer.local[r] = 1;
+    }
+
+    init_signal_env(halo_block, env_info_md);
+  }
+
+  void put_signal_async(region_index_t region_index) {
+    auto& put_sig = _put_signals[region_index];
+    if(!put_sig.signal_used) {
+      return;
+    }
+    
+    dart_handle_t handle;
+    dash::internal::put_handle(put_sig.gptr, &_signal, 1, &handle);
+    _signal_handles.push_back(std::move(handle));
+  }
+
+  void put_signal_blocking(region_index_t region_index) {
+    auto& put_sig = _put_signals[region_index];
+    if(!put_sig.signal_used) {
+      return;
+    }
+
+    dash::internal::put_blocking(put_sig.gptr, &_signal, 1);
+  }
+
+  void put_ready_signal_async(region_index_t region_index) {
+    auto& put_sig = _put_ready_signals[region_index];
+    if(!put_sig.signal_used) {
+      return;
+    }
+    
+    dart_handle_t handle;
+    dash::internal::put_handle(put_sig.gptr, &_signal, 1, &handle);
+    _signal_ready_handles.push_back(std::move(handle));
+  }
+
+  void put_ready_signal_blocking(region_index_t region_index) {
+    auto& put_sig = _put_ready_signals[region_index];
+    if(!put_sig.signal_used) {
+      return;
+    }
+
+    dash::internal::put_blocking(put_sig.gptr, &_signal, 1);
+  }
+
+  void ready_to_update(region_index_t region_index) {
+    auto& get_data = _get_ready_signals[region_index];
+    if(!get_data.signal_used) {
+      return;
+    }
+    
+    signal_t signal = false;
+    while(!signal) {
+      dash::internal::get_blocking(get_data.gptr, &signal, 1);
+    }
+    _signal_ready_buffer.lbegin()[region_index] = 0;
+  }
+
+  void wait_put_signals() {
+    dart_waitall_local(_signal_handles.data(), _signal_handles.size());
+    _signal_handles.clear();
+  }
+
+  void wait_put_ready_signals() {
+    dart_waitall_local(_signal_ready_handles.data(), _signal_ready_handles.size());
+    _signal_ready_handles.clear();
+  }
+
+  void wait_signal(region_index_t region_index) {
+    auto& get_data = _get_signals[region_index];
+    if(!get_data.signal_used) {
+      return;
+    }
+
+    signal_t signal = false;
+    while(!signal) {
+      dash::internal::get_blocking(get_data.gptr, &signal, 1);
+    }
+    _signal_buffer.lbegin()[region_index] = 0;
+  }
+
+private:
+  void init_signal_env(HaloBlockT halo_block, const EnvInfoMD_t& env_info_md) {
+    long count_put_signals = 0;
+    long count_put_ready_signals = 0;
+    auto my_team_id = halo_block.pattern().team().myid();
+    auto signal_gptr = _signal_buffer.begin().dart_gptr();
+    auto signal_ready_gptr = _signal_ready_buffer.begin().dart_gptr();
+    
+    for(auto r = 0; r < RegionsMax; ++r) {
+      auto signal_offset = r * sizeof(bool);
+      
+      const auto& env_md = env_info_md.environment_md(r);
+
+      if(env_md.neighbor_id_to >= 0) {
+        auto& put_signal = _put_signals[r];
+        put_signal.signal_used = true;
+        put_signal.gptr = signal_gptr;
+        put_signal.gptr.unitid = env_md.neighbor_id_to;
+        put_signal.gptr.addr_or_offs.offset = signal_offset;
+
+        auto& get_ready_signal = _get_ready_signals[r];
+        get_ready_signal.signal_used = true;
+        get_ready_signal.gptr = signal_ready_gptr;
+        get_ready_signal.gptr.unitid = my_team_id;
+        get_ready_signal.gptr.addr_or_offs.offset = signal_offset;
+
+        ++count_put_signals;
+      }
+
+      auto region = halo_block.halo_region(r);
+      if(region != nullptr && region->size() > 0 && env_md.neighbor_id_from >= 0) {
+        auto& get_signal = _get_signals[r];
+        // sets local signal gptr -> necessary for dart_get
+        get_signal.signal_used = true;
+        get_signal.gptr = signal_gptr;
+        get_signal.gptr.unitid = my_team_id;
+        get_signal.gptr.addr_or_offs.offset = signal_offset;
+
+        auto& put_ready_signal = _put_ready_signals[r];
+        put_ready_signal.signal_used = true;
+        put_ready_signal.gptr = signal_ready_gptr;
+        put_ready_signal.gptr.unitid = env_md.neighbor_id_from;
+        put_ready_signal.gptr.addr_or_offs.offset = signal_offset;
+
+        ++count_put_ready_signals;
+      }
+    }
+    _signal_handles.reserve(count_put_signals);
+    _signal_ready_handles.reserve(count_put_ready_signals);
+  }
+
+private:
+  HaloSignalBuffer_t _signal_buffer;
+  HaloSignalBuffer_t _signal_ready_buffer;
+  signal_t           _signal = true;
+  SignalDataSet_t    _get_signals{};
+  SignalDataSet_t    _put_signals{};
+  SignalDataSet_t    _get_ready_signals{};
+  SignalDataSet_t    _put_ready_signals{};
+  SignalHandles_t    _signal_handles;
+  SignalHandles_t    _signal_ready_handles;
+};
+
+template<typename ElementT, typename LengthSizeT>
+struct PackMetaData {
+  bool                   needs_packing{false};
+  std::vector<ElementT*> block_pos{};
+  LengthSizeT            block_len{0};
+  ElementT*              buffer_pos{nullptr};
+  std::function<void()>  pack_func = [](){};
+};
+
+template<typename ElementT, typename LengthSizeT>
+std::ostream& operator<<(std::ostream& os, const PackMetaData<ElementT, LengthSizeT>& pack) {
+  os << "packing:" << std::boolalpha << pack.needs_packing
+      << ", block_len " << pack.block_len
+      << ", buffer_pos" << pack.buffer_pos;
+
+  return os; 
+}
+
+template<typename HaloBlockT>
+class PackEnv {
+  static constexpr auto NumDimensions = HaloBlockT::ndim();
+  static constexpr auto RegionsMax = NumRegionsMax<NumDimensions>;
+
+  using Pattern_t      = typename HaloBlockT::Pattern_t;
+  using pattern_size_t  = std::make_signed_t<typename Pattern_t::size_type>;
+  using upattern_size_t = std::make_unsigned_t<pattern_size_t>;
+  using Element_t = typename HaloBlockT::Element_t;
+  using EnvInfoMD_t = EnvironmentInfo<TeamSpec<NumDimensions>,HaloBlockT>;
+
   static constexpr auto MemoryArrange = Pattern_t::memory_order();
   // value not related to array index
   static constexpr auto FastestDim    =
     MemoryArrange == ROW_MAJOR ? NumDimensions - 1 : 0;
   static constexpr auto ContiguousDim    =
     MemoryArrange == ROW_MAJOR ? 1 : NumDimensions;
+  
+  using HaloBuffer_t  = dash::Array<Element_t>;
+  using HaloPosAll_t  = std::array<dart_gptr_t, RegionsMax>;
+  using PackMData_t   = PackMetaData<Element_t, upattern_size_t>;
+  using PackMDataAll_t = std::array<PackMData_t, RegionsMax>;
+  using PackOffs_t = std::array<pattern_size_t, RegionsMax>;
 
 public:
-  using Element_t = typename HaloBlockT::Element_t;
-  using ElementCoords_t =
-    std::array<typename Pattern_t::index_type, NumDimensions>;
-  using HaloBuffer_t   = dash::Array<Element_t>;
-  using HaloSignalBuffer_t   = dash::Array<bool>;
-  using pattern_size_t = typename Pattern_t::size_type;
+  using Team_t = dash::Team;
 
 public:
-  /**
-   * Constructor
-   */
-  HaloPackBuffer(const HaloBlockT& halo_block, Element_t* local_memory, Team_t& team)
-  : _halo_block(halo_block),
-    _local_memory(local_memory),
-    _num_halo_elems(num_halo_elems()),
-    _halo_buffer(_num_halo_elems * team.size(), team),
-    _signal_buffer(RegionsMax * team.size(), team) {
-
-    init_block_data();
-    for(auto& signal : _signal_buffer.local) {
-      signal = 0;
-    }
-
-    _signal = 1;
+  PackEnv(const HaloBlockT& halo_block, Element_t* local_memory, Team_t& team, const EnvInfoMD_t& env_info_md) 
+  : _local_memory(local_memory),
+    _pack_buffer() {
+    auto pack_info = info_pack_buffer(halo_block);
+    _pack_buffer.allocate(pack_info.first * team.size(), team);
+    init_block_data(halo_block, pack_info.second, env_info_md);
   }
 
-  void pack() {
-    region_index_t handle_pos = 0;
-    for(auto r = 0; r < RegionsMax; ++r) {
-      const auto& update_data = _halo_update_data[r];
-      if(!update_data.put_data.needs_signal) {
-        continue;
-      }
-
-      if(update_data.pack_data.needs_packing) {
-        auto buffer_offset = _halo_buffer.lbegin() + update_data.pack_data.buffer_offset;
-        for(auto& offset : update_data.pack_data.block_offs) {
-          auto block_begin = _local_memory + offset;
-          std::copy(block_begin, block_begin + update_data.pack_data.block_len, buffer_offset);
-          buffer_offset += update_data.pack_data.block_len;
-        }
-      }
-
-      dash::internal::put_handle(update_data.put_data.signal_gptr, &_signal, 1, &_signal_handles[handle_pos]);
-      ++handle_pos;
-    }
-
-    dart_waitall_local(_signal_handles.data(), _signal_handles.size());
+  void pack(region_index_t region) {
+    _pack_md_all[region].pack_func();
   }
 
-  void pack(region_index_t region_index) {
-    const auto& update_data = _halo_update_data[region_index];
-    if(!update_data.put_data.needs_signal) {
-      return;
-    }
-
-    if(update_data.pack_data.needs_packing) {
-      auto buffer_offset = _halo_buffer.lbegin() + update_data.pack_data.buffer_offset;
-      for(auto& offset : update_data.pack_data.block_offs) {
-        auto block_begin = _local_memory + offset;
-        std::copy(block_begin, block_begin + update_data.pack_data.block_len, buffer_offset);
-        buffer_offset += update_data.pack_data.block_len;
-      }
-    }
-
-    dash::internal::put_blocking(update_data.put_data.signal_gptr, &_signal, 1);
+  dart_gptr_t halo_gptr(region_index_t region_index) {
+    return _get_halos[region_index];
   }
 
-  dart_gptr_t buffer_region(region_index_t region_index) {
-    return _halo_update_data[region_index].get_data.halo_gptr;
+  const dart_gptr_t& halo_gptr(region_index_t region_index) const {
+    return _get_halos[region_index];
   }
 
-  void update_ready(region_index_t region_index) {
-    auto& get_data = _halo_update_data[region_index].get_data;
-    if(!get_data.awaits_signal) {
-      return;
-    }
-
-
-    bool signal = false;
-    while(!signal) {
-      dash::internal::get_blocking(get_data.signal_gptr, &signal, 1);
-    }
-    _signal_buffer.lbegin()[region_index] = 0;
-  }
-
-  void print_block_data() {
-    std::cout << "BlockData:\n";
-    for(auto r = 0; r < RegionsMax; ++r) {
-      std::cout << "region [" << r << "] {";
-      for(auto& offset : _halo_update_data[r].pack_data.block_offs) {
-        std::cout << " (" << offset << "," << _halo_update_data[r].pack_data.block_len << ")";
-      }
-      std::cout << " }\n";
-    }
-    std::cout << std::endl;
-  }
-
-  void print_buffer_data() {
-    std::cout << "bufferData: { ";
-    for(auto& elem : _halo_buffer.local) {
-      std::cout << elem << ",";
-    }
-    std::cout << " }" << std::endl;
-  }
-
-  void print_signal_data() {
-    std::cout << "signalData: { ";
-    for(auto& elem : _signal_buffer.local) {
-      std::cout << elem << ",";
-    }
-    std::cout << " }" << std::endl;
-  }
-
-  void print_pack_data() {
-    for(auto r = 0; r < RegionsMax; ++r) {
-      auto& data = _halo_update_data[r];
-      std::cout << "Halo Update Data (" << r << ")\n"
-                << "  Get Data:\n"
-                << "    awaits signal: " << data.get_data.awaits_signal << "\n"
-                << "    signal gptr: " << " uid: " << data.get_data.signal_gptr.unitid << " off: " << data.get_data.signal_gptr.addr_or_offs.offset << "\n"
-                << "    halo gptr: " << " uid: " << data.get_data.halo_gptr.unitid << " off: " << data.get_data.halo_gptr.addr_or_offs.offset << "\n"
-                << "  Put Data:\n"
-                << "    needs signal: " << data.put_data.needs_signal << "\n"
-                << "    halo gptr: " << " uid: " << data.put_data.signal_gptr.unitid << " off: " << data.put_data.signal_gptr.addr_or_offs.offset << "\n"
-                << "  Pack Data:\n"
-                << "    needs packed: " << data.pack_data.needs_packing << "\n"
-                << "    halo offset buffer: " << data.pack_data.buffer_offset << "\n"
-                << "    block length: " << data.pack_data.block_len << "\n";
-      std::cout << "    Block Offsets: { ";
-      for(auto& offset : data.pack_data.block_offs) {
-        std::cout << offset << " ";
-      }
-      std::cout << " }\n";
-    }
-    std::cout << std::endl;
-  }
-
-  void print_pack_data(region_index_t reg) {
-    auto& data = _halo_update_data[reg];
-    std::cout << "Halo Update Data (" << reg << ")\n"
-              << "  Get Data:\n"
-              << "    awaits signal: " << data.get_data.awaits_signal << "\n"
-              << "    signal gptr: " << " uid: " << data.get_data.signal_gptr.unitid << " off: " << data.get_data.signal_gptr.addr_or_offs.offset << "\n"
-              << "    halo gptr: " << " uid: " << data.get_data.halo_gptr.unitid << " off: " << data.get_data.halo_gptr.addr_or_offs.offset << "\n"
-              << "  Put Data:\n"
-              << "    needs signal: " << data.put_data.needs_signal << "\n"
-              << "    halo gptr: " << " uid: " << data.put_data.signal_gptr.unitid << " off: " << data.put_data.signal_gptr.addr_or_offs.offset << "\n"
-              << "  Pack Data:\n"
-              << "    needs packed: " << data.pack_data.needs_packing << "\n"
-              << "    halo offset buffer: " << data.put_data.buffer_offset << "\n"
-              << "    block length: " << data.pack_data.block_len << "\n";
-    std::cout << "    Block Offsets: { ";
-    for(auto& offset : data.pack_data.block_offs) {
-      std::cout << offset << " ";
-    }
-    std::cout << std::endl;
-  }
-
-  void print_gptr(dart_gptr_t gptr, region_index_t reg, const char* location) {
-    std::cout << "[" << dash::myid() << "] loc: " << location << " reg: " << reg << " uid: " << gptr.unitid << " off: " << gptr.addr_or_offs.offset << std::endl;
-  }
 private:
-  struct GetData {
-    bool        awaits_signal{false};
-    dart_gptr_t signal_gptr{DART_GPTR_NULL};
-    dart_gptr_t halo_gptr{DART_GPTR_NULL};
-  };
-
-  struct PutData {
-    bool        needs_signal{false};
-    dart_gptr_t signal_gptr{DART_GPTR_NULL};
-  };
-
-  struct PackData{
-    bool                        needs_packing{false};
-    std::vector<pattern_size_t> block_offs{};
-    pattern_size_t              block_len{0};
-    signed_pattern_size_t       buffer_offset{-1};
-  };
-
-  struct HaloUpdateData {
-    PackData pack_data;
-    PutData  put_data;
-    GetData  get_data;
-  };
-
-  pattern_size_t num_halo_elems() {
-    const auto& halo_spec = _halo_block.halo_spec();
+  auto info_pack_buffer(const HaloBlockT& halo_block) {
+    const auto& halo_spec = halo_block.halo_spec();
     team_unit_t rank_0(0);
-    auto max_local_extents = _halo_block.pattern().local_extents(rank_0);
+    auto max_local_extents = halo_block.pattern().local_extents(rank_0);
+    PackOffs_t packed_offs;
 
-    pattern_size_t num_halo_elems = 0;
+    pattern_size_t num_pack_elems = 0;
+    pattern_size_t current_offset = 0;
     for(auto r = 0; r < RegionsMax; ++r) {
       const auto& region_spec = halo_spec.spec(r);
-      auto& pack_data = _halo_update_data[r].pack_data;
       if(region_spec.extent() == 0 ||
          (region_spec.level() == 1 && region_spec.relevant_dim() == ContiguousDim)) {
-        pack_data.buffer_offset = -1;
         continue;
       }
 
@@ -414,65 +598,52 @@ private:
           reg_size *= max_local_extents[d];
         }
       }
-      pack_data.buffer_offset = num_halo_elems;
-      num_halo_elems += reg_size;
+      num_pack_elems += reg_size;
+      packed_offs[r] = current_offset;
+      current_offset += reg_size;
     }
 
-    return num_halo_elems;
+    return std::make_pair(num_pack_elems, packed_offs);
   }
 
-  void init_block_data() {
+
+  void init_block_data(const HaloBlockT& halo_block, const PackOffs_t& packed_offs, const EnvInfoMD_t& env_info_md) {
+    using ViewSpec_t     = typename Pattern_t::viewspec_type;
+    
     for(auto r = 0; r < RegionsMax; ++r) {
-      auto region = _halo_block.halo_region(r);
-      if(region == nullptr || region->size() == 0) {
-        continue;
+      const auto& env_md = env_info_md.environment_md(r);
+
+      auto region = halo_block.halo_region(r);
+      auto& halo_gptr = _get_halos[r];
+      if(region != nullptr && region->size() > 0) {
+        // Halo elements can be updated with one request
+        if(region->spec().relevant_dim() == ContiguousDim && region->spec().level() == 1) {
+          halo_gptr = region->begin().dart_gptr();
+        } else {
+          halo_gptr = _pack_buffer.begin().dart_gptr();
+          halo_gptr.unitid = region->begin().dart_gptr().unitid;
+          halo_gptr.addr_or_offs.offset = packed_offs[r] * sizeof(Element_t);
+        }
+      } else {
+        halo_gptr = DART_GPTR_NULL;
       }
 
-      auto remote_region_index = RegionsMax - 1 - r;
-      auto& update_data_loc = _halo_update_data[r];
-      auto& update_data_rem = _halo_update_data[remote_region_index];
-
-      update_data_rem.put_data.needs_signal = true;
-      update_data_loc.get_data.awaits_signal = true;
-      _signal_handles.push_back(nullptr);
-
-      auto signal_gptr = _signal_buffer.begin().dart_gptr();
-      // sets local signal gptr -> necessary for dart_get
-      update_data_loc.get_data.signal_gptr = signal_gptr;
-      update_data_loc.get_data.signal_gptr.unitid = _halo_block.pattern().team().myid();
-      update_data_loc.get_data.signal_gptr.addr_or_offs.offset = r * sizeof(bool);
-
-      // sets remote neighbor signal gptr -> necessary for dart_put
-      auto neighbor_id = region->begin().dart_gptr().unitid;
-      update_data_rem.put_data.signal_gptr = signal_gptr;
-      update_data_rem.put_data.signal_gptr.unitid = neighbor_id;
-      update_data_rem.put_data.signal_gptr.addr_or_offs.offset = remote_region_index * sizeof(bool);
-
-      // Halo elements can be updated with one request
-      if(region->spec().relevant_dim() == ContiguousDim && region->spec().level() == 1) {
-        update_data_loc.get_data.halo_gptr = region->begin().dart_gptr();
+      if(env_md.neighbor_id_to < 0) {
         continue;
       }
-
-      update_data_loc.get_data.halo_gptr = _halo_buffer.begin().dart_gptr();
-      update_data_loc.get_data.halo_gptr.unitid = neighbor_id;
-      update_data_loc.get_data.halo_gptr.addr_or_offs.offset = update_data_loc.pack_data.buffer_offset * sizeof(Element_t);
 
       // Setting all packing data
       // no packing needed -> all elements are contiguous
-      const auto& reg_spec = _halo_block.halo_spec().spec(remote_region_index);
-      if(reg_spec.extent() == 0 ||
-         (reg_spec.relevant_dim() == ContiguousDim && reg_spec.level() == 1)) {
-        update_data_rem.pack_data.buffer_offset = -1;
+      auto& pack_md = _pack_md_all[r];
+      const auto& reg_spec = halo_block.halo_spec().spec(r);
+      if(reg_spec.relevant_dim() == ContiguousDim && reg_spec.level() == 1) {
         continue;
       }
 
-      auto& pack_data = update_data_rem.pack_data;
-      pack_data.needs_packing = true;
+      pack_md.needs_packing = true;
+      pack_md.buffer_pos = _pack_buffer.lbegin() + packed_offs[r];
 
-
-      const auto& view_glob = _halo_block.view();
-      auto reg_extents = view_glob.extents();
+      const auto& view_glob = halo_block.view();
       auto reg_offsets = view_glob.offsets();
 
       for(dim_t d = 0; d < NumDimensions; ++d) {
@@ -480,41 +651,230 @@ private:
           continue;
         }
 
-        reg_extents[d] = reg_spec.extent();
         if(reg_spec[d] == 0) {
-          reg_offsets[d] += view_glob.extent(d) - reg_extents[d];
+          reg_offsets[d] += view_glob.extent(d) - env_md.extents[d];
         } else {
           reg_offsets[d] = view_glob.offset(d);
         }
       }
-      ViewSpec_t view_pack(reg_offsets, reg_extents);
-
-      pattern_size_t num_elems_block = reg_extents[FastestDim];
+      ViewSpec_t view_pack(reg_offsets, env_md.extents);
+      pattern_size_t num_elems_block = env_md.extents[FastestDim];
       pattern_size_t num_blocks      = view_pack.size() / num_elems_block;
 
-      pack_data.block_len = num_elems_block;
-      pack_data.block_offs.resize(num_blocks);
+      pack_md.block_len = num_elems_block;
+      pack_md.block_pos.resize(num_blocks);
 
       auto it_region = region->begin();
       decltype(it_region) it_pack_data(&(it_region.globmem()), it_region.pattern(), view_pack);
-      for(auto& offset : pack_data.block_offs) {
-        offset  = it_pack_data.lpos().index;
+      for(auto& pos : pack_md.block_pos) {
+        pos = _local_memory + it_pack_data.lpos().index;
         it_pack_data += num_elems_block;
       }
+      auto pack = &pack_md;
+      pack_md.pack_func = [pack](){
+        auto buffer_offset = pack->buffer_pos;
+        for(auto& pos : pack->block_pos) {
+          std::copy(pos, pos + pack->block_len, buffer_offset);
+          buffer_offset += pack->block_len;
+        }
+      };
     }
   }
 
 private:
-  const HaloBlockT&              _halo_block;
-  std::vector<dart_handle_t>     _signal_handles;
-  bool                           _signal;
-  Element_t*                     _local_memory;
-  std::array<HaloUpdateData,RegionsMax> _halo_update_data;
-  pattern_size_t                 _num_halo_elems;
-  HaloBuffer_t                   _halo_buffer;
-  HaloSignalBuffer_t             _signal_buffer;
+  Element_t*     _local_memory;
+  HaloBuffer_t   _pack_buffer;
+  HaloPosAll_t   _get_halos;
+  PackMDataAll_t _pack_md_all;
+};
 
-};  // class HaloPackBuffer
+template <typename HaloBlockT, SignalReady SigReady>
+class HaloUpdateEnv {
+  struct UpdateData {
+    std::function<void(dart_handle_t&)> get_halos;
+    dart_handle_t                       handle{};
+  };
+
+  static constexpr auto NumDimensions = HaloBlockT::ndim();
+  static constexpr auto RegionsMax = NumRegionsMax<NumDimensions>;
+
+  using TeamSpec_t   = TeamSpec<NumDimensions>;
+  using HaloSpec_t   = typename HaloBlockT::HaloSpec_t;
+  using ViewSpec_t   = typename HaloBlockT::ViewSpec_t; 
+  using EnvInfoMd_t = EnvironmentInfo<TeamSpec_t,HaloBlockT>;
+  using SignalEnv_t = SignalEnv<HaloBlockT>;
+  using PackEnv_t   = PackEnv<HaloBlockT>;
+
+  
+
+public:
+  using HaloMemory_t = HaloMemory<HaloBlockT>;
+  using Element_t    = typename HaloBlockT::Element_t;
+  using Team_t       = dash::Team;
+
+public:
+  HaloUpdateEnv(const HaloBlockT& halo_block, Element_t* local_memory, Team_t& team, const TeamSpec_t& tspec)
+  : _halo_block(halo_block),
+    _env_info_md(tspec, halo_block),
+    _halo_memory(halo_block),
+    _signal_env(halo_block, team, _env_info_md),
+    _pack_env(_halo_block, local_memory, team, _env_info_md) {
+    init_update_data();
+  }
+
+  /**
+   * Initiates a blocking halo region update for all halo elements.
+   */
+  void update() {
+    prepare_update();
+    for(auto& data : _region_data) {
+      update_halo_intern(data.first, data.second);
+    }
+    wait();
+  }
+
+  /**
+   * Initiates a blocking halo region update for all halo elements within the
+   * the given region.
+   *
+   * TODO: find a solution for prepare update
+   */
+  void update_at(region_index_t index) {
+    auto it_find = _region_data.find(index);
+    if(it_find != _region_data.end()) {
+      update_halo_intern(it_find->first, it_find->second);
+      dart_wait_local(&it_find->second.handle);
+      if(SigReady == SignalReady::ON) {
+        _signal_env.put_ready_signal_blocking(it_find->first);
+      }
+    }
+  }
+
+  /**
+   * Initiates an asychronous halo region update for all halo elements.
+   */
+  void update_async() {
+    prepare_update();
+    for(auto& data : _region_data) {
+      update_halo_intern(data.first, data.second);
+    }
+  }
+
+  /**
+   * Initiates an asychronous halo region update for all halo elements within
+   * the given region.
+   *
+   * TODO: find a solution for prepare update
+   */
+  void update_async_at(region_index_t index) {
+    auto it_find = _region_data.find(index);
+    if(it_find != _region_data.end()) {
+      update_halo_intern(it_find->first, it_find->second);
+    }
+  }
+
+  /**
+   * Waits until all halo updates are finished. Only useful for asynchronous
+   * halo updates.
+   */
+  void wait() {
+    for(auto& region : _region_data) {
+      dart_wait_local(&region.second.handle);
+      if(SigReady == SignalReady::ON) {
+        _signal_env.put_ready_signal_async(region.first);
+      }
+    }
+    if(SigReady == SignalReady::ON) {
+      _signal_env.wait_put_ready_signals();
+    }
+  }
+
+  /**
+   * Waits until the halo updates for the given halo region is finished.
+   * Only useful for asynchronous halo updates.
+   */
+  void wait(region_index_t index) {
+    auto it_find = _region_data.find(index);
+    if(it_find == _region_data.end()) {
+      return;
+    }
+
+    dart_wait_local(&it_find->second.handle);
+    if(SigReady == SignalReady::ON) {
+      _signal_env.put_ready_signal_blocking(it_find->first);
+    }
+  }
+
+  // prepares the halo elements for update -> packing and sending signals to all relevant neighbors 
+  void prepare_update() {
+    for(region_index_t r = 0; r < RegionsMax; ++r) {
+      if(SigReady == SignalReady::ON) {
+        _signal_env.ready_to_update(r);
+      }
+      _pack_env.pack(r);
+      _signal_env.put_signal_async(r);
+    }
+    _signal_env.wait_put_signals();
+  }
+
+  /**
+   * Returns the halo memory management object \ref HaloMemory
+   */
+  HaloMemory_t& halo_memory() { return _halo_memory; }
+
+  /**
+   * Returns the halo memory management object \ref HaloMemory
+   */
+  const HaloMemory_t& halo_memory() const { return _halo_memory; }
+
+  /**
+   * Returns the halo environment information object \ref EnvironmentInfo
+   */
+  EnvInfoMd_t halo_env_info() { return _env_info_md; }
+
+  /**
+   * Returns the halo environment information object \ref EnvironmentInfo
+   */
+  const EnvInfoMd_t& halo_env_info() const { return _env_info_md; }
+
+private:
+  void init_update_data() {
+    for(const auto& region : _halo_block.halo_regions()) {
+      size_t region_size  = region.size();
+      if(region_size == 0) {
+        continue;
+      }
+
+      auto gptr = _pack_env.halo_gptr(region.index());
+      if(region.is_custom_region()) {
+        _region_data.insert(std::make_pair(
+            region.index(), UpdateData{ [](dart_handle_t& handle) {},
+                                  DART_HANDLE_NULL }));
+      } else {
+        auto* pos = &*(_halo_memory.first_element_at(region.index()));
+        const auto& gptr = _pack_env.halo_gptr(region.index());
+        _region_data.insert(std::make_pair(
+            region.index(), UpdateData{ [pos, gptr, region_size](dart_handle_t& handle) {
+                                  dash::internal::get_handle(gptr, pos, region_size, &handle);
+                                  },
+                                  DART_HANDLE_NULL }));
+      }
+    }
+  }
+
+  void update_halo_intern(region_index_t region_index, UpdateData& data) {
+    _signal_env.wait_signal(region_index);
+    data.get_halos(data.handle);
+  }
+
+private:
+  const HaloBlockT& _halo_block;
+  EnvInfoMd_t       _env_info_md;
+  HaloMemory_t _halo_memory;
+  SignalEnv_t _signal_env;
+  PackEnv_t   _pack_env;
+  std::map<region_index_t, UpdateData> _region_data;
+}; // HaloUpdateEnv
 
 }  // namespace halo
 
