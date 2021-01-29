@@ -84,50 +84,34 @@ public:
    * defined number of stencil specifications (\ref StencilSpec)
    */
   template <size_t NumStencilPointsFirst, typename... StencilSpecRestT>
-  HaloMatrixWrapper(MatrixT& matrix, const GlobBoundSpec_t& cycle_spec,
-                    const StencilSpec<StencilPoint<NumDimensions>, NumStencilPointsFirst> stencil_spec_first, 
+  HaloMatrixWrapper(MatrixT& matrix, const GlobBoundSpec_t& glob_bnd_spec,
+                    const StencilSpec<StencilPoint<NumDimensions>, NumStencilPointsFirst>& stencil_spec_first,
                     const StencilSpecRestT&... stencil_spec)
-  : _matrix(matrix), _cycle_spec(cycle_spec),
+  : _matrix(matrix), _glob_bnd_spec(glob_bnd_spec),
     _halo_spec(stencil_spec_first, stencil_spec...),
     _view_global(matrix.local.offsets(), matrix.local.extents()),
     _haloblock(matrix.begin().globmem(), matrix.pattern(), _view_global,
-               _halo_spec, cycle_spec),
+               _halo_spec, glob_bnd_spec),
     _view_local(_haloblock.view_local()),
     //_halomemory(_haloblock),
     _halo_env(_haloblock, matrix.lbegin(), matrix.team(), matrix.pattern().teamspec()) {
-
-    /*for(const auto& region : _haloblock.halo_regions()) {
-      if(region.size() == 0)
-        continue;
-
-      auto* off = &*(_halomemory.first_element_at(region.index()));
-      size_t region_size        = region.size();
-      auto gptr = _halo_buffer.buffer_region(region.index());
-      _region_data.insert(std::make_pair(
-            region.index(), Data{ region,
-                                  [off, gptr, region_size](dart_handle_t& handle) {
-                                   dash::internal::get_handle(gptr, off,
-                                                    region_size, &handle);
-                                  },
-                                  DART_HANDLE_NULL }));
-    }*/
   }
 
   /**
-   * Constructor that takes \ref Matrix and a stencil point distance 
-   * to create a \ref HaloMatrixWrapper with a full stencil with the 
+   * Constructor that takes \ref Matrix and a stencil point distance
+   * to create a \ref HaloMatrixWrapper with a full stencil with the
    * given width.
    * The \ref GlobalBoundarySpec is set to default.
    */
   template <typename StencilPointT = StencilPoint<NumDimensions>>
-  HaloMatrixWrapper(MatrixT& matrix, const GlobBoundSpec_t& cycle_spec, 
+  HaloMatrixWrapper(MatrixT& matrix, const GlobBoundSpec_t& glob_bnd_spec,
                     stencil_dist_t dist, std::enable_if_t<std::is_integral<stencil_dist_t>::value, std::nullptr_t> = nullptr )
-  : HaloMatrixWrapper(matrix, cycle_spec, StencilSpecFactory<StencilPointT>::full_stencil_spec(dist)) {
+  : HaloMatrixWrapper(matrix, glob_bnd_spec, StencilSpecFactory<StencilPointT>::full_stencil_spec(dist)) {
   }
 
   /**
-   * Constructor that takes \ref Matrix and a stencil point distance 
-   * to create a \ref HaloMatrixWrapper with a full stencil with the 
+   * Constructor that takes \ref Matrix and a stencil point distance
+   * to create a \ref HaloMatrixWrapper with a full stencil with the
    * given width.
    * The \ref GlobalBoundarySpec is set to default.
    */
@@ -259,34 +243,36 @@ public:
   void set_custom_halos(FunctionT f) {
     using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
     for(const auto& region : _haloblock.boundary_regions()) {
-      if(region.is_custom_region()) {
-        const auto& spec    = region.spec();
-        std::array<signed_extent_t, NumDimensions> coords_offset{};
-        const auto& reg_ext = region.view().extents();
+      if(!region.is_custom_region()) {
+        continue;
+      }
+
+      const auto& spec    = region.spec();
+      std::array<signed_extent_t, NumDimensions> coords_offset{};
+      const auto& reg_ext = region.view().extents();
+      for(auto d = 0; d < NumDimensions; ++d) {
+        if(spec[d] == 0) {
+          coords_offset[d] -= reg_ext[d];
+          continue;
+        }
+        if(spec[d] == 2)
+          coords_offset[d] = reg_ext[d];
+      }
+
+      auto range_mem = _halo_env.halo_memory().range_at(region.index());
+      auto it_mem = range_mem.first;
+      auto it_reg_end  = region.end();
+      DASH_ASSERT_MSG(
+          std::distance(range_mem.first, range_mem.second) == region.size(),
+          "Range distance of the HaloMemory is unequal region size");
+      const auto& pattern = _matrix.pattern();
+      for(auto it = region.begin(); it != it_reg_end; ++it, ++it_mem) {
+        auto coords = pattern.coords(it.rpos(), region.view());
         for(auto d = 0; d < NumDimensions; ++d) {
-          if(spec[d] == 0) {
-            coords_offset[d] -= reg_ext[d];
-            continue;
-          }
-          if(spec[d] == 2)
-            coords_offset[d] = reg_ext[d];
+          coords[d] += coords_offset[d];
         }
 
-        auto range_mem = _halo_env.halo_memory().range_at(region.index());
-        auto it_mem = range_mem.first;
-        auto it_reg_end  = region.end();
-        DASH_ASSERT_MSG(
-            std::distance(range_mem.first, range_mem.second) == region.size(),
-            "Range distance of the HaloMemory is unequal region size");
-        const auto& pattern = _matrix.pattern();
-        for(auto it = region.begin(); it != it_reg_end; ++it, ++it_mem) {
-          auto coords = pattern.coords(it.rpos(), region.view());
-          for(auto d = 0; d < NumDimensions; ++d) {
-            coords[d] += coords_offset[d];
-          }
-
-          *it_mem = f(coords);
-        }
+        *it_mem = f(coords);
       }
     }
   }
@@ -335,7 +321,7 @@ public:
     return CoordinateAccess<HaloBlock_t>(&_haloblock, _matrix.lbegin(),&_halo_env.halo_memory());
   }
 
-private:  
+private:
 
   Element_t* halo_element_at(ElementCoords_t& coords) {
     auto        index     = _haloblock.index_at(_view_local, coords);
@@ -353,7 +339,7 @@ private:
 
 private:
   MatrixT&                       _matrix;
-  const GlobBoundSpec_t          _cycle_spec;
+  const GlobBoundSpec_t          _glob_bnd_spec;
   const HaloSpec_t               _halo_spec;
   const ViewSpec_t               _view_global;
   const HaloBlock_t              _haloblock;

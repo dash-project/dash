@@ -523,6 +523,8 @@ public:
    */
   self_t & operator=(self_t && other)      = default;
 
+  static constexpr auto ndim() { return NumDimensions; }
+
   /**
    * Equality comparison operator.
    */

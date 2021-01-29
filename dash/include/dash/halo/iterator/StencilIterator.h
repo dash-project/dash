@@ -1389,4 +1389,3 @@ private:
 }  // namespace dash
 
 #endif  // DASH__HALO__ITERATOR__STENCILITERATOR_H
-

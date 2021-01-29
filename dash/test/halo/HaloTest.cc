@@ -1043,7 +1043,6 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
       }
     }
 
-
     for(auto i = 0; i < ext_per_dim; ++i) {
       for(auto j = 0; j < ext_per_dim_check; ++j)
         delete[] matrix_check[i][j];
@@ -1078,6 +1077,7 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
   });
 
   auto stencil_op = halo_wrapper.stencil_operator(stencil_spec);
+
   auto sum_halo = calc_sum_halo(halo_wrapper, stencil_op);
   auto sum_halo_region = calc_sum_halo(halo_wrapper, stencil_op, true);
   auto sum_halo_via_stencil = calc_sum_halo_via_stencil(halo_wrapper, stencil_op);
@@ -1372,7 +1372,6 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMultiStencil)
   );
   GlobBoundSpec_t bound_spec(BoundaryProp::NONE, BoundaryProp::CYCLIC, BoundaryProp::CUSTOM);
   HaloMatrixWrapper<Matrix_t> halo_wrapper(matrix_halo, bound_spec, stencil_spec_1, stencil_spec_2, stencil_spec_3);
-
   halo_wrapper.set_custom_halos([](const std::array<dash::default_index_t,3>& coords) {
       return 20;
   });

@@ -16,7 +16,7 @@ using namespace internal;
  * e.g. StencilPoint<2>(-1,-1) -> north west
  */
 template <dim_t NumDimensions, typename CoeffT = double>
-class StencilPoint : public Dimensional<int16_t, NumDimensions> {
+class StencilPoint : public Dimensional<spoint_value_t, NumDimensions> {
 public:
   using coefficient_t = CoeffT;
 
@@ -176,6 +176,7 @@ public:
   using StencilPoint_t   = StencilPointT;
   using DistanceDim_t = std::pair<spoint_value_t, spoint_value_t>;
   using DistanceAll_t = std::array<DistanceDim_t, NumDimensions>;
+  using DistanceTotal_t = std::array<spoint_distance_t, NumDimensions>;
 
 public:
   /**
@@ -231,6 +232,32 @@ public:
     }
 
     return std::make_pair(0, false);
+  }
+
+  /**
+   * Returns the total distances of all stencil points for all
+   * dimensions. total distance = distance bewteen min and max of
+   * a dimension
+   */
+  DistanceTotal_t total_distances() const {
+    DistanceTotal_t total_dist{};
+    auto minmax = minmax_distances();
+    for(auto d = 0; d < NumDimensions; ++d) {
+      total_dist[d] = (-1) * minmax.first() + minmax.second;
+    }
+
+    return total_dist;
+  }
+
+  /**
+   * Returns the total distances of all stencil points for all
+   * dimensions. total distance = distance bewteen min and max of
+   * a dimension
+   */
+  spoint_distance_t total_distances(dim_t dim) const {
+    auto minmax = minmax_distances();
+
+    return (-1) * minmax.first() + minmax.second;
   }
 
   /**
@@ -309,7 +336,7 @@ public:
 
   static constexpr decltype(auto) full_stencil_spec(stencil_dist_t dist) {
     using StencilSpec_t  = StencilSpec<StencilPointT, NumRegionsMax<NumDimensions>-1>;
-    
+
     using StencilArray_t = typename StencilSpec_t::StencilArray_t;
 
     StencilPerm_t stencil_perms;
@@ -319,7 +346,7 @@ public:
       start_stencil[d] = std::abs(dist);
     }
     permutate_stencil_points(0, start_stencil, stencil_perms, dist);
-    
+
     size_t count = 0;
     for(const auto& elem : stencil_perms) {
       bool center = true;
@@ -327,7 +354,7 @@ public:
         if(elem[d] != 0 ) {
           center = false;
           break;
-        } 
+        }
       }
       if(!center) {
         points[count] = elem;

@@ -47,10 +47,10 @@ private:
 public:
   using Coords_t       = std::array<uint8_t, NumDimensions>;
   using CoordsVec_t    = std::vector<Self_t>;
-  using RegIndDepVec_t = std::vector<internal::region_index_t>;
+  using RegIndDepVec_t = std::vector<region_index_t>;
   using RegIndexDim_t  = std::pair<region_index_t, region_index_t>;
 
-  
+
 
 public:
   /**
@@ -142,7 +142,7 @@ public:
         index *= REGION_INDEX_BASE;
         continue;
       }
-      
+
       if(stencil[d] > 0) {
         index = 2 + index * REGION_INDEX_BASE;
         continue;
@@ -419,22 +419,19 @@ public:
   using RegionSpec_t   = RegionSpec<NumDimensions>;
   using GlobMem_t      = GlobMemT;
   using ViewSpec_t     = typename PatternT::viewspec_type;
-  using BorderMeta_t   = std::pair<bool, bool>;
-  using Border_t       = std::array<BorderMeta_t, NumDimensions>;
+  using extent_size_t  = typename ViewSpec_t::size_type;
   using pattern_size_t = typename PatternT::size_type;
+  using EnvRegInfo_t   = EnvironmentRegionInfo<ViewSpec_t>;
+  using BorderPair_t   = typename EnvRegInfo_t::PrePostBool_t;
+  using RegBorders_t   = typename EnvRegInfo_t::RegionBorders_t;
 
 public:
   Region(const RegionSpec_t& region_spec, const ViewSpec_t& view,
-         GlobMem_t& globmem, const PatternT& pattern, const Border_t& border,
-         bool custom_region)
+         GlobMem_t& globmem, const PatternT& pattern,
+         const EnvRegInfo_t& env_reg_info)
   : _region_spec(&region_spec), _view(view),
-    _globmem(&globmem), _pattern(&pattern), _border(border),
-    _border_region(
-      std::any_of(border.begin(), border.end(),
-                  [](BorderMeta_t border_dim) {
-                    return border_dim.first == true ||
-                           border_dim.second == true; })),
-    _custom_region(custom_region),
+    _globmem(&globmem), _pattern(&pattern),
+    _env_reg_info(&env_reg_info),
     _beg(&globmem, *_pattern, _view, 0),
     _end(&globmem, *_pattern, _view, _view.size()) {
   }
@@ -444,9 +441,7 @@ public:
     _view     (other._view),
     _globmem(other._globmem),
     _pattern(other._pattern),
-    _border(other._border),
-    _border_region(other._border_region),
-    _custom_region(other._custom_region),
+    _env_reg_info(other._env_reg_info),
     _beg(_globmem, *_pattern, _view, 0),
     _end(_globmem, *_pattern, _view, _view.size()) {
   }
@@ -456,9 +451,7 @@ public:
     _view     (std::move(other._view)),
     _globmem(std::move(other._globmem)),
     _pattern(std::move(other._pattern)),
-    _border(std::move(other._border)),
-    _border_region(std::move(other._border_region)),
-    _custom_region(std::move(other._custom_region)),
+    _env_reg_info(std::move(other._env_reg_info)),
     _beg(_globmem, *_pattern, _view, 0),
     _end(_globmem, *_pattern, _view, _view.size()) {
   }
@@ -468,9 +461,7 @@ public:
     _view      = other._view;
     _globmem = other._globmem;
     _pattern = other._pattern;
-    _border = other._border;
-    _border_region = other._border_region;
-    _custom_region = other._custom_region;
+    _env_reg_info = other._env_reg_info;
     _beg = iterator(_globmem, *_pattern, _view, 0);
     _end = iterator(_globmem, *_pattern, _view, _view.size());
 
@@ -482,9 +473,7 @@ public:
     _view      = std::move(other._view);
     _globmem = std::move(other._globmem);
     _pattern = std::move(other._pattern);
-    _border = std::move(other._border);
-    _border_region = std::move(other._border_region);
-    _custom_region = std::move(other._custom_region);
+    _env_reg_info = std::move(other._env_reg_info),
     _beg = iterator(_globmem, *_pattern, _view, 0);
     _end = iterator(_globmem, *_pattern, _view, _view.size());
 
@@ -499,12 +488,13 @@ public:
 
   pattern_size_t size() const { return _view.size(); }
 
-  const Border_t& border() const { return _border; }
+  const RegBorders_t& border() const { return _env_reg_info->region_borders; }
 
-  bool is_border_region() const { return _border_region; };
+  bool is_border_region() const { return _env_reg_info->border_region; }
 
-  bool is_custom_region() const { return _custom_region; };
-
+  bool is_custom_region() const {
+    return (_env_reg_info->border_region && _env_reg_info->boundary_prop == BoundaryProp::CUSTOM) ? true : false;
+  }
 
   /**
    * Returns a pair of two booleans for a given dimension.
@@ -512,14 +502,14 @@ public:
    * the value is true, otherwise false
    * first -> Pre center position; second -> Post center position
    */
-  BorderMeta_t border_dim(dim_t dim) const { return _border[dim]; }
+  BorderPair_t border_dim(dim_t dim) const { return _env_reg_info->region_borders[dim]; }
 
   bool border_dim(dim_t dim, RegionPos pos) const {
     if(pos == RegionPos::PRE) {
-      return _border[dim].first;
+      return _env_reg_info->region_borders[dim].first;
     }
 
-    return _border[dim].second;
+    return _env_reg_info->region_borders[dim].second;
   }
 
   iterator begin() const { return _beg; }
@@ -529,11 +519,9 @@ public:
 private:
   const RegionSpec_t* _region_spec;
   ViewSpec_t          _view;
-  GlobMemT*     _globmem;
+  GlobMemT*           _globmem;
   const PatternT*     _pattern;
-  Border_t            _border;
-  bool                _border_region;
-  bool                _custom_region;
+  const EnvRegInfo_t* _env_reg_info;
   iterator            _beg;
   iterator            _end;
 };  // Region
@@ -543,19 +531,19 @@ std::ostream& operator<<(std::ostream&                     os,
                          const Region<ElementT, PatternT, GlobMemT>& region) {
   os << "dash::halo::Region<" << typeid(ElementT).name() << ">"
      << "( view: " << region.view() << "; region spec: " << region.spec()
-     << "; border regions: {";
+     << "; env_reg_info: {";
   const auto& border = region.border();
   for(auto d = 0; d < border.size(); ++d) {
-    if(d == 0)
-      os << "(" << border[d].first << border[d].first  << ")";
-    else
-      os << ",(" << border[d].first << border[d].first  << ")";
+    if(d > 0) {
+      os << ",";
+    }
+    os << "(" << border[d].first << border[d].second  << ")";
   }
   os << "}"
      << "; is border: " << region.is_border_region()
-     << "; is custom: " << region.is_custom_region()
-     << "; begin iterator: " << region.begin()
-     << "; end iterator: " << region.begin() << ")";
+     << "; is custom: " << region.is_custom_region();
+     //<< "; begin iterator: " << region.begin()
+     //<< "; end iterator: " << region.begin() << ")";
 
   return os;
 }
