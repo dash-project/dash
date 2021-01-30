@@ -793,23 +793,6 @@ public:
   pattern_size_t boundary_size() const { return _size_bnd_elems; }
 
 private:
-
-  template <typename OffT, typename ExtT, typename MaxT>
-  void resize_offset(OffT& offset, ExtT& extent, MaxT max) {
-    if(offset > max) {
-      extent += offset - max;
-      offset = max;
-    }
-  }
-
-  template <typename OffT, typename ExtT, typename MinT>
-  void resize_extent(OffT& offset, ExtT& extent, ExtT extent_local, MinT max) {
-    auto diff_ext = extent_local - offset - extent;
-    if(diff_ext > static_cast<ExtT>(max))
-      extent += diff_ext - max;
-  }
-
-private:
   const StencilSpec_t* _stencil_spec;
   const ViewSpec_t*    _view_local;
   ViewSpec_t           _view_inner;
@@ -1083,7 +1066,7 @@ private:
 
   const ViewSpec_t _view_local;
 
-  const GlobBoundSpec_t& _glob_bound_spec;
+  const GlobBoundSpec_t _glob_bound_spec;
 
   EnvInfo_t       _env_info;
 

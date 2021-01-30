@@ -309,7 +309,7 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
   using StencilP_t      = StencilPoint<2>;
   using StencilSpec_t   = StencilSpec<StencilP_t, 8>;
 
-  auto myid(dash::myid());
+  auto myid = dash::myid();
 
   DistSpec_t dist_spec(dash::BLOCKED, dash::BLOCKED);
   TeamSpec_t team_spec{};
@@ -382,14 +382,15 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
   }
 
   halo_wrapper.update();
+
   auto it_bend = stencil_op.boundary.end();
   for(auto it = stencil_op.boundary.begin(); it != it_bend; ++it) {
-    for(auto i = 0; i < stencil_spec.num_stencil_points(); ++i)
+    for(auto i = 0; i < stencil_spec.num_stencil_points(); ++i){
       *sum_local += it.value_at(i);
+    }
 
     *sum_local += *it;
   }
-
   sum_halo.barrier();
 
   unsigned long sum_halo_total = 0;
@@ -445,8 +446,6 @@ unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper, StencilOpT stencil_op, b
 
     *sum_local += *it;
   }
-
-  halo_wrapper.wait();
 
   if(region_wise) {
     for( auto r = 0; r < NumRegionsMax<3>; ++r) {
