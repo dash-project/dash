@@ -123,26 +123,9 @@ int main(int argc, char *argv[])
 
     // Update Halos asynchroniously
     current_halo->update_async();
-
-    // optimized calculation of inner matrix elements
-    auto* current_begin = current_matrix.lbegin();
+    
     auto* new_begin = new_matrix.lbegin();
-#if 0
-    for (auto i = inner_start; i < inner_end; i += offset) {
-      auto* center = current_begin + i;
-      auto* center_y_plus = center + offset;
-      auto* center_y_minus = center - offset;
-      for (auto j = 0; j < offset - 2;
-           ++j, ++center, ++center_y_plus, ++center_y_minus) {
-        /*auto dtheta =
-            (*(center - 1) + *(center + 1) - 2 * (*center)) / (dx * dx) +
-            (*(center_y_minus) + *(center_y_plus) - 2 * (*center)) / (dy * dy);
-        *(new_begin + i + j) = *center + k * dtheta * dt;*/
-        *(new_begin + i + j) = calc(center, center_y_minus, center_y_plus, center - 1, center + 1);
-      }
-    }
-#endif
-    // slow version
+
     auto it_end = current_op->inner.end();
     for(auto it = current_op->inner.begin(); it != it_end; ++it)
     {

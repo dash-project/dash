@@ -307,7 +307,20 @@ public:
       }
       ++d;
     }
-    return this->at(neighbor_coords);
+    return team_unit_t(static_cast<dart_unit_t>(this->at(neighbor_coords)));
+  }
+
+  team_unit_t neighbor(const std::array<int, MaxDimensions>&  offsets) const
+  {
+    auto neighbor_coords = this->coords(_myid);
+    for (dim_t d = 0; d < MaxDimensions; ++d) {
+      neighbor_coords[d] += offsets[d];
+      if (neighbor_coords[d] < 0 ||
+          neighbor_coords[d] >= this->_extents[d]) {
+        return UNDEFINED_TEAM_UNIT_ID;
+      }
+    }
+    return team_unit_t(static_cast<dart_unit_t>(this->at(neighbor_coords)));
   }
 
   /**
@@ -340,13 +353,29 @@ public:
     dim_t d = 0;
     for (auto offset_d : offsets) {
       neighbor_coords[d] += offset_d;
-      if (neighbor_coords[d] < 0 ||
-          neighbor_coords[d] >= this->_extents[d]) {
+      if (neighbor_coords[d] < 0) {
+        neighbor_coords[d] = this->_extents[d] + offset_d;
+      } else if(neighbor_coords[d] >= this->_extents[d]) {
         neighbor_coords[d] %= this->_extents[d];
       }
       ++d;
     }
-    return at(neighbor_coords);
+    return team_unit_t(static_cast<dart_unit_t>(this->at(neighbor_coords)));
+  }
+
+  team_unit_t periodic_neighbor(const std::array<int, MaxDimensions>& offsets) const
+  {
+    auto neighbor_coords = this->coords(_myid);
+    
+    for (dim_t d = 0; d < MaxDimensions; ++d) {
+      neighbor_coords[d] += offsets[d];
+      if (neighbor_coords[d] < 0) {
+        neighbor_coords[d] = this->_extents[d] + offsets[d];
+      } else if(neighbor_coords[d] >= this->_extents[d]) {
+        neighbor_coords[d] %= this->_extents[d];
+      }
+    }
+    return team_unit_t(static_cast<dart_unit_t>(this->at(neighbor_coords)));
   }
 
   /**
