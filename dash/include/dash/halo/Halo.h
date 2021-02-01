@@ -338,7 +338,10 @@ public:
     for(int d = 0; d < NumDimensions; ++d) {
 
       offsets_inner[d] = _max_dist[d].first;
-      extents_inner[d] -= _max_dist[d].first + _max_dist[d].second;
+      DASH_ASSERT_MSG(extents_inner[d] >= _max_dist[d].first,
+          "Inner view to small for the given Stencil.");
+      auto sum_dist = _max_dist[d].first + _max_dist[d].second;
+      extents_inner[d] -= (extents_inner[d] < sum_dist) ? _max_dist[d].first : sum_dist;
 
       offsets_inner_bnd[d] = 0;
 
@@ -348,7 +351,9 @@ public:
       }
 
       if(!_valid_main[d].second.valid) {
-        extents_inner_bnd[d] -= _max_dist[d].second;
+        if(extents_inner_bnd[d] >= _max_dist[d].second) {
+          extents_inner_bnd[d] -= _max_dist[d].second;
+        }
       }
     }
 
@@ -396,7 +401,6 @@ public:
       std::fill(offsets.begin(), offsets.end(), 0);
     }
 
-    // TODO PRE and POST Region true but not full POST region possible
     for(dim_t d = 0; d < NumDimensions; ++d) {
 
       if(coords[d] < 1) {
@@ -506,7 +510,7 @@ private:
 
 
 template<typename PatternT>
-class EnvironmentInfo {
+class BlockEnvironment {
   static constexpr auto NumDimensions = PatternT::ndim();
   static constexpr auto RegionsMax    = NumRegionsMax<NumDimensions>;
 
@@ -517,7 +521,7 @@ private:
   using RegionData_t = RegionData<ViewSpec_t>;
   using BndInfos_t   = std::array<RegionData_t, RegionsMax>;
   using EnvRegInfo_t = EnvironmentRegionInfo<ViewSpec_t>;
-  using EnvInfo_t    = std::array<EnvRegInfo_t, RegionsMax>;
+  using BlockEnv_t    = std::array<EnvRegInfo_t, RegionsMax>;
   using HaloSpec_t   = HaloSpec<NumDimensions>;
   using HaloExtsMaxPair_t = typename HaloSpec_t::HaloExtsMaxPair_t;
   using HaloExtsMax_t     = typename HaloSpec_t::HaloExtsMax_t;
@@ -532,7 +536,7 @@ public:
   using BlockViewSpec_t = BlockViewSpec<ViewSpec_t>;
 
 
-  EnvironmentInfo(const PatternT& pattern, const HaloSpec_t& halo_spec,
+  BlockEnvironment(const PatternT& pattern, const HaloSpec_t& halo_spec,
                   const ViewSpec_t& view_glob, const GlobalBndSpec_t& glob_bound_spec)
   : _view(&view_glob), _glob_bnd_spec(&glob_bound_spec) {
     set_environment(pattern, halo_spec);
@@ -554,15 +558,15 @@ public:
   }
 
   auto info_dim(dim_t dim) const {
-    return std::make_pair(std::ref(_env_info[_reg_idx_main[dim].first]), std::ref(_env_info[_reg_idx_main[dim].second]));
+    return std::make_pair(std::ref(_block_env[_reg_idx_main[dim].first]), std::ref(_block_env[_reg_idx_main[dim].second]));
   }
 
   const EnvRegInfo_t& info(region_index_t region_index) const {
-    return _env_info[region_index];
+    return _block_env[region_index];
   }
 
-  const EnvInfo_t& info() const {
-    return _env_info;
+  const BlockEnv_t& info() const {
+    return _block_env;
   }
 
   const auto& view_inner() const {
@@ -604,7 +608,7 @@ private:
         continue;
       }
 
-      auto& env_md = _env_info[spec.index()];
+      auto& env_md = _block_env[spec.index()];
 
       env_md.bnd_reg_data = bnd_check.region_data(spec);
 
@@ -699,20 +703,20 @@ private:
 private:
   const ViewSpec_t*      _view;
   const GlobalBndSpec_t* _glob_bnd_spec;
-  EnvInfo_t              _env_info;
+  BlockEnv_t             _block_env;
   RegionBorders_t        _borders{};
   RegIdxMain_t           _reg_idx_main;
   BlockViewSpec_t        _block_views;
 };
 
 template<typename PatternT>
-std::ostream& operator<<(std::ostream& os, const EnvironmentInfo<PatternT>& env_info) {
+std::ostream& operator<<(std::ostream& os, const BlockEnvironment<PatternT>& env_info) {
   static constexpr auto NumDimensions = PatternT::ndim();
   static constexpr auto RegionsMax = NumRegionsMax<NumDimensions>;
 
   const auto& env_mds = env_info.info();
 
-  os << "dash::halo::EnvironmentInfo { ";
+  os << "dash::halo::BlockEnvironment { ";
   for(region_index_t r = 0; r < RegionsMax; ++r) {
     const auto& env_md = env_mds[r];
     os << dash::myid() << " -> ";
@@ -748,7 +752,7 @@ public:
                        const ViewSpec_t*   view_local)
   : _stencil_spec(&stencil_spec), _view_local(view_local) {
     HaloSpec_t halo_spec(stencil_spec);
-    auto bnd_region_check = halo_block.halo_env_info().boundary_region_check(halo_spec);
+    auto bnd_region_check = halo_block.block_env().boundary_region_check(halo_spec);
 
     auto block_views = bnd_region_check.block_views();
     _view_inner = block_views.inner;
@@ -846,7 +850,7 @@ public:
   using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
   using HaloExtsMax_t   = typename HaloSpec_t::HaloExtsMax_t;
   using RegIndDepVec_t    = typename RegionCoords_t::RegIndDepVec_t;
-  using EnvInfo_t       = EnvironmentInfo<Pattern_t>;
+  using BlockEnv_t       = BlockEnvironment<Pattern_t>;
 
 public:
   /**
@@ -858,23 +862,23 @@ public:
   : _globmem(globmem), _pattern(pattern), _view(view),
     _halo_reg_spec(halo_reg_spec), _view_local(_view.extents()),
     _glob_bound_spec(bound_spec),
-    _env_info(pattern, _halo_reg_spec, _view, _glob_bound_spec) {
+    _block_env(pattern, _halo_reg_spec, _view, _glob_bound_spec) {
 
     // TODO put functionallity to HaloSpec
     _halo_regions.reserve(_halo_reg_spec.num_regions());
     _boundary_regions.reserve(_halo_reg_spec.num_regions());
 
-    _view_inner = _env_info.view_inner();
-    _view_inner_with_boundaries =  _env_info.view_inner_boundary();
+    _view_inner = _block_env.view_inner();
+    _view_inner_with_boundaries =  _block_env.view_inner_boundary();
 
     /*
      * Setup for all halo and boundary regions and properties like:
      * is the region a global boundary region and is the region custom or not
      */
 
-    auto bnd_check = _env_info.boundary_region_check(halo_reg_spec);
+    auto bnd_check = _block_env.boundary_region_check(halo_reg_spec);
     for(region_index_t r = 0; r < RegionsMax; ++r) {
-      const auto& env_reg_info = _env_info.info(r);
+      const auto& env_reg_info = _block_env.info(r);
       const auto& spec = _halo_reg_spec.specs()[r];
 
       _boundary_views.push_back(env_reg_info.bnd_reg_data.view);
@@ -942,14 +946,14 @@ public:
   const HaloSpec_t& halo_spec() const { return _halo_reg_spec; }
 
 /**
-   * Returns the environment information object \ref EnvironmentInfo
+   * Returns the environment information object \ref BlockEnvironment
    */
-  EnvInfo_t halo_env_info() { return _env_info; }
+  BlockEnv_t block_env() { return _block_env; }
 
   /**
-   * Returns the environment information object \ref EnvironmentInfo
+   * Returns the environment information object \ref BlockEnvironment
    */
-  const EnvInfo_t& halo_env_info() const { return _env_info; }
+  const BlockEnv_t& block_env() const { return _block_env; }
 
 
   /**
@@ -1068,7 +1072,7 @@ private:
 
   const GlobBoundSpec_t _glob_bound_spec;
 
-  EnvInfo_t       _env_info;
+  BlockEnv_t       _block_env;
 
   ViewSpec_t _view_inner_with_boundaries;
 
