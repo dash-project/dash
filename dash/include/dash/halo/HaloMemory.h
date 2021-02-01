@@ -292,7 +292,7 @@ public:
 
 private:
   void init_signal_env(HaloBlockT halo_block) {
-    const auto& env_info_md = halo_block.halo_env_info();
+    const auto& env_info_md = halo_block.block_env();
 
     long count_put_signals = 0;
     long count_put_ready_signals = 0;
@@ -456,7 +456,7 @@ private:
   void init_block_data(const HaloBlockT& halo_block, const PackOffs_t& packed_offs) {
     using ViewSpec_t     = typename Pattern_t::viewspec_type;
 
-    const auto& env_info_md = halo_block.halo_env_info();
+    const auto& env_info_md = halo_block.block_env();
     for(auto r = 0; r < RegionsMax; ++r) {
       const auto& env_md = env_info_md.info(r);
 
@@ -546,11 +546,11 @@ class HaloUpdateEnv {
   static constexpr auto NumDimensions = HaloBlockT::ndim();
   static constexpr auto RegionsMax = NumRegionsMax<NumDimensions>;
 
-  using TeamSpec_t   = TeamSpec<NumDimensions>;
-  using HaloSpec_t   = typename HaloBlockT::HaloSpec_t;
-  using ViewSpec_t   = typename HaloBlockT::ViewSpec_t;
-  using Pattern_t    = typename HaloBlockT::Pattern_t;
-  using EnvInfoMD_t = EnvironmentInfo<Pattern_t>;
+  using TeamSpec_t  = TeamSpec<NumDimensions>;
+  using HaloSpec_t  = typename HaloBlockT::HaloSpec_t;
+  using ViewSpec_t  = typename HaloBlockT::ViewSpec_t;
+  using Pattern_t   = typename HaloBlockT::Pattern_t;
+  using BlockEnv_t  = BlockEnvironment<Pattern_t>;
   using SignalEnv_t = SignalEnv<HaloBlockT>;
   using PackEnv_t   = PackEnv<HaloBlockT>;
 
@@ -677,14 +677,14 @@ public:
   const HaloMemory_t& halo_memory() const { return _halo_memory; }
 
   /**
-   * Returns the halo environment information object \ref EnvironmentInfo
+   * Returns the halo environment information object \ref BlockEnvironment
    */
-  EnvInfoMD_t halo_env_info() { return _halo_block.halo_env_info(); }
+  BlockEnv_t block_env() { return _halo_block.block_env(); }
 
   /**
-   * Returns the halo environment information object \ref EnvironmentInfo
+   * Returns the halo environment information object \ref BlockEnvironment
    */
-  const EnvInfoMD_t& halo_env_info() const { return _halo_block.halo_env_info() ; }
+  const BlockEnv_t& block_env() const { return _halo_block.block_env() ; }
 
 private:
   void init_update_data() {
