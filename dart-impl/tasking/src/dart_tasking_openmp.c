@@ -1,7 +1,4 @@
 
-#ifdef DART_TASKING_USE_OPENMP
-
-#include <omp.h>
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/atomic.h>
@@ -34,6 +31,10 @@
 #include <errno.h>
 #include <stddef.h>
 
+#ifdef DART_TASKING_USE_OPENMP
+
+#include <omp.h>
+
 /**
  *  This to do:
  * - DONE: dispatch nested tasks directly to OpenMP
@@ -51,9 +52,6 @@
   EXTRAE_EXIT(_ev);         \
   CRAYPAT_EXIT(_ev); \
 } while (0)
-
-#define CLOCK_TIME_USEC(ts) \
-  ((ts).tv_sec*1E6 + (ts).tv_nsec/1E3)
 
 #define CLOCK_DIFF_USEC(start, end)  \
   (uint64_t)((((end).tv_sec - (start).tv_sec)*1E6 + ((end).tv_nsec - (start).tv_nsec)/1E3))
@@ -139,13 +137,11 @@ void remote_progress(dart_thread_t *thread, bool force);
 static
 void dart_thread_init(dart_thread_t *thread, int threadnum);
 
-static inline
-double current_time_us() {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return CLOCK_TIME_USEC(ts);
+dart_task_t *
+dart__tasking__root_task()
+{
+  return &root_task;
 }
-
 
 void
 dart__tasking__mark_detached(dart_taskref_t task)
@@ -243,13 +239,13 @@ dart__tasking__yield(int delay)
   // save current task
   dart_task_t *task = get_current_task();
 
-  if (task != &root_task) {
+  if (task != dart__tasking__root_task()) {
     task->state = DART_TASK_SUSPENDED;
   }
 
 #pragma omp taskyield
 
-  if (task != &root_task) {
+  if (task != dart__tasking__root_task()) {
     task->state = DART_TASK_RUNNING;
   }
 
@@ -360,7 +356,7 @@ dart_task_t * create_task(
       break;
     case DART_PRIO_INLINE:
       task->prio       = DART_PRIO_HIGH;
-      DART_TASK_SET_FLAG(task, DART_TASK_IS_INLINED);
+      DART_TASK_SET_FLAG(task, DART_TASK_INLINE);
       break;
     default:
       task->prio       = prio;
@@ -480,7 +476,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       if (DART_FETCH32(&prev_task->num_children) &&
           !dart__tasking__cancellation_requested()) {
         // Implicit wait for child tasks
-        dart__tasking__task_complete();
+        dart__tasking__task_complete(true);
       }
 
       bool has_ref;
@@ -488,7 +484,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       // the task may have changed once we get back here
       task = get_current_task();
 
-      DART_ASSERT(task != &root_task);
+      DART_ASSERT(task != dart__tasking__root_task());
 
       dart_tasking_datadeps_release_local_task(task, thread);
 
@@ -544,7 +540,7 @@ void
 dart__tasking__handle_task(dart_task_t *task)
 {
   dart_thread_t *thread = dart__tasking__current_thread();
-  if (DART_TASK_HAS_FLAG(task, DART_TASK_IS_INLINED)) {
+  if (DART_TASK_HAS_FLAG(task, DART_TASK_INLINE)) {
     handle_inline_task(task, thread);
   } else {
     handle_task(task, thread);
@@ -555,7 +551,7 @@ dart__tasking__handle_task(dart_task_t *task)
 static
 void dart_thread_init(dart_thread_t *thread, int threadnum)
 {
-  thread->current_task = &root_task;
+  thread->current_task = dart__tasking__root_task();
   dart__base__stack_init(&thread->ctxlist);
   thread->ctx_to_enter      = NULL;
   thread->last_progress_ts = 0;
@@ -607,7 +603,7 @@ dart__tasking__init()
   num_threads = omp_get_max_threads();
   DART_LOG_INFO("Using %i threads", num_threads);
 
-  DART_LOG_TRACE("root_task: %p", &root_task);
+  DART_LOG_TRACE("root_task: %p", dart__tasking__root_task());
 
   dart__tasking__context_init();
 
@@ -635,7 +631,7 @@ dart__tasking__init()
   // set master thread private data
   __tpd = thread_pool[0];
 
-  set_current_task(&root_task);
+  set_current_task(dart__tasking__root_task());
 
 #ifdef DART_ENABLE_AYUDAME
   dart__tasking__ayudame_init();
@@ -746,9 +742,10 @@ dart__tasking__create_task(
           void           (*fn) (void *),
           void            *data,
           size_t           data_size,
-    const dart_task_dep_t *deps,
+          dart_task_dep_t *deps,
           size_t           ndeps,
           dart_task_prio_t prio,
+          int              flags,
     const char            *descr,
           dart_taskref_t  *ref)
 {
@@ -769,6 +766,10 @@ dart__tasking__create_task(
   // we cannot dispatch to OpenMP directly so we have to handle the task ourselves
 
   dart_task_t *task = create_task(fn, data, data_size, prio, descr);
+
+  if (flags & DART_TASK_NOYIELD) {
+    DART_TASK_SET_FLAG(task, DART_TASK_INLINE);
+  }
 
   if (ref != NULL) {
     DART_TASK_SET_FLAG(task, DART_TASK_HAS_REF);
@@ -804,7 +805,7 @@ dart__tasking__perform_matching(dart_taskphase_t phase)
   // make sure all incoming requests are served
   dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
   // release unhandled remote dependencies
-  dart_tasking_datadeps_handle_defered_remote();
+  dart_tasking_datadeps_handle_defered_remote(phase);
   DART_LOG_DEBUG("task_complete: releasing deferred tasks of all threads");
   // make sure all newly incoming requests are served
   dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
@@ -816,7 +817,7 @@ dart__tasking__perform_matching(dart_taskphase_t phase)
 
 
 dart_ret_t
-dart__tasking__task_complete()
+dart__tasking__task_complete(bool local_only)
 {
   dart_thread_t *thread = get_current_thread();
 
@@ -831,7 +832,7 @@ dart__tasking__task_complete()
 
   bool is_root_task = thread->current_task == &(root_task);
 
-  if (is_root_task) {
+  if (is_root_task && !local_only) {
     entry_phase = dart__tasking__phase_current();
     if (entry_phase > DART_PHASE_FIRST) {
       dart__tasking__perform_matching(DART_PHASE_ANY);
@@ -861,12 +862,12 @@ dart__tasking__task_complete()
 
   // 3) clean up if this was the root task and thus no other tasks are running
   if (is_root_task) {
-    if (entry_phase > DART_PHASE_FIRST) {
+    if (entry_phase > DART_PHASE_FIRST && !local_only) {
       // wait for all units to finish their tasks
       dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
     }
     // reset the runnable phase
-    dart__tasking__phase_set_runnable(DART_PHASE_FIRST);;
+    dart__tasking__phase_set_runnable(DART_PHASE_FIRST);
     // reset the phase counter
     dart__tasking__phase_reset();
   } else {

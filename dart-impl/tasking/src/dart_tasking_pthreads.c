@@ -1,4 +1,3 @@
-#if !defined(DART_TASKING_USE_OPENMP)
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/atomic.h>
@@ -33,6 +32,8 @@
 #include <errno.h>
 #include <setjmp.h>
 #include <stddef.h>
+
+#if !defined(DART_TASKING_USE_OPENMP)
 
 #define EVENT_ENTER(_ev) do {\
   EXTRAE_ENTER(_ev);         \

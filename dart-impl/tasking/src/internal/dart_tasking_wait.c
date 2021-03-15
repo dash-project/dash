@@ -157,7 +157,7 @@ dart__task__wait_handle(
 
   return DART_OK;
 #else
-  return dart_waitall(handles, num_handle);
+  return dart_waitall(handles, num_handles);
 #endif // HAVE_RESCHEDULING_YIELD
 }
 

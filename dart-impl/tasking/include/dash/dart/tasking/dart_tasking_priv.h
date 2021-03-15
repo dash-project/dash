@@ -1,6 +1,8 @@
 #ifndef DART__INTERNAL__TASKING_H__
 #define DART__INTERNAL__TASKING_H__
 
+#define DART_TASKING_USE_OPENMP
+
 #ifdef USE_OPENMP
 #include <omp.h>
 #endif // USE_OPENMP
@@ -72,9 +74,7 @@ typedef enum {
   ((task)->state >= DART_TASK_NASCENT   && \
    (task)->state <= DART_TASK_DETACHED)
 
-
-typedef
-struct dart_wait_handle_s dart_wait_handle_t;
+typedef struct dart_wait_handle_s dart_wait_handle_t;
 
 enum dart_taskflags_t {
   DART_TASK_HAS_REF          = 1 << 0,
@@ -98,8 +98,6 @@ struct task_deque{
   dart_task_t * head;
   dart_task_t * tail;
 };
-
-typedef struct dart_thread dart_thread_t;
 
 struct dart_task_data {
   union {
@@ -294,11 +292,6 @@ typedef struct {
   bool                    is_utility_thread; // whether the thread is a worker or utility thread
 } dart_thread_t;
 #endif // DART_TASKING_USE_OPENMP
-
-struct dart_wait_handle_s {
-  size_t              num_handle;
-  dart_handle_t       handle[];
-};
 
 dart_ret_t
 dart__tasking__init() DART_INTERNAL;

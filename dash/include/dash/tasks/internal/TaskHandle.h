@@ -74,6 +74,7 @@ namespace tasks {
         return (flag != 0);
       }
       DASH_ASSERT(_ready || _ref != DART_TASK_NULL); // should not happen
+      return false;
     }
 
     /**
