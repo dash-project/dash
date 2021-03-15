@@ -119,6 +119,10 @@ static dart_stack_t handle_free_list = DART_STACK_INITIALIZER;
 #define DART_HANDLE_FREELIST_PUSH(_handle) \
   (dart__base__stack_push(&handle_free_list, &DART_STACK_MEMBER_GET(_handle)))
 
+#ifdef HAVE_MPI_CONTINUE
+MPI_Request contreq = MPI_REQUEST_NULL;
+#endif // HAVE_MPI_CONTINUE
+
 static inline
 dart_handle_t allocate_handle()
 {
@@ -1945,6 +1949,74 @@ dart_ret_t dart_handle_free(
     *handleptr = DART_HANDLE_NULL;
   }
   return DART_OK;
+}
+
+
+dart_ret_t dart_continue(
+  dart_handle_t handles[],
+  int num_handles,
+  dart_continue_cb_t *cb,
+  void *cb_data,
+  int32_t *completed )
+{
+#ifdef HAVE_MPI_CONTINUE
+  int flag;
+  if (1 == num_handles && DART_HANDLE_NULL != handles[0] && 1 == handles[0].num_reqs) {
+    // fast-path: single MPI request
+    DART_LOG_TRACE("Passing single request to MPIX_Continue with cb=%p, cb_data=%p", cb, cb_data);
+    MPIX_Continue(&handles[0].reqs[0], &flag, cb, cb_data, MPI_STATUS_IGNORE, contreq);
+    release_handle(handles[0]);
+    handles[0] = DART_HANDLE_NULL;
+  } else {
+    // slow path: gather all requests and pass them to MPIX_Continueall
+    MPI_Request *mpi_req = ALLOC_TMP(2 * num_handles * sizeof (MPI_Request));
+    int r_n = 0;
+    for (int i = 0; i < num_handles; ++i) {
+      if (handles[i] != DART_HANDLE_NULL) {
+        // copy all requests
+        for (uint8_t j = 0; j < handles[i]->num_reqs; ++j) {
+          mpi_req[r_n] = handles[i]->reqs[j];
+          ++r_n;
+        }
+      }
+    }
+    if (0 == r_n) {
+      flag = 1;
+    } else {
+      DART_LOG_TRACE("Passing %d requests to MPIX_Continue with cb=%p, cb_data=%p", r_n, cb, cb_data);
+      MPIX_Continueall(mpi_req, r_n, &flag, cb, cb_data, MPI_STATUSES_IGNORE, contreq);
+    }
+
+    FREE_TMP(2 * num_handles * sizeof(MPI_Request), mpi_req);
+
+    for (int i = 0; i < num_handles; ++i) {
+      if (DART_HANDLE_NULL != handles[i]) {
+        release_handle(handles[i]);
+        handles[i] = DART_HANDLE_NULL;
+      }
+    }
+
+  }
+
+  if (flag) {
+    *completed = 1;
+  }
+  return DART_OK;
+#else // HAVE_MPI_CONTINUE
+  /* TODO: implement an alternative scheme */
+  return DART_ERR_INVAL;
+#endif // HAVE_MPI_CONTINUE
+}
+
+dart_ret_t dart_continue_progress()
+{
+#ifdef HAVE_MPI_CONTINUE
+  int flag;
+  MPI_Test(&contreq, &flag, MPI_STATUS_IGNORE);
+  return DART_OK;
+#else
+  return DART_ERR_INVAL;
+#endif // HAVE_MPI_CONTINUE
 }
 
 /* -- Dart collective operations -- */

@@ -3,7 +3,7 @@
 int main()
 {
   MPI_Request req;
-  MPI_Continue_init(&req);
+  MPIX_Continue_init(&req, MPI_INFO_NULL);
 
   return 0;
 }

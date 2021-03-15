@@ -217,6 +217,10 @@ dart_ret_t do_init()
    */
   MPI_Win_lock_all(MPI_MODE_NOCHECK, win);
 
+#ifdef HAVE_MPI_CONTINUE
+  MPIX_Continue_init(&contreq, MPI_INFO_NULL);
+#endif
+
   DART_LOG_DEBUG("dart_init: communication backend initialization finished");
 
   _dart_initialized = 1;
@@ -342,6 +346,10 @@ dart_ret_t dart_exit()
     dart_tasking_fini();
 
   dart_amsgq_fini();
+
+#ifdef HAVE_MPI_CONTINUE
+  MPI_Request_free(&contreq);
+#endif
 
   _dart_initialized = 0;
 

@@ -495,7 +495,6 @@ dart_ret_t dart_flush_local(
 dart_ret_t dart_flush_local_all(
   dart_gptr_t gptr) DART_NOTHROW;
 
-
 /** \} */
 
 /**
@@ -733,6 +732,30 @@ dart_ret_t dart_testsome(
  */
 dart_ret_t dart_handle_free(
   dart_handle_t * handle) DART_NOTHROW;
+
+
+
+/* Function pointer for continuations */
+typedef void (*dart_continue_cb_t)(void *cb_data);
+
+/**
+ * Set a continuation that is invoked as soon as all operations represented
+ * by the \c num_handles \c handles have completed. If all operations are
+ * complete already, \c flag will be set to 1 and the callback is not invoked.
+ *
+ * NOTE: this feature is highly experimental and hinges on the availability of
+ *       MPIX_Continue* API. If that API is not available, DART_ERR_INVAL will
+ *       be returned.
+ */
+dart_ret_t dart_continue(
+  dart_handle_t handles[],
+  int num_handles,
+  dart_continue_cb_t *cb,
+  void *cb_data,
+  int32_t *flag );
+
+/* Progress outstanding continuations */
+dart_ret_t dart_continue_progress();
 
 /** \} */
 

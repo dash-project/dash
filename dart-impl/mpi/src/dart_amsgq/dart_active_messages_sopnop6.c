@@ -261,7 +261,7 @@ dart_amsg_sopnop_openq(
 
   MPI_Win_lock_all(0, res->queue_win);
 
-  MPI_Continue_init(&res->cont_req);
+  MPIX_Continue_init(&res->cont_req, MPI_INFO_NULL);
 
   MPI_Barrier(res->comm);
 
@@ -426,7 +426,7 @@ static void initiate_queuenum_fetch(struct dart_grequest_state *state, int *flag
     state->amsgq->queue_win, &state->opreq);
 
   state->state = DART_GREQUEST_QUEUENUM;
-  MPI_Continue(&state->opreq, flag, &request_cb, state, MPI_STATUS_IGNORE, state->amsgq->cont_req);
+  MPIX_Continue(&state->opreq, flag, &request_cb, state, MPI_STATUS_IGNORE, state->amsgq->cont_req);
 }
 
 static
@@ -611,7 +611,7 @@ void request_cb(void *data)
 
     // register callback
     // MPIX_Request_on_completion(state->opreq, &request_cb, state);
-    MPI_Continue(&state->opreq, &flag, &request_cb, state, MPI_STATUS_IGNORE, state->amsgq->cont_req);
+    MPIX_Continue(&state->opreq, &flag, &request_cb, state, MPI_STATUS_IGNORE, state->amsgq->cont_req);
     // break from while loop
     if (!flag) break;
   }

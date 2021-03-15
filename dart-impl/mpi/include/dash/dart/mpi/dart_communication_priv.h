@@ -38,6 +38,10 @@ struct dart_operation_struct {
   struct dart_operation_struct *next; // linked list pointer
 };
 
+#ifdef HAVE_MPI_CONTINUE
+DART_INTERNAL extern MPI_Request contreq;
+#endif
+
 DART_INLINE MPI_Op dart__mpi__op(dart_operation_t dart_op, dart_datatype_t type)
 {
   switch (dart_op) {
