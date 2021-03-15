@@ -11,6 +11,9 @@
 #include <dash/tasks/internal/LambdaTraits.h>
 
 #include <utility>
+#include <array>
+#include <functional>
+#include <memory>
 
 // Enable for debugging to directly invoke the tasks, ignoring any dependencies
 // NOTE: this won't enqueue any tasks so all but the main thread stay idle
