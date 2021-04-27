@@ -894,54 +894,6 @@ public:
     DASH_LOG_DEBUG_VAR("BlockPattern<1>.local_block_local >", block_vs);
     return block_vs;
   }
-#if 0
-  /**
-   * View spec (offset and extents) of block at global linear block index in
-   * cartesian element space.
-   */
-  ViewSpec_t block(
-    index_type g_block_index) const
-  {
-    index_type offset = g_block_index * _size;
-    std::array<index_type, NumDimensions> offsets = {{ offset }};
-    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
-    return ViewSpec_t(offsets, extents);
-  }
-
-  /**
-   * View spec (offset and extents) of block at local linear block index in
-   * global cartesian element space.
-   */
-  ViewSpec_t local_block(
-    index_type l_block_index) const
-  {
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block()", l_block_index);
-    // Local block index to local block coords:
-    auto l_elem_index = l_block_index * _blocksize;
-    auto g_elem_index = global(l_elem_index);
-    std::array<index_type, NumDimensions> offsets = {{ g_elem_index }};
-    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
-    ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block >", block_vs);
-    return block_vs;
-  }
-
-  /**
-   * View spec (offset and extents) of block at local linear block index in
-   * local cartesian element space.
-   */
-  ViewSpec_t local_block_local(
-    index_type l_block_index) const
-  {
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block_local()", l_block_index);
-    index_type offset = l_block_index * _blocksize;
-    std::array<index_type, NumDimensions> offsets = {{ offset }};
-    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
-    ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block_local >", block_vs);
-    return block_vs;
-  }
-#endif
 
   /**
    * Maximum number of elements in a single block in the given dimension.
@@ -1232,32 +1184,6 @@ private:
     DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_range >", _lend);
   }
 
-  /**
-   * Resolve extents of local memory layout for a specified unit.
-   */
-/*  SizeType initialize_local_extent(
-    team_unit_t unit) const {
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_extent()", unit);
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_extent()", _nunits);
-    if (_nunits == 0) {
-      return 0;
-    }
-    // Coordinates of local unit id in team spec:
-    SizeType l_extent     = 0;
-    // Minimum number of blocks local to every unit in dimension:
-    auto min_local_blocks = _nblocks / _nunits;
-    DASH_LOG_TRACE_VAR("TilePattern<1>.init_local_extent", _nblocks);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.init_local_extent", _blocksize);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.init_local_extent", min_local_blocks);
-    l_extent = min_local_blocks * _blocksize;
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_extent >", l_extent);
-
-    team_unit_t last_block_unit((num_blocks % num_units == 0)
-                                   ? num_units_d - 1
-                                   : (num_blocks_d % num_units_d) - 1);
-    return l_extent;
-  }
-*/
   /**
    * Resolve extents of local memory layout for a specified unit.
    */
