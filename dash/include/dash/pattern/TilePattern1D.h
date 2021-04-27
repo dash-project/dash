@@ -839,6 +839,66 @@ public:
    * View spec (offset and extents) of block at global linear block index in
    * cartesian element space.
    */
+  constexpr ViewSpec_t block(
+    /// Global block index
+    index_type g_block_index) const
+  {
+    return ViewSpec_t(
+      {{ static_cast<index_type>(g_block_index * _blocksize) }},
+      {{ static_cast<size_type>(
+          _blocksize - ( g_block_index < _nblocks - 1
+                         ? 0
+                         : underfilled_blocksize(0) )
+         ) }}
+    );
+  }
+
+  /**
+   * View spec (offset and extents) of block at local linear block index in
+   * global cartesian element space.
+   */
+  constexpr ViewSpec_t local_block(
+    /// Local block index
+    index_type l_block_index) const
+  {
+    // Local block index to local block coords:
+    return ViewSpec_t(
+      {{ static_cast<index_type>( global(l_block_index * _blocksize) ) }},
+      {{ static_cast<size_type>(
+          (l_block_index == (_nlblocks - 1)
+          ? (_local_size % _blocksize == 0
+             ? _blocksize
+             : _local_size % _blocksize )
+          : _blocksize )
+         ) }}
+    );
+  }
+
+  /**
+   * View spec (offset and extents) of block at local linear block index in
+   * local cartesian element space.
+   */
+  ViewSpec_t local_block_local(
+    index_type l_block_index) const
+  {
+    DASH_LOG_DEBUG_VAR("BlockPattern<1>.local_block_local()", l_block_index);
+    index_type offset = l_block_index * _blocksize;
+    std::array<index_type, NumDimensions> offsets = {{ offset }};
+    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
+    if(l_block_index == (_nlblocks - 1))
+    {
+      size_type remaining = _local_size % extents[0];
+      extents[0] = (remaining == 0) ? extents[0] : remaining;
+    }
+    ViewSpec_t block_vs(offsets, extents);
+    DASH_LOG_DEBUG_VAR("BlockPattern<1>.local_block_local >", block_vs);
+    return block_vs;
+  }
+#if 0
+  /**
+   * View spec (offset and extents) of block at global linear block index in
+   * cartesian element space.
+   */
   ViewSpec_t block(
     index_type g_block_index) const
   {
@@ -881,6 +941,7 @@ public:
     DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block_local >", block_vs);
     return block_vs;
   }
+#endif
 
   /**
    * Maximum number of elements in a single block in the given dimension.
@@ -1038,6 +1099,20 @@ public:
     return 1;
   }
 
+  /**
+   * Number of elements missing in the overflow block of given dimension
+   * compared to the regular blocksize (\see blocksize(d)), with
+   * 0 <= \c underfilled_blocksize(d) < blocksize(d).
+   */
+  constexpr SizeType underfilled_blocksize(
+    dim_t dimension) const {
+    // Underflow blocksize = regular blocksize - overflow blocksize:
+    return ( _blocksize == 0 || _size % _blocksize == 0
+             ? 0
+             : _blocksize - (_size % _blocksize)
+           );
+  }
+
 private:
   TilePattern(const PatternArguments_t & arguments)
   : _size(arguments.sizespec().size()),
@@ -1160,7 +1235,7 @@ private:
   /**
    * Resolve extents of local memory layout for a specified unit.
    */
-  SizeType initialize_local_extent(
+/*  SizeType initialize_local_extent(
     team_unit_t unit) const {
     DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_extent()", unit);
     DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_extent()", _nunits);
@@ -1176,7 +1251,44 @@ private:
     DASH_LOG_TRACE_VAR("TilePattern<1>.init_local_extent", min_local_blocks);
     l_extent = min_local_blocks * _blocksize;
     DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_extent >", l_extent);
+
+    team_unit_t last_block_unit((num_blocks % num_units == 0)
+                                   ? num_units_d - 1
+                                   : (num_blocks_d % num_units_d) - 1);
     return l_extent;
+  }
+*/
+  /**
+   * Resolve extents of local memory layout for a specified unit.
+   */
+  constexpr SizeType initialize_local_extent(
+    team_unit_t unit) const
+  {
+    return (_nunits == 0
+           ? 0
+           : (_nblocks == 1 && _nunits == 1
+             ? _size
+               // Possibly there are more blocks than units in dimension
+               // and no block left for this unit. Local extent in d then
+               // becomes 0.
+             : ((_nblocks / _nunits) * _blocksize
+               // Unbalanced blocks owned by the unit:
+               + (static_cast<SizeType>(unit) < (_nblocks % _nunits)
+                 ? _blocksize
+                 : 0 )
+               // If the last block in the dimension is underfilled and
+               // assigned to the local unit, subtract the missing extent:
+               - (static_cast<SizeType>(unit) ==
+                    // Unit id assigned to the last block:
+                    (_nblocks % _nunits == 0
+                    ? _nunits - 1
+                    : ((_nblocks % _nunits) - 1 ))
+                 ? underfilled_blocksize(0)
+                 : 0 )
+               )
+             )
+           );
+
   }
 };
 
