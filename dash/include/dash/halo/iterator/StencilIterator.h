@@ -152,6 +152,58 @@ public:
     }
   }
 
+  void next_nelement(uindex_t n) {
+    /*
+    ++_idx;
+    ++_coords[FastestDimension];
+    if(static_cast<uindex_t>(_coords[FastestDimension]) < _ranges[FastestDimension].second) {
+      for(auto i = 0u; i < NumStencilPoints; ++i)
+        ++_stencil_mem_ptr[i];
+
+      ++_current_lmemory_addr;
+      ++_offset;
+
+      return;
+    }
+    */
+    _idx += n;
+    if(_idx >=_size) {
+      _idx = _size;
+
+      return;
+    }
+
+    /*_coords[FastestDimension] += n;
+
+    if(static_cast<uindex_t>(_coords[FastestDimension]) < _ranges[FastestDimension].second) {
+      for(auto i = 0u; i < NumStencilPoints; ++i)
+        _stencil_mem_ptr[i] += n;
+
+      _current_lmemory_addr += n;
+      _offset += n;
+
+      return;
+    }*/
+
+    init_coords();
+
+    if(MemoryArrange == ROW_MAJOR) {
+      _offset = _coords[0];
+      for(dim_t d = 1; d < NumDimensions; ++d)
+        _offset = _offset * _local_layout.extent(d) + _coords[d];
+    } else {
+      _offset = _coords[NumDimensions - 1];
+      for(dim_t d = NumDimensions - 1; d > 0;) {
+        --d;
+        _offset = _offset * _local_layout.extent(d) + _coords[d];
+      }
+    }
+
+    _current_lmemory_addr = _stencil_op->local_memory() + _offset;
+    for(auto i = 0u; i < NumStencilPoints; ++i) {
+      _stencil_mem_ptr[i] = _current_lmemory_addr + _stencil_op->stencil_offsets()[i];
+    }
+  }
 
 private:
   void init_ranges() {
@@ -790,9 +842,10 @@ public:
   }
 
   Self_t& operator+=(index_t n) {
-    auto index = _coords_mng.index() + n;
+    _coords_mng.next_nelement(n);
+    //auto index = _coords_mng.index() + n;
     //if(index < _coords_mng.size())
-      _coords_mng.set(index);
+    //  _coords_mng.set(index);
 
     return *this;
   }
@@ -1389,4 +1442,3 @@ private:
 }  // namespace dash
 
 #endif  // DASH__HALO__ITERATOR__STENCILITERATOR_H
-

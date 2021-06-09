@@ -33,6 +33,8 @@ private:
   static constexpr auto NumStencilPoints = StencilOperatorT::num_stencil_points();
   static constexpr auto NumDimensions    = StencilOperatorT::ndim();
 
+  using CoordsIdxManagerInner_t = typename StencilOperatorT::CoordsIdxManagerInner_t;
+
 public:
   using Element_t = typename StencilOperatorT::Element_t;
   using ViewSpec_t      = typename StencilOperatorT::ViewSpec_t;
@@ -70,6 +72,26 @@ public:
    * Returns a view for all inner elements
    */
   const ViewSpec_t& view() const { return _stencil_op->_spec_views.inner(); }
+
+  std::pair<iterator,iterator> sub_iterator(const ViewSpec_t* sub_view) {
+    auto& inner_view = _stencil_op->_spec_views.inner();
+    auto& inner_offsets = inner_view.offsets();
+    auto& inner_extents = inner_view.extents();
+    auto& sub_offsets = sub_view->offsets();
+    auto& sub_extents = sub_view->extents();
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      auto inner_last_elem = inner_offsets[d] + inner_extents[d];
+      auto sub_last_elem = sub_offsets[d] + sub_extents[d];
+      if(sub_offsets[d] < inner_offsets[d] || sub_last_elem > inner_last_elem) {
+        DASH_LOG_ERROR("Sub view doesn't fit into inner view.");
+
+        return std::make_pair(end(), end());
+      }
+    }
+
+    return std::make_pair(iterator(CoordsIdxManagerInner_t(*_stencil_op, 0, sub_view)),
+                          iterator(CoordsIdxManagerInner_t(*_stencil_op, sub_view->size(), sub_view)));
+  }
 
   /**
    * Modifies all stencil point elements and the center within the inner view.
@@ -811,6 +833,8 @@ public:
   const index_t stencil_offset_at(std::size_t pos) const {
     return _stencil_offsets[pos];
   }
+
+
 
   /**
    * Returns the local memory offset for a given coordinate
