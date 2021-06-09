@@ -277,6 +277,61 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern) {
   verify_matrix(matrix_b, 1);
 }
 
+template<typename MatrixT>
+void print_matrix(const MatrixT& matrix) {
+  using namespace std;
+  dash::barrier();
+  if(!dash::myid()) {
+    auto rows = matrix.extent(0);
+    auto cols = matrix.extent(1);
+    cout << fixed;
+    cout.precision(4);
+    cout << "Matrix:" << endl;
+    for (auto r = 0; r < rows; ++r) {
+      for (auto c = 0; c < cols; ++c) {
+        auto lindex = matrix.pattern().local_index({r,c});
+        cout << " " << setw(3) << (double) matrix[r][c] << "(" << lindex.unit << "," << lindex.index << ")";
+      }
+      cout << endl;
+    }
+  }
+  dash::barrier();
+}
+
+/**
+ * Allocate a matrix with extents that cannot fit into full blocks
+ * TilePattern
+ */
+TEST_F(HDF5MatrixTest, UnderfilledPatternTile) {
+  using Matrix_t = dash::Matrix<double, 2>;
+
+  auto team_size = dash::Team::All().size();
+
+  int ext_x = 5 * team_size + 1;
+  int ext_y = 10 * team_size;
+
+  double test_value = dash::myid()+1;
+
+  LOG_MESSAGE("Matrix extent (%i,%i)", ext_x, ext_y);
+
+  auto size_spec = dash::SizeSpec<2>(ext_x, ext_y);
+
+  {
+    Matrix_t matrix_a(size_spec);
+    //dash::fill(matrix_a.begin(), matrix_a.end(), test_value);
+    fill_matrix(matrix_a, test_value);
+    dio::OutputStream os(_filename);
+    os << dio::dataset(_dataset) << matrix_a;
+  }
+
+  Matrix_t matrix_b(size_spec);
+  dio::InputStream is(_filename);
+  is >> dio::dataset(_dataset) >> matrix_b;
+  dash::barrier();
+
+  verify_matrix(matrix_b, test_value);
+}
+
 TEST_F(HDF5MatrixTest, UnderfilledPatMultiple) {
   typedef dash::Pattern<2, dash::ROW_MAJOR> pattern_t;
   typedef typename pattern_t::index_type index_t;
@@ -519,10 +574,10 @@ TEST_F(HDF5MatrixTest, DashView)
   int secret = 0;
   dash::NArray<int,2> matrix2d(100,80);
   fill_matrix(matrix2d, secret);
-  
+
   {
     auto output_view = dash::sub(0,5, matrix2d);
-    
+
     // TODO: Does not work
     dash::fill(dash::begin(output_view), dash::end(output_view), 5);
 
@@ -530,12 +585,12 @@ TEST_F(HDF5MatrixTest, DashView)
     dio::OutputStream os(_filename);
     os << output_view;
   }
-  
+
   // Load data into a existing view
   auto input_view = dash::sub(0,10, matrix2d);
   dio::InputStream is(_filename);
   is >> input_view;
-  
+
   // Load data into new matrix
   dash::Array<int> matrix1d;
   is >> matrix1d;
@@ -548,12 +603,12 @@ TEST_F(HDF5MatrixTest, HDFView)
   int secret = 0;
   dash::NArray<int,3> matrix3d(10,8,5);
   fill_matrix(matrix3d, secret);
-  
+
   {
     dio::OutputStream os(_filename);
     os << matrix3d;
   }
-  
+
   // Load subset of data into new matrix
   dash::NArray<int,3> sub_matrix3d;
   auto position = std::array<size_t,3>({2,4,1}); // top left corner of desired block
@@ -561,7 +616,7 @@ TEST_F(HDF5MatrixTest, HDFView)
   dio::InputStream is(_filename);
   is >> dash::block(position, extent)
      >> sub_matrix3d;
-  
+
   // post condition
   // sub_matrix3d has extent {4,2,1}
 }
@@ -571,29 +626,29 @@ TEST_F(HDF5MatrixTest, WriteCorresponding)
   int secret = 0;
   dash::NArray<int,3> matrix3d(10,8,5);
   fill_matrix(matrix3d, secret);
-  
+
   {
     dio::OutputStream os(_filename);
     os << matrix3d;
   }
-  
+
   auto view = matrix3d.col(1);
   // modify view
   dash::fill(view.begin(), view.end(), 0);
-  
+
   // write slice back
   dio::OutputStream os(_filename, dio::DeviceMode::App);
   is >> dio::modify_dataset()
      >> dash::block(position, extent)
      >> sub_matrix3d;
-  
+
   // post condition
   // slice in file is updated
   dash::NArray<int,3> new_matrix3d(10,8,5);
-  
+
   dio::InputStream is(_filename);
   is << new_matrix3d;
-  
+
   auto view = new_matrix3d.col(1);
   dash::for_each(view.begin(), view.end(), [](int & el){ASSERT_EQ_U(0, el)});
 }

@@ -1,7 +1,7 @@
 #ifndef DASH__HALO_HALOCOORDINATEACCESS_H
 #define DASH__HALO_HALOCOORDINATEACCESS_H
 
-#include <dash/halo/Halo.h> 
+#include <dash/halo/Halo.h>
 
 namespace dash {
 
@@ -37,7 +37,7 @@ public:
   template<dim_t _CurrentDimension = CurrentDimension + 1>
   std::enable_if_t<(_CurrentDimension != NumDimensions), DataInnerAccess<CoordinateInnerAccessT, CurrentDimension+1>>
   operator[](index_t pos) {
-    
+
     return DataInnerAccess<CoordinateInnerAccessT, CurrentDimension+1>(_offsets, _mem + pos * (*_offsets)[CurrentDimension]);
   }
 
@@ -137,14 +137,14 @@ public:
       if(pos < 0) {
         return DataAccess<CoordinateAccessT, CurrentDimension+1>(_access, _mem + pos * _access->_offsets[CurrentDimension], _coords, _reg_index, true);
       }
-      
+
       if(pos >= static_cast<index_t>(_access->_view_local->extent(CurrentDimension))) {
         return DataAccess<CoordinateAccessT, CurrentDimension+1>(_access, _mem + pos * _access->_offsets[CurrentDimension], _coords, _reg_index + 2, true);
       }
 
       return DataAccess<CoordinateAccessT, CurrentDimension+1>(_access, _mem + pos * _access->_offsets[CurrentDimension], _coords, _reg_index + 1, true);
     }
-    
+
     return DataAccess<CoordinateAccessT, CurrentDimension+1>(_access, _mem + pos * _access->_offsets[CurrentDimension], _coords, _reg_index + 1, false);
   }
 
@@ -153,11 +153,11 @@ public:
   operator[](index_t pos) {
     if(_halo || pos < 0 || pos >= static_cast<index_t>(_access->_view_local->extent(CurrentDimension))) {
       _reg_index *= REGION_INDEX_BASE;
-      
+
       if(pos >= 0) {
         ++_reg_index;
-      } 
-      
+      }
+
       if(pos >= static_cast<index_t>(_access->_view_local->extent(CurrentDimension))) {
         ++_reg_index;
       }
@@ -169,7 +169,7 @@ public:
       return *(halo_memory->first_element_at(_reg_index)
             + halo_memory->offset(_reg_index, _coords));
     }
-    
+
     return _mem[pos];
   }
 
@@ -185,7 +185,7 @@ template<typename CoordinateAccessT>
 class CoordinateHaloAccess {
 private:
   using Self_t = CoordinateHaloAccess<CoordinateAccessT>;
-  
+
   static constexpr auto NumDimensions    = CoordinateAccessT::ndim();
   static constexpr auto MemoryArrange    = CoordinateAccessT::memory_order();
 
@@ -236,7 +236,7 @@ private:
     for(const auto& view : bnd_views) {
       AllViewRanges_t ranges;
       for(dim_t d = 0; d < NumDimensions; ++d) {
-        ranges[d] = {static_cast<index_t>(view.offset(d)), 
+        ranges[d] = {static_cast<index_t>(view.offset(d)),
                     static_cast<index_t>(view.offset(d) + view.extent(d))};
       }
       all_ranges.push_back(ranges);
@@ -370,7 +370,7 @@ private:
   AllViewRanges_t set_ranges(ViewSpec_t view) const {
     AllViewRanges_t ranges;
     for(dim_t d = 0; d < NumDimensions; ++d) {
-      ranges[d] = {static_cast<index_t>(view.offset(d)), 
+      ranges[d] = {static_cast<index_t>(view.offset(d)),
                    static_cast<index_t>(view.offset(d) + view.extent(d))};
     }
 
@@ -380,8 +380,8 @@ private:
   AllViewRanges_t set_ranges_halo(ViewSpec_t view) const {
     AllViewRanges_t ranges;
     for(dim_t d = 0; d < NumDimensions; ++d) {
-      const auto& ext_max = _halo_block->halo_extension_max(d);
-      ranges[d] = {static_cast<index_t>(view.offset(d)) - ext_max.first, 
+      const auto& ext_max = _halo_block->halo_spec().halo_extension_max(d);
+      ranges[d] = {static_cast<index_t>(view.offset(d)) - ext_max.first,
                    static_cast<index_t>(view.offset(d) + view.extent(d)) + ext_max.second};
     }
 
