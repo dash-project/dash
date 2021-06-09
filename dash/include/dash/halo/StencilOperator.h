@@ -19,6 +19,12 @@ struct replace {
 
 using namespace internal;
 
+  template <typename IteratorT>
+  struct Iterator_Range {
+    IteratorT begin;
+    IteratorT end;
+  };
+
 // Forward declaration
 template <typename HaloBlockT, typename StencilSpecT>
 class StencilOperator;
@@ -43,6 +49,7 @@ public:
   using const_iterator  = const iterator;
 
   using StencilOffsets_t = typename StencilOperatorT::StencilOffsets_t;
+  using Iterator_Range_t = Iterator_Range<iterator>;
 
 public:
   StencilOperatorInner(StencilOperatorT* stencil_op)
@@ -73,7 +80,7 @@ public:
    */
   const ViewSpec_t& view() const { return _stencil_op->_spec_views.inner(); }
 
-  std::pair<iterator,iterator> sub_iterator(const ViewSpec_t* sub_view) {
+  Iterator_Range_t sub_iterator(const ViewSpec_t* sub_view) {
     auto& inner_view = _stencil_op->_spec_views.inner();
     auto& inner_offsets = inner_view.offsets();
     auto& inner_extents = inner_view.extents();
@@ -85,12 +92,12 @@ public:
       if(sub_offsets[d] < inner_offsets[d] || sub_last_elem > inner_last_elem) {
         DASH_LOG_ERROR("Sub view doesn't fit into inner view.");
 
-        return std::make_pair(end(), end());
+        return {end(), end()};
       }
     }
 
-    return std::make_pair(iterator(CoordsIdxManagerInner_t(*_stencil_op, 0, sub_view)),
-                          iterator(CoordsIdxManagerInner_t(*_stencil_op, sub_view->size(), sub_view)));
+    return { iterator(CoordsIdxManagerInner_t(*_stencil_op, 0, sub_view)),
+             iterator(CoordsIdxManagerInner_t(*_stencil_op, sub_view->size(), sub_view))};
   }
 
   /**
@@ -429,6 +436,7 @@ public:
   using const_iterator  = const iterator;
   using BoundaryViews_t = typename StencilSpecViews_t::BoundaryViews_t;
   using RegionCoords_t  = RegionCoords<NumDimensions>;
+  using Iterator_Range_t = Iterator_Range<iterator>;
 
 public:
   StencilOperatorBoundary(const StencilOperatorT* stencil_op)
@@ -520,7 +528,7 @@ public:
    * Using all iterators for all dimensions and \ref RegionPos has the same
    * effect as using bbegin and bend.
    */
-  std::pair<iterator, iterator> iterator_at(dim_t dim, RegionPos pos) {
+  Iterator_Range_t iterator_at(dim_t dim, RegionPos pos) {
     DASH_ASSERT_LT(dim, NumDimensions, "Given dimension to great");
     const auto&    bnd_views = _stencil_op->_spec_views.boundary_views();
     uindex_t offset = 0;
@@ -535,10 +543,10 @@ public:
 
     auto it_begin = _stencil_op->_bbegin + offset;
 
-    return std::make_pair(it_begin, it_begin + it_views->size());
+    return {it_begin, it_begin + it_views->size()};
   }
 
-  std::pair<iterator, iterator> iterator_at(region_index_t index) {
+  Iterator_Range_t iterator_at(region_index_t index) {
     DASH_ASSERT_LT(index, NumRegionsMax<NumDimensions>, "Given index out of range");
     const auto&    bnd_views = _stencil_op->_spec_views.boundary_views();
     uindex_t offset = 0;
@@ -548,7 +556,7 @@ public:
 
     auto it_begin = _stencil_op->_bbegin + offset;
 
-    return std::make_pair(it_begin, it_begin + bnd_views[index].size());
+    return {it_begin, it_begin + bnd_views[index].size()};
   }
 
 

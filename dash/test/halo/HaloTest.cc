@@ -450,9 +450,7 @@ unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper, StencilOpT stencil_op, b
   if(region_wise) {
     for( auto r = 0; r < NumRegionsMax<3>; ++r) {
       auto it_bnd = stencil_op.boundary.iterator_at(r);
-      if(it_bnd.first == it_bnd.second)
-        continue;
-      for(auto it = it_bnd.first; it != it_bnd.second; ++it) {
+      for(auto it = it_bnd.begin; it != it_bnd.end; ++it) {
         for(auto i = 0; i < num_stencil_points; ++i)
           *sum_local += it.value_at(i);
 
