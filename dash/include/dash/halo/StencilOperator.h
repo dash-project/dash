@@ -80,7 +80,7 @@ public:
    */
   const ViewSpec_t& view() const { return _stencil_op->_spec_views.inner(); }
 
-  Iterator_Range_t sub_iterator(const ViewSpec_t* sub_view) {
+  Iterator_Range_t sub_iterator(const ViewSpec_t* sub_view) const {
     auto& inner_view = _stencil_op->_spec_views.inner();
     auto& inner_offsets = inner_view.offsets();
     auto& inner_extents = inner_view.extents();
