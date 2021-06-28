@@ -528,27 +528,40 @@ public:
    * Using all iterators for all dimensions and \ref RegionPos has the same
    * effect as using bbegin and bend.
    */
-  Iterator_Range_t iterator_at(dim_t dim, RegionPos pos) {
-    DASH_ASSERT_LT(dim, NumDimensions, "Given dimension to great");
-    const auto&    bnd_views = _stencil_op->_spec_views.boundary_views();
-    uindex_t offset = 0;
-    auto           it_views  = std::begin(bnd_views);
-    for(dim_t d = 0; d < dim; ++d, ++it_views)
-      offset += it_views->size() + (++it_views)->size();
+  Iterator_Range_t iterator_at(dim_t dim, RegionPos pos) const {
+    DASH_ASSERT_LT(dim, NumDimensions, "Given dimension to high");
+
+    const auto& bnd_views = _stencil_op->_spec_views.boundary_views();
+    auto num_regions_dim = ce::pow(REGION_INDEX_BASE, static_cast<std::make_unsigned<dim_t>::type>(NumDimensions-1));
+    region_index_t start_region = 0;
+    for(dim_t d = 1; d <= dim; ++d) {
+      start_region += num_regions_dim;
+      num_regions_dim = ce::pow(REGION_INDEX_BASE, static_cast<std::make_unsigned<dim_t>::type>(NumDimensions-d-1));
+    }
 
     if(pos == RegionPos::POST) {
-      offset += it_views->size();
-      ++it_views;
+      start_region = NumRegionsMax<NumDimensions> - start_region - num_regions_dim;
     }
+
+    uindex_t offset = 0;
+    for(region_index_t r = 0; r < start_region; ++r) {
+      offset += bnd_views[r].size();
+    }
+
+    uindex_t size = 0;
+    for(region_index_t r = start_region; r < start_region + num_regions_dim; ++r) {
+      size += bnd_views[r].size();
+    }
+
 
     auto it_begin = _stencil_op->_bbegin + offset;
 
-    return {it_begin, it_begin + it_views->size()};
+    return {it_begin, it_begin + size};
   }
 
-  Iterator_Range_t iterator_at(region_index_t index) {
+  Iterator_Range_t iterator_at(region_index_t index) const {
     DASH_ASSERT_LT(index, NumRegionsMax<NumDimensions>, "Given index out of range");
-    const auto&    bnd_views = _stencil_op->_spec_views.boundary_views();
+    const auto& bnd_views = _stencil_op->_spec_views.boundary_views();
     uindex_t offset = 0;
     for(region_index_t r = 0; r < index; ++r) {
       offset += bnd_views[r].size();
