@@ -152,7 +152,6 @@ public:
     }
   }
 
-
 private:
   void init_ranges() {
     for(dim_t d = 0; d < NumDimensions; ++d) {
@@ -790,9 +789,7 @@ public:
   }
 
   Self_t& operator+=(index_t n) {
-    auto index = _coords_mng.index() + n;
-    //if(index < _coords_mng.size())
-      _coords_mng.set(index);
+    _coords_mng.set(_coords_mng.index() + n);
 
     return *this;
   }
