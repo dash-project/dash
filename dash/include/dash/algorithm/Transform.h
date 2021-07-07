@@ -325,7 +325,7 @@ GlobOutputIt transform(
   }
 #endif
   // Resolve teams from global iterators:
-  dash::Team & team_in_a        = pattern_in_a.team();
+  const dash::Team & team_in_a  = pattern_in_a.team();
   DASH_ASSERT_MSG(
     team_in_a == pattern_in_b.team(),
     "dash::transform: Different teams in input ranges");

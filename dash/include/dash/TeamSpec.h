@@ -48,7 +48,7 @@ public:
    * dimension.
    */
   TeamSpec(
-    Team & team = dash::Team::All())
+    const Team & team = dash::Team::All())
   : _is_linear(true),
     _myid(team.myid())
   {
@@ -88,7 +88,7 @@ public:
   TeamSpec(
     const self_t & other,
     const DistributionSpec<MaxDimensions> & distribution,
-    Team & team = dash::Team::All())
+    const Team & team = dash::Team::All())
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>(
       other.extents()),
       _myid(team.myid())
@@ -142,7 +142,7 @@ public:
    */
   TeamSpec(
     const DistributionSpec<MaxDimensions> & distribution,
-    Team & team = dash::Team::All())
+    const Team & team = dash::Team::All())
   : _myid(team.myid())
   {
     DASH_LOG_TRACE_VAR("TeamSpec(dist, t)", team.is_null());
