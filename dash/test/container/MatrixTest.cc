@@ -973,11 +973,83 @@ TEST_F(MatrixTest, DelayedAlloc)
       }
     }
   }
+}
 
+TEST_F(MatrixTest, VariadicDelayedAlloc)
+{
 
-  // re-allocate to test variadic allocate
-  mx.deallocate();
+  /*
+   * similar test as MatrixTest.DelayedAlloc but using variadic
+   * delayed allocation
+   */
 
+  dash::team_unit_t myid(dash::myid());
+  auto num_units   = dash::size();
+
+  if (num_units < 4) {
+    LOG_MESSAGE("MatrixTest.VariadicDelayedAlloc requires at least 4 units");
+    return;
+  }
+
+  // Default constructor creates team spec with extents (nunits, 1, 1):
+  dash::TeamSpec<3> teamspec;
+  // Automatic balancing of team spec in three dimensions:
+  teamspec.balance_extents();
+
+  // reverse team extents
+  auto team_extents = teamspec.extents();
+  if (team_extents[0] > team_extents[2]) {
+    std::swap(team_extents[0], team_extents[2]);
+    teamspec.resize(team_extents);
+  }
+
+  if (myid == 0) {
+    DASH_LOG_TRACE_VAR("MatrixTest.VariadicDelayedAlloc", teamspec.extents());
+  }
+
+  auto num_units_i = teamspec.extent(0);
+  auto num_units_j = teamspec.extent(1);
+  auto num_units_k = teamspec.extent(2);
+
+  // Cartesian dimensions for row-major storage order:
+  // index (i,j,k) = Cartesian offset (z,y,x)
+  auto tilesize_i   = 2;
+  auto tilesize_j   = 5;
+  auto tilesize_k   = 3;
+  auto blocksize    = tilesize_i * tilesize_j * tilesize_k;
+  auto num_blocks_i = num_units_i > 1 ? 2 * num_units_i : 1;
+  auto num_blocks_j = num_units_j > 1 ? 3 * num_units_j : 1;
+  auto num_blocks_k = num_units_k > 1 ? 2 * num_units_k : 1;
+  auto extent_i     = num_blocks_i * tilesize_i;
+  auto extent_j     = num_blocks_j * tilesize_j;
+  auto extent_k     = num_blocks_k * tilesize_k;
+
+  typedef double
+    value_t;
+  typedef dash::default_index_t
+    index_t;
+  typedef dash::default_extent_t
+    extent_t;
+  typedef dash::CartesianIndexSpace<3, dash::ROW_MAJOR, index_t>
+    index_space_t;
+
+  dash::barrier();
+  DASH_LOG_DEBUG("MatrixTest.VariadicDelayedAlloc",
+                 "Calling dash::Matrix default constructor");
+
+  dash::Matrix<
+          value_t,
+          3,
+          index_t,
+          dash::TilePattern<3> > mx;
+
+  ASSERT_EQ_U(num_units, teamspec.size());
+
+  dash::barrier();
+  DASH_LOG_DEBUG("MatrixTest.DelayedAlloc",
+                 "Calling dash::Matrix.allocate");
+
+  // Delayed allocation of matrix using variadic allocate():
   mx.allocate(
     extent_i,
     extent_j,
@@ -987,6 +1059,100 @@ TEST_F(MatrixTest, DelayedAlloc)
     dash::TILE(tilesize_k),
     teamspec
   );
+
+  auto pattern        = mx.pattern();
+  auto blockspec      = pattern.blockspec().extents();
+  auto blocksizespec  = pattern.block(0).extents();
+  auto n_local_blocks = pattern.local_blockspec().size();
+  auto n_local_elem   = n_local_blocks * blocksize;
+
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", blockspec);
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", blocksizespec);
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", blocksize);
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", mx.local.extents());
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", mx.local.offsets());
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", n_local_blocks);
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", n_local_elem);
+
+  ASSERT_EQ_U(mx.local.size(), n_local_elem);
+
+  // Initialize values:
+  for (extent_t lbi = 0; lbi < n_local_blocks; ++lbi) {
+    // submatrix view on local block obtained from matrix relative to global
+    // memory space:
+    auto g_matrix_block  = mx.local.block(lbi);
+    // index space view on local block obtained from pattern relative to
+    // global index space:
+    auto g_pattern_block = mx.pattern().local_block(myid, lbi);
+
+    value_t * block_lbegin = g_matrix_block.lbegin();
+    value_t * block_lend   = g_matrix_block.lend();
+    DASH_LOG_DEBUG("MatrixTest.VariadicDelayedAlloc",
+                   "local block idx:",   lbi,
+                   "block offset:",      g_matrix_block.offsets(),
+                   "block extents:",     g_matrix_block.extents(),
+                   "block lend-lbegin:", block_lend - block_lbegin);
+
+    // block views should be identical:
+    ASSERT_EQ_U(g_matrix_block.extents(),
+                g_pattern_block.extents());
+    ASSERT_EQ_U(g_matrix_block.offsets(),
+                g_pattern_block.offsets());
+    // element phase, canonical element offset in block:
+    index_t phase = 0;
+    for (auto lbv = block_lbegin; lbv != block_lend; ++lbv, ++phase) {
+      *lbv = myid + (0.01 * lbi) + (0.0001 * phase);
+    }
+  }
+
+  mx.barrier();
+
+  if (myid == 0) {
+    dash::test::print_matrix("Matrix<3>", mx, 4);
+  }
+
+  // Validate values.
+  // Testing view specifiers for every index explicitly, intentionally
+  // inefficient.
+  if (myid == 0) {
+    for (index_t i = 0; i < static_cast<index_t>(extent_i); ++i) {
+      for (index_t j = 0; j < static_cast<index_t>(extent_j); ++j) {
+        for (index_t k = 0; k < static_cast<index_t>(extent_k); ++k) {
+          DASH_LOG_TRACE("MatrixTest.VariadicDelayedAlloc",
+                         "coords:", i, j, k);
+          // global coordinate:
+          std::array<index_t, 3> gcoords {{ i, j, k }};
+          // block index in global memory space:
+          auto block_index   = mx.pattern().block_at(gcoords);
+          // block index in local memory space:
+          auto lbi           = mx.pattern().local_block_at(gcoords).index;
+          // block at global block index:
+          auto block_extents = mx.pattern().block(block_index).extents();
+          auto block_i_space = index_space_t(block_extents);
+          auto block_unit    = mx.pattern().unit_at(gcoords);
+          // Cartesian offsets of element in block:
+          std::array<index_t, 3> phase_coords {{ i % tilesize_i,
+                                                 j % tilesize_j,
+                                                 k % tilesize_k }};
+          DASH_LOG_TRACE("MatrixTest.VariadicDelayedAlloc",
+                         "block extents:", block_extents,
+                         "phase coords:",  phase_coords);
+          // canonical offset of element in block:
+          index_t phase     = block_i_space.at(phase_coords);
+          value_t expected  = block_unit + (0.01 * lbi) + (0.0001 * phase);
+          value_t actual    = mx[i][j][k];
+          DASH_LOG_TRACE("MatrixTest.VariadicDelayedAlloc",
+                         "coords:",      i, j, k,
+                         "block index:", block_index,
+                         "unit:",        block_unit,
+                         "phase:",       phase_coords, "=", phase,
+                         "expected:",    expected,
+                         "actual:",      actual);
+          EXPECT_EQ_U(expected, actual);
+        }
+      }
+    }
+  }
 }
 
 TEST_F(MatrixTest, PatternScope)
