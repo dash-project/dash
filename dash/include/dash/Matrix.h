@@ -602,54 +602,58 @@ public:
   local_type sub_local() noexcept;
 
   /**
-   * Projection to given offset in first sub-dimension (column), same as
-   * \c sub<0>(n).
+   * Projection to given offset in second sub-dimension (column), same as
+   * \c sub<1>(n).
    *
    * \returns  A \ref MatrixRef object representing the nth column
    *
    * \see  sub
    * \see  row
    */
-  const_view_type<NumDimensions-1> col(
+  typename std::enable_if<NumDimensions==2, const_view_type<1>>::type
+  col(
     size_type n       ///< Column offset.
   ) const;
 
   /**
-   * Projection to given offset in first sub-dimension (column), same as
-   * \c sub<0>(n).
+   * Projection to given offset in second sub-dimension (column), same as
+   * \c sub<1>(n).
    *
    * \returns  A \ref MatrixRef object representing the nth column
    *
    * \see  sub
    * \see  row
    */
-  view_type<NumDimensions-1> col(
+  typename std::enable_if<NumDimensions==2, view_type<1>>::type
+  col(
     size_type n       ///< Column offset.
   );
 
   /**
-   * Projection to given offset in second sub-dimension (rows), same as
-   * \c sub<1>(n).
+   * Projection to given offset in first sub-dimension (rows), same as
+   * \c sub<0>(n).
    *
    * \returns  A \ref MatrixRef object representing the nth row
    *
    * \see  sub
    * \see  col
    */
-  const_view_type<NumDimensions-1> row(
+  typename std::enable_if<NumDimensions==2, const_view_type<1>>::type
+  row(
     size_type n       ///< Row offset.
   ) const;
 
   /**
-   * Projection to given offset in second sub-dimension (rows), same as
-   * \c sub<1>(n).
+   * Projection to given offset in first sub-dimension (rows), same as
+   * \c sub<0>(n).
    *
    * \returns  A \ref MatrixRef object representing the nth row
    *
    * \see  sub
    * \see  col
    */
-  view_type<NumDimensions-1> row(
+  typename std::enable_if<NumDimensions==2, view_type<1>>::type
+  row(
     size_type n       ///< Row offset.
   );
 
@@ -662,7 +666,8 @@ public:
    *
    * \see  sub
    */
-  view_type<NumDimensions> cols(
+  typename std::enable_if<NumDimensions==2, view_type<2>>::type
+  cols(
     size_type offset, ///< Offset of first column in range.
     size_type range   ///< Number of columns in the range.
   );
@@ -676,7 +681,8 @@ public:
    *
    * \see  sub
    */
-  view_type<NumDimensions> rows(
+  typename std::enable_if<NumDimensions==2, view_type<2>>::type
+  rows(
     size_type n,      ///< Offset of first row in range.
     size_type range   ///< Number of rows in the range.
   );
