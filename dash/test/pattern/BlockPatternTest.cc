@@ -1203,3 +1203,29 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent1Dim)
 
   EXPECT_EQ_U(bextent, desired);
 }
+
+TEST_F(BlockPatternTest, BlockPattern1DFunctionalCheck)
+{
+  auto num_units = dash::Team::All().size();
+
+  //series of default test
+  typedef dash::BlockPattern<1> pattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<pattern_t>(i);
+
+  // series of unsigned COLUMN MAJOR test
+  typedef dash::BlockPattern<1, dash::COL_MAJOR, unsigned long> upattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<upattern_t>(i);
+}
+
+TEST_F(BlockPatternTest, BlockPatternFunctionalCheck)
+{
+  auto num_units = dash::Team::All().size();
+
+  //series of default 2D test
+  typedef dash::BlockPattern<2> pattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<pattern_t>(i, i);
+
+  // series of unsigned COLUMN MAJOR 2D test
+  typedef dash::BlockPattern<2, dash::COL_MAJOR, unsigned long> upattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<upattern_t>(i, i);
+}

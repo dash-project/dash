@@ -301,17 +301,28 @@ TEST_F(TilePatternTest, Tile4Dim)
   }
 }
 
-TEST_F(TilePatternTest, TileFunctionalCheck)
+TEST_F(TilePatternTest, TilePattern1DFunctionalCheck)
 {
-  const size_t dims = 1; 
-  using pattern_t = typename dash::TilePattern<dims, dash::ROW_MAJOR, long>;
-  using IndexType = typename pattern_t::index_type;
+  auto num_units = dash::Team::All().size();
 
-  // create simple TilePattern 1D BLOCKED for functional checks, now the test just checks for issue 692, unfinished
-  size_t array_size = 100;
-  pattern_t pattern(array_size, dash::BLOCKED);
+  //series of default test
+  typedef dash::TilePattern<1> pattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<pattern_t>(i);
 
-  // tested local_blockspec()
-  const auto &lblockspec = pattern.local_blockspec();
-  ASSERT_EQ_U(dims, lblockspec.size());
+  // series of unsigned COLUMN MAJOR test
+  typedef dash::TilePattern<1, dash::COL_MAJOR, unsigned long> upattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<upattern_t>(i);
+}
+
+TEST_F(TilePatternTest, TilePatternFunctionalCheck)
+{
+  auto num_units = dash::Team::All().size();
+
+  //series of default 2D test
+  typedef dash::TilePattern<2> pattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<pattern_t>(i, i);
+
+  // series of unsigned COLUMN MAJOR 2D test
+  typedef dash::TilePattern<2, dash::COL_MAJOR, unsigned long> upattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<upattern_t>(i, i);
 }

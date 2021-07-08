@@ -91,3 +91,29 @@ TEST_F(SeqTilePatternTest, Distribute2DimTile)
     }
   }
 }
+
+TEST_F(SeqTilePatternTest, SeqTilePattern1DFunctionalCheck)
+{
+  auto num_units = dash::Team::All().size();
+
+  //series of default test
+  typedef dash::SeqTilePattern<1> pattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<pattern_t>(i);
+
+  // series of unsigned COLUMN MAJOR test
+  typedef dash::SeqTilePattern<1, dash::COL_MAJOR, unsigned long> upattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<upattern_t>(i);
+}
+
+TEST_F(SeqTilePatternTest, SeqTilePatternFunctionalCheck)
+{
+  auto num_units = dash::Team::All().size();
+
+  //series of default 2D test
+  typedef dash::SeqTilePattern<2> pattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<pattern_t>(i, i);
+
+  // series of unsigned COLUMN MAJOR 2D test
+  typedef dash::SeqTilePattern<2, dash::COL_MAJOR, unsigned long> upattern_t;
+  for (size_t i = num_units; i <= 1000 * num_units; i *= 10) test_pattern<upattern_t>(i, i);
+}

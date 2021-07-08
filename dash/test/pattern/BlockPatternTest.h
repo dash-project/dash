@@ -2,7 +2,7 @@
 #define DASH__TEST__BLOCK_PATTERN_TEST_H_
 
 #include "../TestBase.h"
-
+#include "PatternTest.h" 
 
 /**
  * Test fixture for class dash::Pattern
