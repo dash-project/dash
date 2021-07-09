@@ -289,13 +289,13 @@ TEST_F(AtomicTest, ArrayElements)
                  "prev: array @ unit(", remote_prev, ") +=", my_val);
   // in fact, this is a hack
   dash::GlobRef<dash::Atomic<value_t>>(
-          array[remote_prev].dart_gptr()
+          dash::addressof<typename decltype(array)::memory_type>(array[remote_prev])
         ).add(my_val);
 
   DASH_LOG_TRACE("AtomicTest.ArrayElements",
                  "next: array @ unit(", remote_next, ") +=", my_val);
   dash::GlobRef<dash::Atomic<value_t>>(
-          array[remote_next].dart_gptr()
+          dash::addressof<typename decltype(array)::memory_type>(array[remote_next])
         ).fetch_add(my_val);
 
   DASH_LOG_TRACE("AtomicTest.ArrayElements", "barrier #2");
@@ -652,8 +652,8 @@ TEST_F(AtomicTest, ConstTest) {
   // assignment const -> const
   dash::GlobRef<dash::Atomic<const int>> gref2 = carr[0];
   // explicit conversion const->non-const
-  dash::GlobRef<dash::Atomic<int>> gref3 =
-                        static_cast<dash::GlobRef<dash::Atomic<int>>>(carr[0]);
+  //dash::GlobRef<dash::Atomic<int>> gref3 =
+  //                      static_cast<dash::GlobRef<dash::Atomic<int>>>(carr[0]);
 
   // should fail!
   //gref1.add(1);
@@ -670,8 +670,8 @@ TEST_F(AtomicTest, ConstTest) {
   // assignment const -> const
   dash::GlobAsyncRef<dash::Atomic<const int>> agref2 = carr.async[0];
   // explicit conversion const->non-const
-  dash::GlobAsyncRef<dash::Atomic<int>> agref3 =
-                        static_cast<dash::GlobAsyncRef<dash::Atomic<int>>>(carr.async[0]);
+  //dash::GlobAsyncRef<dash::Atomic<int>> agref3 =
+  //                      static_cast<dash::GlobAsyncRef<dash::Atomic<int>>>(carr.async[0]);
 
   // should fail!
   //agref1.add(1);

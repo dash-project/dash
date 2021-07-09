@@ -500,7 +500,7 @@ public:
     // Global reference to element at given position:
 
     auto const    dart_pointer = _get_pointer_at(local_pos);
-    return reference(dart_pointer);
+    return reference{pointer{dart_pointer}};
   }
 
   /**
@@ -529,7 +529,7 @@ public:
     // Global reference to element at given position:
 
     auto const dart_pointer = _get_pointer_at(local_pos);
-    return const_reference(dart_pointer);
+    return const_reference{const_pointer{dart_pointer}};
   }
 
   /**

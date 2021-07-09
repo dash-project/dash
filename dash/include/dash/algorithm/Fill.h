@@ -40,7 +40,6 @@ void fill(
   /// Value which will be assigned to the elements in range [first, last)
   const typename GlobIterType::value_type & value)
 {
-  typedef typename GlobIterType::index_type index_t;
   typedef typename GlobIterType::value_type value_t;
 
   // Global iterators to local range:
@@ -49,6 +48,8 @@ void fill(
   value_t * llast       = index_range.end;
 
 #ifdef DASH_ENABLE_OPENMP
+  typedef typename GlobIterType::index_type index_t;
+
   dash::util::UnitLocality uloc;
   auto n_threads = uloc.num_domain_threads();
   auto nlocal    = llast - lfirst;

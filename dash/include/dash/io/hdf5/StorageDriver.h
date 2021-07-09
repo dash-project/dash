@@ -133,9 +133,7 @@ class StoreHDF {
           typename dash::view_traits<View_t>::origin_type::value_type>) {
     using Container_t = typename dash::view_traits<View_t>::origin_type;
     using pattern_t = typename Container_t::pattern_type;
-    using extent_t = typename pattern_t::size_type;
     using index_t = typename Container_t::index_type;
-    using value_t = typename Container_t::value_type;
 
     constexpr auto ndim = pattern_t::ndim();
 

@@ -163,7 +163,7 @@ private:
   /// to remote unit in next commit.
   std::vector<iterator>  _move_elements;
   /// Global pointer to local element in _local_sizes.
-  dart_gptr_t            _local_size_gptr = DART_GPTR_NULL;
+  typename local_sizes_map::pointer _local_size_gptr{};
   /// Hash type for mapping of key to unit and local offset.
   hasher                 _key_hash;
   /// Predicate for key comparison.
@@ -315,7 +315,9 @@ public:
     // Initialize local sizes with 0:
     _local_sizes.allocate(_team->size(), dash::BLOCKED, *_team);
     _local_sizes.local[0] = 0;
-    _local_size_gptr      = _local_sizes[_myid].dart_gptr();
+
+    _local_size_gptr = static_cast<typename local_sizes_map::pointer>(
+        _local_sizes.begin() + _myid);
 
     // Global iterators:
     _begin       = iterator(this, 0);

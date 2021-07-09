@@ -10,7 +10,7 @@
 #include <dash/Exception.h>
 #include <dash/Init.h>
 
-#include <dash/atomic/Type_traits.h>
+#include <dash/TypeTraits.h>
 
 #include <dash/internal/Logging.h>
 #include <dash/iterator/internal/GlobPtrBase.h>
@@ -25,7 +25,7 @@ bool operator!=(const dart_gptr_t &lhs, const dart_gptr_t &rhs);
 
 namespace dash {
 
-  // Forward-declarations
+// Forward-declarations
 template <typename T>
 class GlobRef;
 
@@ -45,7 +45,7 @@ dash::gptrdiff_t distance(
  */
 template <typename ElementType, class GlobMemT>
 class GlobPtr {
-private:
+ private:
   typedef GlobPtr<ElementType, GlobMemT> self_t;
 
   using local_pointer_traits =
@@ -53,18 +53,21 @@ private:
 
   using memory_traits = dash::memory_space_traits<GlobMemT>;
 
-public:
-  typedef ElementType                          value_type;
-  typedef GlobPtr<const ElementType, GlobMemT> const_type;
-  typedef typename GlobMemT::index_type        index_type;
-  typedef typename GlobMemT::size_type         size_type;
-  typedef index_type                           gptrdiff_t;
+ public:
+  typedef ElementType                   value_type;
+  typedef typename GlobMemT::index_type index_type;
+  typedef typename GlobMemT::size_type  size_type;
+  typedef index_type                    gptrdiff_t;
 
   typedef typename local_pointer_traits::template rebind<value_type>
       local_type;
 
-  typedef typename local_pointer_traits::template rebind<value_type const>
+  typedef typename local_pointer_traits::template rebind<
+      typename std::add_const<value_type>::type>
       const_local_type;
+
+  typedef GlobPtr<typename std::add_const<ElementType>::type, GlobMemT>
+      const_type;
 
   typedef GlobMemT memory_type;
 
@@ -74,7 +77,7 @@ public:
   template <typename T>
   using rebind = dash::GlobPtr<T, GlobMemT>;
 
-public:
+ public:
   template <typename T, class MemSpaceT>
   friend class GlobPtr;
 
@@ -86,10 +89,11 @@ public:
   friend dash::gptrdiff_t distance(
       GlobPtr<T, MemSpaceT> gbegin, GlobPtr<T, MemSpaceT> gend);
 
-private:
+ private:
   // Raw global pointer used to initialize this pointer instance
   dart_gptr_t m_dart_pointer = DART_GPTR_NULL;
-public:
+
+ public:
   /**
    * Default constructor, underlying global address is unspecified.
    */
@@ -144,15 +148,14 @@ public:
   //clang-format on
   template <
       typename From,
-      typename = typename std::enable_if<
-          // We always allow GlobPtr<T> -> GlobPtr<void> or the other way)
-          // or if From is assignable to To (value_type)
-          dash::internal::is_pointer_assignable<
-              typename dash::remove_atomic<From>::type,
-              typename dash::remove_atomic<value_type>::type>::value>
-
-      ::type>
-  constexpr GlobPtr(const GlobPtr<From, GlobMemT> &other) DASH_NOEXCEPT
+      typename = typename std::enable_if<std::is_convertible<
+          // From pointer
+          typename std::add_pointer<
+              typename dash::remove_atomic<From>::type>::type,
+          // To pointer
+          typename std::add_pointer<
+              typename dash::remove_atomic<value_type>::type>::type>::value>>
+  constexpr GlobPtr(const GlobPtr<From, GlobMemT> &other)
     : m_dart_pointer(other.m_dart_pointer)
   {
   }
@@ -366,9 +369,13 @@ public:
   /**
    * Subscript operator.
    */
-  constexpr GlobRef<const value_type> operator[](gptrdiff_t n) const DASH_NOEXCEPT
+  constexpr auto operator[](gptrdiff_t n) const DASH_NOEXCEPT
   {
-    return GlobRef<const value_type>(self_t((*this) + n));
+    auto const_ptr = const_type{*this};
+    const_ptr += n;
+
+    return GlobRef<typename std::add_const<value_type>::type>(
+        std::move(const_ptr));
   }
 
   /**
@@ -376,7 +383,9 @@ public:
    */
   GlobRef<value_type> operator[](gptrdiff_t n) DASH_NOEXCEPT
   {
-    return GlobRef<value_type>(self_t((*this) + n));
+    auto ptr = *this;
+    ptr += n;
+    return GlobRef<value_type>(std::move(ptr));
   }
 
   /**
@@ -392,7 +401,9 @@ public:
    */
   constexpr GlobRef<const value_type> operator*() const DASH_NOEXCEPT
   {
-    return GlobRef<const value_type>(*this);
+    auto const_ptr = const_type{*this};
+    return GlobRef<typename std::add_const<value_type>::type>(
+        std::move(const_ptr));
   }
 
   /**
@@ -418,7 +429,8 @@ public:
    *           GlobPtr instance, or \c nullptr if the referenced element
    *           is not local to the calling unit.
    */
-  const value_type * local() const {
+  const value_type *local() const
+  {
     void *addr = nullptr;
     if (dart_gptr_getaddr(m_dart_pointer, &addr) == DART_OK) {
       return static_cast<const value_type *>(addr);
@@ -452,7 +464,6 @@ public:
     return !DART_GPTR_ISNULL(m_dart_pointer);
   }
 
-private:
   void increment(size_type offs) DASH_NOEXCEPT
   {
     if (offs == 0) {
@@ -466,8 +477,9 @@ private:
           "cannot increment a global null pointer");
     }
 
-    auto& reg = dash::internal::MemorySpaceRegistry::GetInstance();
-    auto const * mem_space = static_cast<const GlobMemT *>(reg.lookup(m_dart_pointer));
+    auto &      reg = dash::internal::MemorySpaceRegistry::GetInstance();
+    auto const *mem_space =
+        static_cast<const GlobMemT *>(reg.lookup(m_dart_pointer));
     // get a new dart with the requested offset
     auto const newPtr = dash::internal::increment<value_type>(
         m_dart_pointer,
@@ -553,14 +565,13 @@ dash::gptrdiff_t distance(
   using memory_space_traits = dash::memory_space_traits<MemSpaceT>;
 
   auto const begin = static_cast<dart_gptr_t>(gbegin);
-  auto const end = static_cast<dart_gptr_t>(gbegin);
+  auto const end   = static_cast<dart_gptr_t>(gbegin);
 
   DASH_ASSERT_EQ(begin.teamid, end.teamid, "teamid must be equal");
   DASH_ASSERT_EQ(begin.segid, end.segid, "segid must be equal");
 
-  auto &      reg = dash::internal::MemorySpaceRegistry::GetInstance();
-  auto const *mem_space =
-      static_cast<const MemSpaceT *>(reg.lookup(begin));
+  auto &      reg       = dash::internal::MemorySpaceRegistry::GetInstance();
+  auto const *mem_space = static_cast<const MemSpaceT *>(reg.lookup(begin));
 
   return dash::internal::distance<T>(
       static_cast<dart_gptr_t>(gbegin),

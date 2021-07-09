@@ -73,20 +73,6 @@ typedef internal::default_unsigned_index   default_size_t;
  */
 typedef internal::default_signed_index         gptrdiff_t;
 
-template<
-  dash::dim_t NumDimensions,
-  typename IndexType = dash::default_index_t>
-struct Point {
-  ::std::array<IndexType, NumDimensions> coords;
-};
-
-template<
-  dash::dim_t NumDimensions,
-  typename SizeType = dash::default_extent_t>
-struct Extent {
-  ::std::array<SizeType, NumDimensions> sizes;
-};
-
 #ifdef DOXYGEN
 
 /**
@@ -229,31 +215,6 @@ struct dart_punned_datatype {
 #endif // DOXYGEN
 
 /**
- * Type trait indicating whether the specified type is eligible for
- * elements of DASH containers.
- */
-template <class T>
-struct is_container_compatible :
-  public std::integral_constant<bool,
-              std::is_standard_layout<T>::value
-#ifdef DASH_HAVE_STD_TRIVIALLY_COPYABLE
-              && std::is_trivially_copyable<T>::value
-#elif defined DASH_HAVE_TRIVIAL_COPY_INTRINSIC
-              && __has_trivial_copy(T)
-#endif
-         >
-{ };
-
-/**
- * Type trait indicating whether a type can be used for global atomic
- * operations.
- */
-template <typename T>
-struct is_atomic_compatible
-: public std::integral_constant<bool, std::is_arithmetic<T>::value>
-{ };
-
-/**
  * Type trait indicating whether a type can be used for arithmetic
  * operations in global memory space.
  */
@@ -263,28 +224,6 @@ struct is_arithmetic
            bool,
            dash::dart_datatype<T>::value != DART_TYPE_UNDEFINED >
 { };
-
-/**
- * Type trait indicating whether a type has a comparision operator==
- * defined.
- * \code
- * bool test = has_operator_equal<MyType>::value;
- * bool test = has_operator_equal<MyType, int>::value;
- * \endcode
- */
-template<class T, class EqualTo>
-struct has_operator_equal_impl
-{
-    template<class U, class V>
-    static auto test(U*) -> decltype(std::declval<U>() == std::declval<V>());
-    template<typename, typename>
-    static auto test(...) -> std::false_type;
-
-    using type = typename std::is_same<bool, decltype(test<T, EqualTo>(0))>::type;
-};
-
-template<class T, class EqualTo = T>
-struct has_operator_equal : has_operator_equal_impl<T, EqualTo>::type {};
 
 /**
  * Convencience wrapper to determine the DART type and number of elements

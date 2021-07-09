@@ -86,23 +86,6 @@ TEST_F(GlobAsyncRefTest, GetSet) {
   ASSERT_EQ_U(left_neighbor, array.local[0]);
 }
 
-TEST_F(GlobAsyncRefTest, Conversion)
-{
-  // Initialize values:
-  dash::Array<int> array(dash::size());
-  for (auto li = 0; li < array.lcapacity(); ++li) {
-    array.local[li] = dash::myid().id;
-  }
-  array.barrier();
-
-  auto gref_async = static_cast<dash::GlobAsyncRef<int>>(
-                        array[dash::myid().id]);
-  auto gref_sync  = static_cast<dash::GlobRef<int>>(
-                        array.async[dash::myid().id]);
-  ASSERT_EQ_U(gref_async.is_local(), true);
-  ASSERT_EQ_U(gref_sync.is_local(), true);
-}
-
 struct mytype {int a; double b; };
 
 std::ostream&
@@ -169,7 +152,7 @@ TEST_F(GlobAsyncRefTest, ConstTest)
   // assignment const -> const
   dash::GlobRef<const int> gref2 = carr[0];
   // explicit conversion const->non-const
-  dash::GlobRef<int> gref3(carr[0]);
+  //dash::GlobRef<int> gref3(carr[0]);
 
   // should fail!
   //gref1.set(0);
@@ -186,8 +169,8 @@ TEST_F(GlobAsyncRefTest, ConstTest)
   // assignment const -> const
   dash::GlobAsyncRef<const int> agref2 = carr.async[0];
   // explicit conversion const->non-const
-  dash::GlobAsyncRef<int> agref3 =
-                            static_cast<dash::GlobAsyncRef<int>>(carr.async[0]);
+  //dash::GlobAsyncRef<int> agref3 =
+  //                          static_cast<dash::GlobAsyncRef<int>>(carr.async[0]);
 
   dash::GlobAsyncRef<const int> agref4 = gref1;
   dash::GlobAsyncRef<const int> agref5{gref1};

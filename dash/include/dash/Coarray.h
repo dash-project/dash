@@ -17,8 +17,6 @@
 
 #include <dash/Dimensional.h>
 
-#include <dash/atomic/Type_traits.h>
-
 /**
  * \defgroup DashCoarrayConcept  Coarray Concept
  *

@@ -225,7 +225,7 @@ class GlobIter {
    */
   DASH_CONSTEXPR reference operator*() noexcept
   {
-    return reference{this->dart_gptr()};
+    return reference{static_cast<pointer>(*this)};
   }
 
   /**
@@ -248,7 +248,7 @@ class GlobIter {
   {
     auto p = *this;
     p += g_index;
-    return reference(p.dart_gptr());
+    return reference(static_cast<pointer>(p));
   }
 
   /**
@@ -261,7 +261,7 @@ class GlobIter {
   {
     auto p = *this;
     p += g_index;
-    return const_reference(p.dart_gptr());
+    return const_reference(static_cast<const_pointer>(p));
   }
 
   /**
@@ -470,8 +470,7 @@ class GlobIter {
     return _pattern->team();
   }
 
- private:
-  DASH_CONSTEXPR dart_gptr_t
+  DASH_CONSTEXPR auto
                  _get_pointer_at(typename pattern_type::local_index_t pos) const
   {
     auto dart_pointer = static_cast<dart_gptr_t>(_globmem->begin());

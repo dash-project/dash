@@ -429,8 +429,6 @@ void summa(
     // Block coordinates for next block multiplication result:
     l_block_c_get       = l_block_c_comp;
     l_block_c_get_view  = l_block_c_comp_view;
-    l_block_c_get_row   = l_block_c_get_row;
-    l_block_c_get_col   = l_block_c_get_col;
     DASH_LOG_TRACE("dash::summa", "summa.block.comp", "C.local.block",
                    "l_block_idx:", lb,
                    "row:",         l_block_c_comp_row,

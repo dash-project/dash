@@ -333,7 +333,6 @@ inline void GlobStaticMem<LMemSpace>::do_deallocate(
   if (*m_team != dash::Team::Null()) {
     DASH_ASSERT_RETURNS(dart_barrier(m_team->dart_id()), DART_OK);
 
-    auto soon_to_be_lbegin = gptr;
     gptr.set_unit(m_team->myid());
 
     auto* lbegin = gptr.local();
