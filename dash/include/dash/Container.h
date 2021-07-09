@@ -75,5 +75,6 @@
 // Dynamic containers:
 #include<dash/List.h>
 #include<dash/UnorderedMap.h>
+#include<dash/Graph.h>
 
 #endif // DASH__CONTAINER_H_

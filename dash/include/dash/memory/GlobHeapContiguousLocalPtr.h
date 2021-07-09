@@ -1,13 +1,11 @@
-#ifndef DASH__MEMORY__GLOB_HEAP_LOCAL_PTR_H__INCLUDED
-#define DASH__MEMORY__GLOB_HEAP_LOCAL_PTR_H__INCLUDED
+#ifndef DASH__MEMORY__GLOB_HEAP_CONTIGUOUS_LOCAL_PTR_H__INCLUDED
+#define DASH__MEMORY__GLOB_HEAP_CONTIGUOUS_LOCAL_PTR_H__INCLUDED
 
 #include <dash/dart/if/dart.h>
 #include <dash/Types.h>
 
-#include <dash/Exception.h>
 #include <dash/internal/Logging.h>
 
-#include <dash/Exception.h>
 #include <dash/memory/internal/GlobHeapMemTypes.h>
 
 #include <type_traits>
@@ -21,6 +19,8 @@
 
 namespace dash {
 
+// TODO: Remove this class and add template parameter for bucket list type to
+//       GlobHeapLocalPtr
 /**
  * Iterator on local buckets. Represents local pointer type.
  */
@@ -29,7 +29,7 @@ template<
   typename IndexType,
   typename PointerType   = ElementType *,
   typename ReferenceType = ElementType & >
-class GlobHeapLocalPtr
+class GlobHeapContiguousLocalPtr
 : public std::iterator<
            std::random_access_iterator_tag,
            ElementType,
@@ -38,15 +38,15 @@ class GlobHeapLocalPtr
            ReferenceType >
 {
   template<typename E_, typename I_, typename P_, typename R_>
-  friend class GlobHeapLocalPtr;
+  friend class GlobHeapContiguousLocalPtr;
 
   template<typename E_, typename I_, typename P_, typename R_>
   friend std::ostream & dash::operator<<(
     std::ostream & os,
-    const dash::GlobHeapLocalPtr<E_, I_, P_, R_> & it);
+    const dash::GlobHeapContiguousLocalPtr<E_, I_, P_, R_> & it);
 
 private:
-  typedef GlobHeapLocalPtr<ElementType, IndexType, PointerType, ReferenceType>
+  typedef GlobHeapContiguousLocalPtr<ElementType, IndexType, PointerType, ReferenceType>
     self_t;
 
 public:
@@ -61,12 +61,13 @@ public:
   typedef ElementType *                                             pointer;
   typedef ElementType &                                           reference;
 
-  typedef internal::glob_dynamic_mem_bucket_type<size_type, value_type>
+  typedef internal::glob_dynamic_contiguous_mem_bucket_type<size_type, value_type>
     bucket_type;
 
-private:
-  typedef typename std::list<bucket_type>
+  typedef typename std::vector<bucket_type>
     bucket_list;
+
+private:
 
   typedef typename bucket_list::iterator
     bucket_iterator;
@@ -76,7 +77,7 @@ private:
 
 public:
   template<typename BucketIter>
-  GlobHeapLocalPtr(
+  GlobHeapContiguousLocalPtr(
     const BucketIter & bucket_first,
     const BucketIter & bucket_last,
     index_type         position,
@@ -86,11 +87,12 @@ public:
     _bucket_last(bucket_last),
     _idx(position),
     _bucket_it(bucket_it),
-    _bucket_phase(bucket_phase)
+    _bucket_phase(bucket_phase),
+    _is_nullptr(false)
   { }
 
   template<typename BucketIter>
-  GlobHeapLocalPtr(
+  GlobHeapContiguousLocalPtr(
     const BucketIter & bucket_first,
     const BucketIter & bucket_last,
     index_type         position)
@@ -98,9 +100,10 @@ public:
     _bucket_last(bucket_last),
     _idx(position),
     _bucket_it(bucket_first),
-    _bucket_phase(0)
+    _bucket_phase(0),
+    _is_nullptr(false)
   {
-    DASH_LOG_TRACE_VAR("GlobHeapLocalPtr(idx)", position);
+    DASH_LOG_TRACE_VAR("GlobHeapContiguousLocalPtr(idx)", position);
 #ifdef DASH_ENABLE_TRACE_LOGGING
     index_type bucket_idx = 0;
 #endif
@@ -116,14 +119,14 @@ public:
       ++bucket_idx;
 #endif
     }
-    DASH_LOG_TRACE("GlobHeapLocalPtr(idx) >",
+    DASH_LOG_TRACE("GlobHeapContiguousLocalPtr(idx) >",
                    "bucket:", bucket_idx,
                    "phase:",  _bucket_phase);
   }
 
-  GlobHeapLocalPtr() = default;
+  GlobHeapContiguousLocalPtr() = default;
 
-  GlobHeapLocalPtr(const self_t & other)
+  GlobHeapContiguousLocalPtr(const self_t & other)
   : _bucket_first(other._bucket_first),
     _bucket_last(other._bucket_last),
     _idx(other._idx),
@@ -149,12 +152,12 @@ public:
    * Conversion to const iterator.
    */
   template<typename I_, typename P_, typename R_>
-  operator GlobHeapLocalPtr<const value_type, I_, P_, R_>() const
+  operator GlobHeapContiguousLocalPtr<const value_type, I_, P_, R_>() const
   {
     if (_is_nullptr) {
-      return GlobHeapLocalPtr<const value_type, I_, P_, R_>(nullptr);
+      return GlobHeapContiguousLocalPtr<const value_type, I_, P_, R_>(nullptr);
     }
-    return GlobHeapLocalPtr<const value_type, I_, P_, R_>(
+    return GlobHeapContiguousLocalPtr<const value_type, I_, P_, R_>(
              _bucket_first,
              _bucket_last,
              _idx,
@@ -162,7 +165,7 @@ public:
              _bucket_phase);
   }
 
-  GlobHeapLocalPtr(std::nullptr_t)
+  GlobHeapContiguousLocalPtr(std::nullptr_t)
   : _is_nullptr(true)
   { }
 
@@ -231,10 +234,10 @@ public:
    */
   explicit operator pointer() const
   {
-    DASH_LOG_TRACE("GlobHeapLocalPtr.pointer()");
+    DASH_LOG_TRACE("GlobHeapContiguousLocalPtr.pointer()");
     pointer lptr = nullptr;
     if (_is_nullptr) {
-      DASH_LOG_TRACE("GlobHeapLocalPtr.pointer", "is nullptr");
+      DASH_LOG_TRACE("GlobHeapContiguousLocalPtr.pointer", "is nullptr");
     } else {
       auto bucket_size = _bucket_it->size;
       // This iterator type represents a local pointer so no bounds checks
@@ -249,17 +252,17 @@ public:
       // as it creates a temporary pointer to an address beyond _lend (+2)
       // which is then moved back into valid memory range (-3).
       if (_bucket_it == _bucket_last) {
-        DASH_LOG_TRACE("GlobHeapLocalPtr.pointer", "position at lend");
+        DASH_LOG_TRACE("GlobHeapContiguousLocalPtr.pointer", "position at lend");
       } else if (_bucket_phase >= bucket_size) {
-        DASH_LOG_TRACE("GlobHeapLocalPtr.pointer",
+        DASH_LOG_TRACE("GlobHeapContiguousLocalPtr.pointer",
                        "bucket size:",  bucket_size, ",",
                        "bucket phase:", _bucket_phase);
-        DASH_LOG_TRACE("GlobHeapLocalPtr.pointer",
+        DASH_LOG_TRACE("GlobHeapContiguousLocalPtr.pointer",
                        "note: iterator position out of bounds (lend?)");
       }
       lptr = _bucket_it->lptr + _bucket_phase;
     }
-    DASH_LOG_TRACE_VAR("GlobHeapLocalPtr.pointer >", lptr);
+    DASH_LOG_TRACE_VAR("GlobHeapContiguousLocalPtr.pointer >", lptr);
     return lptr;
   }
 
@@ -275,14 +278,14 @@ public:
     return *this;
   }
 
-  self_t operator++(int)
+  self_t & operator++(int)
   {
     auto res = *this;
     increment(1);
     return res;
   }
 
-  self_t operator--(int)
+  self_t & operator--(int)
   {
     auto res = *this;
     decrement(1);
@@ -328,37 +331,37 @@ public:
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
-  inline bool operator<(const GlobHeapLocalPtr<E_,I_,P_,R_> & other) const
+  inline bool operator<(const GlobHeapContiguousLocalPtr<E_,I_,P_,R_> & other) const
   {
     return (_idx < other._idx);
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
-  inline bool operator<=(const GlobHeapLocalPtr<E_,I_,P_,R_> & other) const
+  inline bool operator<=(const GlobHeapContiguousLocalPtr<E_,I_,P_,R_> & other) const
   {
     return (_idx <= other._idx);
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
-  inline bool operator>(const GlobHeapLocalPtr<E_,I_,P_,R_> & other) const
+  inline bool operator>(const GlobHeapContiguousLocalPtr<E_,I_,P_,R_> & other) const
   {
     return (_idx > other._idx);
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
-  inline bool operator>=(const GlobHeapLocalPtr<E_,I_,P_,R_> & other) const
+  inline bool operator>=(const GlobHeapContiguousLocalPtr<E_,I_,P_,R_> & other) const
   {
     return (_idx >= other._idx);
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
-  inline bool operator==(const GlobHeapLocalPtr<E_,I_,P_,R_> & other) const
+  inline bool operator==(const GlobHeapContiguousLocalPtr<E_,I_,P_,R_> & other) const
   {
     return (this == std::addressof(other) || _idx == other._idx);
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
-  inline bool operator!=(const GlobHeapLocalPtr<E_,I_,P_,R_> & other) const
+  inline bool operator!=(const GlobHeapContiguousLocalPtr<E_,I_,P_,R_> & other) const
   {
     return !(*this == other);
   }
@@ -453,7 +456,7 @@ private:
   index_type       _bucket_phase  = 0;
   bool             _is_nullptr    = false;
 
-}; // class GlobHeapLocalPtr
+}; // class GlobHeapContiguousLocalPtr
 
 /**
  * Resolve the number of elements between two local bucket iterators.
@@ -469,10 +472,10 @@ template<
   class    Reference>
 auto distance(
   /// Global iterator to the first position in the global sequence
-  const dash::GlobHeapLocalPtr<
+  const dash::GlobHeapContiguousLocalPtr<
           ElementType, IndexType, Pointer, Reference> & first,
   /// Global iterator to the final position in the global sequence
-  const dash::GlobHeapLocalPtr<
+  const dash::GlobHeapContiguousLocalPtr<
           ElementType, IndexType, Pointer, Reference> & last)
 -> IndexType
 {
@@ -486,12 +489,12 @@ template<
   class    Reference>
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::GlobHeapLocalPtr<
+  const dash::GlobHeapContiguousLocalPtr<
           ElementType, IndexType, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  auto *             lptr = static_cast<ElementType *>(it);
-  ss << "dash::GlobHeapLocalPtr<"
+  ElementType * lptr = static_cast<ElementType *>(it);
+  ss << "dash::GlobHeapContiguousLocalPtr<"
      << typeid(ElementType).name() << ">"
      << "("
      << "idx:"  << it._idx          << ", "
@@ -503,4 +506,4 @@ std::ostream & operator<<(
 
 } // namespace dash
 
-#endif // DASH__MEMORY__GLOB_HEAP_LOCAL_PTR_H__INCLUDED
+#endif // DASH__MEMORY__GLOB_HEAP_CONTIGUOUS_LOCAL_PTR_H__INCLUDED

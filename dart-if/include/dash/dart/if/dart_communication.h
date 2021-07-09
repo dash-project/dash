@@ -166,6 +166,60 @@ dart_ret_t dart_allgatherv(
   dart_team_t       teamid) DART_NOTHROW;
 
 /**
+ * DART Equivalent to MPI alltoall.
+ *
+ * \param sendbuf The buffer containing the data to be sent by each unit.
+ * \param recvbuf The buffer to hold the received data.
+ * \param nelem   Number of values sent by each process and received from
+ *                each unit.
+ * \param dtype   The data type of values in \c sendbuf and \c recvbuf.
+ * \param team    The team to participate in the allgather.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_data{team}
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_alltoall(
+  const void      * sendbuf,
+  void            * recvbuf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+	dart_team_t       team) DART_NOTHROW;
+
+/**
+ * DART Equivalent to MPI alltoallv.
+ *
+ * \param sendbuf     The buffer containing the data to be sent by each unit.
+ * \param nsendcounts Array containing the number of values to be sent by 
+ *                    each unit.
+ * \param senddispls  Array containing the displacements of data to be sent
+ *                    by each unit.
+ * \param dtype       The data type of values in \c sendbuf and \c recvbuf.
+ * \param recvbuf     The buffer to hold the received data.
+ * \param nrecvelem   Array containing the number of values to receive from
+ *                    each unit.
+ * \param recvdispls  Array containing the displacements of data received
+ *                    from each unit in \c recvbuf.
+ * \param teamid      The team to participate in the allgatherv.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_data{team}
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_alltoallv(
+  const void      * sendbuf,
+  const size_t    * nsendcounts,
+  const size_t    * senddispls,
+  dart_datatype_t   dtype,
+  void            * recvbuf,
+  const size_t    * nrecvelem,
+  const size_t    * recvdispls,
+  dart_team_t       teamid) DART_NOTHROW;
+
+
+/**
  * DART Equivalent to MPI allreduce.
  *
  * \param sendbuf The buffer containing the data to be sent by each unit.

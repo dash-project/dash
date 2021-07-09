@@ -2125,7 +2125,7 @@ dart_ret_t dart_allgatherv(
     DART_LOG_ERROR("dart_allgatherv ! unknown teamid %d", teamid);
     return DART_ERR_INVAL;
   }
-  if (sendbuf == recvbuf || NULL == sendbuf) {
+  if (sendbuf == recvbuf) {
     sendbuf = MPI_IN_PLACE;
   }
   MPI_Comm comm      = team_data->comm;
@@ -2170,6 +2170,150 @@ dart_ret_t dart_allgatherv(
   free(irecvdispls);
   DART_LOG_TRACE("dart_allgatherv > team:%d nsendelem:%"PRIu64"",
                  teamid, nsendelem);
+  return DART_OK;
+}
+
+#if 0
+/*
+ * Implementation from branch feat-graph, to be discussed
+ */
+dart_ret_t dart_alltoall(
+  const void      * sendbuf,
+  void            * recvbuf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_team_t       teamid)
+{
+  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+  MPI_Comm     comm;
+  DART_LOG_TRACE("dart_alltoall() team:%d nelem:%"PRIu64"",
+                 teamid, nelem);
+
+  if (teamid == DART_UNDEFINED_TEAM_ID) {
+    DART_LOG_ERROR("dart_alltoall ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    return DART_ERR_INVAL;
+  }
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_alltoall ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_alltoall ! team:%d "
+                   "dart_adapt_teamlist_convert failed", teamid);
+    return DART_ERR_INVAL;
+  }
+  if (sendbuf == recvbuf || NULL == sendbuf) {
+    sendbuf = MPI_IN_PLACE;
+  }
+  comm = team_data->comm;
+  if (MPI_Alltoall(
+           sendbuf,
+           nelem,
+           mpi_dtype,
+           recvbuf,
+           nelem,
+           mpi_dtype,
+           comm) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_alltoall ! team:%d nelem:%"PRIu64" failed",
+                   teamid, nelem);
+    return DART_ERR_INVAL;
+  }
+  DART_LOG_TRACE("dart_alltoall > team:%d nelem:%"PRIu64"",
+                 teamid, nelem);
+  return DART_OK;
+}
+#endif
+
+/*
+ * Implementation from branch feat-graph, to be discussed
+ */
+dart_ret_t dart_alltoallv(
+  const void      * sendbuf,
+  const size_t    * nsendcounts,
+  const size_t    * senddispls,
+  dart_datatype_t   dtype,
+  void            * recvbuf,
+  const size_t    * nrecvcounts,
+  const size_t    * recvdispls,
+  dart_team_t       teamid)
+{
+  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
+  MPI_Comm     comm;
+  int          comm_size;
+  DART_LOG_TRACE("dart_alltoallv() team:%d nsendelem:%"PRIu64"",
+                 teamid, nsendcounts);
+
+  if (teamid == DART_UNDEFINED_TEAM_ID) {
+    DART_LOG_ERROR(
+      "dart_alltoallv ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    return DART_ERR_INVAL;
+  }
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_alltoallv ! team:%d "
+                   "dart_adapt_teamlist_convert failed", teamid);
+    return DART_ERR_INVAL;
+  }
+  comm = team_data->comm;
+
+  // convert nrecvcounts and recvdispls
+  MPI_Comm_size(comm, &comm_size);
+  int *insendcounts = malloc(sizeof(int) * comm_size);
+  int *isenddispls  = malloc(sizeof(int) * comm_size);
+  int *inrecvcounts = malloc(sizeof(int) * comm_size);
+  int *irecvdispls  = malloc(sizeof(int) * comm_size);
+  for (int i = 0; i < comm_size; i++) {
+    if (nsendcounts[i] > INT_MAX || senddispls[i] > INT_MAX) {
+      DART_LOG_ERROR(
+        "dart_alltoallv ! failed: "
+        "nsendcounts[%i] > INT_MAX || senddispls[%i] > INT_MAX", i, i);
+      free(insendcounts);
+      free(isenddispls);
+      return DART_ERR_INVAL;
+    }
+    if (nrecvcounts[i] > INT_MAX || recvdispls[i] > INT_MAX) {
+      DART_LOG_ERROR(
+        "dart_alltoallv ! failed: "
+        "nrecvcounts[%i] > INT_MAX || recvdispls[%i] > INT_MAX", i, i);
+      free(inrecvcounts);
+      free(irecvdispls);
+      return DART_ERR_INVAL;
+    }
+    insendcounts[i] = nsendcounts[i];
+    isenddispls[i]  = senddispls[i];
+    inrecvcounts[i] = nrecvcounts[i];
+    irecvdispls[i]  = recvdispls[i];
+  }
+
+  if (MPI_Alltoallv(
+           sendbuf,
+           insendcounts,
+           isenddispls,
+           mpi_dtype,
+           recvbuf,
+           inrecvcounts,
+           irecvdispls,
+           mpi_dtype,
+           comm) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_alltoallv ! team:%d failed", teamid);
+    free(insendcounts);
+    free(isenddispls);
+    free(inrecvcounts);
+    free(irecvdispls);
+    return DART_ERR_INVAL;
+  }
+  free(insendcounts);
+  free(isenddispls);
+  free(inrecvcounts);
+  free(irecvdispls);
+  DART_LOG_TRACE("dart_alltoallv > team:%d", teamid);
   return DART_OK;
 }
 

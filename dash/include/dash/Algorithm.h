@@ -29,4 +29,7 @@
 
 #include <dash/algorithm/SUMMA.h>
 
+#include <dash/algorithm/graph/ConnectedComponents.h>
+#include <dash/algorithm/graph/MinimumSpanningTree.h>
+
 #endif // DASH__ALGORITHM_H_
