@@ -530,17 +530,27 @@ private:
         buffer_offset += pack_md.block_len;
       }
       auto pack = &pack_md;
-      pack_md.pack_func = [pack](){
-        if(SHARED_TYPE == SharedType::STL) {
+      if(SHARED_TYPE == SharedType::STL) {
+        pack_md.pack_func = [pack](){
           std::for_each(std::execution::par, pack->block_data.begin(), pack->block_data.end(), [pack](const auto& block) {
             std::copy(block.block_pos, block.block_pos + pack->block_len, block.buffer_pos);
           });
-        } else {
+        };
+      } else if(SHARED_TYPE == SharedType::OMP) {
+        pack_md.pack_func = [pack](){
+          #pragma omp parallel for
+          for(auto i = 0; i < pack->block_data.size(); ++i) {
+            const auto& block = pack->block_data[i];
+            std::copy(block.block_pos, block.block_pos + pack->block_len, block.buffer_pos);
+          }
+        };
+      } else {
+        pack_md.pack_func = [pack](){
           for(auto& block : pack->block_data) {
             std::copy(block.block_pos, block.block_pos + pack->block_len, block.buffer_pos);
           }
-        }
-      };
+        };
+      }
     }
   }
 
