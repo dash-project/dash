@@ -49,7 +49,9 @@ namespace halo {
  *     halo region 3             '- halo region 7
  */
 
-template <typename MatrixT, SignalReady SigReady = SignalReady::OFF>
+
+
+template <typename MatrixT, SharedType SHARED_TYPE = SharedType::NONE, SignalReady SigReady = SignalReady::OFF>
 class HaloMatrixWrapper {
 private:
   using Pattern_t       = typename MatrixT::pattern_type;
@@ -65,7 +67,7 @@ public:
   using GlobBoundSpec_t = GlobalBoundarySpec<NumDimensions>;
   using HaloBlock_t     = HaloBlock<Element_t, Pattern_t, GlobMem_t>;
   using HaloMemory_t    = HaloMemory<HaloBlock_t>;
-  using HaloUpdateEnv_t = HaloUpdateEnv<HaloBlock_t, SigReady>;
+  using HaloUpdateEnv_t = HaloUpdateEnv<HaloBlock_t, SHARED_TYPE, SigReady>;
   using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
   using region_index_t  = internal::region_index_t;
   using stencil_dist_t  = internal::spoint_value_t;

@@ -6,6 +6,8 @@
 #include <dash/halo/Halo.h>
 #include <dash/Array.h>
 
+#include <execution>
+
 namespace dash {
 
 namespace halo {
@@ -355,10 +357,16 @@ private:
   SignalHandles_t    _signal_ready_handles;
 };
 
+template<typename ElementT>
+struct BufferOffset {
+  ElementT* block_pos;
+  ElementT* buffer_pos;
+};
+
 template<typename ElementT, typename LengthSizeT>
 struct PackMetaData {
   bool                   needs_packing{false};
-  std::vector<ElementT*> block_pos{};
+  std::vector<BufferOffset<ElementT>> block_data{};
   LengthSizeT            block_len{0};
   ElementT*              buffer_pos{nullptr};
   std::function<void()>  pack_func = [](){};
@@ -373,7 +381,7 @@ std::ostream& operator<<(std::ostream& os, const PackMetaData<ElementT, LengthSi
   return os;
 }
 
-template<typename HaloBlockT>
+template<typename HaloBlockT, SharedType SHARED_TYPE>
 class PackEnv {
   static constexpr auto NumDimensions = HaloBlockT::ndim();
   static constexpr auto RegionsMax = NumRegionsMax<NumDimensions>;
@@ -510,20 +518,27 @@ private:
       pattern_size_t num_blocks      = view_pack.size() / num_elems_block;
 
       pack_md.block_len = num_elems_block;
-      pack_md.block_pos.resize(num_blocks);
+      pack_md.block_data.resize(num_blocks);
 
       auto it_region = region->begin();
       decltype(it_region) it_pack_data(&(it_region.globmem()), it_region.pattern(), view_pack);
-      for(auto& pos : pack_md.block_pos) {
-        pos = _local_memory + it_pack_data.lpos().index;
+      auto buffer_offset = pack_md.buffer_pos;
+      for(auto& pos : pack_md.block_data) {
+        pos.block_pos = _local_memory + it_pack_data.lpos().index;
+        pos.buffer_pos = buffer_offset;
         it_pack_data += num_elems_block;
+        buffer_offset += pack_md.block_len;
       }
       auto pack = &pack_md;
       pack_md.pack_func = [pack](){
-        auto buffer_offset = pack->buffer_pos;
-        for(auto& pos : pack->block_pos) {
-          std::copy(pos, pos + pack->block_len, buffer_offset);
-          buffer_offset += pack->block_len;
+        if(SHARED_TYPE == SharedType::STL) {
+          std::for_each(std::execution::par, pack->block_data.begin(), pack->block_data.end(), [pack](const auto& block) {
+            std::copy(block.block_pos, block.block_pos + pack->block_len, block.buffer_pos);
+          });
+        } else {
+          for(auto& block : pack->block_data) {
+            std::copy(block.block_pos, block.block_pos + pack->block_len, block.buffer_pos);
+          }
         }
       };
     }
@@ -536,7 +551,7 @@ private:
   PackMDataAll_t _pack_md_all;
 };
 
-template <typename HaloBlockT, SignalReady SigReady>
+template <typename HaloBlockT, SharedType SHARED_TYPE, SignalReady SigReady>
 class HaloUpdateEnv {
   struct UpdateData {
     std::function<void(dart_handle_t&)> get_halos;
@@ -552,7 +567,7 @@ class HaloUpdateEnv {
   using Pattern_t   = typename HaloBlockT::Pattern_t;
   using BlockEnv_t  = BlockEnvironment<Pattern_t>;
   using SignalEnv_t = SignalEnv<HaloBlockT>;
-  using PackEnv_t   = PackEnv<HaloBlockT>;
+  using PackEnv_t   = PackEnv<HaloBlockT, SHARED_TYPE>;
 
 
 
