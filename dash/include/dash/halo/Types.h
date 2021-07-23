@@ -68,6 +68,10 @@ enum class BoundaryProp : uint8_t {
   CUSTOM
 };
 
+enum class SharedType : uint8_t {
+  STL, OMP, NONE
+};
+
 inline std::ostream& operator<<(std::ostream& os, const BoundaryProp& prop) {
   if(prop == BoundaryProp::NONE)
     os << "NONE";
