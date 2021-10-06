@@ -1,6 +1,7 @@
 #ifndef DASH__MEMORY__MEMORY_SPACE_H__INCLUDED
 #define DASH__MEMORY__MEMORY_SPACE_H__INCLUDED
 
+#include <dash/memory/CudaSpace.h>
 #include <dash/memory/HBWSpace.h>
 #include <dash/memory/HostSpace.h>
 
@@ -43,6 +44,10 @@ get_default_memory_space<memory_domain_local, memory_space_host_tag>();
 template <>
 MemorySpace<memory_domain_local, memory_space_hbw_tag>*
 get_default_memory_space<memory_domain_local, memory_space_hbw_tag>();
+
+template <>
+MemorySpace<memory_domain_local, memory_space_cuda_tag>*
+get_default_memory_space<memory_domain_local, memory_space_cuda_tag>();
 
 template <>
 MemorySpace<memory_domain_global, memory_space_host_tag>*
