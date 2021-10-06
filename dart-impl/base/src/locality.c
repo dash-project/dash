@@ -641,8 +641,9 @@ dart_ret_t dart__base__locality__domain_group(
         immediate_subdomain_tag_len = dot_pos -
                                       group_subdomain_tags[sd];
       }
+      DART_ASSERT(DART_LOCALITY_DOMAIN_TAG_MAX_SIZE >= immediate_subdomain_tag_len);
       strncpy(immediate_subdomain_tags[sd], group_subdomain_tags[sd],
-              immediate_subdomain_tag_len);
+              DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
       immediate_subdomain_tags[sd][immediate_subdomain_tag_len] = '\0';
     }
     int num_group_subdomains = dart__base__strsunique(
