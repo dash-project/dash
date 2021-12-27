@@ -225,6 +225,10 @@ if (ENABLE_SCALAPACK)
          ${SCALAPACK_LIBRARIES})
   endif()
 endif()
+set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+  ${Boost_INCLUDE_DIRS})
+set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+        ${Boost_LIBRARIES})
 
 if (HAVE_STD_TRIVIALLY_COPYABLE)
   set (ADDITIONAL_COMPILE_FLAGS
@@ -345,6 +349,11 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   if(ENABLE_COMPTIME_RED)
       #cotire(${DASH_LIBRARY})
   endif()
+
+  include_directories(${Boost_INCLUDE_DIR})
+  target_link_libraries(
+    ${DASH_LIBRARY}
+    ${Boost_LIBRARIES})
 
   include_directories(
     ${ADDITIONAL_INCLUDES}
